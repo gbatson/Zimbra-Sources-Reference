@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -398,7 +398,7 @@ function () {
 
 ZaXFormViewController.prototype._findAlias = function (alias) {
     var types = [ZaSearch.ALIASES,ZaSearch.DLS,ZaSearch.ACCOUNTS, ZaSearch.RESOURCES] ; 
-    var searchQuery = new ZaSearchQuery(ZaSearch.getSearchByNameQuery(alias, types), types, null, false);
+    var searchQuery = new ZaSearchQuery(ZaSearch.searchAliasByNameQuery(alias, types), types, null, false);
 	// this search should only return one result
 	var results = ZaSearch.searchByQueryHolder(searchQuery, 1, null, null);
 	return results.list.getArray()[0];

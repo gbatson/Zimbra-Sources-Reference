@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package  com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
 
@@ -10,10 +26,8 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
 public class PageAddressbook extends AbsTab {
 
@@ -111,16 +125,8 @@ public class PageAddressbook extends AbsTab {
 
 		boolean active=sIsElementPresent("css=div[id='zb__App__Contacts'][class*=ZSelected]");
 			
-		String locator = null;
-		// On Zimbra Desktop, there is no Address book folder, but there is only
-		// account root folder
-      if(ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-	      locator = TreeMail.Locators.zTreeItems.replace(TreeMail.stringToReplace,
-	            AjaxCommonTest.defaultAccountName);
-	   } else {
-		   //make sure Addressbook folder is displayed
-		   locator = "css=div#ztih__main_Contacts__ADDRBOOK_div";
-		}
+		String locator = "css=div#ztih__main_Contacts__ADDRBOOK_div";
+
 
       active &= this.sIsElementPresent(locator);		   
 		return (active);
@@ -503,7 +509,11 @@ public class PageAddressbook extends AbsTab {
 			page = new DialogTag(MyApplication,((AppAjaxClient) MyApplication).zPageAddressbook);	
 		}
 		else if (shortcut == Shortcut.S_MOVE) {
-			page = new DialogMove(MyApplication, this);				
+			page = new DialogMove(MyApplication, this);
+			zKeyDown("77");
+			zWaitForBusyOverlay();
+			page.zWaitForActive();
+			return (page);				
 		} 
 		else if ( shortcut == Shortcut.S_ASSISTANT ) {			
 			page = new DialogAssistant(MyApplication, ((AppAjaxClient) MyApplication).zPageAddressbook);

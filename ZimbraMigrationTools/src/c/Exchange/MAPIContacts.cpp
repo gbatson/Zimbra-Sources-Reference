@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite CSharp Client
+ * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 #include "common.h"
 #include "Exchange.h"
 #include "MAPIMessage.h"
@@ -681,11 +697,11 @@ HRESULT MAPIContact::Init()
 
 				for (ULONG i = 0; i < lCount; i++)
 				{
-					Zimbra::Util::ScopedBuffer<SPropValue> pPropVal;
+					Zimbra::Util::ScopedBuffer<SPropValue> pPropVal=NULL;
 
 					hr = HrGetOneProp(m_pMessage, tagArray->aulPropTag[i], pPropVal.getptr());
-                                        if (lppPropNames[i] != NULL)    // FBS bug 71786 -- 3/20/12
-                                        {
+					if ((lppPropNames[i] != NULL) &&(hr==S_OK) &&(pPropVal.getptr()!=NULL))   // FBS bug 71786 -- 3/20/12
+                    {
 					    if (lppPropNames[i]->ulKind == MNID_STRING)
 					    {
 						    Zimbra::Util::Guid propGuid(*lppPropNames[i]->lpguid);

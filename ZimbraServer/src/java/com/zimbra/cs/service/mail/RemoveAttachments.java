@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
- *
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,6 +29,7 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.MimePart;
 
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
@@ -101,7 +102,7 @@ public class RemoveAttachments extends MailDocumentHandler {
 
         Element response = zsc.createElement(MailConstants.REMOVE_ATTACHMENTS_RESPONSE);
         // FIXME: inefficient -- this recalculates the MimeMessage (but RemoveAttachments is called rarely)
-        ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true, false);
+        ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true, false, LC.mime_encode_missing_blob.booleanValue());
         return response;
     }
 

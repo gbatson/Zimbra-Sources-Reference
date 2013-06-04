@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1648,13 +1648,11 @@ function(params, callback) {
 	if (!msg) {
 		callback.run();
 	}
-    var forceLoad = params.forceLoad || msg.isInvite();
-	if (msg._loaded && !forceLoad) {
+	if (msg._loaded && !params.forceLoad) {
 		callback.run(msg);
 	} else {
 		if (msg.id == this._pendingMsg) { return; }
 		msg._loadPending = true;
-        msg._loaded = false;
 		this._pendingMsg = msg.id;
 		params.markRead = (params.markRead != null) ? params.markRead : this._handleMarkRead(msg, true);
 		// use prototype in callback because these functions are overridden by ZmConvListController

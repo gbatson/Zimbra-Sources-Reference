@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2012, 2013 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.bugs;
 
 import org.testng.annotations.Test;
@@ -19,8 +35,6 @@ public class Bug78632 extends PrefGroupMailByMessageTest {
 	public Bug78632() {
 		logger.info("New "+ Bug78632.class.getCanonicalName());
 	
-		account1 = (new ZimbraAccount()).provision().authenticate();
-		account2 = (new ZimbraAccount()).provision().authenticate();
 		
 	}
 	
@@ -31,6 +45,11 @@ public class Bug78632 extends PrefGroupMailByMessageTest {
 	public void Bug78632_01() throws HarnessException {
 
 		//-- DATA
+		
+		if ( account1 == null ) {
+			account1 = (new ZimbraAccount()).provision().authenticate();
+			account2 = (new ZimbraAccount()).provision().authenticate();
+		}
 		
 		// Set an alias on the account
 		
@@ -175,6 +194,11 @@ public class Bug78632 extends PrefGroupMailByMessageTest {
 
 		//-- DATA
 		
+		if ( account1 == null ) {
+			account1 = (new ZimbraAccount()).provision().authenticate();
+			account2 = (new ZimbraAccount()).provision().authenticate();
+		}
+
 		// Set the primary address on the account
 		
 		//-- Data setup

@@ -3365,7 +3365,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="640" name="zimbraReverseProxySSLCiphers" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="nginxproxy" since="5.0.5">
-  <globalConfigValue>!SSLv2:!MD5:HIGH</globalConfigValue>
+  <globalConfigValue>RC4:HIGH:!aNULL:!MD5:!kEDH:!AD:!SSLv2</globalConfigValue>
   <desc>permitted ciphers for reverse proxy. Ciphers are in the formats supported by OpenSSL 
         e.g. ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP;
         if not set, default ciphers permitted by nginx will apply
@@ -5038,7 +5038,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1096" name="zimbraMailPurgeBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.8">
-  <globalConfigValue>10000</globalConfigValue>
+  <globalConfigValue>1000</globalConfigValue>
   <desc>Maximum number of messages to delete from a folder during a single purge operation.  If the limit is exceeded, the mailbox is purged again at the end of the purge cycle until all qualifying messages are purged.</desc>
 </attr>
 
@@ -7115,5 +7115,33 @@ TODO: delete them permanently from here
 <attr id="1431" name="zimbraHttpDosFilterMaxRequestsPerSec" type="integer" min="1" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="8.0.3">
   <globalConfigValue>30</globalConfigValue>
   <desc>Maximum number of requests from a connection per second. Requests in excess of this are throttled.</desc>
+</attr>
+
+<attr id="1432" name="zimbraPrefSpellIgnorePattern" type="string" cardinality="single" optionalIn="account,cos," flags="accountInherited,domainAdminModifiable" since="8.0.4">
+  <desc>Regular Expression for words to ignore during spell check.</desc>
+</attr>
+
+<attr id="1435" name="zimbraMtaFallbackRelayHost" type="astring" max="256" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" since="8.0.4">
+  <desc>Fallback value for postconf relayhost.</desc>
+</attr>
+
+<attr id="1437" name="zimbraForceClearCookies" type="boolean" cardinality="single" optionalIn="account,cos,domain,globalConfig" flags="accountInfo,domainInfo,accountCosDomainInherited,domainInherited,domainAdminModifiable" since="8.0.4">
+  <desc>Whether to force clear zimbra auth cookies when SOAP session ends (i.e. force logout on browser tab close)</desc>
+</attr>
+
+<attr id="1438" name="zimbraFeatureDistributionListFolderEnabled" type="boolean" cardinality="single" optionalIn="account,cos,domain,globalConfig" flags="accountInfo,domainInfo,accountCosDomainInherited,domainInherited,domainAdminModifiable" since="8.0.4">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>Whether to display the distribution list folder in address book</desc>
+</attr>
+
+<attr id="1439" name="zimbraMobileSyncKeyFormatConvertedFolders" type="string" cardinality="multi" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable"  since="8.0.4">
+  <desc>folders whose sync key are already converted, each device has a list of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device ApplDN6GJSQJDFHW's folders, inbox and calendar folder sync key format are converted, use 0 for FolderSync</desc>
+</attr>
+
+<attr id="1440" name="zimbraReverseProxyUpstreamConnectTimeout" type="integer" min="0" max="75" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.4">
+  <globalConfigValue>25</globalConfigValue>
+  <desc>
+     The connect timeout is the time interval after which NGINX will disconnect while establishing an upstream HTTP connection. Measured in seconds, should not be more than 75 seconds.
+  </desc>
 </attr>
 </attrs>

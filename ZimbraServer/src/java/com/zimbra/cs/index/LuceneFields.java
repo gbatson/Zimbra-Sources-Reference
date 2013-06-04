@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,11 +15,15 @@
 
 package com.zimbra.cs.index;
 
+import com.zimbra.cs.mailbox.Flag;
+
 /**
  * Standard Lucene fields.
  *
  * The sort fields are used for the sorting of Lucene results. They MUST be stored with all documents, and their values
  * MUST match the values in the corresponding MailItem row entry. They MUST be Indexed and NOT_ANALYZED.
+ * Snippet from Javadoc for Lucene 3.5.0 org.apache.lucene.search.SortField:
+ *     Fields must be indexed in order to sort by them.
  *
  * @since Apr 30, 2004
  * @author schemers
@@ -48,6 +52,21 @@ public final class LuceneFields {
      * Size of document "size:" searches, "larger:" and "smaller:" for sorting.
      */
     public static final String L_SORT_SIZE = "l.size";
+
+    /**
+     * Values "0" or "1".  "1" if has an attachment
+     */
+    public static final String L_SORT_ATTACH = "hasAttach";
+
+    /**
+     * Values "0" or "1".  "1" if has been flagged
+     */
+    public static final String L_SORT_FLAG = "hasFlag";
+
+    /**
+     * Priority setting
+     */
+    public static final String L_SORT_PRIORITY = "priority";
 
     /**
      * The "index id" this document -- maps to one or more rows in the DB's mail_item table (index_id column).
@@ -143,5 +162,18 @@ public final class LuceneFields {
      * field operator: structured data storage
      */
     public static final String L_FIELD = "l.field";
+
+    public static String valueForBooleanField(boolean value) {
+        return value ? "1" : "0";
+    }
+
+    public static String valueForPriority(int flags) {
+        if ((flags & Flag.BITMASK_HIGH_PRIORITY) != 0) {
+            return "2";
+        } else if ((flags & Flag.BITMASK_LOW_PRIORITY) != 0) {
+            return "0";
+        }
+        return "1";
+    }
 
 }

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -39,11 +39,11 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.mailbox.ContactConstants;
+import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.EntryCacheDataKey;
 import com.zimbra.cs.account.Provisioning;
@@ -738,6 +738,13 @@ public class Contact extends MailItem {
             throw ServiceException.INVALID_REQUEST("contact must have fields", null);
         }
         attachments = pc.getAttachments();
+        if (attachments != null && attachments.size() > 0) {
+            for (Attachment attach: attachments) {
+                //refresh the data handler. the content rev changes which can change the blob filename/locator.
+                //not safe to keep old data handler that may point to old blob
+                attach.mDataHandler = new DataHandler(new AttachmentDataSource(this, attach.mPartName));
+            }
+        }
         mData.unsetFlag(Flag.FlagInfo.ATTACHED);
         if (pc.hasAttachment()) {
             mData.setFlag(Flag.FlagInfo.ATTACHED);

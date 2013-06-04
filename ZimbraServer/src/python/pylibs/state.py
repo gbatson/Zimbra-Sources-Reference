@@ -1,13 +1,13 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # Zimbra Collaboration Suite Server
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
-#
+# Copyright (C) 2010, 2011, 2012, 2013 VMware, Inc.
+# 
 # The contents of this file are subject to the Zimbra Public License
 # Version 1.3 ("License"); you may not use this file except in
 # compliance with the License.  You may obtain a copy of the License at
 # http://www.zimbra.com/license.
-#
+# 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
 # ***** END LICENSE BLOCK *****
@@ -412,10 +412,13 @@ class State:
 		try:
 			pid = str(os.getpid())
 			Log.logMsg(4, "Writing %s to %s" % (pid, self.pidFile))
-			file(self.pidFile,'w+').write("%s\n" % (pid,))
+			f = open(self.pidFile, 'w+')
+			f.write("%s\n" % (pid,))
 		except Exception, e:
 			[Log.logMsg(1,t) for t in traceback.format_tb(sys.exc_info()[2])]
 			Log.logMsg (0, "writepid() failed: %s" % (e,))
+		finally:
+			f.close()
 
 	def resetChangedKeys(self, section):
 		self.changedkeys[section] = []
@@ -882,7 +885,7 @@ class State:
 				val = ""
 
 		elif re.match(r"contains", sr):
-			f = sr.split(',',2)
+			f = sr.split('^',2)
 			st = f[0]
 			if len(f) > 2:
 				replace = f[1].strip()

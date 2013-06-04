@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,18 +20,19 @@ import com.zimbra.common.account.Key.DistributionListBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
-import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Group;
+import com.zimbra.cs.account.Group.GroupOwner;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Group.GroupOwner;
 import com.zimbra.cs.gal.GalGroupMembers;
 import com.zimbra.cs.gal.GalGroupMembers.DLMembers;
 import com.zimbra.cs.gal.GalGroupMembers.DLMembersResult;
+import com.zimbra.cs.gal.GalGroupMembers.GalContactDLMembers;
 import com.zimbra.cs.gal.GalGroupMembers.LdapDLMembers;
 import com.zimbra.cs.gal.GalGroupMembers.ProxiedDLMembers;
 import com.zimbra.cs.gal.GalSearchControl;
@@ -295,11 +296,17 @@ public class GetDistributionListMembers extends GalDocumentHandler {
     
     protected Element processDLMembers(ZimbraSoapContext zsc, String dlName, Account account, 
             int limit, int offset, DLMembers dlMembers) throws ServiceException {
-          
+
         if (!GalSearchControl.canExpandGalGroup(dlName, dlMembers.getDLZimbraId(), account)) {
-            throw ServiceException.PERM_DENIED("can not access dl members: " + dlName);
+            ZimbraLog.misc.warn("dlName: %s, dlMembers(%s) size %d, id %s", dlName, dlMembers.getClass(), dlMembers.getTotal(), dlMembers.getDLZimbraId());
+            Group dl = Provisioning.getInstance().getGroup(DistributionListBy.name, dlName);
+            if (dl == null) {
+                throw ServiceException.NOT_FOUND(dlName + " does not exist");
+            } else {
+                throw ServiceException.PERM_DENIED("can not access dl members: " + dlName);
+            }
         }
-        
+
         Element response = zsc.createElement(AccountConstants.GET_DISTRIBUTION_LIST_MEMBERS_RESPONSE);
         if (dlMembers != null) {
             int numMembers = dlMembers.getTotal();

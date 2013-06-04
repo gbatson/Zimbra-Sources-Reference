@@ -72,6 +72,12 @@ public class AdvancedImportOptions
         get { return m_MaxMessageSize; }
         set { m_MaxMessageSize = value; }
     }
+    private string m_DateFilterItem;
+    public string DateFilterItem
+    {
+        get { return m_DateFilterItem; }
+        set { m_DateFilterItem = value; }
+    }
     private bool m_IsMaxMessageSize;
     public bool IsMaxMessageSize
     {
@@ -107,6 +113,19 @@ public class AdvancedImportOptions
         set { m_CSVDelimiter = value; }
     }
 
+    private long m_LangID;
+    public long LangID
+    {
+        get { return m_LangID; }
+        set { m_LangID = value; }
+    }
+
+    private Int32 m_MaxRetries;
+    public Int32 MaxRetries
+    {
+        get { return m_MaxRetries; }
+        set { m_MaxRetries = value; }
+    }
 }
 
 public class Folder

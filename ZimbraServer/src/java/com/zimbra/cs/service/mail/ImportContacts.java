@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,6 +29,7 @@ import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.mailbox.Contact;
+import com.zimbra.cs.mailbox.ContactGroup;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -153,6 +154,8 @@ public class ImportContacts extends MailDocumentHandler  {
             String[] tags = TagUtil.decodeTags(ContactCSV.getTags(contact));
             Contact c = mbox.createContact(oc, new ParsedContact(contact), iidFolder.getId(), tags);
             createdIds.add(new ItemId(c));
+            ContactGroup.MigrateContactGroup mcg = new ContactGroup.MigrateContactGroup(mbox);
+            mcg.migrate(c);
         }
         return createdIds;
     }

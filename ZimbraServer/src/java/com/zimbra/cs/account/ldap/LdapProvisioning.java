@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -3183,7 +3183,7 @@ public class LdapProvisioning extends LdapProv {
 
             List<String> aliasDomainIds = null;
             if (domain.isLocal()) {
-                aliasDomainIds = getEmptyAliasDomainIds(zlc, domain);
+                aliasDomainIds = getEmptyAliasDomainIds(zlc, domain, true);
             }
 
             // delete the domain;
@@ -3204,7 +3204,7 @@ public class LdapProvisioning extends LdapProv {
 
     }
 
-    private List<String> getEmptyAliasDomainIds(ZLdapContext zlc, Domain targetDomain)
+    public List<String> getEmptyAliasDomainIds(ZLdapContext zlc, Domain targetDomain, boolean suboridinateCheck)
     throws ServiceException {
         List<String> aliasDomainIds = new ArrayList<String>();
 
@@ -3228,7 +3228,7 @@ public class LdapProvisioning extends LdapProv {
                 String acctBaseDn = mDIT.domainDNToAccountBaseDN(aliasDomainDn);
                 String dynGroupsBaseDn = mDIT.domainDNToDynamicGroupsBaseDN(aliasDomainDn);
 
-                if (hasSubordinates(zlc, acctBaseDn) || hasSubordinates(zlc, dynGroupsBaseDn)) {
+                if (suboridinateCheck && (hasSubordinates(zlc, acctBaseDn) || hasSubordinates(zlc, dynGroupsBaseDn))) {
                     throw ServiceException.FAILURE("alias domain " + aliasDomainName +
                             " of doamin " + targetDomain.getName() + " is not empty", null);
                 }
@@ -5034,45 +5034,21 @@ public class LdapProvisioning extends LdapProv {
      * @return new hsitory
      */
     private String[] updateHistory(String history[], String currentPassword, int maxHistory) {
-        String[] newHistory = history;
         if (currentPassword == null)
             return null;
 
+        ArrayList<String> newHistory = new ArrayList<String>();
         String currentHistory = System.currentTimeMillis() + ":"+currentPassword;
-
-        // just add if empty or room
-        if (history == null || history.length < maxHistory) {
-
-            if (history == null) {
-                newHistory = new String[1];
-            } else {
-                newHistory = new String[history.length+1];
-                System.arraycopy(history, 0, newHistory, 0, history.length);
-            }
-            newHistory[newHistory.length-1] = currentHistory;
-            return newHistory;
+        if (history != null) {
+            newHistory.addAll(Arrays.asList(history));
+            Collections.sort(newHistory);
         }
-
-        // remove oldest, add current
-        long min = Long.MAX_VALUE;
-        int minIndex = -1;
-        for (int i = 0; i < history.length; i++) {
-            int sepIndex = history[i].indexOf(':');
-            if (sepIndex == -1) {
-                // nuke it if no separator
-                minIndex = i;
-                break;
-            }
-            long val = Long.parseLong(history[i].substring(0, sepIndex));
-            if (val < min) {
-                min = val;
-                minIndex = i;
-            }
+        while (newHistory.size() >= maxHistory) {
+            newHistory.remove(0);
         }
-        if (minIndex == -1)
-            minIndex = 0;
-        history[minIndex] = currentHistory;
-        return history;
+        newHistory.add(currentHistory);
+
+        return newHistory.toArray(new String[newHistory.size()]);
     }
 
     @Override

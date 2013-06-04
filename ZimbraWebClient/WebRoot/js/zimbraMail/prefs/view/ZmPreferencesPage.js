@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -244,7 +244,14 @@ function() {
 				control = this._setupColor(id, setup, value);
 			}
 			else if (type == ZmPref.TYPE_LOCALES) {
-				control = this._setupLocales(id, setup, value);
+                //Fix for bug# 80762 - Based on multiple locale availability set the view as dropdown or label
+                if(ZmLocale.hasChoices()) {
+                    control = this._setupLocales(id, setup, value);
+                }
+                else {
+                    //Part of bug# 80762. Sets view for a single locale and displays as a label
+                    control = this._setupLocaleLabel(id, setup, value);
+                }
 			}
 			else if (type == ZmPref.TYPE_FONT) {
 				control = this._setupFonts(id, setup, value);
@@ -866,6 +873,15 @@ function(id, setup, value) {
 	return button;
 };
 
+//Part of bug# 80762 - Display the single locale item as a read-only label
+ZmPreferencesPage.prototype._setupLocaleLabel =
+function(id, setup, value) {
+    var label = new DwtLabel({parent:this});
+    label.setSize(60, Dwt.DEFAULT);
+    this._showLocale(value, label);
+    this._dwtObjects[id] = label;
+    return label;
+};
 
 ZmPreferencesPage.prototype._setupFonts =
 function(id, setup, value) {

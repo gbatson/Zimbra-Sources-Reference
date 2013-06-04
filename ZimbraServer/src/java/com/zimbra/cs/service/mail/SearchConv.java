@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -22,6 +22,8 @@ import java.util.Map;
 
 import com.google.common.base.Strings;
 import com.google.common.io.Closeables;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -29,12 +31,11 @@ import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.index.SearchParams;
+import com.zimbra.cs.index.SearchParams.ExpandResults;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
-import com.zimbra.cs.index.SearchParams.ExpandResults;
 import com.zimbra.cs.mailbox.Conversation;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.MailItem;
@@ -214,7 +215,7 @@ public final class SearchConv extends Search {
         Element el;
         if (inline) {
             el = ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, params.getMaxInlinedLength(),
-                    params.getWantHtml(), params.getNeuterImages(), null, true, params.getWantExpandGroupInfo());
+                    params.getWantHtml(), params.getNeuterImages(), null, true, params.getWantExpandGroupInfo(), LC.mime_encode_missing_blob.booleanValue());
             if (!Strings.isNullOrEmpty(msg.getFragment())) {
                 el.addAttribute(MailConstants.E_FRAG, msg.getFragment(), Element.Disposition.CONTENT);
             }

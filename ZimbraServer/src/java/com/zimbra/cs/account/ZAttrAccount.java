@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -37,7 +37,7 @@ public abstract class ZAttrAccount  extends MailTarget {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 9.0.0_BETA1_1111 pburgu 20130117-1610 */
+    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     /**
      * RFC2256: ISO-3166 country 2-letter code
@@ -11753,6 +11753,78 @@ public abstract class ZAttrAccount  extends MailTarget {
     }
 
     /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @return zimbraFeatureDistributionListFolderEnabled, or true if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public boolean isFeatureDistributionListFolderEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, true);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param zimbraFeatureDistributionListFolderEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public void setFeatureDistributionListFolderEnabled(boolean zimbraFeatureDistributionListFolderEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, zimbraFeatureDistributionListFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param zimbraFeatureDistributionListFolderEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public Map<String,Object> setFeatureDistributionListFolderEnabled(boolean zimbraFeatureDistributionListFolderEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, zimbraFeatureDistributionListFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public void unsetFeatureDistributionListFolderEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public Map<String,Object> unsetFeatureDistributionListFolderEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        return attrs;
+    }
+
+    /**
      * whether export folder feature is enabled
      *
      * @return zimbraFeatureExportFolderEnabled, or true if unset
@@ -17235,6 +17307,83 @@ public abstract class ZAttrAccount  extends MailTarget {
     public Map<String,Object> unsetFilterSleepInterval(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFilterSleepInterval, "");
+        return attrs;
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @return zimbraForceClearCookies, or false if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public boolean isForceClearCookies() {
+        return getBooleanAttr(Provisioning.A_zimbraForceClearCookies, false);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param zimbraForceClearCookies new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public void setForceClearCookies(boolean zimbraForceClearCookies) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, zimbraForceClearCookies ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param zimbraForceClearCookies new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public Map<String,Object> setForceClearCookies(boolean zimbraForceClearCookies, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, zimbraForceClearCookies ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public void unsetForceClearCookies() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public Map<String,Object> unsetForceClearCookies(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, "");
         return attrs;
     }
 
@@ -27503,6 +27652,167 @@ public abstract class ZAttrAccount  extends MailTarget {
     public Map<String,Object> unsetMobileSmartForwardRFC822Enabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraMobileSmartForwardRFC822Enabled, "");
+        return attrs;
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @return zimbraMobileSyncKeyFormatConvertedFolders, or empty array if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public String[] getMobileSyncKeyFormatConvertedFolders() {
+        return getMultiAttr(Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders);
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param zimbraMobileSyncKeyFormatConvertedFolders new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public void setMobileSyncKeyFormatConvertedFolders(String[] zimbraMobileSyncKeyFormatConvertedFolders) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, zimbraMobileSyncKeyFormatConvertedFolders);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param zimbraMobileSyncKeyFormatConvertedFolders new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public Map<String,Object> setMobileSyncKeyFormatConvertedFolders(String[] zimbraMobileSyncKeyFormatConvertedFolders, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, zimbraMobileSyncKeyFormatConvertedFolders);
+        return attrs;
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param zimbraMobileSyncKeyFormatConvertedFolders new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public void addMobileSyncKeyFormatConvertedFolders(String zimbraMobileSyncKeyFormatConvertedFolders) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, zimbraMobileSyncKeyFormatConvertedFolders);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param zimbraMobileSyncKeyFormatConvertedFolders new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public Map<String,Object> addMobileSyncKeyFormatConvertedFolders(String zimbraMobileSyncKeyFormatConvertedFolders, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, zimbraMobileSyncKeyFormatConvertedFolders);
+        return attrs;
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param zimbraMobileSyncKeyFormatConvertedFolders existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public void removeMobileSyncKeyFormatConvertedFolders(String zimbraMobileSyncKeyFormatConvertedFolders) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, zimbraMobileSyncKeyFormatConvertedFolders);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param zimbraMobileSyncKeyFormatConvertedFolders existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public Map<String,Object> removeMobileSyncKeyFormatConvertedFolders(String zimbraMobileSyncKeyFormatConvertedFolders, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, zimbraMobileSyncKeyFormatConvertedFolders);
+        return attrs;
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public void unsetMobileSyncKeyFormatConvertedFolders() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public Map<String,Object> unsetMobileSyncKeyFormatConvertedFolders(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileSyncKeyFormatConvertedFolders, "");
         return attrs;
     }
 
@@ -45346,6 +45656,78 @@ public abstract class ZAttrAccount  extends MailTarget {
     public Map<String,Object> unsetPrefSpellIgnoreAllCaps(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraPrefSpellIgnoreAllCaps, "");
+        return attrs;
+    }
+
+    /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @return zimbraPrefSpellIgnorePattern, or null if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1432)
+    public String getPrefSpellIgnorePattern() {
+        return getAttr(Provisioning.A_zimbraPrefSpellIgnorePattern, null);
+    }
+
+    /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @param zimbraPrefSpellIgnorePattern new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1432)
+    public void setPrefSpellIgnorePattern(String zimbraPrefSpellIgnorePattern) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSpellIgnorePattern, zimbraPrefSpellIgnorePattern);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @param zimbraPrefSpellIgnorePattern new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1432)
+    public Map<String,Object> setPrefSpellIgnorePattern(String zimbraPrefSpellIgnorePattern, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSpellIgnorePattern, zimbraPrefSpellIgnorePattern);
+        return attrs;
+    }
+
+    /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1432)
+    public void unsetPrefSpellIgnorePattern() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSpellIgnorePattern, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1432)
+    public Map<String,Object> unsetPrefSpellIgnorePattern(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSpellIgnorePattern, "");
         return attrs;
     }
 

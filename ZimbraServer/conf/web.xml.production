@@ -61,6 +61,15 @@
     <filter-name>ThrottlingFilter</filter-name>
     <url-pattern>/zimlet/*</url-pattern>
   </filter-mapping>
+  
+  <filter>
+    <filter-name>ETagHeaderFilter</filter-name>
+    <filter-class>com.zimbra.cs.servlet.ETagHeaderFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>ETagHeaderFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
 
   <filter>
     <filter-name>SpnegoFilter</filter-name>
@@ -147,6 +156,15 @@
     <filter-name>Base64Filter</filter-name>
     <url-pattern>/home/*</url-pattern>
   </filter-mapping>
+  
+  <filter>
+    <filter-name>RequestStringFilter</filter-name>
+    <filter-class>com.zimbra.cs.servlet.RequestStringFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>RequestStringFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>  
 
   <servlet>
     <servlet-name>FirstServlet</servlet-name>
@@ -415,7 +433,7 @@
     <servlet-class>com.zimbra.cs.service.AutoDiscoverServlet</servlet-class>
     <init-param>
       <param-name>allowed.ports</param-name>
-      <param-value>80, 443, 7070, 7071, 7443</param-value>
+      <param-value>%%zimbraMailPort%%, %%zimbraMailSSLPort%%, %%zimbraAdminPort%%, 7070, 7443</param-value>
     </init-param>
     <load-on-startup>12</load-on-startup>
   </servlet>
@@ -550,6 +568,8 @@
   <servlet-mapping>
     <servlet-name>AutoDiscoverServlet</servlet-name>
     <url-pattern>/autodiscover/*</url-pattern>
+    <url-pattern>/Autodiscover/*</url-pattern>
+    <url-pattern>/AutoDiscover/*</url-pattern>
   </servlet-mapping>
 
   <!-- HTTPSBEGIN %%comment VAR:zimbraMailMode,-->,https,redirect%%

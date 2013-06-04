@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,11 +34,11 @@ public final class AddrCharTokenizer extends CharTokenizer {
 
     @Override
     protected boolean isTokenChar(int ch) {
+        if (Character.isWhitespace(ch)) {
+            return false;
+        }
         switch (ch) {
-            case ' ':
             case '\u3000': // fullwidth space
-            case '\r':
-            case '\n':
             case '<':
             case '>':
             case '\"':

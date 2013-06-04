@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -33,13 +33,6 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 import com.google.common.collect.Lists;
-import com.zimbra.common.util.Log;
-import com.zimbra.common.util.LogFactory;
-import com.zimbra.common.util.ZimbraLog;
-
-import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.Identity;
-import com.zimbra.cs.account.Provisioning;
 import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.calendar.Geo;
 import com.zimbra.common.calendar.ICalTimeZone;
@@ -54,21 +47,27 @@ import com.zimbra.common.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.Log;
+import com.zimbra.common.util.LogFactory;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.Identity;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.index.Fragment;
 import com.zimbra.cs.mailbox.CalendarItem;
+import com.zimbra.cs.mailbox.CalendarItem.Instance;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.CalendarItem.Instance;
 import com.zimbra.cs.mailbox.calendar.Alarm.Action;
 import com.zimbra.cs.mailbox.calendar.Alarm.TriggerRelated;
 import com.zimbra.cs.mailbox.calendar.Alarm.TriggerType;
 import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
 import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ByteUtil;
-import com.zimbra.common.mime.MimeConstants;
 
 /**
  * Invite
@@ -1293,9 +1292,9 @@ public class Invite {
 
     private ICalTok mMethod;
 
-    private List<Alarm> mAlarms = new ArrayList<Alarm>();
+    private final List<Alarm> mAlarms = new ArrayList<Alarm>();
 
-    private List<ZProperty> mXProps = new ArrayList<ZProperty>();
+    private final List<ZProperty> mXProps = new ArrayList<ZProperty>();
 
     public Invite(String method, TimeZoneMap tzMap, boolean isOrganizer) {
         setItemType(MailItem.Type.APPOINTMENT);
@@ -1590,7 +1589,7 @@ public class Invite {
         }
     }
 
-    private TimeZoneMap mTzMap;
+    private final TimeZoneMap mTzMap;
 
     public TimeZoneMap getTimeZoneMap() { return mTzMap; }
 
@@ -1719,7 +1718,7 @@ public class Invite {
                         newInv.setSentByMe(sentByMe);
                         compNum++;
 
-                        List<ZComponent> subcomponents = Lists.newArrayList(comp.getComponentIterator()); 
+                        List<ZComponent> subcomponents = Lists.newArrayList(comp.getComponentIterator());
                         for (ZComponent subcomp : subcomponents) {
                             ICalTok subCompTypeTok = subcomp.getTok();
                             switch (subCompTypeTok) {
@@ -1935,7 +1934,7 @@ public class Invite {
                                             newInv.setPercentComplete(pctComplete);
                                             if (prop.getIntValue() == 100)
                                                 isTodoCompleted = true;
-                                        }    
+                                        }
                                     }
                                     break;
                                 case COMPLETED:
@@ -1968,7 +1967,7 @@ public class Invite {
                                 }
                             }
                         }
-                        
+
                         if (isTodoCompleted) {
                             // set the status to Completed.
                             newInv.setStatus(IcalXmlStrMap.STATUS_COMPLETED);
@@ -1976,8 +1975,8 @@ public class Invite {
                             newInv.setPercentComplete(Integer.toString(100));
                             if (newInv.getCompleted() == 0) // set COMPLETED property to now if not already set.
                                 newInv.setCompleted(System.currentTimeMillis());
-                        }    
-                        
+                        }
+
                         newInv.setIsOrganizer(account);
 
                         newInv.validateDuration();
@@ -2233,20 +2232,20 @@ public class Invite {
             for (ZProperty xprop : mXProps) {
                 component.addProperty(xprop);
             }
-        }
 
-        // ORGANIZER
-        if (hasOrganizer()) {
-            ZOrganizer organizer = getOrganizer();
-            ZProperty orgProp = organizer.toProperty();
-            component.addProperty(orgProp);
-            // Hack for Outlook 2007 (bug 25777)
-            if (organizer.hasSentBy() && !ICalTok.REPLY.equals(mMethod) && !ICalTok.COUNTER.equals(mMethod)) {
-                String sentByParam = orgProp.paramVal(ICalTok.SENT_BY, null);
-                if (sentByParam != null) {
-                    ZProperty xMsOlkSender = new ZProperty("X-MS-OLK-SENDER");
-                    xMsOlkSender.setValue(sentByParam);
-                    component.addProperty(xMsOlkSender);
+            // ORGANIZER
+            if (hasOrganizer()) {
+                ZOrganizer organizer = getOrganizer();
+                ZProperty orgProp = organizer.toProperty();
+                component.addProperty(orgProp);
+                // Hack for Outlook 2007 (bug 25777)
+                if (organizer.hasSentBy() && !ICalTok.REPLY.equals(mMethod) && !ICalTok.COUNTER.equals(mMethod)) {
+                    String sentByParam = orgProp.paramVal(ICalTok.SENT_BY, null);
+                    if (sentByParam != null) {
+                        ZProperty xMsOlkSender = new ZProperty("X-MS-OLK-SENDER");
+                        xMsOlkSender.setValue(sentByParam);
+                        component.addProperty(xMsOlkSender);
+                    }
                 }
             }
         }
@@ -2640,7 +2639,7 @@ public class Invite {
             Alarm newAlarm = new Alarm(
                     Action.DISPLAY, TriggerType.RELATIVE, TriggerRelated.START,
                     ParsedDuration.parse(true, 0, 0, hoursBefore, minutesBefore, 0),
-                    null, null, 0, null, summary, null, null);
+                    null, null, 0, null, summary, null, null, null);
             inv.addAlarm(newAlarm);
         }
     }
@@ -2758,7 +2757,7 @@ public class Invite {
         }
         return false;
     }
-    
+
     // Outlook-generated UIDs are supposed to be uppercase.  (bug 57727)
     public static String fixupIfOutlookUid(String uid) {
         return isOutlookUid(uid) ? uid.toUpperCase() : uid;

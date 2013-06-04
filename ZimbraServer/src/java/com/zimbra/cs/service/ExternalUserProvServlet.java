@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2011, 2012 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -144,7 +144,7 @@ public class ExternalUserProvServlet extends ZimbraServlet {
                 try {
                     zMtpt = zMailbox.createMountpoint(
                             String.valueOf(getMptParentFolderId(sharedFolderView, prov)), mountpointName,
-                            ZFolder.View.fromString(sharedFolderView.toString()), ZFolder.Color.defaultColor, null,
+                            ZFolder.View.fromString(sharedFolderView.toString()), ZFolder.Color.DEFAULTCOLOR, null,
                             ZMailbox.OwnerBy.BY_ID, ownerId, ZMailbox.SharedItemBy.BY_ID, folderId, false);
                 } catch (ServiceException e) {
                     logger.debug("Error in attempting to create mountpoint. Probably it already exists.", e);

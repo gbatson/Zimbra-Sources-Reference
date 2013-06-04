@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,7 +26,8 @@
 
 <fmt:setTimeZone value="${timezone}"/>
 <c:set var="folder" value="${zm:getFolder(pageContext,appt.folderId)}"/>
-<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : folder.rgbColor)}"/>
+<fmt:message var="colorMsg" key="${folder.rgbColorMsg}"/>
+<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : colorMsg)}"/>
 <c:set var="needsAction" value="${appt.partStatusNeedsAction}"/>
 <fmt:message var="noSubject" key="noSubject"/>
 <c:set var="subject" value="${empty appt.name ? noSubject : appt.name}"/>

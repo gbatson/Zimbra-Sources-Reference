@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011, 2012 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.framework.ui;
 
 import java.awt.Toolkit;
@@ -381,6 +397,33 @@ public abstract class AbsSeleniumObject {
 	}
 
 	/**
+	 * Check/Uncheck a checkbox (just returns if checkbox already checked)
+	 * @param locator The locator for the checkbox
+	 * @param status The desired status of the checkbox (true=checked, false=unchecked)
+	 * @throws HarnessException 
+	 */
+	public void zCheckboxSet(String locator, boolean status) throws HarnessException {
+		
+		if ( !this.sIsElementPresent(locator) ) {
+			throw new HarnessException(locator + " no present!");
+		}
+		
+		if ( this.sIsChecked(locator) == status ) {
+			logger.debug("checkbox status matched.  not doing anything");
+			return;
+		}
+		
+		if ( status == true ) {
+			this.sCheck(locator);
+		} else {
+			this.sUncheck(locator);
+		}
+		
+		this.zWaitForBusyOverlay();
+		
+	}
+	
+	/**
 	 * Execute mouseDownRight followed by mouseUpRight on a locator at a
 	 * coordinator
 	 * 
@@ -654,7 +697,7 @@ public abstract class AbsSeleniumObject {
 
 	/**
      * Enter HTML formatted text into a iframe specified by locator.
-     * @param locator selenium locator, e.g. css=iframe[id^=’iframe_DWT’]
+     * @param locator selenium locator, e.g. css=iframe[id^=iframe_DWT]
      * @param html HTML string, e.g. <strong><i>foo</i></strong>
      * @throws HarnessException
      */
@@ -1832,7 +1875,7 @@ public abstract class AbsSeleniumObject {
 		logger.info("zWaitForElementInvisible(" + locator + ")");
 		if (ZimbraSeleniumProperties.isWebDriver())	{
 			logger.info("...WebDriver...findElement.getLocation()");
-			if(waitForElementVisible(locator, false, 5)){
+			if(waitForElementVisible(locator, false, 15)){
 				return;
 			}
 		}else{

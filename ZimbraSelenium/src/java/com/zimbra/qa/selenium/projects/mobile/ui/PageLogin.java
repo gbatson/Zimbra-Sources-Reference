@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011, 2012 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.mobile.ui;
 
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
@@ -24,12 +40,12 @@ public class PageLogin extends AbsTab {
 		public static final String zInputRemember = "css=input#remember";
 		
 		// Displayed text
-		public static final String zDisplayedZLoginAppName = "xpath=//*[@id='ZLoginAppName']";
-		public static final String zDisplayedusername = "xpath=//form[@name='loginForm']//label[@for='username']";
-		public static final String zDisplayedpassword = "xpath=//td[@class='zLoginLabelContainer']//label[@for='password']";
-		public static final String zDisplayedremember = "xpath=//td[@class='zLoginCheckboxLabelContainer']//label[@for='remember']";
-		public static final String zDisplayedwhatsthis = "xpath=//*[@id='ZLoginWhatsThisAnchor']";
-		public static final String zDisplayedcopyright = "xpath=//div[@class='copyright']";
+		public static final String zDisplayedZLoginAppName = "css=[id='ZLoginAppName']";
+		public static final String zDisplayedusername = "css=form[name='loginForm'] label[for='username']";
+		public static final String zDisplayedpassword = "css=td.zLoginLabelContainer label[for='password']";
+		public static final String zDisplayedremember = "css=td.zLoginCheckboxLabelContainer label[for='remember']";
+		public static final String zDisplayedwhatsthis = "css=[id='ZLoginWhatsThisAnchor']";
+		public static final String zDisplayedcopyright = "css=div.copyright";
 		
 	}
 		

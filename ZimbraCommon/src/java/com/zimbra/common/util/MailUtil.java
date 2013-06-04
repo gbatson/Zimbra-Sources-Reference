@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,10 +34,10 @@ import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException.Argument;
 
 public class MailUtil {
-    public static void populateFailureDeliveryMessageFields(MimeMessage failedDeliverymm, String subject, String to, List<Argument> addressArgs) throws MessagingException, UnsupportedEncodingException {		
+    public static void populateFailureDeliveryMessageFields(MimeMessage failedDeliverymm, String subject, String to, List<Argument> addressArgs, InternetAddress iAddr) throws MessagingException, UnsupportedEncodingException {		
         failedDeliverymm.setSubject("Send Partial Failure Notice");
         failedDeliverymm.setSentDate(new Date());
-        failedDeliverymm.setFrom(new InternetAddress("donotreply@host.local", "Failed Delivery Notifier"));
+        failedDeliverymm.setFrom(iAddr);
         failedDeliverymm.setRecipient(RecipientType.TO, new JavaMailInternetAddress(to));
 
         StringBuilder text = new StringBuilder();

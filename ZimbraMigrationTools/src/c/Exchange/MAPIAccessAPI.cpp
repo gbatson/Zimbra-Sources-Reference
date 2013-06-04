@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite CSharp Client
+ * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 #include "common.h"
 #include "Exchange.h"
 #include "MAPIAccessAPI.h"
@@ -566,13 +582,27 @@ LPCWSTR MAPIAccessAPI::_GetFolderItemsList(SBinary sbFolderEID, vector<Item_Data
         folder.GetMessageIterator(*msgIter);
 
         BOOL bContinue = true;
+		BOOL skip = false;
 
         while (bContinue)
         {
+			skip = false;
             Zimbra::MAPI::MAPIMessage *msg = new Zimbra::MAPI::MAPIMessage();
 
+			try
+			{
             bContinue = msgIter->GetNext(*msg);
-            if (bContinue)
+			}
+			catch (MAPIMessageException &msgex)
+			{
+				lpwstrStatus = FormatExceptionInfo(msgex.ErrCode(), (LPWSTR)msgex.Description().c_str(),
+					(LPSTR)msgex.SrcFile().c_str(), msgex.SrcLine());
+				dloge(lpwstrStatus);
+				Zimbra::Util::CopyString(lpwstrRetVal, msgex.ShortDescription().c_str());
+				bContinue = true;
+				skip = true;
+			}
+            if (bContinue && !(skip))
             {
                 Item_Data itemdata;
 
@@ -617,6 +647,7 @@ LPCWSTR MAPIAccessAPI::_GetFolderItemsList(SBinary sbFolderEID, vector<Item_Data
             (LPSTR)msgex.SrcFile().c_str(), msgex.SrcLine());
 		dloge(lpwstrStatus);
 		Zimbra::Util::CopyString(lpwstrRetVal, msgex.ShortDescription().c_str());
+	
     }
     catch (GenericException &genex)
     {
@@ -1059,6 +1090,14 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
 		dloge("MAPIAccessAPI -- MAPIMessageException");
 		dloge(lpwstrStatus);
 		Zimbra::Util::CopyString(lpwstrRetVal,cex.ShortDescription().c_str());
+    }
+	catch (MAPIAppointmentException &aex)
+    {
+        lpwstrStatus = FormatExceptionInfo(aex.ErrCode(), (LPWSTR)aex.Description().c_str(),
+            (LPSTR)aex.SrcFile().c_str(), aex.SrcLine());
+		dloge("MAPIAccessAPI -- MAPIAppointmentException");
+		dloge(lpwstrStatus);
+		Zimbra::Util::CopyString(lpwstrRetVal,aex.ShortDescription().c_str());
     }
 ZM_EXIT: 
 	if(lpwstrStatus)

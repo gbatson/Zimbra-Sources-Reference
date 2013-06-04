@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011, 2012 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -426,7 +426,7 @@ public final class HttpUtilTest {
 
         Assert.assertEquals("attachement; filename=\"ascii.txt\"", HttpUtil.createContentDisposition(request,  "attachement", asciiFilename));
         Assert.assertEquals("attachement; filename=space\" space.txt", HttpUtil.createContentDisposition(request,  "attachement", asciiQuote));
-        // Note, this should work as the Ž is just extended ascii (iso8859) which appears to be valid for a web header (but not a mail header)
+        // Note, this should work as the \u00E9 is just extended ascii (iso8859) which appears to be valid for a web header (but not a mail header)
         Assert.assertEquals("attachement; filename=Wikip\u00E9dia.txt", HttpUtil.createContentDisposition(request,  "attachement", iso8859Filename));
         Assert.assertEquals("attachement; filename=???%20???.pdf", HttpUtil.createContentDisposition(request,  "attachement", unicodeFilename));
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -421,7 +421,8 @@ function(items) {
         var view = this._parentView[this._currentViewId];
         view.deleteVersions(items);
     }else if(item.isFolder){
-        var delBatchCmd = new ZmBatchCommand(true), folder;
+        //Bug fix # 80600 force the BatchCommand to use JSON, mimicking the way right click delete behaves
+        var delBatchCmd = new ZmBatchCommand(true, null, true), folder;
         for(var i=0; i< items.length; i++){
             folder = items[i].folder;
             if(folder.isHardDelete()){

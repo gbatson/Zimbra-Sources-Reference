@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -149,7 +149,7 @@ function() {
 
     Dwt.setVisible(this._attendeeStatus, false);
     Dwt.setVisible(this._suggestTime, !this._isForward);
-    Dwt.setVisible(this._suggestLocation, !this._isForward && !this._isProposeTime);
+    Dwt.setVisible(this._suggestLocation, !this._isForward && !this._isProposeTime && appCtxt.get(ZmSetting.GAL_ENABLED));
     this._scheduleAssistant.close();
 
     if(!this.GROUP_CALENDAR_ENABLED) {
@@ -817,13 +817,14 @@ function(calItem) {
 	calItem.setStartDate(startDate, true);
 	calItem.setEndDate(endDate, true);
 	if (Dwt.getVisibility(this._tzoneSelectStartElement)) {
-        calItem.timezone = this._tzoneSelectStart.getValue();
-        if (Dwt.getVisibility(this._tzoneSelectEndElement)) {
-            calItem.setEndTimezone(this._tzoneSelectEnd.getValue());
-        }else {
-            calItem.setEndTimezone(this._tzoneSelectStart.getValue());
-        }
-    }
+		calItem.timezone = this._tzoneSelectStart.getValue();
+	}
+	if (Dwt.getVisibility(this._tzoneSelectEndElement)) {
+		calItem.setEndTimezone(this._tzoneSelectEnd.getValue());
+	}
+	else {
+		calItem.setEndTimezone(calItem.timezone); //it's not necessarily set correctly before. Might be still set to the original end time zone. I think here is the safeset place to make sure.
+	}
 
     // set attendees
     for (var t = 0; t < this._attTypes.length; t++) {
@@ -1192,7 +1193,7 @@ function(width) {
 	}
 
     // add location input field
-	this._locationInputField = this._createInputField("_location", ZmCalBaseItem.LOCATION, {strictMode:false});
+	this._locationInputField = this._createInputField("_location", ZmCalBaseItem.LOCATION, {strictMode:false, noAddrBubbles:!appCtxt.get(ZmSetting.GAL_ENABLED)});
 
     this._mainTableId = this._htmlElId + "_table";
     this._mainTable   = document.getElementById(this._mainTableId);
@@ -1304,7 +1305,10 @@ function(width) {
         this._createContactPicker(this._htmlElId + "_picker", new AjxListener(this, this._addressButtonListener), ZmCalBaseItem.PERSON, true);
         this._createContactPicker(this._htmlElId + "_req_att_picker", new AjxListener(this, this._attendeesButtonListener, ZmCalBaseItem.PERSON), ZmCalBaseItem.PERSON);
         this._createContactPicker(this._htmlElId + "_opt_att_picker", new AjxListener(this, this._attendeesButtonListener, ZmCalBaseItem.OPTIONAL_PERSON), ZmCalBaseItem.OPTIONAL_PERSON);
-        this._createContactPicker(this._htmlElId + "_loc_picker", new AjxListener(this, this._locationButtonListener, ZmCalBaseItem.LOCATION), ZmCalBaseItem.LOCATION);
+        if (appCtxt.get(ZmSetting.GAL_ENABLED)) {
+			//do not create picker if GAL is disabled.
+			this._createContactPicker(this._htmlElId + "_loc_picker", new AjxListener(this, this._locationButtonListener, ZmCalBaseItem.LOCATION), ZmCalBaseItem.LOCATION);
+		}
         this._createContactPicker(this._htmlElId + "_res_btn", new AjxListener(this, this._locationButtonListener, ZmCalBaseItem.EQUIPMENT), ZmCalBaseItem.EQUIPMENT);
     }
 
@@ -1331,7 +1335,7 @@ function(width) {
 
     this._inviteMsgContainer = document.getElementById(this._htmlElId + "_invitemsg_container");
     this._inviteMsg = document.getElementById(this._htmlElId + "_invitemsg");
-    
+
 };
 
 ZmApptEditView.prototype._createInputField =
@@ -1345,7 +1349,7 @@ function(idTag, attType, params) {
 	var inputId = this.parent._htmlElId + idTag + "_input";
 	var cellId = this._htmlElId + idTag;
 	var input;
-	if (this._useAcAddrBubbles) {
+	if (!params.noAddrBubbles && this._useAcAddrBubbles) {
 		var aifParams = {
 			autocompleteListView:	this._acAddrSelectList,
 			inputId:				inputId,
@@ -1403,7 +1407,7 @@ ZmApptEditView.prototype._onSuggestionClose =
 function() {
     // Make the trigger links visible and resize now that the suggestion panel is hidden
     Dwt.setVisible(this._suggestTime, !this._isForward);
-    Dwt.setVisible(this._suggestLocation, !this._isForward && !this._isProposeTime);
+    Dwt.setVisible(this._suggestLocation, !this._isForward && !this._isProposeTime && appCtxt.get(ZmSetting.GAL_ENABLED));
     this.resize();
 }
 
@@ -1412,7 +1416,7 @@ function() {
     // Display the time suggestion panel.
     Dwt.setVisible(this._suggestions, true);
     Dwt.setVisible(this._suggestTime, false);
-    Dwt.setVisible(this._suggestLocation, !this._isProposeTime);
+    Dwt.setVisible(this._suggestLocation, !this._isProposeTime && appCtxt.get(ZmSetting.GAL_ENABLED));
     this._scheduleAssistant.show(true);
     // Resize horizontally
     this._resizeNotes();

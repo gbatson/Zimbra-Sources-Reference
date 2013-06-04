@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -49,6 +49,8 @@ ZmSettings = function(noInit) {
 
 ZmSettings.prototype = new ZmModel;
 ZmSettings.prototype.constructor = ZmSettings;
+
+ZmSettings.BASE64_TO_NORMAL_RATIO = 1.34;
 
 /**
  * Creates a new setting and adds it to the settings.
@@ -289,9 +291,9 @@ ZmSettings.prototype.setUserSettings = function(params) {
 
     var settings = [
         ZmSetting.ADMIN_DELEGATED,          info.adminDelegated,
-        ZmSetting.ATTACHMENT_SIZE_LIMIT,    info.attSizeLimit,
+        ZmSetting.ATTACHMENT_SIZE_LIMIT,    this._base64toNormalSize(info.attSizeLimit),
         ZmSetting.CHANGE_PASSWORD_URL,      info.changePasswordURL,
-        ZmSetting.DOCUMENT_SIZE_LIMIT,      info.docSizeLimit,
+        ZmSetting.DOCUMENT_SIZE_LIMIT,      this._base64toNormalSize(info.docSizeLimit),
         ZmSetting.LAST_ACCESS,              info.accessed,
         ZmSetting.LICENSE_STATUS,           info.license && info.license.status,
         ZmSetting.PREVIOUS_SESSION,         info.prevSession,
@@ -428,6 +430,16 @@ ZmSettings.prototype.setUserSettings = function(params) {
 
 	this._updateUserFontPrefsRule();
 };
+
+
+ZmSettings.prototype._base64toNormalSize =
+function(base64) {
+	if (!base64 || base64 === -1) { //-1 is unlimited
+		return base64;
+	}
+	return base64 / ZmSettings.BASE64_TO_NORMAL_RATIO;
+};
+
 
 /**
  * @private
@@ -567,7 +579,13 @@ function(response) {
 			locale.id = locale.id.replace(/^in/,"id");
 			ZmLocale.create(locale.id, locale.name, ZmMsg["localeName_" + locale.id]);
 		}
-		this.getSetting(ZmSetting.LOCALE_CHANGE_ENABLED).setValue(ZmLocale.hasChoices());
+        if(locales.length === 1) {
+            //Fix for bug# 80762 - Set the value to always true in case of only one language/locale present
+            this.getSetting(ZmSetting.LOCALE_CHANGE_ENABLED).setValue(true);
+        }
+        else {
+            this.getSetting(ZmSetting.LOCALE_CHANGE_ENABLED).setValue(ZmLocale.hasChoices());
+        }
 	}
 };
 
@@ -833,6 +851,7 @@ function() {
 	this.registerSetting("VOICE_UPSELL_ENABLED",			{name:"zimbraFeatureVoiceUpsellEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("VOICE_UPSELL_URL",				{name:"zimbraFeatureVoiceUpsellURL", type:ZmSetting.T_COS});
 	this.registerSetting("MAIL_SEND_LATER_ENABLED",				{name:"zimbraFeatureMailSendLaterEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
+	this.registerSetting("DLS_FOLDER_ENABLED",				{name:"zimbraFeatureDistributionListFolderEnabled", type: ZmSetting.T_COS, dataType: ZmSetting.D_BOOLEAN, defaultValue: true});
 
 	// COS SETTINGS
 	this.registerSetting("AVAILABLE_SKINS",					{type:ZmSetting.T_COS, dataType:ZmSetting.D_LIST, isGlobal:true});
@@ -880,6 +899,7 @@ function() {
 	this.registerSetting("TAGGING_ENABLED",					{name:"zimbraFeatureTaggingEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("VIEW_ATTACHMENT_AS_HTML",			{name:"zimbraFeatureViewInHtmlEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("EXPAND_DL_ENABLED",				{name:"zimbraFeatureDistributionListExpandMembersEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
+	this.registerSetting("FORCE_CLEAR_COOKIES",				{name:"zimbraForceClearCookies", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 
 	// user metadata (included with COS since the user can't change them)
 	this.registerSetting("LICENSE_STATUS",					{type:ZmSetting.T_COS, defaultValue:ZmSetting.LICENSE_GOOD});

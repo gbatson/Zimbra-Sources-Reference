@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -73,8 +73,7 @@ public final class LC {
     public static final KnownKey zimbra_home = KnownKey.newKey("/opt/zimbra").protect();
     public static final KnownKey zimbra_java_path = KnownKey.newKey("java");
     @Supported
-    public static final KnownKey zimbra_java_home = KnownKey.newKey( System.getProperty("os.name").equalsIgnoreCase("Mac OS X") ?
-            "/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Home" : "${zimbra_home}/${zimbra_java_path}");
+    public static final KnownKey zimbra_java_home = KnownKey.newKey("${zimbra_home}/${zimbra_java_path}");
 
     @Supported
     public static final KnownKey zimbra_log_directory = KnownKey.newKey("${zimbra_home}/log");
@@ -270,6 +269,8 @@ public final class LC {
 
     public static final KnownKey zimbra_rights_delegated_admin_supported = KnownKey.newKey(true);
 
+    public static final KnownKey zimbra_reverseproxy_externalroute_include_original_authusername = KnownKey.newKey(false);
+
     @Supported
     public static final KnownKey zimbra_spam_report_queue_size = KnownKey.newKey(100);
 
@@ -420,12 +421,15 @@ public final class LC {
     public static final KnownKey ldap_common_threads = KnownKey.newKey(8);
     public static final KnownKey ldap_common_toolthreads = KnownKey.newKey(2);
     public static final KnownKey ldap_common_writetimeout = KnownKey.newKey(0);
-    public static final KnownKey ldap_db_checkpoint = KnownKey.newKey("64 5");
     public static final KnownKey ldap_db_maxsize = KnownKey.newKey(85899345920L);
-    public static final KnownKey ldap_accesslog_checkpoint = KnownKey.newKey("64 5");
     public static final KnownKey ldap_accesslog_maxsize = KnownKey.newKey(85899345920L);
     public static final KnownKey ldap_overlay_syncprov_checkpoint = KnownKey.newKey("20 10");
     public static final KnownKey ldap_overlay_accesslog_logpurge = KnownKey.newKey("01+00:00  00+04:00");
+    public static final KnownKey ldap_monitor_mdb = KnownKey.newKey("true");
+    public static final KnownKey ldap_monitor_alert_only = KnownKey.newKey("true");
+    public static final KnownKey ldap_monitor_warning = KnownKey.newKey(80);
+    public static final KnownKey ldap_monitor_critical = KnownKey.newKey(90);
+    public static final KnownKey ldap_monitor_growth = KnownKey.newKey(25);
 
     public static final KnownKey empty_folder_batch_sleep_ms = KnownKey.newKey(1L);
 
@@ -524,7 +528,7 @@ public final class LC {
     public static final KnownKey mysql_errlogfile = KnownKey.newKey("${zimbra_home}/log/mysql_error.log");
 
     @Supported
-    public static final KnownKey mysql_bind_address = KnownKey.newKey("localhost");
+    public static final KnownKey mysql_bind_address = KnownKey.newKey(null);
 
     @Supported
     public static final KnownKey mysql_port = KnownKey.newKey(7306);
@@ -578,12 +582,16 @@ public final class LC {
     public static final KnownKey postfix_sendmail_path = KnownKey.newKey("${zimbra_home}/postfix/sbin/sendmail");
 
     public static final KnownKey postfix_smtp_cname_overrides_servername = KnownKey.newKey("no");
+    public static final KnownKey postfix_smtp_helo_name = KnownKey.newKey("$myhostname");
     public static final KnownKey postfix_smtp_sasl_auth_enable = KnownKey.newKey("no");
     public static final KnownKey postfix_smtp_sasl_security_options = KnownKey.newKey("noplaintext,noanonymous");
     public static final KnownKey postfix_smtp_tls_security_level = KnownKey.newKey(null);
     public static final KnownKey postfix_smtp_sasl_mechanism_filter = KnownKey.newKey(null);
     public static final KnownKey postfix_smtp_sasl_password_maps = KnownKey.newKey(null);
 
+    public static final KnownKey postfix_smtpd_banner = KnownKey.newKey("$myhostname ESMTP $mail_name");
+    public static final KnownKey postfix_smtpd_proxy_timeout = KnownKey.newKey("100s");
+    public static final KnownKey postfix_smtpd_reject_unlisted_recipient = KnownKey.newKey("no");
     public static final KnownKey postfix_smtpd_sasl_authenticated_header = KnownKey.newKey("no");
     public static final KnownKey postfix_smtpd_sasl_security_options = KnownKey.newKey("noanonymous");
     public static final KnownKey postfix_smtpd_sasl_tls_security_options = KnownKey.newKey("$smtpd_sasl_security_options");
@@ -613,14 +621,20 @@ public final class LC {
     public static final KnownKey cbpolicyd_log_mail = KnownKey.newKey("main");
     public static final KnownKey cbpolicyd_log_detail = KnownKey.newKey("modules");
     public static final KnownKey cbpolicyd_bind_port = KnownKey.newKey(10031);
-    public static final KnownKey cbpolicyd_timeout = KnownKey.newKey(120);
+    public static final KnownKey cbpolicyd_timeout_idle = KnownKey.newKey(1020);
+    public static final KnownKey cbpolicyd_timeout_busy = KnownKey.newKey(120);
     public static final KnownKey cbpolicyd_bypass_timeout = KnownKey.newKey(30);
     public static final KnownKey cbpolicyd_bypass_mode = KnownKey.newKey("tempfail");
     public static final KnownKey cbpolicyd_module_accesscontrol = KnownKey.newKey(0);
     public static final KnownKey cbpolicyd_module_greylisting = KnownKey.newKey(0);
+    public static final KnownKey cbpolicyd_module_greylisting_training = KnownKey.newKey(0);
+    public static final KnownKey cbpolicyd_module_greylisting_defer_msg = KnownKey.newKey("Greylisting in effect, please come back later");
+    public static final KnownKey cbpolicyd_module_greylisting_blacklist_msg = KnownKey.newKey("Greylisting in effect, sending server blacklisted");
     public static final KnownKey cbpolicyd_module_checkhelo = KnownKey.newKey(0);
     public static final KnownKey cbpolicyd_module_checkspf = KnownKey.newKey(0);
     public static final KnownKey cbpolicyd_module_quotas = KnownKey.newKey(1);
+    public static final KnownKey cbpolicyd_module_amavis = KnownKey.newKey(0);
+    public static final KnownKey cbpolicyd_module_accounting = KnownKey.newKey(0);
 
     public static final KnownKey sqlite_shared_cache_enabled = KnownKey.newKey(false);
     public static final KnownKey sqlite_cache_size = KnownKey.newKey(500);
@@ -644,6 +658,7 @@ public final class LC {
     public static final KnownKey mailboxd_java_options = KnownKey.newKey("-server" +
             " -Djava.awt.headless=true" +
             " -Dsun.net.inetaddr.ttl=${networkaddress_cache_ttl}" +
+            " -Dorg.apache.jasper.compiler.disablejsr199=true" +
             " -XX:+UseConcMarkSweepGC" +
             " -XX:PermSize=128m" +
             " -XX:MaxPermSize=350m" +
@@ -750,6 +765,7 @@ public final class LC {
     public static final KnownKey imap_throttle_ip_limit = KnownKey.newKey(250);
     public static final KnownKey imap_throttle_acct_limit = KnownKey.newKey(250);
     public static final KnownKey imap_throttle_command_limit = KnownKey.newKey(25);
+    public static final KnownKey imap_throttle_fetch = KnownKey.newKey(true);
     public static final KnownKey data_source_imap_reuse_connections = KnownKey.newKey(false);
 
     public static final KnownKey pop3_write_timeout = KnownKey.newKey(10);
@@ -902,8 +918,11 @@ public final class LC {
     public static final KnownKey javamail_imap_enable_starttls = KnownKey.newKey(true);
     public static final KnownKey javamail_smtp_enable_starttls = KnownKey.newKey(true);
 
+    public static final KnownKey mime_max_recursion = KnownKey.newKey(20);
     public static final KnownKey mime_promote_empty_multipart = KnownKey.newKey(true);
     public static final KnownKey mime_handle_nonprintable_subject = KnownKey.newKey(true);
+    public static final KnownKey mime_encode_missing_blob = KnownKey.newKey(true);
+    public static final KnownKey mime_exclude_empty_content = KnownKey.newKey(true);
 
     public static final KnownKey yauth_baseuri = KnownKey.newKey("https://login.yahoo.com/WSLogin/V1");
 
@@ -1119,7 +1138,7 @@ public final class LC {
     public static final KnownKey antispam_mysql_errlogfile = KnownKey.newKey("${zimbra_home}/log/antispam-mysqld.log");
     public static final KnownKey antispam_mysql_mycnf = KnownKey.newKey("${zimbra_home}/conf/antispam-my.cnf");
     public static final KnownKey antispam_mysql_pidfile = KnownKey.newKey("${zimbra_home}/data/amavisd/mysql/mysql.pid");
-    public static final KnownKey antispam_mysql_host = KnownKey.newKey("");
+    public static final KnownKey antispam_mysql_host = KnownKey.newKey(null);
     public static final KnownKey antispam_mysql_port = KnownKey.newKey(7308);
     public static final KnownKey antispam_mysql_socket = KnownKey.newKey("${zimbra_home}/data/amavisd/mysql/mysql.sock");
     public static final KnownKey antispam_mysql_user = KnownKey.newKey("zimbra");
@@ -1229,6 +1248,20 @@ public final class LC {
     public static final KnownKey octopus_public_static_folder = KnownKey.newKey("${zimbra_home}/jetty/static");
 
     public static final KnownKey conversation_ignore_maillist_prefix = KnownKey.newKey(true);
+
+    //Defanger
+    public static final KnownKey defang_style_unwanted_func =
+        KnownKey.newKey("[\\S&&[^:]]+(?<!(rgb|and|not|media|,))\\s*\\(.*\\)");
+    public static final KnownKey defang_valid_ext_url =
+        KnownKey.newKey("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)");
+    public static final KnownKey defang_valid_int_img = KnownKey.newKey("^data:|^cid:");
+    public static final KnownKey defang_valid_img_file = KnownKey.newKey("\\.(jpg|jpeg|png|gif)((\\?)?)");
+
+    public static final KnownKey defang_valid_convertd_file = KnownKey.newKey("^index\\..*\\..*\\.(jpg|jpeg|png|gif)$");
+    public static final KnownKey defang_comment = KnownKey.newKey("/\\*.*?\\*/");
+    public static final KnownKey defang_av_js_entity = KnownKey.newKey("&\\{[^}]*\\}");
+    public static final KnownKey defang_av_script_tag = KnownKey.newKey("</?script/?>");
+    public static final KnownKey defang_av_javascript = KnownKey.newKey("javascript");
 
     static {
         // Automatically set the key name with the variable name.

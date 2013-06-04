@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1058,6 +1058,7 @@ ZaAccountXFormView.FEATURE_TAB_ATTRS = [ZaAccount.A_zimbraFeatureManageZimlets,
 	ZaAccount.A_zimbraFeatureReadReceiptsEnabled,
 	ZaAccount.A_zimbraFeatureMailEnabled,
 	ZaAccount.A_zimbraFeatureContactsEnabled,
+    ZaAccount.A_zimbraFeatureDistributionListFolderEnabled,
 	ZaAccount.A_zimbraFeatureCalendarEnabled,
 	ZaAccount.A_zimbraFeatureTasksEnabled,
 	//ZaAccount.A_zimbraFeatureNotebookEnabled,
@@ -2194,6 +2195,38 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							}							
 						]
 					},
+                    {
+                        type: _ZA_TOP_GROUPER_,
+                        label: ZaMsg.NAD_zimbraContactFeature,
+                        id: "account_form_features_contact",
+                        enableDisableChecks: [
+                            [
+                                XForm.checkInstanceValue,
+                                ZaAccount.A_zimbraFeatureContactsEnabled,
+                                "TRUE"
+                            ]
+                        ],
+                        enableDisableChangeEventSources: [ZaAccount.A_zimbraFeatureContactsEnabled, ZaAccount.A_COSId],
+                        visibilityChecks: [
+                            [
+                                ZATopGrouper_XFormItem.isGroupVisible,
+                                [
+                                    ZaAccount.A_zimbraFeatureDistributionListFolderEnabled
+                                ]
+                            ]
+                        ],
+                        items: [
+                            {
+                                ref: ZaAccount.A_zimbraFeatureDistributionListFolderEnabled,
+                                type: _SUPER_CHECKBOX_,
+                                resetToSuperLabel: ZaMsg.NAD_ResetToCOS,
+                                msgName: ZaMsg.MSG_zimbraFeatureDistributionListFolderEnabled,
+                                checkBoxLabel: ZaMsg.LBL_zimbraFeatureDistributionListFolderEnabled,
+                                trueValue: "TRUE",
+                                falseValue: "FALSE"
+                            }
+                        ]
+                    },
 					{type:_ZA_TOP_GROUPER_, label: ZaMsg.NAD_zimbraCalendarFeature, id:"account_form_features_calendar",colSizes:["auto"],numCols:1,
 						visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible, 
 							[ZaAccount.A_zimbraFeatureGroupCalendarEnabled,

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -425,6 +425,10 @@ ZaNewAccountXWizard.isAutoCos = function () {
 
 ZaNewAccountXWizard.isIMFeatureEnabled = function () {
 	return (this.getInstanceValue(ZaAccount.A_zimbraFeatureIMEnabled) == "TRUE");
+}
+
+ZaNewAccountXWizard.isContactsFeatureEnabled = function () {
+    return this.getInstanceValue(ZaAccount.A_zimbraFeatureDistributionListFolderEnabled) == "TRUE";
 }
 
 ZaNewAccountXWizard.isCalendarFeatureEnabled = function () {
@@ -1270,6 +1274,39 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 					});
 			
 		};
+        if (ZAWizTopGrouper_XFormItem.isGroupVisible(
+            entry,
+            [
+                ZaAccount.A_zimbraFeatureContactsEnabled,
+                ZaAccount.A_zimbraFeatureDistributionListFolderEnabled
+            ],
+            []
+        )
+            ) {
+            featuresCase.items.push(
+                {
+                    type: _ZAWIZ_TOP_GROUPER_,
+                    label: ZaMsg.NAD_zimbraContactFeature,
+                    id: "account_wiz_features_contact",
+                    enableDisableChecks: [ZaNewAccountXWizard.isContactsFeatureEnabled],
+                    enableDisableChangeEventSources: [
+                        ZaAccount.A_zimbraFeatureContactsEnabled,
+                        ZaAccount.A_COSId
+                    ],
+                    items: [
+                        {
+                            ref: ZaAccount.A_zimbraFeatureDistributionListFolderEnabled,
+                            type: _SUPER_WIZ_CHECKBOX_,
+                            resetToSuperLabel: ZaMsg.NAD_ResetToCOS,
+                            msgName: ZaMsg.MSG_zimbraFeatureDistributionListFolderEnabled,
+                            checkBoxLabel: ZaMsg.LBL_zimbraFeatureDistributionListFolderEnabled,
+                            trueValue: "TRUE",
+                            falseValue: "FALSE"
+                        }
+                    ]
+                }
+            );
+        }
 		if  (ZAWizTopGrouper_XFormItem.isGroupVisible(
 					entry,
 					[ZaAccount.A_zimbraFeatureGroupCalendarEnabled,

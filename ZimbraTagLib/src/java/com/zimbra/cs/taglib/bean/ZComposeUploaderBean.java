@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -657,7 +657,7 @@ public class ZComposeUploaderBean {
                 maxSize = Provisioning.getInstance().getLocalServer().getLongAttr(
                                 Provisioning.A_zimbraFileUploadMaxSize, DEFAULT_MAX_SIZE);
             } else {
-                maxSize = Provisioning.getInstance().getLocalServer().getLongAttr(
+                maxSize = Provisioning.getInstance().getConfig().getLongAttr(
                                 Provisioning.A_zimbraMtaMaxMessageSize, DEFAULT_MAX_SIZE);
                 if (maxSize == 0) {
                     /* zimbraMtaMaxMessageSize=0 means "no limit".

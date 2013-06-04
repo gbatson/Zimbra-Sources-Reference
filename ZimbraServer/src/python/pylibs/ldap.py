@@ -1,13 +1,13 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # Zimbra Collaboration Suite Server
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
-#
+# Copyright (C) 2010, 2012 VMware, Inc.
+# 
 # The contents of this file are subject to the Zimbra Public License
 # Version 1.3 ("License"); you may not use this file except in
 # compliance with the License.  You may obtain a copy of the License at
 # http://www.zimbra.com/license.
-#
+# 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
 # ***** END LICENSE BLOCK *****
@@ -39,10 +39,8 @@ keymap = {
 	"ldap_common_require_tls"		:	("olcSecurity",		"cn=config", False),
 	"ldap_common_writetimeout"		:	("olcWriteTimeout",	"cn=config", False),
 
-	"ldap_db_checkpoint"			:	("olcDbCheckpoint",	"olcDatabase={3}mdb,cn=config", False),
 	"ldap_db_maxsize"			:	("olcDbMaxsize",	"olcDatabase={3}mdb,cn=config", False),
 
-	"ldap_accesslog_checkpoint"		:	("olcDbCheckpoint",	"olcDatabase={2}mdb,cn=config", True),
 	"ldap_accesslog_maxsize"		:	("olcDbMaxsize",	"olcDatabase={2}mdb,cn=config", True),
 
 	"ldap_overlay_syncprov_checkpoint"	:	("olcSpCheckpoint",	"olcOverlay={0}syncprov,olcDatabase={3}mdb,cn=config", True),

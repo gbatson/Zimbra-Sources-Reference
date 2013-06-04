@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,6 +32,7 @@ import org.apache.xerces.xni.XNIException;
 import org.cyberneko.html.filters.DefaultFilter;
 
 import com.google.common.base.Strings;
+import com.zimbra.common.localconfig.LC;
 
 /**
  * very Mutated version of ElementRemover.java filter from cyberneko html.
@@ -81,17 +82,22 @@ public class DefangFilter extends DefaultFilter {
     protected static final Object NULL = new Object();
 
     // regexes inside of attr values to strip out
-    private static final Pattern AV_JS_ENTITY = Pattern.compile("&\\{[^}]*\\}");
-    private static final Pattern AV_SCRIPT_TAG = Pattern.compile("</?script/?>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern AV_JAVASCRIPT = Pattern.compile("javascript", Pattern.CASE_INSENSITIVE);
+    private static final Pattern AV_JS_ENTITY = Pattern.compile(LC.defang_av_js_entity.value());
+    private static final Pattern AV_SCRIPT_TAG = Pattern.compile(LC.defang_av_script_tag.value(), Pattern.CASE_INSENSITIVE);
+    private static final Pattern AV_JAVASCRIPT = Pattern.compile(LC.defang_av_javascript.value(), Pattern.CASE_INSENSITIVE);
 
-    // regex for URLs href. TODO: beef this up
-    private static final Pattern VALID_EXT_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern VALID_INT_IMG = Pattern.compile("^data:|^cid:");
-    private static final Pattern VALID_IMG_FILE = Pattern.compile("\\.(jpg|jpeg|png|gif)$");
+
+
+ // regex for URLs href. TODO: beef this up
+    private static final Pattern VALID_EXT_URL = Pattern.compile(LC.defang_valid_ext_url.value(), Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALID_INT_IMG = Pattern.compile(LC.defang_valid_int_img.value());
+    private static final Pattern VALID_IMG_FILE = Pattern.compile(LC.defang_valid_img_file.value());
+
+
     
     // matches the file format that convertd uses so it doesn't get 'pnsrc'ed
-    private static final Pattern VALID_CONVERTD_FILE = Pattern.compile("^index\\..*\\..*\\.(jpg|jpeg|png|gif)$");
+    private static final Pattern VALID_CONVERTD_FILE = Pattern
+        .compile(LC.defang_valid_convertd_file.value());
 
     //
     // Data
@@ -414,10 +420,10 @@ public class DefangFilter extends DefaultFilter {
         }
     }
 
-    private static final Pattern COMMENT = Pattern.compile("/\\*.*\\*/");
+    private static final Pattern COMMENT = Pattern.compile(LC.defang_comment.value());
     // matches functions (like url(), expression(), etc), except rgb()
     private static final Pattern STYLE_UNWANTED_FUNC =
-            Pattern.compile("[\\S&&[^:]]+(?<!rgb)\\s*\\(.[^:]*\\)", Pattern.CASE_INSENSITIVE);
+            Pattern.compile(LC.defang_style_unwanted_func.value(), Pattern.CASE_INSENSITIVE);
 
     private static String sanitizeStyleValue(String value) {
         // remove comments

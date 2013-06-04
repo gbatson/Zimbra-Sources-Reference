@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1058,6 +1058,15 @@ function(ev) {
 
 	if (!handled) {
 		if (isConv) {
+			if (ev.event == ZmEvent.E_MODIFY && item.msgs) {
+				//bug 79256 - in some cases the listeners gets removed when Conv is moved around.
+				//so add the listeners again. If they are already present than this will be a no-op.
+				var cv = this.getController()._convView;
+				if (cv) {
+					item.msgs.addChangeListener(cv._listChangeListener);
+				}
+				item.msgs.addChangeListener(this._listChangeListener);
+			}
 			ZmMailListView.prototype._changeListener.apply(this, arguments);
 		} else {
 			ZmMailMsgListView.prototype._changeListener.apply(this, arguments);

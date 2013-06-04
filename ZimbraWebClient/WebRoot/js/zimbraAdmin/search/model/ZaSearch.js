@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -724,6 +724,72 @@ function(n, types,excludeClosed) {
 	//return "(|" + query.join("") + ")" ;
 	return query.join("");
 	
+}
+
+/**
+ * Fix for Bug 81454
+ *
+ * Separating out the query generation for alias searching.
+ *
+ * @param n
+ * @param types
+ * @param excludeClosed
+ * @return {String}
+ *
+ */
+ZaSearch.searchAliasByNameQuery = function(n, types, excludeClosed) {
+    excludeClosed = excludeClosed ? excludeClosed : false;
+    var query = [];
+
+    if(excludeClosed) {
+        query.push("(&(!(zimbraAccountStatus=closed))");
+    }
+
+    if (!AjxUtil.isEmpty(n)) {
+        query.push("(|");
+        // bug 67477, escape special symbols "(", ")", "*", "\"
+        n = ZaSearch.escapeLdapQuery(n);
+
+        if (!types) {
+            types = [ZaSearch.ALIASES, ZaSearch.ACCOUNTS, ZaSearch.DLS, ZaSearch.RESOURCES, ZaSearch.DOMAINS, ZaSearch.COSES];
+        }
+
+        var addedAddrFields = false;
+        var addedAccResFields = false;
+        var addedDLAliasFields = false;
+
+        for (var i = 0 ; i < types.length; i ++) {
+            if (types[i] == "domains") {
+                query.push ("(zimbraDomainName=" + n + ")");
+            } else if(types[i] == ZaSearch.COSES) {
+                query.push("(cn=" + n + ")");
+            } else if(types[i] == ZaSearch.ALIASES) {
+                query.push("(zimbraDomainName=" + n + ")(uid=" + n + ")");
+            } else {
+                if(!addedAddrFields) {
+                    query.push("(mail=" + n + ")(cn=" + n + ")(sn=" + n + ")(gn=" + n + ")(displayName=" + n + ")") ;
+                    addedAddrFields = true;
+                }
+                if (!addedAccResFields && (types[i] == "accounts" || types[i] == "resources")) {
+                    query.push ("(zimbraMailDeliveryAddress=" + n + ")");
+                    addedAccResFields = true;
+                } else if (!addedDLAliasFields && (types[i] == "distributionlists" || types[i] == "aliases")) {
+                    query.push("(zimbraMailAlias=" + n + ")(uid=" + n + ")");
+                    addedDLAliasFields = true;
+                }
+            }
+        }
+    }
+
+    if(excludeClosed) {
+        query.push(")");
+    }
+
+    if (!AjxUtil.isEmpty(n)) {
+        query.push(")");
+    }
+
+    return query.join("");
 }
 
 /**

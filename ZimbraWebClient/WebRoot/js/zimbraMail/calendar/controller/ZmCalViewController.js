@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1293,7 +1293,7 @@ function() {
 	if (this._viewMgr.needsRefresh()) {
 		this._scheduleMaintenance(ZmCalViewController.MAINT_MINICAL|ZmCalViewController.MAINT_VIEW);
 	}
-    this._app.setOverviewPanelContent();    
+    //this._app.setOverviewPanelContent();
 };
 
 ZmCalViewController.prototype._postHideCallback =
@@ -1639,12 +1639,14 @@ function(ev) {
 
 ZmCalViewController.prototype.duplicateAppt =
 function(appt, params) {
+	Dwt.setLoadingTime("ZmCalendarApp-cloneAppt");
 	var clone = ZmAppt.quickClone(appt);
 	var mode = ZmCalItem.MODE_EDIT;
 	if (appt.isRecurring()) {
 		mode = params.isException ? ZmCalItem.MODE_COPY_SINGLE_INSTANCE : ZmCalItem.MODE_EDIT_SERIES;  //at first I also created a MODE_COPY_SERIES but I'm afraid of the impact and regressions. So keep it as "edit".
 	}
 	clone.getDetails(mode, new AjxCallback(this, this._duplicateApptContinue, [clone, ZmCalItem.MODE_NEW, params]));
+	Dwt.setLoadedTime("ZmCalendarApp-cloneAppt");
 };
 
 ZmCalViewController.prototype._duplicateApptContinue =
@@ -2354,6 +2356,7 @@ function() {
  */
 ZmCalViewController.prototype.editAppointment =
 function(appt, mode) {
+	Dwt.setLoadingTime("ZmCalendarApp-editAppt");
 	AjxDispatcher.require(["CalendarCore", "Calendar"]);
 	if (mode != ZmCalItem.MODE_NEW) {
 		var clone = ZmAppt.quickClone(appt);
@@ -2361,14 +2364,17 @@ function(appt, mode) {
 	} else {
 		this._app.getApptComposeController().show(appt, mode);
 	}
+	Dwt.setLoadedTime("ZmCalendarApp-editAppt");
 };
 
 ZmCalViewController.prototype._replyAppointment =
 function(appt, all) {
+	Dwt.setLoadingTime("ZmCalendarApp-replyAppt");
 	AjxDispatcher.require(["MailCore", "Mail"]);
     var clone = ZmAppt.quickClone(appt);
 	var respCallback = new AjxCallback(this, this._replyDetailsHandler, [clone, all]);
 	clone.getDetails(null, respCallback, this._errorCallback, true, true);
+	Dwt.setLoadedTime("ZmCalendarApp-replyAppt");
 };
 
 ZmCalViewController.prototype._replyDetailsHandler =
@@ -2440,6 +2446,7 @@ function(appt, all, result) {
 
 ZmCalViewController.prototype._forwardAppointment =
 function(appt, mode) {
+	Dwt.setLoadingTime("ZmCalendarApp-fwdAppt");
 	AjxDispatcher.require(["CalendarCore", "Calendar"]);
 	if (mode != ZmCalItem.MODE_NEW) {
 		var clone = ZmAppt.quickClone(appt);
@@ -2447,6 +2454,7 @@ function(appt, mode) {
 	} else {
 		this._showApptForwardComposeView(appt, mode);
 	}
+	Dwt.setLoadedTime("ZmCalendarApp-fwdAppt");
 };
 
 ZmCalViewController.prototype._showAppointmentDetails =

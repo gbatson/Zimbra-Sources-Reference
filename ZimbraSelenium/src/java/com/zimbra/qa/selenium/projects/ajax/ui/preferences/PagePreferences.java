@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011, 2012 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -328,32 +344,6 @@ public class PagePreferences extends AbsTab {
 		throw new HarnessException("implement me!");
 	}
 
-	/**
-	 * Check/Uncheck a checkbox (just returns if checkbox already checked)
-	 * @param locator The locator for the checkbox
-	 * @param status The desired status of the checkbox (true=checked, false=unchecked)
-	 * @throws HarnessException 
-	 */
-	public void zCheckboxSet(String locator, boolean status) throws HarnessException {
-		
-		if ( !this.sIsElementPresent(locator) ) {
-			throw new HarnessException(locator + " no present!");
-		}
-		
-		if ( this.sIsChecked(locator) == status ) {
-			logger.debug("checkbox status matched.  not doing anything");
-			return;
-		}
-		
-		if ( status == true ) {
-			this.sCheck(locator);
-		} else {
-			this.sUncheck(locator);
-		}
-		
-		this.zWaitForBusyOverlay();
-		
-	}
 
 	public static class ShareItem {
 		public String name = null;

@@ -1137,7 +1137,10 @@ class Program
                     if ((userid != "") || (Pstfile != ""))
                     {
                         string accountname = ZCSID;
-                        accountname = accountname + "@" + ZCSHost;
+                        if (!accountname.Contains("@"))
+                        {
+                            accountname = accountname + "@" + (((ZCSDomain == "") || (ZCSDomain == null)) ? ZCSHost : ZCSDomain);
+                        }
                         string accountid = (Pstfile != "") ? Pstfile : userid;
 
                         ZimbraAPI zimbraAPI = new ZimbraAPI(false, importopts.VerboseOn);
@@ -1155,7 +1158,7 @@ class Program
                             int stat = zimbraAPI.Logon(
                                     ZCSHost,
                                     ZCSPort,
-                                    ZCSID,
+                                    accountname,
                                     ZCSPwd, UseSSL, false);
 
                             if (stat != 0)

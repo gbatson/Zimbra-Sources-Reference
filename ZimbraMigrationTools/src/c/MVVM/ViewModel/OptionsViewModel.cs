@@ -54,11 +54,14 @@ public class OptionsViewModel: BaseViewModel
         MigrateONRAfter = config.AdvancedImportOptions.MigrateOnOrAfter.ToShortDateString();
         IsOnOrAfter = config.AdvancedImportOptions.IsOnOrAfter;
         MaxMessageSize = config.AdvancedImportOptions.MaxMessageSize;
+        DateFilterItem = config.AdvancedImportOptions.DateFilterItem;
         IsSkipPrevMigratedItems = config.AdvancedImportOptions.IsSkipPrevMigratedItems;
         IsMaxMessageSize = config.AdvancedImportOptions.IsMaxMessageSize;
         IsSkipFolders = config.AdvancedImportOptions.IsSkipFolders;
 
         SpecialCharReplace = config.AdvancedImportOptions.SpecialCharReplace;
+        LangID = config.AdvancedImportOptions.LangID;
+        MaxRetries = config.AdvancedImportOptions.MaxRetries;
 
         if (config.GeneralOptions != null)  // so old config files will work
         {
@@ -381,6 +384,19 @@ public class OptionsViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("MaxMessageSize"));
         }
     }
+
+    public string DateFilterItem
+    {
+        get { return m_config.AdvancedImportOptions.DateFilterItem; }
+        set
+        {
+            if (value == m_config.AdvancedImportOptions.DateFilterItem)
+                return;
+            m_config.AdvancedImportOptions.DateFilterItem = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("DateFilterItem"));
+        }
+    }
     public bool IsMaxMessageSize
     {
         get { return m_config.AdvancedImportOptions.IsMaxMessageSize; }
@@ -429,6 +445,32 @@ public class OptionsViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("CSVDelimiter"));
         }
     }
+
+    public long LangID
+    {
+        get { return m_config.AdvancedImportOptions.LangID; }
+        set
+        {
+            if (value == m_config.AdvancedImportOptions.LangID)
+                return;
+            m_config.AdvancedImportOptions.LangID = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("LangID"));
+        }
+    }
+    public Int32 MaxRetries
+    {
+        get { return m_config.AdvancedImportOptions.MaxRetries; }
+        set
+        {
+            if (value == m_config.AdvancedImportOptions.MaxRetries)
+                return;
+            m_config.AdvancedImportOptions.MaxRetries = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("MaxRetries"));
+        }
+    }
+   
    
     private string placeholderstring;
     public string Placeholderstring {

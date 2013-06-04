@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -36,6 +36,9 @@ UnknownPersonSlide.PHOTO_ID = "unkownPerson_photoBG";
 UnknownPersonSlide.PHOTO_PARENT_ID = "unkownPerson_photoBGDiv";
 UnknownPersonSlide.TEXT_DIV_ID = "unkownPerson_TextDiv";
 UnknownPersonSlide.DOMAIN = "";
+
+UnknownPersonSlide.WIDTH = 65;
+UnknownPersonSlide.HEIGHT = 80;
 
 /**
 * Implement onEmailHoverOver to get notified by Email tooltip zimlet.
@@ -129,11 +132,11 @@ function(img) {
 	if (this.emailZimlet.emailAddress.indexOf(UnknownPersonSlide.DOMAIN) != -1) {
 		img.onclick =  AjxCallback.simpleClosure(this._handleProfileImageClick, this); 
 		img.style.cursor = "pointer";
-		img.style.maxHeight = "80px";
-		img.style.maxWidth = "65px";
+		img.style.maxHeight = UnknownPersonSlide.HEIGHT + "px";
+		img.style.maxWidth = UnknownPersonSlide.WIDTH + "px";
 	}
 	if (AjxEnv.isIE) {
-		img.height = 80;
+		img.height = UnknownPersonSlide.HEIGHT;
 	}
 };
 
@@ -276,20 +279,8 @@ function(response, contact) {
     attrs["fullName"] =  this.emailZimlet.fullName || attrs["fullName"] || contact && contact._fileAs;
     this._presentity = attrs["email"] = this.emailZimlet.emailAddress || attrs["email"];        // email is the presence identity
 
-    var image = attrs[ZmContact.F_image];
-    var imagepart =  attrs[ZmContact.F_imagepart];
-    var imgUrl = null;
-    id = id || contact && contact.id;
+	var imgUrl = contact && contact.getImageUrl(UnknownPersonSlide.WIDTH);
 
-    if (image){
-       imgUrl = contact && contact.getImageUrl();
-    }
-    else if (imagepart){
-        // Low level code to construct the image URL due to bug 73146 - Contacts call does not return the image information
-        // TODO - fix this to a non-low level code
-        var msgFetchUrl = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI);
-        imgUrl =  [msgFetchUrl, "&id=", id, "&part=", imagepart, "&t=", (new Date()).getTime()].join("");
-    }
 	this._setProfileImage(imgUrl);
 	this._setContactDetails(attrs);
     // Retrieve the presence information from the presence provider - e.g. Click2Call
@@ -452,10 +443,9 @@ function(attrs) {
 UnknownPersonSlide.prototype._setProfileImage =
 function(imgUrl) {
 	var div = document.getElementById(UnknownPersonSlide.PHOTO_PARENT_ID);
-	div.width = 65;
-	div.height = 80;
-	div.style.width = 65;
-	div.style.height = 80;
+	div.width = div.style.width = UnknownPersonSlide.WIDTH;
+	div.height = div.style.height = UnknownPersonSlide.HEIGHT;
+
 	if (this.emailZimlet.emailAddress.indexOf(UnknownPersonSlide.DOMAIN) == -1 || !imgUrl) {
 		this._handleImgLoadFailure();
 		return;

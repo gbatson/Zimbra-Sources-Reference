@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -273,6 +273,7 @@ ZaAccount.A_zimbraAuthLdapExternalDn = "zimbraAuthLdapExternalDn";
 ZaAccount.A_zimbraFreebusyExchangeUserOrg = "zimbraFreebusyExchangeUserOrg" ;
 ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled = "zimbraFeatureManageSMIMECertificateEnabled";
 ZaAccount.A_zimbraFeatureSMIMEEnabled = "zimbraFeatureSMIMEEnabled";
+ZaAccount.A_zimbraFeatureDistributionListFolderEnabled = "zimbraFeatureDistributionListFolderEnabled";
 
 ZaAccount.A_zimbraFeatureCalendarReminderDeviceEmailEnabled = "zimbraFeatureCalendarReminderDeviceEmailEnabled";
 
@@ -2023,6 +2024,12 @@ ZaAccount.myXModel = {
         {id:ZaAccount.A_zimbraFeatureFlaggingEnabled, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraFeatureFlaggingEnabled, choices:ZaModel.BOOLEAN_CHOICES},
         {id:ZaAccount.A_zimbraImapEnabled, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraImapEnabled, choices:ZaModel.BOOLEAN_CHOICES},
         {id:ZaAccount.A_zimbraPop3Enabled, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraPop3Enabled, choices:ZaModel.BOOLEAN_CHOICES},
+        {
+            id: ZaAccount.A_zimbraFeatureDistributionListFolderEnabled,
+            choices: ZaModel.BOOLEAN_CHOICES,
+            ref: "attrs/" + ZaAccount.A_zimbraFeatureDistributionListFolderEnabled,
+            type: _COS_ENUM_
+        },
 
         {id:ZaAccount.A_zimbraFeatureSMIMEEnabled, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraFeatureSMIMEEnabled, choices:ZaModel.BOOLEAN_CHOICES},
         {id:ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, choices:ZaModel.BOOLEAN_CHOICES},

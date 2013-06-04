@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -659,7 +659,9 @@ function(op) {
 
 ZmCalendarApp.prototype._handleLoadNewAppt =
 function() {
+	Dwt.setLoadingTime("ZmCalendarApp-newAppt");
 	AjxDispatcher.run("GetCalController").newAppointment(null, null, null, null);
+	Dwt.setLoadedTime("ZmCalendarApp-newAppt");
 };
 
 ZmCalendarApp.prototype._handleLoadNewCalendar =
@@ -1215,7 +1217,8 @@ function(reminderString) {
 	for (var pattern in  reminderFormats) {
 		var formattedContent = ZmCalendarApp.__formatLabel(pattern, reminderValue);
 		if(formattedContent != "" && formattedContent.toLowerCase() == reminderString.toLowerCase()) {
-			return  {reminderValue: reminderValue, reminderUnits: reminderFormats[pattern]};
+            //Fix for bug: 80651 - set and return object to determine before snooze
+			return  {reminderValue: reminderValue, reminderUnits: reminderFormats[pattern], before: true};
 		}
 	}
 

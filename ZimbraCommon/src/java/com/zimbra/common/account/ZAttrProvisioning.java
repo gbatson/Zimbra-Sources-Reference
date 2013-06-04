@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 9.0.0_BETA1_1111 pburgu 20130117-1610 */
+    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -4133,6 +4133,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFeatureDistributionListExpandMembersEnabled = "zimbraFeatureDistributionListExpandMembersEnabled";
 
     /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public static final String A_zimbraFeatureDistributionListFolderEnabled = "zimbraFeatureDistributionListFolderEnabled";
+
+    /**
      * whether export folder feature is enabled
      *
      * @since ZCS 7.1.0
@@ -4670,7 +4678,7 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFileShareLifetime = "zimbraFileShareLifetime";
 
     /**
-     * Maximum size in bytes for attachments
+     * Maximum size in bytes for file uploads
      */
     @ZAttr(id=227)
     public static final String A_zimbraFileUploadMaxSize = "zimbraFileUploadMaxSize";
@@ -4723,6 +4731,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1159)
     public static final String A_zimbraFilterSleepInterval = "zimbraFilterSleepInterval";
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public static final String A_zimbraForceClearCookies = "zimbraForceClearCookies";
 
     /**
      * foreign name for mapping an external name to a zimbra domain on domain
@@ -7302,6 +7319,17 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMobileSmartForwardRFC822Enabled = "zimbraMobileSmartForwardRFC822Enabled";
 
     /**
+     * folders whose sync key are already converted, each device has a list
+     * of folders. e.g. ApplDN6GJSQJDFHW:0,2,10 meaning device
+     * ApplDN6GJSQJDFHW&#039;s folders, inbox and calendar folder sync key
+     * format are converted, use 0 for FolderSync
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1439)
+    public static final String A_zimbraMobileSyncKeyFormatConvertedFolders = "zimbraMobileSyncKeyFormatConvertedFolders";
+
+    /**
      * mta anti spam lock method.
      *
      * @since ZCS 5.0.3
@@ -7372,6 +7400,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=197)
     public static final String A_zimbraMtaDnsLookupsEnabled = "zimbraMtaDnsLookupsEnabled";
+
+    /**
+     * Fallback value for postconf relayhost.
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1435)
+    public static final String A_zimbraMtaFallbackRelayHost = "zimbraMtaFallbackRelayHost";
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
@@ -9431,6 +9467,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraPrefSpellIgnoreAllCaps = "zimbraPrefSpellIgnoreAllCaps";
 
     /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1432)
+    public static final String A_zimbraPrefSpellIgnorePattern = "zimbraPrefSpellIgnorePattern";
+
+    /**
      * List of words to ignore when checking spelling. The word list of an
      * account includes the words specified for its cos and domain.
      *
@@ -10281,6 +10325,16 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1360)
     public static final String A_zimbraReverseProxySSLToUpstreamEnabled = "zimbraReverseProxySSLToUpstreamEnabled";
+
+    /**
+     * The connect timeout is the time interval after which NGINX will
+     * disconnect while establishing an upstream HTTP connection. Measured in
+     * seconds, should not be more than 75 seconds.
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1440)
+    public static final String A_zimbraReverseProxyUpstreamConnectTimeout = "zimbraReverseProxyUpstreamConnectTimeout";
 
     /**
      * The read timeout for long polling support by proxy, e.g. ActiveSync

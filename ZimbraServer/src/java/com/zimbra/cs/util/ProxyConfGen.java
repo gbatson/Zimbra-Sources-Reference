@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1860,7 +1860,7 @@ public class ProxyConfGen
         mConfVars.put("mail.upstream.pop3xoip", new ProxyConfVar("mail.upstream.pop3xoip", "zimbraReverseProxySendPop3Xoip", true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Whether NGINX issues the POP3 XOIP command to the upstream server prior to logging in (audit purpose)"));
         mConfVars.put("mail.upstream.imapid", new ProxyConfVar("mail.upstream.imapid", "zimbraReverseProxySendImapId", true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Whether NGINX issues the IMAP ID command to the upstream server prior to logging in (audit purpose)"));
         mConfVars.put("mail.ssl.preferserverciphers", new ProxyConfVar("mail.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires protocols SSLv3 and TLSv1 server ciphers be preferred over the client's ciphers"));
-        mConfVars.put("mail.ssl.ciphers", new ProxyConfVar("mail.ssl.ciphers", "zimbraReverseProxySSLCiphers", "!SSLv2:!MD5:HIGH", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Permitted ciphers for mail proxy"));
+        mConfVars.put("mail.ssl.ciphers", new ProxyConfVar("mail.ssl.ciphers", "zimbraReverseProxySSLCiphers", "RC4:HIGH:!aNULL:!MD5:!kEDH:!AD:!SSLv2", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Permitted ciphers for mail proxy"));
         mConfVars.put("mail.imap.authplain.enabled", new ProxyConfVar("mail.imap.authplain.enabled", "zimbraReverseProxyImapSaslPlainEnabled", true, ProxyConfValueType.ENABLER, ProxyConfOverride.CONFIG,"Whether SASL PLAIN is enabled for IMAP"));
         mConfVars.put("mail.imap.authgssapi.enabled", new ProxyConfVar("mail.imap.authgssapi.enabled", "zimbraReverseProxyImapSaslGssapiEnabled", false, ProxyConfValueType.ENABLER, ProxyConfOverride.SERVER,"Whether SASL GSSAPI is enabled for IMAP"));
         mConfVars.put("mail.pop3.authplain.enabled", new ProxyConfVar("mail.pop3.authplain.enabled", "zimbraReverseProxyPop3SaslPlainEnabled", true, ProxyConfValueType.ENABLER, ProxyConfOverride.SERVER,"Whether SASL PLAIN is enabled for POP3"));
@@ -1876,6 +1876,7 @@ public class ProxyConfGen
         mConfVars.put("mail.pop3.greeting", new Pop3GreetingVar());
         mConfVars.put("mail.enabled", new ProxyConfVar("mail.enabled", "zimbraReverseProxyMailEnabled", true, ProxyConfValueType.ENABLER, ProxyConfOverride.SERVER,"Indicates whether Mail Proxy is enabled"));
         mConfVars.put("mail.proxy.ssl", new ProxyConfVar("mail.proxy.ssl", "zimbraReverseProxySSLToUpstreamEnabled", false, ProxyConfValueType.BOOLEAN, ProxyConfOverride.SERVER, "Indicates whether using SSL to connect to upstream mail server"));
+        mConfVars.put("web.logfile", new ProxyConfVar("web.logfile", null, mWorkingDir + "/log/nginx.access.log", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Access log file path (relative to ${core.workdir})"));
         mConfVars.put("web.mailmode", new ProxyConfVar("web.mailmode", Provisioning.A_zimbraReverseProxyMailMode, "both", ProxyConfValueType.STRING, ProxyConfOverride.SERVER,"Reverse Proxy Mail Mode - can be http|https|both|redirect|mixed"));
         mConfVars.put("web.server_name.default", new ProxyConfVar("web.server_name.default", "zimbra_server_hostname", "localhost", ProxyConfValueType.STRING, ProxyConfOverride.LOCALCONFIG, "The server name for default server config"));
         mConfVars.put("web.upstream.name", new ProxyConfVar("web.upstream.name", null, ZIMBRA_UPSTREAM_NAME, ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Symbolic name for HTTP upstream cluster"));
@@ -1893,6 +1894,7 @@ public class ProxyConfGen
         mConfVars.put("web.ssl.preferserverciphers", new ProxyConfVar("web.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires protocols SSLv3 and TLSv1 server ciphers be preferred over the client's ciphers"));
         mConfVars.put("web.ssl.ciphers", new ProxyConfVar("web.ssl.ciphers", "zimbraReverseProxySSLCiphers", "!SSLv2:!MD5:HIGH", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG, "Permitted ciphers for mail proxy"));
         mConfVars.put("web.http.uport", new ProxyConfVar("web.http.uport", Provisioning.A_zimbraMailPort, new Integer(80), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER,"Web upstream server port"));
+        mConfVars.put("web.upstream.connect.timeout", new ProxyConfVar("web.upstream.connect.timeout", "zimbraReverseProxyUpstreamConnectTimeout", new Integer(25), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER, "upstream connect timeout"));
         mConfVars.put("web.upstream.read.timeout", new TimeInSecVarWrapper(new ProxyConfVar("web.upstream.read.timeout", "zimbraReverseProxyUpstreamReadTimeout", new Long(60), ProxyConfValueType.TIME, ProxyConfOverride.SERVER, "upstream read timeout")));
         mConfVars.put("web.upstream.send.timeout", new TimeInSecVarWrapper(new ProxyConfVar("web.upstream.send.timeout", "zimbraReverseProxyUpstreamSendTimeout", new Long(60), ProxyConfValueType.TIME, ProxyConfOverride.SERVER, "upstream send timeout")));
         mConfVars.put("web.upstream.polling.timeout", new TimeInSecVarWrapper(new ProxyConfVar("web.upstream.polling.timeout", "zimbraReverseProxyUpstreamPollingTimeout", new Long(3600), ProxyConfValueType.TIME, ProxyConfOverride.SERVER, "the response timeout for Microsoft Active Sync polling")));

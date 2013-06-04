@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -543,22 +543,23 @@ public final class ParseMimeMessage {
         // the client's nice and simple body right here
         String text = elem.getAttribute(MailConstants.E_CONTENT, "");
         byte[] raw = text.getBytes(Charsets.UTF_8);
-        ctxt.incrementSize("message body", raw.length);
+        if (raw.length > 0 || !LC.mime_exclude_empty_content.booleanValue() || ctype.getPrimaryType().equals("text")) {
+            ctxt.incrementSize("message body", raw.length);
 
-        // if the user has specified an alternative charset, make sure it exists and can encode the content
-        String charset = CharsetUtil.checkCharset(text, ctxt.defaultCharset);
-        ctype.setCharset(charset).setParameter(MimeConstants.P_CHARSET, charset);
+            // if the user has specified an alternative charset, make sure it exists and can encode the content
+            String charset = CharsetUtil.checkCharset(text, ctxt.defaultCharset);
+            ctype.setCharset(charset).setParameter(MimeConstants.P_CHARSET, charset);
 
-        Object content = ctype.getContentType().equals(ContentType.MESSAGE_RFC822) ?
-                new ZMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(raw)) : text;
-        if (mmp != null) {
-            MimeBodyPart mbp = new ZMimeBodyPart();
-            mbp.setContent(content, ctype.toString());
-            mmp.addBodyPart(mbp);
-        } else {
-            mm.setContent(content, ctype.toString());
+            Object content = ctype.getContentType().equals(ContentType.MESSAGE_RFC822) ?
+                    new ZMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(raw)) : text;
+            if (mmp != null) {
+                MimeBodyPart mbp = new ZMimeBodyPart();
+                mbp.setContent(content, ctype.toString());
+                mmp.addBodyPart(mbp);
+            } else {
+                mm.setContent(content, ctype.toString());
+            }
         }
-
         if (alternatives != null) {
             for (int i = 0; i < alternatives.length; i++) {
                 ctxt.incrementSize("alternative body", alternatives[i].getSize());

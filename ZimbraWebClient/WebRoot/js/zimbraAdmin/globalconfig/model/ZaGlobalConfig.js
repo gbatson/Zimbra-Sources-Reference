@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -50,6 +50,7 @@ ZaGlobalConfig.A_zimbraMtaTlsAuthOnly = "zimbraMtaTlsAuthOnly";
 ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled  = "zimbraMtaDnsLookupsEnabled";
 ZaGlobalConfig.A_zimbraMtaMaxMessageSize = "zimbraMtaMaxMessageSize";
 ZaGlobalConfig.A_zimbraMtaRelayHost = "zimbraMtaRelayHost";
+ZaGlobalConfig.A_zimbraMtaFallbackRelayHost = "zimbraMtaFallbackRelayHost";
 ZaGlobalConfig.A_zimbraMtaMyNetworks = "zimbraMtaMyNetworks";
 //ZaGlobalConfig.A_zimbraMtaRelayHostInternal = "__zimbraMtaRelayHost";
 //ZaGlobalConfig.A_zimbraMtaRelayPortInternal = "__zimbraMtaRelayPort";
@@ -178,6 +179,7 @@ ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedUA = "zimbraWebClientLoginURLAllo
 ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedUA = "zimbraWebClientLogoutURLAllowedUA";
 ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedIP = "zimbraWebClientLoginURLAllowedIP";
 ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedIP = "zimbraWebClientLogoutURLAllowedIP";
+ZaGlobalConfig.A_zimbraForceClearCookies = "zimbraForceClearCookies";
 
 // Auto provision
 ZaGlobalConfig.A_zimbraAutoProvBatchSize = "zimbraAutoProvBatchSize";
@@ -421,6 +423,7 @@ ZaGlobalConfig.myXModel = {
 		{ id:ZaGlobalConfig.A_zimbraFileUploadMaxSize, ref:"attrs/" + ZaGlobalConfig.A_zimbraFileUploadMaxSize, type: _FILE_SIZE_, units: AjxUtil.SIZE_KILOBYTES },
 		{id:ZaGlobalConfig.A_zimbraMtaMyNetworks, ref:"attrs/" +  ZaGlobalConfig.A_zimbraMtaMyNetworks, type:_STRING_, maxLength: 10240 },
 		{ id:ZaGlobalConfig.A_zimbraMtaRelayHost, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaRelayHost, type: _HOSTNAME_OR_IP_, maxLength: 256 },
+        { id:ZaGlobalConfig.A_zimbraMtaFallbackRelayHost, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaFallbackRelayHost, type: _HOSTNAME_OR_IP_, maxLength: 256 },
 		{ id:ZaGlobalConfig.A_zimbraSmtpSendAddOriginatingIP, ref: "attrs/" + ZaGlobalConfig.A_zimbraSmtpSendAddOriginatingIP, type:_ENUM_, choices:ZaModel.BOOLEAN_CHOICES},
 		
 		{ id:ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled, type: _ENUM_, choices: ZaModel.BOOLEAN_CHOICES },
@@ -492,6 +495,13 @@ ZaGlobalConfig.myXModel = {
 		{ id:ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedUA, ref:"attrs/" + ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedUA, type:_LIST_, listItem:{type:_STRING_}},
 		{ id:ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedIP, ref:"attrs/" + ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedIP, type:_LIST_, listItem:{type:_STRING_}},
         { id:ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedIP, ref:"attrs/" + ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedIP, type:_LIST_, listItem:{type:_STRING_}},
+        // Clear Cookies
+        {
+            id: ZaGlobalConfig.A_zimbraForceClearCookies,
+            ref: "attrs/" + ZaGlobalConfig.A_zimbraForceClearCookies,
+            type: _ENUM_,
+            choices: ZaModel.BOOLEAN_CHOICES
+        },
         // web client authentication
         { id:ZaGlobalConfig.A_zimbraMailSSLClientCertMode, ref:"attrs/" +  ZaGlobalConfig.A_zimbraMailSSLClientCertMode, type:_STRING_, choices:["Disabled","NeedClientAuth","WantClientAuth"]},
         { id:ZaGlobalConfig.A_zimbraMailSSLClientCertPort, ref:"attrs/" +  ZaGlobalConfig.A_zimbraMailSSLClientCertPort, type:_PORT_},

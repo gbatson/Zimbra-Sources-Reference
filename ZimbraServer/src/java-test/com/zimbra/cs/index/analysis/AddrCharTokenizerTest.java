@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011, 2012 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -56,6 +56,17 @@ public class AddrCharTokenizerTest {
 
         tokenizer.reset(new StringReader("user1@zimbra.com"));
         Assert.assertEquals(Collections.singletonList("user1@zimbra.com"), ZimbraAnalyzerTest.toTokens(tokenizer));
+    }
+
+    /**
+     * Bug 79103 tab was getting included at start of a token instead of being ignored.
+     */
+    @Test
+    public void multiLineWithTabs() throws Exception {
+        Tokenizer tokenizer = new AddrCharTokenizer(
+                new StringReader("one name <one@example.net>\n\ttwo <two@example.net>"));
+        Assert.assertEquals("Token list", Arrays.asList("one", "name", "one@example.net", "two", "two@example.net"),
+                ZimbraAnalyzerTest.toTokens(tokenizer));
     }
 
     @Test

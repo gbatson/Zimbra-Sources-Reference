@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1227,6 +1227,10 @@ public class BeanUtils {
 
     public static String getFolderRgbColor(String color, String view) throws ServiceException {
         return ZFolderBean.getRgbColor(Color.fromString(color), View.fromString(view));
+    }
+
+    public static String getFolderRgbColorMsg(String color, String view) throws ServiceException {
+            return ZFolderBean.getRgbColorMsg(Color.fromString(color), View.fromString(view));
     }
 
     public static boolean actionSet(Map param, String action) {

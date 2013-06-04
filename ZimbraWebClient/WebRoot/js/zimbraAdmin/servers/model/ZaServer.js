@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -51,6 +51,7 @@ ZaServer.A_zimbraMtaServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_m
 ZaServer.A_zimbraSnmpServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_snmp";
 ZaServer.A_zimbraAntiVirusServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_antivirus";
 ZaServer.A_zimbraAntiSpamServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_antispam";
+ZaServer.A_zimbraOpenDKIMServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_opendkim";
 ZaServer.A_zimbraSpellServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_spell";
 ZaServer.A_zimbraLoggerServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_logger";
 ZaServer.A_zimbraMailProxyServiceInstalled = "_"+ZaServer.A_zimbraServiceInstalled+"_proxy";
@@ -66,6 +67,7 @@ ZaServer.A_zimbraMtaServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_mta";
 ZaServer.A_zimbraSnmpServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_snmp";
 ZaServer.A_zimbraAntiVirusServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_antivirus";
 ZaServer.A_zimbraAntiSpamServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_antispam";
+ZaServer.A_zimbraOpenDKIMServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_opendkim";
 ZaServer.A_zimbraSpellServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_spell";
 ZaServer.A_zimbraLoggerServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_logger";
 ZaServer.A_zimbraMailProxyServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_proxy";
@@ -75,6 +77,7 @@ ZaServer.A_zimbraVmwareHAServiceEnabled = "_"+ZaServer.A_zimbraServiceEnabled+"_
 ZaServer.A_zimbraMtaSaslAuthEnable = "zimbraMtaSaslAuthEnable";
 ZaServer.A_zimbraMtaDnsLookupsEnabled = "zimbraMtaDnsLookupsEnabled";
 ZaServer.A_zimbraMtaRelayHost = "zimbraMtaRelayHost";
+ZaServer.A_zimbraMtaFallbackRelayHost = "zimbraMtaFallbackRelayHost";
 ZaServer.A_zimbraMtaTlsAuthOnly = "zimbraMtaTlsAuthOnly";
 ZaServer.A_zimbraMtaMyNetworks = "zimbraMtaMyNetworks";
 //milter server
@@ -502,6 +505,12 @@ ZaServer.myXModel = {
 		{id:ZaServer.A_zimbraSnmpServiceEnabled, ref:"attrs/"+ZaServer.A_zimbraSnmpServiceEnabled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraAntiVirusServiceEnabled, ref:"attrs/"+ZaServer.A_zimbraAntiVirusServiceEnabled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraAntiSpamServiceEnabled, ref:"attrs/"+ZaServer.A_zimbraAntiSpamServiceEnabled, type: _ENUM_, choices: [false,true] },
+        {
+            id: ZaServer.A_zimbraOpenDKIMServiceEnabled,
+            ref: "attrs/" + ZaServer.A_zimbraOpenDKIMServiceEnabled,
+            type: _ENUM_,
+            choices: [false, true]
+        },
 		{id:ZaServer.A_zimbraSpellServiceEnabled, ref:"attrs/"+ZaServer.A_zimbraSpellServiceEnabled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraLoggerServiceEnabled, ref:"attrs/"+ZaServer.A_zimbraLoggerServiceEnabled, type: _ENUM_, choices: [false,true] },
         {id:ZaServer.A_zimbraVmwareHAServiceEnabled, ref:"attrs/"+ZaServer.A_zimbraVmwareHAServiceEnabled, type: _ENUM_, choices: [false,true] },
@@ -513,6 +522,12 @@ ZaServer.myXModel = {
 		{id:ZaServer.A_zimbraSnmpServiceInstalled, ref:"attrs/"+ZaServer.A_zimbraSnmpServiceInstalled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraAntiVirusServiceInstalled, ref:"attrs/"+ZaServer.A_zimbraAntiVirusServiceInstalled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraAntiSpamServiceInstalled, ref:"attrs/"+ZaServer.A_zimbraAntiSpamServiceInstalled, type: _ENUM_, choices: [false,true] },
+        {
+            id: ZaServer.A_zimbraOpenDKIMServiceInstalled,
+            ref: "attrs/" + ZaServer.A_zimbraOpenDKIMServiceInstalled,
+            type: _ENUM_,
+            choices: [false, true]
+        },
 		{id:ZaServer.A_zimbraSpellServiceInstalled, ref:"attrs/"+ZaServer.A_zimbraSpellServiceInstalled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraLoggerServiceInstalled, ref:"attrs/"+ZaServer.A_zimbraLoggerServiceInstalled, type: _ENUM_, choices: [false,true] },
 		{id:ZaServer.A_zimbraMailProxyServiceInstalled, ref:"attrs/"+ZaServer.A_zimbraMailProxyServiceInstalled, type: _ENUM_, choices: [false,true] },
@@ -522,6 +537,7 @@ ZaServer.myXModel = {
 		{id:ZaServer.A_zimbraMtaSaslAuthEnable, ref:"attrs/" +  ZaServer.A_zimbraMtaSaslAuthEnable, type: _COS_ENUM_, choices: ["yes", "no"] },
 		{id:ZaServer.A_zimbraMtaTlsAuthOnly, ref:"attrs/" +  ZaServer.A_zimbraMtaTlsAuthOnly, type: _COS_ENUM_, choices: ZaModel.BOOLEAN_CHOICES },
 		{id:ZaServer.A_zimbraMtaRelayHost, ref:"attrs/" +  ZaServer.A_zimbraMtaRelayHost,  type: _COS_HOSTNAME_OR_IP_, maxLength: 256 },
+        {id:ZaServer.A_zimbraMtaFallbackRelayHost, ref:"attrs/" + ZaServer.A_zimbraMtaFallbackRelayHost, type: _COS_HOSTNAME_OR_IP_, maxLength: 256 },
 		{id:ZaServer.A_zimbraMtaMyNetworks, ref:"attrs/" +  ZaServer.A_zimbraMtaMyNetworks, type:_COS_STRING_, maxLength: 10240 },
 		{id:ZaServer.A_zimbraMtaDnsLookupsEnabled, ref:"attrs/" +  ZaServer.A_zimbraMtaDnsLookupsEnabled, type: _COS_ENUM_, choices: ZaModel.BOOLEAN_CHOICES },
 		//milter server

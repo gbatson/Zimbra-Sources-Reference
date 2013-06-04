@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks.mountpoints;
 
 import java.util.HashMap;
@@ -19,7 +35,6 @@ import com.zimbra.qa.selenium.projects.ajax.ui.DialogRenameFolder;
 
 public class RenameMountpoint extends PrefGroupMailByMessageTest {
 
-	private ZimbraAccount Owner = null;
 
 	@SuppressWarnings("serial")
 	public RenameMountpoint() {
@@ -34,14 +49,12 @@ public class RenameMountpoint extends PrefGroupMailByMessageTest {
 			}
 		};
 
-		Owner = new ZimbraAccount();
-		Owner.provision();
-		Owner.authenticate();
-
 	}
 
 	@Test(description = "Rename a mountpoint (Right Click -> Rename)", groups = { "smoke" })
 	public void RenameMountpoint_01() throws HarnessException {
+
+		ZimbraAccount Owner = (new ZimbraAccount()).provision().authenticate();
 
 		// Owner creates a folder, shares it with current user
 		String ownerFoldername = "ownerfolder"

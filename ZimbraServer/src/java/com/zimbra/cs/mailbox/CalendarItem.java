@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -61,7 +61,6 @@ import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.zmime.ZMimeBodyPart;
-import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.common.zmime.ZMimeMultipart;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.CalendarResource;
@@ -74,6 +73,7 @@ import com.zimbra.cs.index.analysis.RFC822AddressTokenStream;
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
 import com.zimbra.cs.mailbox.Mailbox.SetCalendarItemData;
 import com.zimbra.cs.mailbox.calendar.Alarm;
+import com.zimbra.cs.mailbox.calendar.Alarm.Action;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
@@ -81,27 +81,26 @@ import com.zimbra.cs.mailbox.calendar.InviteChanges;
 import com.zimbra.cs.mailbox.calendar.InviteInfo;
 import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.Recurrence;
+import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
+import com.zimbra.cs.mailbox.calendar.Recurrence.RecurrenceRule;
+import com.zimbra.cs.mailbox.calendar.Recurrence.SimpleRepeatingRule;
 import com.zimbra.cs.mailbox.calendar.Util;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
 import com.zimbra.cs.mailbox.calendar.ZRecur;
-import com.zimbra.cs.mailbox.calendar.Alarm.Action;
-import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
-import com.zimbra.cs.mailbox.calendar.Recurrence.RecurrenceRule;
-import com.zimbra.cs.mailbox.calendar.Recurrence.SimpleRepeatingRule;
 import com.zimbra.cs.mailbox.calendar.ZRecur.Frequency;
 import com.zimbra.cs.mime.Mime;
-import com.zimbra.cs.mime.MimeVisitor;
-import com.zimbra.cs.mime.ParsedMessage;
+import com.zimbra.cs.mime.ParsedAddress;
 import com.zimbra.cs.mime.Mime.FixedMimeMessage;
+import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.mime.ParsedMessage.CalendarPartInfo;
 import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StagedBlob;
 import com.zimbra.cs.store.StoreManager;
-import com.zimbra.cs.util.JMSession;
 import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
+import com.zimbra.cs.util.JMSession;
 
 /**
  * An APPOINTMENT consists of one or more INVITES in the same series -- ie that
@@ -418,7 +417,14 @@ public abstract class CalendarItem extends MailItem {
         return toRet;
     }
 
-    static CalendarItem create(int id, Folder folder, int flags, Tag.NormalizedTags ntags, String uid,
+    @Override
+	public String getSortSender() {
+        String sender = new ParsedAddress(getSender()).getSortString();
+        // remove surrogate characters and trim to DbMailItem.MAX_SENDER_LENGTH
+        return DbMailItem.normalize(sender, DbMailItem.MAX_SENDER_LENGTH);
+	}
+
+	static CalendarItem create(int id, Folder folder, int flags, Tag.NormalizedTags ntags, String uid,
             ParsedMessage pm, Invite firstInvite, long nextAlarm, CustomMetadata custom) throws ServiceException {
         firstInvite.sanitize(false);
 
@@ -1403,21 +1409,25 @@ public abstract class CalendarItem extends MailItem {
             ZimbraLog.calendar.warn("Unsupported METHOD " + method);
         return false;
     }
-    
+
+    private boolean persistBatchedChanges = false;
     void processNewInviteExceptions(List<SetCalendarItemData> scidList,
             int folderId, long nextAlarm,
             boolean preserveAlarms, boolean replaceExistingInvites) throws ServiceException {
+        persistBatchedChanges = false;
         for (SetCalendarItemData scid : scidList) {
             processNewInviteRequestOrCancel(scid.message, scid.invite, folderId, nextAlarm,
                                                 preserveAlarms, replaceExistingInvites, true);
         }
         // now update the recurrence.
         updateRecurrence(nextAlarm);
-        // persist the data to the DB.
-        try {
-            setContent(null, null);
-        } catch (IOException e) {
-            throw ServiceException.FAILURE("IOException", e);
+        if  (persistBatchedChanges) {
+            // persist the data to the DB.
+            try {
+                setContent(null, null);
+            } catch (IOException e) {
+                throw ServiceException.FAILURE("IOException", e);
+            }
         }
     }
 
@@ -1435,16 +1445,16 @@ public abstract class CalendarItem extends MailItem {
         else
             return r2 == null;
     }
-    
+
     /**
-     * 
+     *
      * @param pm
      * @param newInvite
      * @param folderId
      * @param nextAlarm
      * @param preserveAlarms
      * @param discardExistingInvites
-     * @param batch - if true this call will not update the recurrence and may not persist to the data. 
+     * @param batch - if true this call will not update the recurrence and may not persist to the data.
      *                The caller needs to persist the data by calling setContent().
      * @return
      * @throws ServiceException
@@ -1578,7 +1588,7 @@ public abstract class CalendarItem extends MailItem {
                     // In that situation we simply skip the DTSTART shift calculation.
                     oldDtStart = defInv.getStartTime();
                     ParsedDateTime newDtStart = newInvite.getStartTime();
-                    //if (newDtStart != null && oldDtStart != null && !newDtStart.sameTime(oldDtStart)) {
+                    //if (newDtStart != null && oldDtStart != null && !newDtStart.sameTime(oldDtStart))
                     if (newDtStart != null && oldDtStart != null && !newDtStart.equals(oldDtStart)) {
                         // Find the series frequency.
                         Frequency freq = null;
@@ -2100,9 +2110,11 @@ public abstract class CalendarItem extends MailItem {
                     } else {
                         markItemModified(Change.INVITE);
                         try {
-                            // call setContent here so that MOD_CONTENT is updated...this is required
-                            // for the index entry to be correctly updated (bug 39463)
-                            if (!batch) {
+                            if (batch) {
+                                persistBatchedChanges = true;
+                            } else {
+                                // call setContent here so that MOD_CONTENT is updated...this is required
+                                // for the index entry to be correctly updated (bug 39463)
                                 setContent(null, null);
                             }
                         } catch (IOException e) {
@@ -3097,7 +3109,7 @@ public abstract class CalendarItem extends MailItem {
     boolean processNewInviteReply(Invite reply, String sender)
     throws ServiceException {
         List<ZAttendee> attendees = reply.getAttendees();
-        
+
         String senderAddress = null;
         if (sender != null && !sender.isEmpty()) {
             try {
@@ -3107,8 +3119,8 @@ public abstract class CalendarItem extends MailItem {
                 // ignore invalid sender address.
             }
         }
-        
-        if (senderAddress != null && !attendees.isEmpty()) { 
+
+        if (senderAddress != null && !attendees.isEmpty()) {
             AccountAddressMatcher acctMatcher = null;
             Account acct = Provisioning.getInstance().get(AccountBy.name, senderAddress);
             if (acct != null) {
@@ -3123,7 +3135,7 @@ public abstract class CalendarItem extends MailItem {
                 }
             }
         }
-        
+
         // trace logging
         ZAttendee att1 = !attendees.isEmpty() ? attendees.get(0) : null;
         if (att1 != null) {
@@ -4060,7 +4072,7 @@ public abstract class CalendarItem extends MailItem {
     public void snapshotRevision() throws ServiceException {
         snapshotRevision(true);
     }
-    
+
     public void snapshotRevision(boolean updateFolderMODSEQ) throws ServiceException {
         addRevision(false, updateFolderMODSEQ);
     }

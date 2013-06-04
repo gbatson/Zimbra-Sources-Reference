@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.cs.gal;
 
 import java.util.HashMap;
@@ -5,6 +21,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableMap;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
@@ -24,8 +43,6 @@ import com.zimbra.cs.account.EntryCacheDataKey;
 import com.zimbra.cs.account.GalContact;
 import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.common.account.Key;
-import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.Provisioning.CacheEntry;
 import com.zimbra.cs.account.accesscontrol.Rights.User;
 import com.zimbra.cs.mailbox.Contact;
@@ -129,8 +146,10 @@ public abstract class GalGroup {
 
     public static synchronized void flushCache(Domain domain) {
         if (domain == null) {
-            for (Map.Entry<String, DomainGalGroupCache> entry : groups.entrySet())
+            Map<String, DomainGalGroupCache> tmp = ImmutableMap.copyOf(groups);
+            for (Map.Entry<String, DomainGalGroupCache> entry : tmp.entrySet()) {
                 GalGroup.flushCache(entry.getKey(), entry.getValue());
+            }
         } else {
             String domainName = domain.getName();
             DomainGalGroupCache galGroup = groups.get(domainName);
@@ -139,17 +158,16 @@ public abstract class GalGroup {
     }
 
     private static void flushCache(String domainName, DomainGalGroupCache galGroup) {
-        
         if (galGroup == null) {
             ZimbraLog.gal.info("GalGroup - flushCache: no cache entry for domain " + domainName);
         } else if (galGroup.isSyncing()) {
             ZimbraLog.gal.info("GalGroup - flushCache: Still syncing GalGroup for domain " + domainName);
-        } else { 
+        } else {
             ZimbraLog.gal.info("GalGroup - flushCache: Flushing GalGroup for domain " + domainName);
             GalGroup.removeFromCache(domainName, "flush cache");
         }
     }
-    
+
     private static synchronized GalGroupCache getGalGroupForDomain(Account requestedAcct, Domain domain) 
     throws GalGroupCacheFullException{
         String domainName = domain.getName();

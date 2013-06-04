@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -263,6 +263,7 @@ ZaDomain.A_zimbraWebClientLoginURLAllowedUA = "zimbraWebClientLoginURLAllowedUA"
 ZaDomain.A_zimbraWebClientLogoutURLAllowedUA = "zimbraWebClientLogoutURLAllowedUA";
 ZaDomain.A_zimbraWebClientLoginURLAllowedIP = "zimbraWebClientLoginURLAllowedIP";
 ZaDomain.A_zimbraWebClientLogoutURLAllowedIP = "zimbraWebClientLogoutURLAllowedIP";
+ZaDomain.A_zimbraForceClearCookies = "zimbraForceClearCookies";
 
 // web client authentication
 ZaDomain.A_zimbraReverseProxyClientCertMode = "zimbraReverseProxyClientCertMode";
@@ -757,6 +758,11 @@ function(tmpObj, newDomain) {
     if(tmpObj.attrs[ZaDomain.A_zimbraAuthKerberos5Realm]){
         attr = soapDoc.set("a", tmpObj.attrs[ZaDomain.A_zimbraAuthKerberos5Realm]);
         attr.setAttribute("n", ZaDomain.A_zimbraAuthKerberos5Realm);
+    }
+
+    if (tmpObj.attrs[ZaDomain.A_zimbraForceClearCookies]) {
+        attr = soapDoc.set("a", tmpObj.attrs[ZaDomain.A_zimbraForceClearCookies]);
+        attr.setAttribute("n", ZaDomain.A_zimbraForceClearCookies);
     }
 
     if(tmpObj.attrs[ZaDomain.A_zimbraWebClientLoginURL]){
@@ -1800,7 +1806,7 @@ function(tmods,tmpObj) {
                         soapDoc.set("id", this[ZaDomain.A2_gal_sync_accounts][i].id, modifyDSDoc);
                         var ds = soapDoc.set("dataSource", null,modifyDSDoc);
                         ds.setAttribute("id", this[ZaDomain.A2_gal_sync_accounts][i][ZaAccount.A2_ldap_ds].id);
-                        var attr = soapDoc.set("a", [ZaAccount.A2_ldap_ds].attrs[ZaDataSource.A_zimbraDataSourcePollingInterval],ds);
+                        var attr = soapDoc.set("a", currentGalAccount[ZaAccount.A2_ldap_ds].attrs[ZaDataSource.A_zimbraDataSourcePollingInterval],ds);
                         attr.setAttribute("n", ZaDataSource.A_zimbraDataSourcePollingInterval);
                     }
                 }
@@ -2581,6 +2587,13 @@ ZaDomain.myXModel = {
       // web client redirect
       { id:ZaDomain.A_zimbraWebClientLoginURL, ref:"attrs/" + ZaDomain.A_zimbraWebClientLoginURL, type:_COS_STRING_ },
       { id:ZaDomain.A_zimbraWebClientLogoutURL, ref:"attrs/" + ZaDomain.A_zimbraWebClientLogoutURL, type:_COS_STRING_ },
+        // Clear Cookies
+        {
+            id: ZaDomain.A_zimbraForceClearCookies,
+            ref: "attrs/" + ZaDomain.A_zimbraForceClearCookies,
+            type: _ENUM_,
+            choices: ZaModel.BOOLEAN_CHOICES
+        },
     // web client authentication
       { id:ZaDomain.A_zimbraReverseProxyClientCertMode, ref:"attrs/" + ZaDomain.A_zimbraReverseProxyClientCertMode, type:_COS_STRING_, choices:["on","off","optional"]},
       { id:ZaDomain.A_zimbraMailSSLClientCertPrincipalMap, ref:"attrs/" + ZaDomain.A_zimbraMailSSLClientCertPrincipalMap, type:_COS_STRING_ },

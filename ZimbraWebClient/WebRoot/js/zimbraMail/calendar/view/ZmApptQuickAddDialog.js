@@ -1,8 +1,8 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -233,7 +233,7 @@ function(loc) {
 	this._privacySelect.setSelectedValue((defaultPrivacyOption == ZmSetting.CAL_VISIBILITY_PRIV) ?  "PRI" : "PUB");
 
     Dwt.setVisible(this._suggestions, false);
-    Dwt.setVisible(this._suggestLocation, true);
+    Dwt.setVisible(this._suggestLocation, appCtxt.get(ZmSetting.GAL_ENABLED));
 
 	DBG.timePt("ZmQuickAddDialog#popup", true);
 };
@@ -380,8 +380,10 @@ function() {
 	var closeCallback = this._onSuggestionClose.bind(this);
 	var dialogContentEl = document.getElementById(this._htmlElId + "_content");
 	this._containerSize = Dwt.getSize(dialogContentEl);
-	this._locationAssistant = new ZmLocationAssistantView(this, appCtxt.getCurrentController(), this, closeCallback);
-	this._locationAssistant.reparentHtmlElement(this._suggestions);
+	if (appCtxt.get(ZmSetting.GAL_ENABLED)) {
+		this._locationAssistant = new ZmLocationAssistantView(this, appCtxt.getCurrentController(), this, closeCallback);
+		this._locationAssistant.reparentHtmlElement(this._suggestions);
+	}
 	AjxTimedAction.scheduleAction(new AjxTimedAction(this, this.loadPreference), 300);
 };
 
@@ -395,8 +397,10 @@ function() {
 ZmApptQuickAddDialog.prototype._prefChangeListener =
 function() {
     // Preference Dialog is only displayed when the suggestions panel is visible - so update suggestions
-    this._locationAssistant.clearResources();
-    this._locationAssistant.suggestAction();
+    if (this._locationAssistant) {
+		this._locationAssistant.clearResources();
+		this._locationAssistant.suggestAction();
+	}
 };
 
 ZmApptQuickAddDialog.prototype._handleConfigureClick = function() {
@@ -626,7 +630,7 @@ function(ev, id) {
     if (!this._appt.isAllDayEvent()) {
         ZmApptViewHelper.getDateInfo(this, this._dateInfo);
     }
-    this._locationAssistant.updateTime();
+	this._locationAssistant && this._locationAssistant.updateTime();
 };
 
 ZmApptQuickAddDialog.prototype._dateChangeListener =
@@ -634,7 +638,7 @@ function(ev, id) {
     if (!this._appt.isAllDayEvent()) {
         ZmApptViewHelper.getDateInfo(this, this._dateInfo);
     }
-    this._locationAssistant.updateTime();
+	this._locationAssistant && this._locationAssistant.updateTime();
 };
 
 ZmApptQuickAddDialog.prototype.getDurationInfo =

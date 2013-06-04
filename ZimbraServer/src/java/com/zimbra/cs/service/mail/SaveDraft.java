@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -178,7 +178,7 @@ public class SaveDraft extends MailDocumentHandler {
     protected Element generateResponse(ZimbraSoapContext zsc, ItemIdFormatter ifmt, OperationContext octxt, Mailbox mbox, Message msg) {
         Element response = zsc.createElement(MailConstants.SAVE_DRAFT_RESPONSE);
         try {
-            ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true, false);
+            ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true, false, false);
         } catch (NoSuchItemException nsie) {
             ZimbraLog.soap.info("draft was deleted while serializing response; omitting <m> from response");
         } catch (ServiceException e) {

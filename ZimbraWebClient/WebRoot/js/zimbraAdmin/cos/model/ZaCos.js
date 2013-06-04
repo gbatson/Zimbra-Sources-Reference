@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -194,6 +194,7 @@ ZaCos.A_zimbraFeatureGroupCalendarEnabled = "zimbraFeatureGroupCalendarEnabled";
 ZaCos.A_zimbraFeatureFlaggingEnabled = "zimbraFeatureFlaggingEnabled" ;
 ZaCos.A_zimbraFeatureManageSMIMECertificateEnabled = "zimbraFeatureManageSMIMECertificateEnabled";
 ZaCos.A_zimbraFeatureSMIMEEnabled = "zimbraFeatureSMIMEEnabled";
+ZaCos.A_zimbraFeatureDistributionListFolderEnabled = "zimbraFeatureDistributionListFolderEnabled";
 
 //security
 ZaCos.A_zimbraPasswordLockoutEnabled = "zimbraPasswordLockoutEnabled";
@@ -728,6 +729,12 @@ ZaCos.myXModel = {
 		{id:ZaCos.A_zimbraMailDumpsterLifetime, type:_MLIFETIME_, ref:"attrs/"+ZaCos.A_zimbraMailDumpsterLifetime },
 		{id:ZaCos.A_zimbraPrefCalendarSendInviteDeniedAutoReply, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefCalendarSendInviteDeniedAutoReply, type:_ENUM_},
 		{id:ZaCos.A_zimbraFeatureReadReceiptsEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureReadReceiptsEnabled, type:_ENUM_},
+        {
+            id: ZaCos.A_zimbraFeatureDistributionListFolderEnabled,
+            choices: ZaModel.BOOLEAN_CHOICES,
+            ref: "attrs/" + ZaCos.A_zimbraFeatureDistributionListFolderEnabled,
+            type: _ENUM_
+        },
         {id:ZaCos.A_zimbraFeatureMailPriorityEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureMailPriorityEnabled, type:_ENUM_},
         {id:ZaCos.A_zimbraFeatureImapDataSourceEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureImapDataSourceEnabled, type:_ENUM_},
         {id:ZaCos.A_zimbraFeaturePop3DataSourceEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeaturePop3DataSourceEnabled, type:_ENUM_},

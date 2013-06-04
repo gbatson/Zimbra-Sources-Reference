@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,6 +29,10 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.ldap.LdapClient;
+import com.zimbra.cs.ldap.LdapServerType;
+import com.zimbra.cs.ldap.LdapUsage;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
@@ -225,7 +229,7 @@ public class ProxyPurgeUtil
                 routes.add("route:proto=imapssl;user=" + uid + "@" + domain);
                 routes.add("route:proto=pop3ssl;user=" + uid + "@" + domain);
                 routes.add("alias:user=" + uid + ";ip=" + domain);
-                
+
                 Domain d = prov.get(Key.DomainBy.name, domain);
                 String[] vips = d.getVirtualIPAddress();
                 for (String vip : vips) {
@@ -238,27 +242,64 @@ public class ProxyPurgeUtil
                     routes.add("route:proto=pop3ssl;user=" + uid + "@" + vip);
                     routes.add("alias:user=" + uid + ";ip=" + vip);
                 }
-                
+                String[] vhostnames = d.getVirtualHostname();
+                for (String vhost : vhostnames) {
+                    // for each virtual host name add the alias to the list
+                    routes.add("alias:user=" + uid + ";vhost=" + vhost);
+                }
+
                 String[] aliases = account.getMailAlias();
-                // for each alias add routes for it's domain and all virtual IPs for that domain
-                // I think, all the http routes are stored by user id, or, uid or, uid@domain. 
-                // I haven't found any alias in the http/httpssl routes. Hence skipping it.
+                List<String> uids = new ArrayList<String>();
+                uids.add(uid);
                 for (String alias : aliases) {
+                    if (alias.indexOf('@') != -1 && alias.substring(alias.indexOf('@') + 1).equals(domain)) {
+                        uids.add(alias.substring(0, alias.indexOf('@')));
+                    }
+                }
+                // get domain alias from the given the domain
+                // this logic works for for all cases account=addr@<alias domain> or alias-name@<alias domain>
+                if (prov instanceof LdapProvisioning) {
+                    List<String> aliasDomainIds = ((LdapProvisioning) prov).getEmptyAliasDomainIds(LdapClient.getContext(LdapServerType.MASTER, LdapUsage.GET_DOMAIN), d, false);
+                    if (aliasDomainIds != null) {
+                        for (String aliasDomainId : aliasDomainIds) {
+                            String aliasDomain = prov.getDomainById(aliasDomainId).getDomainName();
+                            for (String userName : uids) {
+                                routes.add("route:proto=http;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=imap;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=pop3;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=httpssl;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=imapssl;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=pop3ssl;user=" + userName + "@" + aliasDomain);
+                                routes.add("alias:user=" + userName + ";ip=" + aliasDomain);
+                            }
+                        }
+                    }
+                }
+
+                // for each alias add routes for it's domain and all virtual IPs for that domain
+                // I haven't found any alias in the http/httpssl routes. Hence skipping it.
+                // bug:79940 says Active Sync routes are stored as http/https - alias@domain.com
+                for (String alias : aliases) {
+                    routes.add("route:proto=http;user=" + alias);
                     routes.add("route:proto=imap;user=" + alias);
                     routes.add("route:proto=pop3;user=" + alias);
+                    routes.add("route:proto=httpssl;user=" + alias);
                     routes.add("route:proto=imapssl;user=" + alias);
                     routes.add("route:proto=pop3ssl;user=" + alias);
-                    
-                    routes.add("route:proto=imap;user=" + alias + "@" + domain);
-                    routes.add("route:proto=pop3;user=" + alias + "@" + domain);
-                    routes.add("route:proto=imapssl;user=" + alias + "@" + domain);
-                    routes.add("route:proto=pop3ssl;user=" + alias + "@" + domain);
-                    routes.add("alias:user=" + alias + ";ip=" + domain);
-                    
+
+                    if (alias.indexOf('@') != -1) {
+                        alias = alias.substring(0, alias.indexOf('@'));
+                    }
+                    for (String vhost : vhostnames) {
+                        // for each virtual host name add the alias to the alias user
+                        routes.add("alias:user=" + alias + ";vhost=" + vhost);
+                    }
                     for (String vip : vips) {
-                        // for each virtual ip add the routes to the list. 
+                        // for each virtual ip add the routes to the list.
+                        routes.add("route:proto=http;user=" + alias + "@" + vip);
                         routes.add("route:proto=imap;user=" + alias + "@" + vip);
                         routes.add("route:proto=pop3;user=" + alias + "@" + vip);
+                        routes.add("route:proto=httpssl;user=" + alias + "@" + vip);
                         routes.add("route:proto=imapssl;user=" + alias + "@" + vip);
                         routes.add("route:proto=pop3ssl;user=" + alias + "@" + vip);
                         routes.add("alias:user=" + alias + ";ip=" + vip);

@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure_9_0.dtd">
 <!-- =============================================================== -->
 <!-- Configure the Jetty Server                                      -->
 <!--                                                                 -->
@@ -275,6 +276,22 @@
 	    <Arg>        
 		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
 		    <Set name="pattern">/autodiscover/*</Set>
+		    <Set name="replacement">/service/autodiscover</Set>
+		</New>
+	    </Arg>
+        </Call>
+        <Call name="addRule">
+	    <Arg>
+		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+		    <Set name="pattern">/Autodiscover/*</Set>
+		    <Set name="replacement">/service/autodiscover</Set>
+		</New>
+	    </Arg>
+        </Call>
+        <Call name="addRule">
+	    <Arg>
+		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+		    <Set name="pattern">/AutoDiscover/*</Set>
 		    <Set name="replacement">/service/autodiscover</Set>
 		</New>
 	    </Arg>

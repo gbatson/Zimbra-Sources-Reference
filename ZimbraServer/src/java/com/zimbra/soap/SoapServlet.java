@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -33,6 +33,7 @@ import org.apache.commons.httpclient.ProtocolException;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.collect.MapMaker;
+import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
@@ -66,6 +67,8 @@ public class SoapServlet extends ZimbraServlet {
     public static final String SERVLET_RESPONSE = "servlet.response";
     /** If this is a request sent to the admin port */
     public static final String IS_ADMIN_REQUEST = "zimbra.isadminreq";
+    /** Flag for requests that want to force invalidation of client cookies */
+    public static final String INVALIDATE_COOKIES = "zimbra.invalidateCookies";
 
     // Used by sExtraServices
     private static class ArrayListFactory implements Function<String, List<DocumentService>> {
@@ -288,6 +291,9 @@ public class SoapServlet extends ZimbraServlet {
         Element envelope = null;
         try {
             envelope = mEngine.dispatch(req.getRequestURI(), buffer, context);
+            if (context.containsKey(INVALIDATE_COOKIES)) {
+                ZAuthToken.clearCookies(resp);
+            }
         } catch (Throwable e) {
             if (e instanceof OutOfMemoryError) {
                 Zimbra.halt("handler exception", e);

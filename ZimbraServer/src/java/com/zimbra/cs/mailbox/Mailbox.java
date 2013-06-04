@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -267,6 +267,8 @@ public class Mailbox {
 
     public static final int HIGHEST_SYSTEM_ID = 18;
     public static final int FIRST_USER_ID     = 256;
+
+    public static final String CONF_PREVIOUS_MAILBOX_IDS = "prev_mbox_ids";
 
     public static final class MailboxData implements Cloneable {
         public int id;

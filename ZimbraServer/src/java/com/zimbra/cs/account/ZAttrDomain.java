@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -42,7 +42,7 @@ public abstract class ZAttrDomain extends NamedEntry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 9.0.0_BETA1_1111 pburgu 20130117-1610 */
+    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     /**
      * RFC2256: descriptive information
@@ -7614,6 +7614,78 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @return zimbraFeatureDistributionListFolderEnabled, or false if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public boolean isFeatureDistributionListFolderEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, false);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param zimbraFeatureDistributionListFolderEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public void setFeatureDistributionListFolderEnabled(boolean zimbraFeatureDistributionListFolderEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, zimbraFeatureDistributionListFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param zimbraFeatureDistributionListFolderEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public Map<String,Object> setFeatureDistributionListFolderEnabled(boolean zimbraFeatureDistributionListFolderEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, zimbraFeatureDistributionListFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public void unsetFeatureDistributionListFolderEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public Map<String,Object> unsetFeatureDistributionListFolderEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        return attrs;
+    }
+
+    /**
      * Maximum size in bytes for each attachment.
      *
      * @return zimbraFileUploadMaxSizePerFile, or 2147483648 if unset
@@ -7682,6 +7754,83 @@ public abstract class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetFileUploadMaxSizePerFile(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFileUploadMaxSizePerFile, "");
+        return attrs;
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @return zimbraForceClearCookies, or false if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public boolean isForceClearCookies() {
+        return getBooleanAttr(Provisioning.A_zimbraForceClearCookies, false);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param zimbraForceClearCookies new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public void setForceClearCookies(boolean zimbraForceClearCookies) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, zimbraForceClearCookies ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param zimbraForceClearCookies new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public Map<String,Object> setForceClearCookies(boolean zimbraForceClearCookies, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, zimbraForceClearCookies ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public void unsetForceClearCookies() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public Map<String,Object> unsetForceClearCookies(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, "");
         return attrs;
     }
 

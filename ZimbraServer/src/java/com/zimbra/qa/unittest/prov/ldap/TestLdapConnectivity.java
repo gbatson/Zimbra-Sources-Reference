@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -397,7 +397,7 @@ public class TestLdapConnectivity {
      * 
      * A simple junixsocket demo client.
      * 
-     * @author Christian Kohlschütter
+     * @author Christian Kohlsch&#x00FC;tter
      * @see SimpleTestServer
      */
     public static class SimpleTestClient {

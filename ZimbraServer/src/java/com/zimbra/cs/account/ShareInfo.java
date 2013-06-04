@@ -1,23 +1,52 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.mail.Address;
+import javax.mail.MessagingException;
+import javax.mail.Transport;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMultipart;
+
+import org.apache.commons.codec.binary.Hex;
+
 import com.google.common.base.Strings;
 import com.sun.mail.smtp.SMTPMessage;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ZAttrProvisioning.AccountStatus;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
@@ -48,33 +77,6 @@ import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.JMSession;
 import com.zimbra.soap.mail.message.SendShareNotificationRequest.Action;
-import org.apache.commons.codec.binary.Hex;
-import org.dom4j.QName;
-
-import javax.activation.DataHandler;
-import javax.activation.DataSource;
-import javax.mail.Address;
-import javax.mail.MessagingException;
-import javax.mail.Transport;
-import javax.mail.internet.AddressException;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 
 
 public class ShareInfo {
@@ -501,7 +503,8 @@ public class ShareInfo {
                     new String[] {
                            Provisioning.A_zimbraId,
                            Provisioning.A_displayName,
-                           Provisioning.A_zimbraSharedItem });
+                           Provisioning.A_zimbraSharedItem,
+                           Provisioning.A_zimbraAccountStatus});
            searchOpts.setFilter(ZLdapFilterFactory.getInstance().accountsByGrants(
                    granteeIds, includePublicShares, includeAllAuthedShares));
            List<NamedEntry> accounts = prov.searchDirectory(searchOpts);
@@ -515,6 +518,10 @@ public class ShareInfo {
                     }
                 }
                 if (guestAcctDomainId != null && !guestAcctDomainId.equals(prov.getDomain(account).getId())) {
+                    continue;
+                }
+                AccountStatus status = account.getAccountStatus();
+                if (status != null && status.isClosed()) {
                     continue;
                 }
                 String[] sharedItems = account.getSharedItem();

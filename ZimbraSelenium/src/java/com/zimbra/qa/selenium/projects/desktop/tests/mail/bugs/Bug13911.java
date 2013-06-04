@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011, 2012 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.desktop.tests.mail.bugs;
 
 import java.io.File;
@@ -38,8 +54,8 @@ public class Bug13911 extends AjaxCommonTest {
 
 		
 		String subject = "subject13010064065623";
-		String bodyBeforeImage = "K\u00e6re alle"; // Kære alle
-		String bodyAfterImage = "Problemet best\u00E5r"; // Problemet består
+		String bodyBeforeImage = "K\u00e6re alle";
+		String bodyAfterImage = "Problemet best\u00E5r";
 
 		String MimeFolder = ZimbraSeleniumProperties.getBaseDirectory() + "/data/private/mime/Bugs/Bug13911";
 		LmtpInject.injectFile(ZimbraAccount.AccountZDC().EmailAddress, new File(MimeFolder));

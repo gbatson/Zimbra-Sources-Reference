@@ -106,6 +106,9 @@ public class MigrationOptions
     public Int32 MaxErrorCnt;
     public string SpecialCharRep;
     public bool IsMaintainenceMode;
+    public long LangID;
+    public Int32 MaxRetries;
+    public string DateFilterItem;
     
 }
 
@@ -368,8 +371,13 @@ public class CSMigrationWrapper
     private void ProcessItems(MigrationAccount Acct, bool isServer, dynamic user, dynamic folder,
         ZimbraAPI api, string path, MigrationOptions options)
     {
+        int trial = 0;
+      do
+      {
+          Acct.IsCompletedMigration = true;
         DateTime dt = DateTime.UtcNow;
         dynamic[] itemobjectarray = null ;
+        trial++;
         
         try
         {
@@ -389,9 +397,11 @@ public class CSMigrationWrapper
             {
                 if (Acct.migrationFolder.TotalCountOfItems == itemobjectarray.Count())
                 {
+                    
                     while (iProcessedItems < Acct.migrationFolder.TotalCountOfItems)
                     {
                         Log.debug("Processing folder", folder.Name, "-- Total items:", folder.ItemCount);
+                        Log.debug("Processing folder", folder.Name, "-- Total items returned from itemobjectarray:", itemobjectarray.Count());
                         foreach (dynamic itemobject in itemobjectarray)
                         {
                             if (options.MaxErrorCnt > 0)
@@ -515,16 +525,29 @@ public class CSMigrationWrapper
                                                 }
                                             }
                                         }
-                                        if (options.DateFilter != null)
+                                        if ((options.DateFilter != null))
+                                        //if ((options.DateFilter != null) && (options.DateFilterItem.Contains(itemtype)))
                                         {
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["Date"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
-                                                if (DateTime.Compare(dtm, filterDtm) < 0)
+                                                if (options.DateFilterItem != null)
                                                 {
-                                                    bSkipMessage = true;
-                                                    Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
+                                                    }
+                                                }
+                                                else
+                                                {
+
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) )
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
+                                                    }
                                                 }
                                             }
                                             catch (Exception)
@@ -611,16 +634,28 @@ public class CSMigrationWrapper
                                     else if (type == foldertype.Calendar)
                                     {
                                         //Log.debug("Cal Subject: ", dict["su"]);
-                                        if (options.DateFilter != null)
+                                        if ((options.DateFilter != null))
+                                       // if (options.DateFilter != null)
                                         {
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
-                                                if (DateTime.Compare(dtm, filterDtm) < 0)
+                                                if (options.DateFilterItem != null)
                                                 {
-                                                    bSkipMessage = true;
-                                                    Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
+                                                    }
                                                 }
                                             }
                                             catch (Exception)
@@ -673,17 +708,28 @@ public class CSMigrationWrapper
                                     else if (type == foldertype.Task)
                                     {
                                         //Log.debug("Task Subject: ", dict["su"]);
-                                        if (options.DateFilter != null)
+                                        if ((options.DateFilter != null))
+                                        //if (options.DateFilter != null)
                                         {
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
-
-                                                if (DateTime.Compare(dtm, filterDtm) < 0)
+                                                if ((options.DateFilterItem != null))
                                                 {
-                                                    bSkipMessage = true;
-                                                    Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                    }
                                                 }
                                             }
                                             catch (Exception)
@@ -772,9 +818,16 @@ public class CSMigrationWrapper
                 else
                 {
                     Log.trace(" Itemobjectarray.count is not equal to MigrationFolder.totalcountofitems");
+                    string errMesg = "MAPI Could not be returning all the items for the folder - Migration is not complete.Please re-run migration for the user";
+                    Acct.TotalErrors++;
+                    Log.err("CSmigrationwrapper MAPI edgecase",errMesg);
+                    Acct.LastProblemInfo = new ProblemInfo(Acct.AccountName, errMesg, ProblemInfo.TYPE_ERR);
+                    Acct.IsCompletedMigration = false;
+                    options.SkipPrevMigrated = true;
                     while (iProcessedItems < itemobjectarray.Count())
                     {
                         Log.debug("Processing folder", folder.Name, "-- Total items:", folder.ItemCount);
+                        Log.debug("Processing folder", folder.Name, "-- Total items returned from itemobjectarray:", itemobjectarray.Count());
                         foreach (dynamic itemobject in itemobjectarray)
                         {
                             if (options.MaxErrorCnt > 0)
@@ -890,16 +943,28 @@ public class CSMigrationWrapper
                                                 }
                                             }
                                         }
-                                        if (options.DateFilter != null)
+                                        if ((options.DateFilter != null))
+                                        //if (options.DateFilter != null)
                                         {
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["Date"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
-                                                if (DateTime.Compare(dtm, filterDtm) < 0)
+                                                if (options.DateFilterItem != null)
                                                 {
-                                                    bSkipMessage = true;
-                                                    Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) )
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
+                                                    }
                                                 }
                                             }
                                             catch (Exception)
@@ -981,16 +1046,28 @@ public class CSMigrationWrapper
                                     else if (type == foldertype.Calendar)
                                     {
                                         //Log.debug("Cal Subject: ", dict["su"]);
-                                        if (options.DateFilter != null)
+                                        if ((options.DateFilter != null))
+                                        //if (options.DateFilter != null)
                                         {
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
-                                                if (DateTime.Compare(dtm, filterDtm) < 0)
+                                                if ((options.DateFilterItem != null))
                                                 {
-                                                    bSkipMessage = true;
-                                                    Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) )
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
+                                                    }
                                                 }
                                             }
                                             catch (Exception)
@@ -1042,17 +1119,30 @@ public class CSMigrationWrapper
                                     else if (type == foldertype.Task)
                                     {
                                         //Log.debug("Task Subject: ", dict["su"]);
-                                        if (options.DateFilter != null)
+                                        if ((options.DateFilter != null))
+                                        //if (options.DateFilter != null)
                                         {
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
-
-                                                if (DateTime.Compare(dtm, filterDtm) < 0)
+                                                if ((options.DateFilterItem != null))
                                                 {
-                                                    bSkipMessage = true;
-                                                    Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if ((DateTime.Compare(dtm, filterDtm) < 0))
+                                                    {
+                                                        bSkipMessage = true;
+                                                        Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                    }
+
                                                 }
                                             }
                                             catch (Exception)
@@ -1133,6 +1223,10 @@ public class CSMigrationWrapper
                             iProcessedItems++;
                         }
                     }
+                    /*if (Acct.IsCompletedMigration == false)
+                    {
+                        ProcessItems(Acct, isServer, user, folder, api, path, options);
+                    }*/
                 }
             }
         }
@@ -1141,7 +1235,10 @@ public class CSMigrationWrapper
             Log.err("CSmigrationwrapper --- GetItemsForFolder returned null for itemfolderlist");
             return;
         }
-    }
+        Log.info("CSmigrationwrapper -- processItems trial # ", trial);
+    } while((!(Acct.IsCompletedMigration)) &&(trial < options.MaxRetries));
+
+}
 
     public void StartMigration(MigrationAccount Acct, MigrationOptions options, bool isServer = true,
         LogLevel logLevel = LogLevel.Info, bool isPreview = false, bool doRulesAndOOO = true)      
@@ -1205,6 +1302,7 @@ public class CSMigrationWrapper
         else
         {
             Acct.IsValid = true;
+            Acct.IsCompletedMigration = true;
             Log.info(accountName, "initialized");
         }
 
@@ -1257,7 +1355,11 @@ public class CSMigrationWrapper
                 Acct.TotalItems += folder.ItemCount;
         }
         Log.info("Acct.TotalItems=", Acct.TotalItems.ToString());
-        ZimbraAPI  api = new ZimbraAPI(isServer, logLevel, options.SpecialCharRep);
+        ZimbraAPI api;
+        if (options.LangID != 0)
+            api = new ZimbraAPI(isServer, logLevel, options.SpecialCharRep, options.LangID);
+        else
+            api = new ZimbraAPI(isServer, logLevel, options.SpecialCharRep);
 
         api.AccountID = Acct.AccountID;
         api.AccountName = Acct.AccountName;
@@ -1334,6 +1436,8 @@ public class CSMigrationWrapper
             if (!isPreview)
             {
                 ProcessItems(Acct, isServer, user, folder, api, path, options);
+
+                
             }
         }
 
@@ -1502,6 +1606,7 @@ public class CSMigrationWrapper
 
         return false;
     }
+} 
 
-  }
+
 }

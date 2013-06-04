@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -58,6 +58,7 @@ import com.zimbra.common.calendar.ZCalendar.ICalTok;
 import com.zimbra.common.calendar.ZCalendar.ZParameter;
 import com.zimbra.common.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.localconfig.DebugConfig;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.mime.ContentType;
@@ -71,6 +72,7 @@ import com.zimbra.common.util.ArrayUtil;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.HttpUtil;
+import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.Pair;
@@ -554,7 +556,7 @@ public final class ToXML {
                 return null;
             }
             Server targetServer = prov.getServer(targetAccount);
-            return URLUtil.getServiceURL(targetServer, UserServlet.SERVLET_PATH + 
+            return URLUtil.getServiceURL(targetServer, UserServlet.SERVLET_PATH +
                     HttpUtil.urlEscape(UserServlet.getAccountPath(targetAccount) + folderPath) , true);
         } catch (ServiceException e) {
             ZimbraLog.soap.warn("unable to create rest url for mountpoint", e);
@@ -983,7 +985,8 @@ public final class ToXML {
             }
             if (expand == ExpandResults.FIRST || expand == ExpandResults.ALL || expand.matches(msg)) {
                 encodeMessageAsMP(c, ifmt, octxt, msg, null, params.getMaxInlinedLength(), params.getWantHtml(),
-                        params.getNeuterImages(), params.getInlinedHeaders(), true, params.getWantExpandGroupInfo());
+                        params.getNeuterImages(), params.getInlinedHeaders(), true, params.getWantExpandGroupInfo(),
+                        LC.mime_encode_missing_blob.booleanValue());
                 if (expand == ExpandResults.FIRST) {
                     expand = ExpandResults.NONE;
                 }
@@ -1172,13 +1175,13 @@ public final class ToXML {
      * @throws ServiceException */
     public static Element encodeMessageAsMP(Element parent, ItemIdFormatter ifmt,
             OperationContext octxt, Message msg, String part, int maxSize, boolean wantHTML,
-            boolean neuter, Set<String> headers, boolean serializeType, boolean wantExpandGroupInfo)
+            boolean neuter, Set<String> headers, boolean serializeType, boolean wantExpandGroupInfo, boolean encodeMissingBlobs)
     throws ServiceException {
         Mailbox mbox = msg.getMailbox();
         int changeId = msg.getSavedSequence();
         while (true) {
             try {
-                return encodeMessageAsMP(parent, ifmt, octxt, msg, part, maxSize, wantHTML, neuter, headers, serializeType, wantExpandGroupInfo, false);
+                return encodeMessageAsMP(parent, ifmt, octxt, msg, part, maxSize, wantHTML, neuter, headers, serializeType, wantExpandGroupInfo, false, encodeMissingBlobs);
             } catch (ServiceException e) {
                 // problem writing the message structure to the response
                 //   (this case generally means that the blob backing the MimeMessage disappeared halfway through)
@@ -1225,7 +1228,7 @@ public final class ToXML {
     private static Element encodeMessageAsMP(Element parent, ItemIdFormatter ifmt,
             OperationContext octxt, Message msg, String part, int maxSize, boolean wantHTML,
             boolean neuter, Set<String> headers, boolean serializeType, boolean wantExpandGroupInfo,
-            boolean bestEffort)
+            boolean bestEffort, boolean encodeMissingBlobs)
     throws ServiceException {
         Element m = null;
         boolean success = false;
@@ -1240,7 +1243,32 @@ public final class ToXML {
                 m.addAttribute(MailConstants.A_PART, part);
             }
 
-            MimeMessage mm = msg.getMimeMessage();
+            MimeMessage mm = null;
+            try {
+                mm = msg.getMimeMessage();
+            } catch (MailServiceException e) {
+                if (encodeMissingBlobs && MailServiceException.NO_SUCH_BLOB.equals(e.getCode())) {
+                    ZimbraLog.mailbox.error("Unable to get blob while encoding message", e);
+                    encodeEmail(m, msg.getSender(), EmailType.FROM);
+                    encodeEmail(m, msg.getSender(), EmailType.SENDER);
+                    if (msg.getRecipients() != null) {
+                        addEmails(m, Mime.parseAddressHeader(msg.getRecipients()), EmailType.TO);
+                    }
+                    m.addAttribute(MailConstants.A_SUBJECT, msg.getSubject());
+                    Element mimePart = m.addElement(MailConstants.E_MIMEPART);
+                    mimePart.addAttribute(MailConstants.A_PART, 1);
+                    mimePart.addAttribute(MailConstants.A_BODY, true);
+                    mimePart.addAttribute(MailConstants.A_CONTENT_TYPE, MimeConstants.CT_TEXT_PLAIN);
+
+                    String errMsg = L10nUtil.getMessage(L10nUtil.MsgKey.errMissingBlob,
+                                    msg.getAccount().getLocale(), ifmt.formatItemId(msg));
+                    m.addAttribute(MailConstants.E_FRAG, errMsg, Element.Disposition.CONTENT);
+                    mimePart.addAttribute(MailConstants.E_CONTENT, errMsg, Element.Disposition.CONTENT);
+                    success = true; //not really success, but mark as such so the element is appended correctly
+                    return m;
+                }
+                throw e;
+            }
             if (!wholeMessage) {
                 MimePart mp = Mime.getMimePart(mm, part);
                 if (mp == null) {
@@ -1977,15 +2005,17 @@ public final class ToXML {
                     e.addAttribute(MailConstants.A_APPT_FREEBUSY, invite.getFreeBusy());
                     e.addAttribute(MailConstants.A_APPT_TRANSPARENCY, invite.getTransparency());
                 }
+
+                // Organizer
+                if (invite.hasOrganizer()) {
+                    ZOrganizer org = invite.getOrganizer();
+                    org.toXml(e);
+                }
+                e.addAttribute(MailConstants.A_CAL_URL, invite.getUrl());
             }
 
             if (invite.isOrganizer()) {
                 e.addAttribute(MailConstants.A_CAL_ISORG, true);
-            }
-            // Organizer
-            if (invite.hasOrganizer()) {
-                ZOrganizer org = invite.getOrganizer();
-                org.toXml(e);
             }
 
             boolean isRecurring = false;
@@ -2013,7 +2043,6 @@ public final class ToXML {
 
             e.addAttribute(MailConstants.A_CAL_STATUS, invite.getStatus());
             e.addAttribute(MailConstants.A_CAL_CLASS, invite.getClassProp());
-            e.addAttribute(MailConstants.A_CAL_URL, invite.getUrl());
 
             boolean allDay = invite.isAllDayEvent();
             boolean isException = invite.hasRecurId();

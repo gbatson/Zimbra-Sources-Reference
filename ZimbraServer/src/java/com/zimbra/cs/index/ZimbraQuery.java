@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -373,9 +373,6 @@ public final class ZimbraQuery {
         // Check sort compatibility.
         switch (params.getSortBy().getKey()) {
             case RCPT:
-            case ATTACHMENT:
-            case FLAG:
-            case PRIORITY:
                 // We don't store these in Lucene.
                 if (hasTextOperation()) {
                     throw ServiceException.INVALID_REQUEST(
@@ -412,6 +409,15 @@ public final class ZimbraQuery {
                             break;
                         case SUBJECT:
                             cursor.setSortValue(item.getSortSubject());
+                            break;
+                        case PRIORITY:
+                            cursor.setSortValue(LuceneFields.valueForPriority(item.getFlagBitmask()));
+                            break;
+                        case FLAG:
+                            cursor.setSortValue(LuceneFields.valueForBooleanField(item.isFlagged()));
+                            break;
+                        case ATTACHMENT:
+                            cursor.setSortValue(LuceneFields.valueForBooleanField(item.hasAttachment()));
                             break;
                         case DATE:
                         default:
@@ -839,7 +845,7 @@ public final class ZimbraQuery {
         }
         return operation.toQueryString();
     }
-    
+
     public String toSanitizedtring() throws ServiceException {
         StringBuilder out = new StringBuilder();
         for (Query clause : clauses) {

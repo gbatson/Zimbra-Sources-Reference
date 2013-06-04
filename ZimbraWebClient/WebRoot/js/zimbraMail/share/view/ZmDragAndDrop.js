@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Zimbra Collaboration Suite Web Client
+ * Copyright (C) 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -106,9 +106,7 @@ ZmDragAndDrop.prototype._initialize = function () {
 };
 
 ZmDragAndDrop.prototype._addHandlers = function(el) {
-    Dwt.setHandler(el,"ondragenter",this._onDragEnter.bind(this));
     Dwt.setHandler(el,"ondragover",this._onDragOver.bind(this));
-    Dwt.setHandler(el,"ondragleave",this._onDragLeave.bind(this));
     Dwt.setHandler(el,"ondrop", this._onDrop.bind(this));
 };
 
@@ -125,16 +123,7 @@ ZmDragAndDrop.prototype._setToolTip = function(){
     }
 };
 
-
-ZmDragAndDrop.prototype._onDragEnter = function(ev) {
-    ZmDragAndDrop._stopEvent(ev);
-};
-
 ZmDragAndDrop.prototype._onDragOver = function(ev) {
-    ZmDragAndDrop._stopEvent(ev);
-};
-
-ZmDragAndDrop.prototype._onDragLeave = function(ev) {
     ZmDragAndDrop._stopEvent(ev);
 };
 
@@ -149,8 +138,6 @@ ZmDragAndDrop.prototype._onDrop = function(ev, isEditorDND) {
         return;
     }
 
-    ZmDragAndDrop._stopEvent(ev);
-
     dt = ev.dataTransfer;
     if (!dt) {
         return;
@@ -159,6 +146,10 @@ ZmDragAndDrop.prototype._onDrop = function(ev, isEditorDND) {
     files = dt.files;
     if (!files) {
         return;
+    }
+
+    if (files.length) {
+        ZmDragAndDrop._stopEvent(ev);
     }
 
     if (ZmDragAndDrop.isAttachmentSizeExceeded(files, true)) {
@@ -252,13 +243,28 @@ ZmDragAndDrop.prototype._handleErrorResponse = function(respCode) {
 };
 
 ZmDragAndDrop._stopEvent = function(ev) {
-    if (!ev) {
-        return;
+    if (ZmDragAndDrop.containFiles(ev)) {
+        if (ev.preventDefault) {
+            ev.preventDefault();
+        }
+        if (ev.stopPropagation) {
+            ev.stopPropagation();
+        }
     }
-    if (ev.preventDefault) {
-        ev.preventDefault();
+};
+
+ZmDragAndDrop.containFiles =
+function(ev, type) {
+    if (ev && ev.dataTransfer) {
+        var typesArray = ev.dataTransfer.types;
+        if (typesArray) {
+            type = type || "Files";
+            for (var i = 0, length = typesArray.length; i < length; i++) {
+                if (typesArray[i] === type) {
+                    return true;
+                }
+            }
+        }
     }
-    if (ev.stopPropagation) {
-        ev.stopPropagation();
-    }
+    return false;
 };

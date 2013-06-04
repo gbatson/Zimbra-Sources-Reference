@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -165,7 +165,9 @@
                     </c:choose>
                 </td>
                 <td nowrap width="10%">
-                        <div style="background-color:${zm:lightenColor(not empty folder.rgb ? folder.rgb : (not empty folder.rgbColor ? folder.rgbColor : colorOrange))};width:16px;height:16px;display:inline;margin-right:4px;">
+                        <fmt:message var="colorMsg" key="${folder.rgbColorMsg}"/>
+                        <%-- colorMsg can be set to "colorNone" in case a custom color is set for the folder. "colorNone" is not defined in ZhMsg.properties, hence the check for "???". TODO: clean up logic--%>
+                        <div style="background-color:${zm:lightenColor(not empty folder.rgb ? folder.rgb : ((fn:startsWith(colorMsg,'???') ? colorGray : colorMsg)))};width:16px;height:16px;display:inline;margin-right:4px;">
                             &nbsp;
                         </div>
                         ${zm:getFolderName(pageContext,folder.id)}

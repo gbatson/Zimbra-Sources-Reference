@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1161,15 +1161,23 @@ ZaDomainXFormView.myXFormModifier = function(xFormObject,entry) {
                     onChange:ZaDomainXFormView.onFormFieldChanged
                     }
                 ]},
-                { type:_ZA_TOP_GROUPER_, label: ZaMsg.NAD_WEBCLIENT_Configure, colSpan:"*",
-                    visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,
-                        [ZaDomain.A_zimbraWebClientLoginURL,
-                         ZaDomain.A_zimbraWebClientLogoutURL,
-                         ZaDomain.A_zimbraWebClientLoginURLAllowedUA,
-                         ZaDomain.A_zimbraWebClientLogoutURLAllowedUA,
-                         ZaDomain.A_zimbraWebClientLoginURLAllowedIP,
-                         ZaDomain.A_zimbraWebClientLogoutURLAllowedIP
-                         ]]
+                {
+                    type: _ZA_TOP_GROUPER_,
+                    label: ZaMsg.NAD_WEBCLIENT_Configure,
+                    colSpan: "*",
+                    visibilityChecks: [
+                        [
+                            ZATopGrouper_XFormItem.isGroupVisible,
+                            [
+                                ZaDomain.A_zimbraWebClientLoginURL,
+                                ZaDomain.A_zimbraWebClientLogoutURL,
+                                ZaDomain.A_zimbraWebClientLoginURLAllowedUA,
+                                ZaDomain.A_zimbraWebClientLogoutURLAllowedUA,
+                                ZaDomain.A_zimbraWebClientLoginURLAllowedIP,
+                                ZaDomain.A_zimbraWebClientLogoutURLAllowedIP,
+                                ZaDomain.A_zimbraForceClearCookies
+                            ]
+                        ]
                     ],
                       items:[
                           { ref: ZaDomain.A_zimbraWebClientLoginURL,useParentTable: false,
@@ -1255,6 +1263,19 @@ ZaDomainXFormView.myXFormModifier = function(xFormObject,entry) {
                                 width: "150px"}
                             ],
                             onChange:ZaDomainXFormView.onFormFieldChanged
+                          },
+                          {
+                              ref: ZaDomain.A_zimbraForceClearCookies,
+                              useParentTable: false,
+                              colSpan: 2,
+                              type: _CHECKBOX_,
+                              trueValue: "TRUE",
+                              falseValue: "FALSE",
+                              resetToSuperLabel: ZaMsg.NAD_ResetToGlobal,
+                              msgName: ZaMsg.MSG_zimbraForceClearCookies,
+                              label: ZaMsg.LBL_zimbraForceClearCookies,
+                              labelLocation: _LEFT_,
+                              onChange: ZaDomainXFormView.onFormFieldChanged
                           }
                       ]
                 }

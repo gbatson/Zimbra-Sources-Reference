@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -42,7 +42,7 @@ public abstract class ZAttrConfig extends Entry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 9.0.0_BETA1_1111 pburgu 20130117-1610 */
+    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     /**
      * RFC2256: descriptive information
@@ -8963,7 +8963,79 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
-     * Maximum size in bytes for attachments
+     * Whether to display the distribution list folder in address book
+     *
+     * @return zimbraFeatureDistributionListFolderEnabled, or false if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public boolean isFeatureDistributionListFolderEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, false);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param zimbraFeatureDistributionListFolderEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public void setFeatureDistributionListFolderEnabled(boolean zimbraFeatureDistributionListFolderEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, zimbraFeatureDistributionListFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param zimbraFeatureDistributionListFolderEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public Map<String,Object> setFeatureDistributionListFolderEnabled(boolean zimbraFeatureDistributionListFolderEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, zimbraFeatureDistributionListFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public void unsetFeatureDistributionListFolderEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to display the distribution list folder in address book
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1438)
+    public Map<String,Object> unsetFeatureDistributionListFolderEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * Maximum size in bytes for file uploads
      *
      * @return zimbraFileUploadMaxSize, or 10485760 if unset
      */
@@ -8973,7 +9045,7 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
-     * Maximum size in bytes for attachments
+     * Maximum size in bytes for file uploads
      *
      * @param zimbraFileUploadMaxSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -8986,7 +9058,7 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
-     * Maximum size in bytes for attachments
+     * Maximum size in bytes for file uploads
      *
      * @param zimbraFileUploadMaxSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -9000,7 +9072,7 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
-     * Maximum size in bytes for attachments
+     * Maximum size in bytes for file uploads
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -9012,7 +9084,7 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
-     * Maximum size in bytes for attachments
+     * Maximum size in bytes for file uploads
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -9093,6 +9165,83 @@ public abstract class ZAttrConfig extends Entry {
     public Map<String,Object> unsetFileUploadMaxSizePerFile(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFileUploadMaxSizePerFile, "");
+        return attrs;
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @return zimbraForceClearCookies, or false if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public boolean isForceClearCookies() {
+        return getBooleanAttr(Provisioning.A_zimbraForceClearCookies, false);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param zimbraForceClearCookies new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public void setForceClearCookies(boolean zimbraForceClearCookies) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, zimbraForceClearCookies ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param zimbraForceClearCookies new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public Map<String,Object> setForceClearCookies(boolean zimbraForceClearCookies, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, zimbraForceClearCookies ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public void unsetForceClearCookies() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to force clear zimbra auth cookies when SOAP session ends
+     * (i.e. force logout on browser tab close)
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1437)
+    public Map<String,Object> unsetForceClearCookies(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForceClearCookies, "");
         return attrs;
     }
 
@@ -17738,13 +17887,13 @@ public abstract class ZAttrConfig extends Entry {
      * at the end of the purge cycle until all qualifying messages are
      * purged.
      *
-     * @return zimbraMailPurgeBatchSize, or 10000 if unset
+     * @return zimbraMailPurgeBatchSize, or 1000 if unset
      *
      * @since ZCS 6.0.8
      */
     @ZAttr(id=1096)
     public int getMailPurgeBatchSize() {
-        return getIntAttr(Provisioning.A_zimbraMailPurgeBatchSize, 10000);
+        return getIntAttr(Provisioning.A_zimbraMailPurgeBatchSize, 1000);
     }
 
     /**
@@ -22554,6 +22703,78 @@ public abstract class ZAttrConfig extends Entry {
     public Map<String,Object> unsetMtaDnsLookupsEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraMtaDnsLookupsEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * Fallback value for postconf relayhost.
+     *
+     * @return zimbraMtaFallbackRelayHost, or null if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1435)
+    public String getMtaFallbackRelayHost() {
+        return getAttr(Provisioning.A_zimbraMtaFallbackRelayHost, null);
+    }
+
+    /**
+     * Fallback value for postconf relayhost.
+     *
+     * @param zimbraMtaFallbackRelayHost new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1435)
+    public void setMtaFallbackRelayHost(String zimbraMtaFallbackRelayHost) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaFallbackRelayHost, zimbraMtaFallbackRelayHost);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Fallback value for postconf relayhost.
+     *
+     * @param zimbraMtaFallbackRelayHost new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1435)
+    public Map<String,Object> setMtaFallbackRelayHost(String zimbraMtaFallbackRelayHost, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaFallbackRelayHost, zimbraMtaFallbackRelayHost);
+        return attrs;
+    }
+
+    /**
+     * Fallback value for postconf relayhost.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1435)
+    public void unsetMtaFallbackRelayHost() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaFallbackRelayHost, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Fallback value for postconf relayhost.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1435)
+    public Map<String,Object> unsetMtaFallbackRelayHost(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaFallbackRelayHost, "");
         return attrs;
     }
 
@@ -32554,13 +32775,13 @@ public abstract class ZAttrConfig extends Entry {
      * ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP; if not set,
      * default ciphers permitted by nginx will apply
      *
-     * @return zimbraReverseProxySSLCiphers, or "!SSLv2:!MD5:HIGH" if unset
+     * @return zimbraReverseProxySSLCiphers, or "RC4:HIGH:!aNULL:!MD5:!kEDH:!AD:!SSLv2" if unset
      *
      * @since ZCS 5.0.5
      */
     @ZAttr(id=640)
     public String getReverseProxySSLCiphers() {
-        return getAttr(Provisioning.A_zimbraReverseProxySSLCiphers, "!SSLv2:!MD5:HIGH");
+        return getAttr(Provisioning.A_zimbraReverseProxySSLCiphers, "RC4:HIGH:!aNULL:!MD5:!kEDH:!AD:!SSLv2");
     }
 
     /**
@@ -32858,6 +33079,88 @@ public abstract class ZAttrConfig extends Entry {
     public Map<String,Object> unsetReverseProxySendPop3Xoip(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraReverseProxySendPop3Xoip, "");
+        return attrs;
+    }
+
+    /**
+     * The connect timeout is the time interval after which NGINX will
+     * disconnect while establishing an upstream HTTP connection. Measured in
+     * seconds, should not be more than 75 seconds.
+     *
+     * @return zimbraReverseProxyUpstreamConnectTimeout, or 25 if unset
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1440)
+    public int getReverseProxyUpstreamConnectTimeout() {
+        return getIntAttr(Provisioning.A_zimbraReverseProxyUpstreamConnectTimeout, 25);
+    }
+
+    /**
+     * The connect timeout is the time interval after which NGINX will
+     * disconnect while establishing an upstream HTTP connection. Measured in
+     * seconds, should not be more than 75 seconds.
+     *
+     * @param zimbraReverseProxyUpstreamConnectTimeout new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1440)
+    public void setReverseProxyUpstreamConnectTimeout(int zimbraReverseProxyUpstreamConnectTimeout) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUpstreamConnectTimeout, Integer.toString(zimbraReverseProxyUpstreamConnectTimeout));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * The connect timeout is the time interval after which NGINX will
+     * disconnect while establishing an upstream HTTP connection. Measured in
+     * seconds, should not be more than 75 seconds.
+     *
+     * @param zimbraReverseProxyUpstreamConnectTimeout new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1440)
+    public Map<String,Object> setReverseProxyUpstreamConnectTimeout(int zimbraReverseProxyUpstreamConnectTimeout, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUpstreamConnectTimeout, Integer.toString(zimbraReverseProxyUpstreamConnectTimeout));
+        return attrs;
+    }
+
+    /**
+     * The connect timeout is the time interval after which NGINX will
+     * disconnect while establishing an upstream HTTP connection. Measured in
+     * seconds, should not be more than 75 seconds.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1440)
+    public void unsetReverseProxyUpstreamConnectTimeout() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUpstreamConnectTimeout, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * The connect timeout is the time interval after which NGINX will
+     * disconnect while establishing an upstream HTTP connection. Measured in
+     * seconds, should not be more than 75 seconds.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.4
+     */
+    @ZAttr(id=1440)
+    public Map<String,Object> unsetReverseProxyUpstreamConnectTimeout(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUpstreamConnectTimeout, "");
         return attrs;
     }
 

@@ -2,7 +2,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,11 +25,13 @@
 <c:set var="label" value="${zm:getFolderName(pageContext, folder.id)}"/>
 <c:set var="truncatedLabel" value="${zm:getTruncatedFolderName(pageContext, folder.id, 20, true)}"/>
 <c:set var="padFudge" value="${folder.hasChildren ? 0 : 20}"/>
+
+<fmt:message var="colorMsg" key="${folder.rgbColorMsg}"/>
 <fmt:message var="colorGray" key="colorGray"/>
-<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : (not empty folder.rgbColor ? folder.rgbColor : colorGray))}"/>
+<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : ((fn:startsWith(colorMsg,'???') ? colorGray : colorMsg)))}"/>
 <tr>
-    <td nowrap colspan="3" bgcolor="${color}" class='Folder<c:if test="${folder.hasUnread}"> Unread</c:if>'
-        style='padding-left: ${padFudge + folder.depth*8}px'>
+    <td colspan="3" class='Folder<c:if test="${folder.hasUnread}"> Unread</c:if>'
+        style='padding-left: ${padFudge + folder.depth*8}px; background-color: ${color}; white-space: nowrap'>
         <c:url var="url" value="/h/search">
             <c:param name="sfi" value="${folder.id}"/>
             <c:param name="st" value="contact"/>

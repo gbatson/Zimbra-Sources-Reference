@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure_9_0.dtd">
 <!-- =============================================================== -->
 <!-- Configure the Jetty Server                                      -->
 <!--                                                                 -->
@@ -106,8 +107,8 @@
           <Set name="KeyPassword">@@mailboxd_keystore_password@@</Set>
           <Set name="Truststore">@@mailboxd_truststore@@</Set>
           <Set name="TrustPassword">@@mailboxd_truststore_password@@</Set>
-          <Set name="NeedClientAuth">%%contains VAR:zimbraMailSSLClientCertMode NeedClientAuth, true, false%%</Set>
-          <Set name="WantClientAuth">%%contains VAR:zimbraMailSSLClientCertMode WantClientAuth, true, false%%</Set>
+          <Set name="NeedClientAuth">%%contains VAR:zimbraMailSSLClientCertMode NeedClientAuth^ true^ false%%</Set>
+          <Set name="WantClientAuth">%%contains VAR:zimbraMailSSLClientCertMode WantClientAuth^ true^ false%%</Set>
           <Set name="ExcludeCipherSuites">
             <Array type="java.lang.String">
               %%zimbraSSLExcludeCipherSuitesXML%%
@@ -280,6 +281,14 @@
 	    </Arg>
         </Call>
         <Call name="addRule">
+            <Arg>
+                <New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+                    <Set name="pattern">%%zimbraMailURL%%/service/spnego/*</Set>
+                    <Set name="replacement">/service/spnego</Set>
+                </New>
+            </Arg>
+        </Call>
+        <Call name="addRule">
 	    <Arg>
 		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
 		    <Set name="pattern">%%zimbraMailURL%%/home/*</Set>
@@ -299,6 +308,22 @@
 	    <Arg>        
 		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
 		    <Set name="pattern">/autodiscover/*</Set>
+		    <Set name="replacement">/service/autodiscover</Set>
+		</New>
+	    </Arg>
+        </Call>
+        <Call name="addRule">
+	    <Arg>
+		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+		    <Set name="pattern">/Autodiscover/*</Set>
+		    <Set name="replacement">/service/autodiscover</Set>
+		</New>
+	    </Arg>
+        </Call>
+        <Call name="addRule">
+	    <Arg>
+		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+		    <Set name="pattern">/AutoDiscover/*</Set>
 		    <Set name="replacement">/service/autodiscover</Set>
 		</New>
 	    </Arg>

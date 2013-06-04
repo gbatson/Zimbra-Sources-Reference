@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,6 +29,9 @@ AjxStringUtil.TRIM_RE = /^\s+|\s+$/g;
 AjxStringUtil.COMPRESS_RE = /\s+/g;
 AjxStringUtil.ELLIPSIS = " ... ";
 AjxStringUtil.LIST_SEP = ", ";
+
+//Regex for image tag having src starting with cid:
+AjxStringUtil.IMG_SRC_CID_REGEX = /<img([^>]*)\ssrc=["']cid:/gi;
 
 AjxStringUtil.makeString =
 function(val) {
@@ -1594,6 +1597,7 @@ function(html) {
 		idoc = AjxStringUtil._htmlContentIframeDoc = Dwt.getIframeDoc(iframe);
 		AjxStringUtil.__curIframeId = AjxEnv.isFirefox ? iframe.id : null;
 	}
+    html = html && html.replace(AjxStringUtil.IMG_SRC_CID_REGEX, '<img pnsrc="cid:');
 	idoc.open();
 	idoc.write(html);
 	idoc.close();

@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,7 +26,8 @@
 <c:set var="label" value="${zm:getFolderName(pageContext, folder.id)}"/>
 <c:set var="truncatedLabel" value="${zm:getTruncatedFolderName(pageContext, folder.id, 15, true)}"/>
 <c:set var="padFudge" value="${folder.hasChildren ? 0 : 20}"/>
-<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : folder.rgbColor)}"/>
+<fmt:message var="colorMsg" key="${folder.rgbColorMsg}"/>
+<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : colorMsg)}"/>
 <tr>
     <td nowrap colspan="3" style="background-color:${color}" class='Folder<c:if test="${folder.hasUnread}"> Unread</c:if>'
         style="padding-left: ${padFudge+folder.depth*8}px">

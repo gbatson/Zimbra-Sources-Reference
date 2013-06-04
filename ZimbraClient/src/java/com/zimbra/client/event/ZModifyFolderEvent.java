@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -234,7 +234,7 @@ public class ZModifyFolderEvent implements ZModifyItemEvent, ToZJSONObject {
             if (getName(null) != null) zjo.put("name", getName(null));
             if (getParentId(null) != null) zjo.put("parentId", getParentId(null));
             if (getFlags(null) != null) zjo.put("flags", getFlags(null));
-            if (getColor(null) != null) zjo.put("color", getColor(null).name());
+            if (getColor(null) != null) zjo.put("color", getColor(null).getName());
             if (getUnreadCount(-1) != -1) zjo.put("unreadCount", getUnreadCount(-1));
             if (getImapUnreadCount(-1) != -1) zjo.put("imapUnreadCount", getImapUnreadCount(-1));
             if (getMessageCount(-1) != -1) zjo.put("messageCount", getMessageCount(-1));

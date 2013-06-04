@@ -682,6 +682,7 @@ public class ScheduleViewModel: BaseViewModel
             itemFolderFlags = itemFolderFlags | ItemsAndFoldersOptions.Rules;
         if (ovm.ImportOOOOptions)
             itemFolderFlags = itemFolderFlags | ItemsAndFoldersOptions.OOO;
+        importOpts.DateFilterItem = ovm.DateFilterItem;
         importOpts.ItemsAndFolders = itemFolderFlags;
         importOpts.DateFilter = (ovm.IsOnOrAfter) ? ovm.MigrateONRAfter : null;
         importOpts.MessageSizeFilter = (ovm.IsMaxMessageSize) ? ovm.MaxMessageSize : null;
@@ -706,7 +707,8 @@ public class ScheduleViewModel: BaseViewModel
                 }
 
          importOpts.SpecialCharRep = ovm.SpecialCharReplace;
-        
+         importOpts.LangID = ovm.LangID;
+         importOpts.MaxRetries = ovm.MaxRetries;
         return importOpts;
     }
 
@@ -866,7 +868,7 @@ public class ScheduleViewModel: BaseViewModel
         if (!m_isPreview)
         {
             int tnum = GetThreadNum(MyAcct.AccountNum);
-        //Log.info(" in worker_RunWorkerCompleted  for ThreadNum : " + tnum);
+            //Log.info(" in worker_RunWorkerCompleted  for ThreadNum : " + tnum);
 
             if ((!(MyAcct.IsValid)) && (MyAcct.TotalErrors > 0))
             {
@@ -876,10 +878,18 @@ public class ScheduleViewModel: BaseViewModel
             }
             else
             {
-
-                Log.info(" in DOWORK -- Migration completed for usernum: " + MyAcct.AccountNum + " and threadnum" + tnum);
-                accountResultsViewModel.AccountResultsList[num].PBMsgValue = "Migration complete";
-                accountResultsViewModel.AccountResultsList[num].AcctProgressMsg = "Complete";
+                if ((!(MyAcct.IsCompletedMigration)) && (MyAcct.TotalErrors > 0))
+                {
+                    Log.info(" in DOWORK -- Migration Incomplete for usernum: " + MyAcct.AccountNum + " and threadnum" + tnum);
+                    accountResultsViewModel.AccountResultsList[num].PBMsgValue = "Migration Incomplete - Please Re-Run Migration";
+                    accountResultsViewModel.AccountResultsList[num].AcctProgressMsg = "Incomplete";
+                }
+                else
+                {
+                    Log.info(" in DOWORK -- Migration completed for usernum: " + MyAcct.AccountNum + " and threadnum" + tnum);
+                    accountResultsViewModel.AccountResultsList[num].PBMsgValue = "Migration complete";
+                    accountResultsViewModel.AccountResultsList[num].AcctProgressMsg = "Complete";
+                }
             }
         }
         else

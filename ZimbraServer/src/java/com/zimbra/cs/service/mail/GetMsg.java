@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,9 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Flag;
@@ -80,7 +81,7 @@ public class GetMsg extends MailDocumentHandler {
         }
 
         boolean needGroupInfo = eMsg.getAttributeBool(MailConstants.A_NEED_EXP, false);
-        
+
         Element response = zsc.createElement(MailConstants.GET_MSG_RESPONSE);
         if (iid.hasSubpart()) {
             // calendar item
@@ -99,7 +100,7 @@ public class GetMsg extends MailDocumentHandler {
                             recurIdZ = rid.getDtZ();
                     }
                 }
-                ToXML.encodeInviteAsMP(response, ifmt, octxt, calItem, recurIdZ, iid, 
+                ToXML.encodeInviteAsMP(response, ifmt, octxt, calItem, recurIdZ, iid,
                         part, maxSize, wantHTML, neuter, headers, false, needGroupInfo);
             }
         } else {
@@ -107,8 +108,8 @@ public class GetMsg extends MailDocumentHandler {
             if (raw) {
                 ToXML.encodeMessageAsMIME(response, ifmt, octxt, msg, part, false);
             } else {
-                ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, part, maxSize, 
-                        wantHTML, neuter, headers, false, needGroupInfo);
+                ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, part, maxSize,
+                        wantHTML, neuter, headers, false, needGroupInfo, LC.mime_encode_missing_blob.booleanValue());
             }
         }
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -166,6 +166,7 @@ ZmContact.F_workState				= "workState";
 ZmContact.F_workStreet				= "workStreet";
 ZmContact.F_workURL					= "workURL";
 ZmContact.F_imagepart               = "imagepart";          // New field for bug 73146 - Contacts call does not return the image information
+ZmContact.F_zimletImage				= "zimletImage";
 ZmContact.X_fileAs					= "fileAs";				// extra fields
 ZmContact.X_firstLast				= "firstLast";
 ZmContact.X_fullName				= "fullName";
@@ -600,6 +601,18 @@ function(contact, attr) {
 };
 
 /**
+ * returns the prefix of a string in the format "abc123". (would return "abc"). If the string is all number, it's a special case and returns the string itself. e.g. "234" would return "234".
+ */
+ZmContact.getPrefix = function(s) {
+	var trimmed = s.replace(/\d+$/, "");
+	if (trimmed === "") {
+		//number only - don't trim. The number is the prefix.
+		return s;
+	}
+	return trimmed;
+};
+
+/**
  * Normalizes the numbering of the given attribute names and
  * returns a new object with the re-numbered attributes. For
  * example, if the attributes contains a "foo2" but no "foo",
@@ -621,7 +634,7 @@ ZmContact.getNormalizedAttrs = function(attrs, prefix, ignore) {
 		for (var i = 0; i < names.length; i++) {
 			var name = names[i];
 			// get current count
-			var nprefix = name.replace(/\d+$/,"");
+			var nprefix = ZmContact.getPrefix(name);
 			if (prefix && prefix != nprefix) continue;
 			if (AjxUtil.isArray(ignore) && AjxUtil.indexOf(ignore, nprefix)!=-1) {
 				nattrs[name] = attrs[name];
@@ -1041,7 +1054,8 @@ ZmContact.prototype.getAttrs = function(prefix) {
 	if (prefix) {
 		attrs = {};
 		for (var aname in this.attr) {
-			if (aname.replace(/\d+$/,"") == prefix) {
+			var namePrefix = ZmContact.getPrefix(aname);
+			if (namePrefix === prefix) {
 				attrs[aname] = this.attr[aname];
 			}
 		}
@@ -1078,9 +1092,10 @@ ZmContact.prototype.getNormalizedAttrs = function(prefix) {
 *
 * @param {Hash}	attr			the attribute/value pairs for this contact
 * @param {ZmBatchCommand}	batchCmd	the batch command that contains this request
+* @param {boolean} isAutoCreate true if this is a auto create and toast message should not be shown
 */
 ZmContact.prototype.create =
-function(attr, batchCmd) {
+function(attr, batchCmd, isAutoCreate) {
 
 	if (this.isDistributionList()) {
 		this._createDl(attr);
@@ -1115,7 +1130,7 @@ function(attr, batchCmd) {
 		}
 	}
 
-	var respCallback = new AjxCallback(this, this._handleResponseCreate, [attr, batchCmd != null]);
+	var respCallback = new AjxCallback(this, this._handleResponseCreate, [attr, batchCmd != null, isAutoCreate]);
 
 	if (batchCmd) {
 		batchCmd.addRequestParams(jsonObj, respCallback);
@@ -1128,7 +1143,7 @@ function(attr, batchCmd) {
  * @private
  */
 ZmContact.prototype._handleResponseCreate =
-function(attr, isBatchMode, result) {
+function(attr, isBatchMode, isAutoCreate, result) {
 	// dont bother processing creates when in batch mode (just let create
 	// notifications handle them)
 	if (isBatchMode) { return; }
@@ -1151,8 +1166,10 @@ function(attr, isBatchMode, result) {
 			this.attr[ZmContact.F_groups] = groupMembers;
 			cn._attrs[ZmContact.F_groups] = groupMembers;
 		}
-		var msg = this.isGroup() ? ZmMsg.groupCreated : ZmMsg.contactCreated;
-		appCtxt.getAppController().setStatusMsg(msg);
+		if (!isAutoCreate) {
+			var msg = this.isGroup() ? ZmMsg.groupCreated : ZmMsg.contactCreated;
+			appCtxt.getAppController().setStatusMsg(msg);
+		}
 		appCtxt.getApp(ZmApp.CONTACTS).updateIdHash(cn, false);
 	} else {
 		var msg = this.isGroup() ? ZmMsg.errorCreateGroup : ZmMsg.errorCreateContact;
@@ -1204,9 +1221,10 @@ function(ex) {
  *
  * @param {Hash}	attr		a set of attributes and new values
  * @param {AjxCallback}	callback	the callback
+ * @param {boolean} isAutoSave  true if it is a auto save and toast should not be displayed.
  */
 ZmContact.prototype.modify =
-function(attr, callback) {
+function(attr, callback, isAutoSave, batchCmd) {
 	if (this.isDistributionList()) {
 		this._modifyDl(attr);
 		return;
@@ -1245,8 +1263,14 @@ function(attr, callback) {
     }
 
 	if (continueRequest) {
-		var respCallback = new AjxCallback(this, this._handleResponseModify, [attr, callback]);
-		appCtxt.getAppController().sendRequest({jsonObj:jsonObj, asyncMode:true, callback:respCallback});
+		if (batchCmd) {
+			batchCmd.addRequestParams(jsonObj, null, null); //no need for response callback for current use-case (batch modifying zimlet image)
+		}
+		else {
+			var respCallback = this._handleResponseModify.bind(this, attr, callback, isAutoSave);
+			appCtxt.getAppController().sendRequest({jsonObj: jsonObj, asyncMode: true, callback: respCallback});
+		}
+
 	} else {
 		if (attr[ZmContact.F_folderId]) {
 			this._setFolder(attr[ZmContact.F_folderId]);
@@ -1575,7 +1599,7 @@ function () {
  * @private
  */
 ZmContact.prototype._handleResponseModify =
-function(attr, callback, result) {
+function(attr, callback, isAutoSave, result) {
 	var resp = result.getResponse().ModifyContactResponse;
 	var cn = resp ? resp.cn[0] : null;
 	var id = cn ? cn.id : null;
@@ -1586,7 +1610,9 @@ function(attr, callback, result) {
 	}
 
 	if (id && id == this.id) {
-		appCtxt.setStatusMsg(this.isGroup() ? ZmMsg.groupSaved : ZmMsg.contactSaved);
+		if (!isAutoSave) {
+			appCtxt.setStatusMsg(this.isGroup() ? ZmMsg.groupSaved : ZmMsg.contactSaved);
+		}
 		// was this contact moved to another folder?
 		if (attr[ZmContact.F_folderId] && this.folderId != attr[ZmContact.F_folderId]) {
 			this._setFolder(attr[ZmContact.F_folderId]);
@@ -2018,17 +2044,39 @@ function() {
 	return this.id ? this.getFileAs() : ZmMsg.newContact;
 };
 
+ZmContact.NO_MAX_IMAGE_WIDTH = - 1;
+
 /**
  * Get the image URL.
- * 
+ *
+ * maxWidth {int} max pixel width (optional - default 48, or pass ZmContact.NO_MAX_IMAGE_WIDTH if full size image is required)
  * @return	{String}	the image URL
  */
 ZmContact.prototype.getImageUrl =
-function() {
+function(maxWidth) {
   	var image = this.getAttr(ZmContact.F_image);
-  	if(!image || !image.part) { return null; }
+	var imagePart  = image && image.part || this.getAttr(ZmContact.F_imagepart); //see bug 73146
+
+	if (!imagePart) {
+		return this.getAttr(ZmContact.F_zimletImage);  //return zimlet populated image only if user-uploaded image is not there.
+	}
   	var msgFetchUrl = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI);
-  	return  [msgFetchUrl, "&id=", this.id, "&part=", image.part, "&t=", (new Date()).getTime()].join("");
+	var maxWidthStyle = "";
+	if (maxWidth !== ZmContact.NO_MAX_IMAGE_WIDTH) {
+		maxWidth = maxWidth || 48;
+		maxWidthStyle = ["&max_width=", maxWidth].join("");
+	}
+  	return  [msgFetchUrl, "&id=", this.id, "&part=", imagePart, maxWidthStyle, "&t=", (new Date()).getTime()].join("");
+};
+
+ZmContact.prototype.addModifyZimletImageToBatch =
+function(batchCmd, image) {
+	var attr = {};
+	if (this.getAttr(ZmContact.F_zimletImage) === image) {
+		return; //no need to update if same
+	}
+	attr[ZmContact.F_zimletImage] = image;
+	batchCmd.add(this.modify.bind(this, attr, null, true));
 };
 
 /**
@@ -2319,7 +2367,7 @@ function(node) {
 	if (node.m) {
 		this.attr[ZmContact.F_groups] = node.m;
 	}
-	
+
 	this.ref = node.ref || this.attr.dn; //bug 78425
 	
 	// for shared contacts, we get these fields outside of the attr part
@@ -2422,7 +2470,7 @@ ZmContact.prototype.getUnknownFields = function(sortByNameFunc) {
 	var fields = [];
 	var attrs = this.getAttrs();
 	for (var aname in attrs) {
-		var field = aname.replace(/\d+$/,"");
+		var field = ZmContact.getPrefix(aname);
 		if (map[aname]) continue;
 		fields.push(field);
 	}

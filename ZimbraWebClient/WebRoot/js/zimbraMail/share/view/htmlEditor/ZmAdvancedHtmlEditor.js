@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
- *
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -816,12 +816,15 @@ ZmAdvancedHtmlEditor.prototype.onInit = function(ed, ev) {
     (ed.windowManager) && ed.windowManager.onOpen.add(ZmAdvancedHtmlEditor.onPopupOpen);
     if (view && view.toString() === "ZmComposeView" && ZmDragAndDrop.isSupported()) {
         var dnd = view._dnd;
-        tinymceEvent.add(doc, 'dragenter', this._onDragEnter.bind(this, ed, dnd));
-        tinymceEvent.add(doc, 'dragleave', this._onDragLeave.bind(this, ed, dnd));
-        tinymceEvent.add(doc, 'dragover', this._onDragOver.bind(this, ed, dnd));
-        tinymceEvent.add(doc, 'drop', this._onDrop.bind(this, ed, dnd));
+        tinymceEvent.add(doc, 'dragenter', this._onDragEnter.bind(this));
+        tinymceEvent.add(doc, 'dragleave', this._onDragLeave.bind(this));
+        tinymceEvent.add(doc, 'dragover', this._onDragOver.bind(this, dnd));
+        tinymceEvent.add(doc, 'drop', this._onDrop.bind(this, dnd));
     }
 
+    if (ed.plugins && ed.plugins.paste) {
+        ed.plugins.paste.onPreProcess.addToTop(ZmAdvancedHtmlEditor.pastePreProcess);
+    }
     obj._editorInitialized = true;
 
     if (obj._onTinyMCEEditorInitcallback) {
@@ -872,21 +875,19 @@ ZmAdvancedHtmlEditor.prototype.onBeforeRepaint = function(ed, cmd, ui, val, o) {
     }
 };
 
-ZmAdvancedHtmlEditor.prototype._onDragEnter = function(ed, dnd, ev) {
-    dnd._onDragEnter(ev);
+ZmAdvancedHtmlEditor.prototype._onDragEnter = function() {
     Dwt.addClass(Dwt.getElement(this._iFrameId), "DropTarget");
 };
 
-ZmAdvancedHtmlEditor.prototype._onDragLeave = function(ed, dnd, ev) {
-    dnd._onDragLeave(ev);
+ZmAdvancedHtmlEditor.prototype._onDragLeave = function() {
     Dwt.delClass(Dwt.getElement(this._iFrameId), "DropTarget");
 };
 
-ZmAdvancedHtmlEditor.prototype._onDragOver = function(ed, dnd, ev) {
+ZmAdvancedHtmlEditor.prototype._onDragOver = function(dnd, ev) {
     dnd._onDragOver(ev);
 };
 
-ZmAdvancedHtmlEditor.prototype._onDrop = function(ed, dnd, ev) {
+ZmAdvancedHtmlEditor.prototype._onDrop = function(dnd, ev) {
     dnd._onDrop(ev, true);
     Dwt.delClass(Dwt.getElement(this._iFrameId), "DropTarget");
 };
@@ -2127,17 +2128,62 @@ function(menu) {
 };
 
 /*
+ * TinyMCE paste preprocess Callback function which will be executed first before the default preprocess function
+ */
+ZmAdvancedHtmlEditor.pastePreProcess =
+function(pl, o) {
+    if (!pl || !o) {
+        return;
+    }
+    // Detect Word content and process it more aggressive
+    // copied from plugins/paste/editor_plugin_src.js 393
+    if (/class="?Mso|style="[^"]*\bmso-|w:WordDocument/i.test(o.content) || o.wordContent) {
+        var dom = pl.editor.dom;
+        if (!o.node) {
+            // Create DOM structure
+            o.node = dom.create('div', 0, o.content);
+        }
+        dom.remove(dom.select("style", o.node));//Remove the style tags in the pasted content if it is copied from word
+        o.content = o.node.innerHTML;
+    }
+};
+
+/*
  * TinyMCE paste Callback function to execute after the contents has been converted into a DOM structure.
  */
 ZmAdvancedHtmlEditor.pastePostProcess =
 function(pl, o) {
+    if (!pl || !o || !o.node) {
+        return;
+    }
     //Finding all tables in the pasted content and set the border as 1 if it is 0
     var editor = pl.editor,
-        tableArray = editor.dom.select("table", o.node),
-        table;
-    while ((table = tableArray.shift()) && table.border === "0") {
-        table.border = 1;
+        dom = editor.dom,
+        tableArray = dom.select("table", o.node),
+        i = 0,
+        length = tableArray.length,
+        table,
+        children = o.node.children,
+        lastChildren = children[children.length - 1];
+
+    for (; i < length; i++) {
+        table = tableArray[i];
+        //set the table border as 1 if it is 0
+        if (table && table.border === "0") {
+            table.border = 1;
+        }
     }
+
+    //If the pasted content's last children is table then append "<div><br></div>" so that focus can be set outside the table
+    if (lastChildren && lastChildren.nodeName.toLowerCase() === "table") {
+        var doc = editor.getDoc(),
+            div = doc.createElement("div");
+        div.appendChild(doc.createElement("br"));
+        lastChildren.parentNode.appendChild(div);
+    }
+
+    //Finding all paragraphs in the pasted content and set the margin as 0
+    dom.setStyle(dom.select("p", o.node), "margin", "0");
 
     //Bug fix for 71074
     if (editor.undoManager) {

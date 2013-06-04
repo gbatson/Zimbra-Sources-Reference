@@ -2,7 +2,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -2184,9 +2184,6 @@ function(msgNode) {
 				this.flagLocal(ZmItem.FLAG_ATTACH, true);
 			}
 
-            if (!this.invite.isEmpty()) {
-                this._loaded = true;
-            }
 		} catch (ex) {
 			// do nothing - this means we're trying to load an ZmInvite in new
 			// window, which we dont currently load (re: support).
@@ -2465,15 +2462,6 @@ function(addrNodes, parentNode, isDraft, accountName) {
 		if (identity && identity.isFromDataSource) {
 			var dataSource = ac.getDataSourceCollection().getById(identity.id);
 			if (dataSource) {
-				var provider = ZmDataSource.getProviderForAccount(dataSource);
-				var doNotAddSender = provider && provider._nosender;
-				// main account is "sender"
-				if (!doNotAddSender) {
-					addrNode.t = "s";
-					addrNode.p = ac.get(ZmSetting.DISPLAY_NAME) || "";
-					addrNode = {};
-					addrNodes.push(addrNode);
-				}
 				// mail is "from" external account
 				addrNode.t = "f";
 				addrNode.a = dataSource.getEmail();

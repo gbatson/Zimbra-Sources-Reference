@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -366,6 +366,10 @@ function(item, type, strictText, strictEmail, checkForAvailability) {
 	if (!item || !type) return null;
 
 	if (type == ZmCalBaseItem.LOCATION && !ZmApptViewHelper._locations) {
+		if (!appCtxt.get(ZmSetting.GAL_ENABLED)) {
+			//if GAL is disabled then user does not have permission to load locations.
+			return null;
+		}
 		var locations = ZmApptViewHelper._locations = appCtxt.getApp(ZmApp.CALENDAR).getLocations();
         if(!locations.isLoaded) {
             locations.load();

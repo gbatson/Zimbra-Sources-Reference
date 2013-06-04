@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1373,6 +1373,18 @@ ZaNewDomainXWizard.myXFormModifier = function(xFormObject, entry) {
                                            {ref:".", type:_TEXTFIELD_,
                                             width: "150px"}
                                         ]
+                                      },
+                                      {
+                                          ref: ZaDomain.A_zimbraForceClearCookies,
+                                          useParentTable: false,
+                                          colSpan: 2,
+                                          type: _CHECKBOX_,
+                                          trueValue: "TRUE",
+                                          falseValue: "FALSE",
+                                          resetToSuperLabel: ZaMsg.NAD_ResetToGlobal,
+                                          msgName: ZaMsg.MSG_zimbraForceClearCookies,
+                                          label: ZaMsg.LBL_zimbraForceClearCookies,
+                                          labelLocation: _LEFT_
                                       }
                                   ]
                             }

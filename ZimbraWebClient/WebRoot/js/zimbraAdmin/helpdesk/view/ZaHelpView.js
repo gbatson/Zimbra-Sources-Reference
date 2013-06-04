@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,6 +28,10 @@ ZaHelpView = function(parent) {
 //	this._createHTML();
 }
 ZaHelpView.mainHelpPage = "administration_console_help.htm";
+
+// URL for the most latest documentation page
+ZaHelpView.RELEASE_NOTES_URL = "http://www.zimbra.com/support/documentation/zcs-ne-documentation.html";
+
 ZaHelpView.RELEASE_NOTE_LINK = "adminhelp/pdf/Zimbra_Release_Note.pdf";
 ZaHelpView.HELP_FORUM_LINK = "http://www.zimbra.com/forums/";
 ZaHelpView.HELP_WIKI_LINK = "http://wiki.zimbra.com";
@@ -107,7 +111,14 @@ ZaHelpView.myXFormModifier = function(xFormObject) {
 					{type:_GROUP_,numCols:2,
 						items: [
 							{type:_OUTPUT_,  value:AjxImg.getImageHtml("PDFDoc")},
-							{type:_ANCHOR_, cssStyle:"font-size:12px;", showInNewWindow:true, labelLocation:_NONE_, label:ZaMsg.HELP_PAGE_4, href:(location.pathname + ZaHelpView.RELEASE_NOTE_LINK +"?locid="+AjxEnv.DEFAULT_LOCALE)}
+                            {
+                                type:_ANCHOR_,
+                                cssStyle: "font-size:12px;",
+                                showInNewWindow: true,
+                                labelLocation: _NONE_,
+                                label: ZaMsg.HELP_PAGE_4,
+                                href: ZaHelpView.RELEASE_NOTES_URL
+                            }
 						]
 					},
 					{type:_SPACER_, colSpan:"*"},					
@@ -282,16 +293,34 @@ function() {
                                 {type: _GROUP_, id:"helpDocsGroup", numCols:1, width: "100%",
                                     items: [
                                         {type:_ANCHOR_, cssStyle:"font-size:14px;", showInNewWindow:true, labelLocation:_NONE_, label:ZabMsg.HELP_PAGE_2, href:(location.pathname + ZaUtil.HELP_URL + ZaHelpView.mainHelpPage + "?locid="+AjxEnv.DEFAULT_LOCALE)},
-                                        {type:_OUTPUT_, cssStyle:"font-size:12px;",
-                                            label:null, value:AjxMessageFormat.format(ZabMsg.onlineHelpDetail, [location.pathname + ZaHelpView.RELEASE_NOTE_LINK +"?locid="+AjxEnv.DEFAULT_LOCALE]),
-                                            cssStyle:"padding-top:5px;padding-right:10px;padding-left:10px;"},
+                                        {
+                                            type: _OUTPUT_,
+                                            cssStyle: "font-size:12px;",
+                                            label: null,
+                                            value: AjxMessageFormat.format(
+                                                ZabMsg.onlineHelpDetail,
+                                                [
+                                                    ZaHelpView.RELEASE_NOTES_URL
+                                                ]
+                                            ),
+                                            cssStyle: "padding-top:5px;padding-right:10px;padding-left:10px;"
+                                        },
                                         {type:_SPACER_, height:"20"},
                                         {type: _GROUP_, id:"helpDocsGroup_Admin", numCols:1, width: "100%",
                                             items:[
                                                 {type:_ANCHOR_, cssStyle:"font-size:14px;", showInNewWindow:true, labelLocation:_NONE_, label:ZabMsg.HELP_adminGuide, href:(location.pathname + "adminhelp/pdf/admin.pdf?locid="+AjxEnv.DEFAULT_LOCALE)},
-                                                {type:_OUTPUT_, cssStyle:"font-size:12px;",
-                                                    label:null, value:AjxMessageFormat.format(ZabMsg.HELP_adminGuideDetail, [location.pathname + ZaHelpView.RELEASE_NOTE_LINK +"?locid="+AjxEnv.DEFAULT_LOCALE]),
-                                                    cssStyle:"padding-top:5px;padding-right:10px;padding-left:10px;"}
+                                                {
+                                                    type: _OUTPUT_,
+                                                    cssStyle: "font-size:12px;",
+                                                    label: null,
+                                                    value: AjxMessageFormat.format(
+                                                        ZabMsg.HELP_adminGuideDetail,
+                                                        [
+                                                            ZaHelpView.RELEASE_NOTES_URL
+                                                        ]
+                                                    ),
+                                                    cssStyle: "padding-top:5px;padding-right:10px;padding-left:10px;"
+                                                }
                                             ]
                                         },
                                         {type:_SPACER_, height:"20"},

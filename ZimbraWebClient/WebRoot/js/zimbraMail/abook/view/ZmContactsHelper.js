@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -141,17 +141,17 @@ function(contact, addr, isGroup) {
  * wrapps the inline address (there's no real ZmContact object) inside AjxEmailAddress and adds the value attribute to it.
  * this is so we treat real contacts and inline contacts consistently throughout the rest of the code.
  *
- * @param addr  {String} - the inline email address.
+ * @param value  {String} - the inline email address and/or name (e.g. "john doe <john@doe.com>" or "john@doe.com")
  */
 ZmContactsHelper._wrapInlineContact =
-function(addr) {
-	var email = AjxEmailAddress.parse(addr); //from legacy data at least (not sure about new), the format might be something like "Inigo Montoya <inigo@theprincessbride.com>" so we have to parse.
+function(value) {
+	var email = AjxEmailAddress.parse(value); //from legacy data at least (not sure about new), the format might be something like "Inigo Montoya <inigo@theprincessbride.com>" so we have to parse.
 	if (!email) {
-		//shouldn't happen but just in case
-		email = new AjxEmailAddress(addr, null, addr);
+		//this can happen when creating inline in contact group edit, and the user did not suply email address in the inline value
+		email = new AjxEmailAddress(value, null, value);
 	}
 	email.type = ZmContact.GROUP_INLINE_REF;
-	email.value = email.address;
+	email.value = value;
 	email.id = Dwt.getNextId();
 	return email;
 };

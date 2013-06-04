@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -323,8 +323,18 @@ GlobalConfigXFormView.GENERAL_TAB_RIGHTS = [];
 GlobalConfigXFormView.ATTACHMENTS_TAB_ATTRS = [ZaGlobalConfig.A_zimbraMtaBlockedExtensionWarnRecipient, ZaGlobalConfig.A_zimbraMtaBlockedExtension,ZaGlobalConfig.A_zimbraMtaCommonBlockedExtension];
 GlobalConfigXFormView.ATTACHMENTS_TAB_RIGHTS = [];
 
-GlobalConfigXFormView.MTA_TAB_ATTRS = [ZaGlobalConfig.A_zimbraMtaSaslAuthEnable, ZaGlobalConfig.A_zimbraMtaTlsAuthOnly, ZaGlobalConfig.A_zimbraSmtpHostname,
-	ZaGlobalConfig.A_zimbraSmtpPort, ZaGlobalConfig.A_zimbraMtaRelayHost, ZaGlobalConfig.A_zimbraMtaMyNetworks, ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled, ZaGlobalConfig.A_zimbraMilterServerEnabled, ZaGlobalConfig.A_zimbraMilterBindPort];
+GlobalConfigXFormView.MTA_TAB_ATTRS = [
+    ZaGlobalConfig.A_zimbraMtaSaslAuthEnable,
+    ZaGlobalConfig.A_zimbraMtaTlsAuthOnly,
+    ZaGlobalConfig.A_zimbraSmtpHostname,
+    ZaGlobalConfig.A_zimbraSmtpPort,
+    ZaGlobalConfig.A_zimbraMtaRelayHost,
+    ZaGlobalConfig.A_zimbraMtaFallbackRelayHost,
+    ZaGlobalConfig.A_zimbraMtaMyNetworks,
+    ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled,
+    ZaGlobalConfig.A_zimbraMilterServerEnabled,
+    ZaGlobalConfig.A_zimbraMilterBindPort
+];
 GlobalConfigXFormView.MTA_TAB_RIGHTS = [];
 
 GlobalConfigXFormView.IMAP_TAB_ATTRS = [ZaGlobalConfig.A_zimbraImapServerEnabled, ZaGlobalConfig.A_zimbraImapSSLServerEnabled, ZaGlobalConfig.A_zimbraImapCleartextLoginEnabled,
@@ -344,11 +354,18 @@ GlobalConfigXFormView.INTEROP_TAB_ATTRS = [ZaGlobalConfig.A_zimbraFreebusyExchan
 	ZaGlobalConfig.A_zimbraFreebusyExchangeAuthPassword, ZaGlobalConfig.A_zimbraFreebusyExchangeUserOrg];
 GlobalConfigXFormView.INTEROP_TAB_RIGHTS = [ZaGlobalConfig.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT];
 
-GlobalConfigXFormView.AUTH_TAB_ATTRS = [ZaGlobalConfig.A_zimbraSpnegoAuthEnabled, ZaGlobalConfig.A_zimbraSpnegoAuthRealm,
-    ZaGlobalConfig.A_zimbraSpnegoAuthErrorURL, ZaGlobalConfig.A_zimbraWebClientLoginURL,
-    ZaGlobalConfig.A_zimbraWebClientLogoutURL, ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedUA,
-    ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedUA, ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedIP,
-    ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedIP];
+GlobalConfigXFormView.AUTH_TAB_ATTRS = [
+    ZaGlobalConfig.A_zimbraSpnegoAuthEnabled,
+    ZaGlobalConfig.A_zimbraSpnegoAuthRealm,
+    ZaGlobalConfig.A_zimbraSpnegoAuthErrorURL,
+    ZaGlobalConfig.A_zimbraWebClientLoginURL,
+    ZaGlobalConfig.A_zimbraWebClientLogoutURL,
+    ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedUA,
+    ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedUA,
+    ZaGlobalConfig.A_zimbraWebClientLoginURLAllowedIP,
+    ZaGlobalConfig.A_zimbraWebClientLogoutURLAllowedIP,
+    ZaGlobalConfig.A_zimbraForceClearCookies
+];
 GlobalConfigXFormView.AUTH_TAB_RIGHTS = [];
 
 GlobalConfigXFormView.SKIN_TAB_ATTRS = [ZaGlobalConfig.A_zimbraSkinForegroundColor, ZaGlobalConfig.A_zimbraSkinBackgroundColor,ZaGlobalConfig.A_zimbraSkinSecondaryColor,
@@ -575,21 +592,33 @@ GlobalConfigXFormView.myXFormModifier = function(xFormObject, entry) {
 							   	}
 							 ]
 						},
-						{type:_ZA_TOP_GROUPER_,label:ZaMsg.Global_MTA_NetworkGrp,id:"mta_network_group",
-                                                        visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,
-                                                                [ZaGlobalConfig.A_zimbraSmtpHostname,
-								ZaGlobalConfig.A_zimbraSmtpPort,
-								ZaGlobalConfig.A_zimbraMtaRelayHost,
-								ZaGlobalConfig.A_zimbraDNSCheckHostname,
-								ZaGlobalConfig.A_zimbraMtaMyNetworks,
-                                                                ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled]]],
-                                                        visibilityChangeEventSources:[ZaGlobalConfig.A_zimbraSmtpHostname,
-                                                                ZaGlobalConfig.A_zimbraSmtpPort,
-								ZaGlobalConfig.A_zimbraMtaRelayHost,
-								ZaGlobalConfig.A_zimbraDNSCheckHostname,
-								ZaGlobalConfig.A_zimbraMtaMyNetworks,
-								ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled
-                                                        ],
+						{
+                            type: _ZA_TOP_GROUPER_,
+                            label: ZaMsg.Global_MTA_NetworkGrp,
+                            id: "mta_network_group",
+                            visibilityChecks: [
+                                [
+                                    ZATopGrouper_XFormItem.isGroupVisible,
+                                    [
+                                        ZaGlobalConfig.A_zimbraSmtpHostname,
+                                        ZaGlobalConfig.A_zimbraSmtpPort,
+                                        ZaGlobalConfig.A_zimbraMtaRelayHost,
+                                        ZaGlobalConfig.A_zimbraMtaFallbackRelayHost,
+                                        ZaGlobalConfig.A_zimbraDNSCheckHostname,
+                                        ZaGlobalConfig.A_zimbraMtaMyNetworks,
+                                        ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled
+                                    ]
+                                ]
+                            ],
+                            visibilityChangeEventSources: [
+                                ZaGlobalConfig.A_zimbraSmtpHostname,
+                                ZaGlobalConfig.A_zimbraSmtpPort,
+                                ZaGlobalConfig.A_zimbraMtaRelayHost,
+                                ZaGlobalConfig.A_zimbraMtaFallbackRelayHost,
+                                ZaGlobalConfig.A_zimbraDNSCheckHostname,
+                                ZaGlobalConfig.A_zimbraMtaMyNetworks,
+                                ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled
+                            ],
 							items:[
 								{ ref: ZaGlobalConfig.A_zimbraSmtpHostname, type: _REPEAT_,
 						  	  		label: ZaMsg.LBL_zimbraSmtpHostname,
@@ -614,13 +643,26 @@ GlobalConfigXFormView.myXFormModifier = function(xFormObject, entry) {
 								  label: ZaMsg.NAD_MTA_WebMailPort,
                                   visibilityChecks:[ZaItem.hasReadPermission]
 							    },
-								{ref:ZaGlobalConfig.A_zimbraMtaRelayHost,label:ZaMsg.NAD_MTA_RelayMTA,labelLocation:_LEFT_,											
-							    	type:_HOSTPORT_,
-									onClick: "ZaController.showTooltip",
-							 		toolTipContent: ZaMsg.tt_MTA_RelayMTA,
-                                    visibilityChecks:[ZaItem.hasReadPermission],
-							 		onMouseout: "ZaController.hideTooltip"
-								},
+								{
+                                    ref: ZaGlobalConfig.A_zimbraMtaRelayHost,
+                                    label: ZaMsg.NAD_MTA_RelayMTA,
+                                    labelLocation: _LEFT_,
+                                    type: _HOSTPORT_,
+                                    onClick: "ZaController.showTooltip",
+                                    toolTipContent: ZaMsg.tt_MTA_RelayMTA,
+                                    visibilityChecks: [ZaItem.hasReadPermission],
+                                    onMouseout: "ZaController.hideTooltip"
+                                },
+                                {
+                                    ref: ZaGlobalConfig.A_zimbraMtaFallbackRelayHost,
+                                    label: ZaMsg.NAD_MTA_FallbackRelay,
+                                    labelLocation: _LEFT_,
+                                    type: _HOSTPORT_,
+                                    onClick: "ZaController.showTooltip",
+                                    toolTipContent: ZaMsg.tt_MTA_FallbackRelay,
+                                    visibilityChecks: [ZaItem.hasReadPermission],
+                                    onMouseout: "ZaController.hideTooltip"
+                                },
 								{ type: _DWT_ALERT_,
 									containerCssStyle: "padding-bottom:0px",
 									style: DwtAlert.INFO,
@@ -1252,7 +1294,16 @@ GlobalConfigXFormView.myXFormModifier = function(xFormObject, entry) {
                                                       ref:".", type:_TEXTFIELD_, label:null,width:"200px"
                                                   }
                                               ]
-                                            }
+                                            },
+                                      {
+                                          ref: ZaGlobalConfig.A_zimbraForceClearCookies,
+                                          type: _CHECKBOX_,
+                                          trueValue: "TRUE",
+                                          falseValue: "FALSE",
+                                          label: ZaMsg.LBL_zimbraForceClearCookies,
+                                          msgName: ZaMsg.MSG_zimbraForceClearCookies,
+                                          labelLocation: _LEFT_
+                                      }
                                   ]
                             }
                     ]

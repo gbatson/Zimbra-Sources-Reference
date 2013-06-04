@@ -1,8 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -11,7 +10,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -26,6 +24,7 @@ import com.zimbra.qa.selenium.framework.items.ContextMenuItem.CONTEXT_MENU_ITEM_
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
@@ -265,6 +264,9 @@ public class PageMail extends AbsTab {
 
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
+		
+		SleepUtil.sleepSmall();
+		
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
 
 		tracer.trace("Press the "+ button +" button");
@@ -374,7 +376,7 @@ public class PageMail extends AbsTab {
 			}
 
 		} else if ( button == Button.B_FORWARD ) {
-
+			
 			page = new FormMailNew(this.MyApplication);;
 			locator = "css=div[id$='__FORWARD']";
 
@@ -457,6 +459,7 @@ public class PageMail extends AbsTab {
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
+		SleepUtil.sleepSmall();
 
 		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP &&
 				button == Button.B_GETMAIL) {
@@ -473,7 +476,6 @@ public class PageMail extends AbsTab {
 			page.zWaitForActive();
 
 		}
-
 
 		return (page);
 	}
@@ -827,6 +829,7 @@ public class PageMail extends AbsTab {
 
 	@Override
 	public AbsPage zListItem(Action action, String subject) throws HarnessException {
+		
 		logger.info(myPageName() + " zListItem("+ action +", "+ subject +")");
 
 		tracer.trace(action +" on subject = "+ subject);
@@ -971,8 +974,7 @@ public class PageMail extends AbsTab {
 		} else {
 			throw new HarnessException("implement me!  action = "+ action);
 		}
-
-
+		
 		if ( page != null ) {
 			page.zWaitForActive();
 		}
@@ -1020,15 +1022,19 @@ public class PageMail extends AbsTab {
 		if (treeItemLocator == null) throw new HarnessException("treeItemLocator is null, please check!");
 
 		GeneralUtility.waitForElementPresent(this, treeItemLocator);
+		
+		SleepUtil.sleepMedium();
 
 		if ( action == Action.A_RIGHTCLICK ) {
-
+			
 			if (option == Button.B_TREE_NEWFOLDER) {
 				ContextMenu contextMenu = (ContextMenu)((AppAjaxClient)MyApplication).zTreeMail.zTreeItem(
 						action, treeItemLocator);
 				page = contextMenu.zSelect(CONTEXT_MENU_ITEM_NAME.NEW_FOLDER);
-			}
-			else {
+				
+				SleepUtil.sleepSmall();
+				
+			} else {
 				throw new HarnessException("implement action:"+ action +" option:"+ option);
 			}
 		} else if (action == Action.A_LEFTCLICK) {
@@ -1267,6 +1273,7 @@ public class PageMail extends AbsTab {
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
+		SleepUtil.sleepSmall();
 
 		// If a page is specified, wait for it to become active
 		if ( page != null ) {

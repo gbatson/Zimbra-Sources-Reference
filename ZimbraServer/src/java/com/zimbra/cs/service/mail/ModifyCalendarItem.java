@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -232,10 +232,15 @@ public class ModifyCalendarItem extends CalendarRequest {
             }
 
             List<ZAttendee> atsAdded = parser.getAttendeesAdded();
-            boolean notifyAllAttendees = true;
+            // Figure out if we're notifying all attendees.  Must do this before clearing recipients from dat.mMm.
+            boolean notifyAllAttendees = isNotifyingAll(dat.mMm, atsAdded);
+            // If notifying all the attendees update the last sequence number otherwise retain the existing value.
+            if (notifyAllAttendees) {
+                dat.mInvite.setLastFullSeqNo(dat.mInvite.getSeqNo());
+            } else {
+                dat.mInvite.setLastFullSeqNo(inv.getLastFullSeqNo());
+            }
             if (inv.isRecurrence()) {
-                // Figure out if we're notifying all attendees.  Must do this before clearing recipients from dat.mMm.
-                notifyAllAttendees = isNotifyingAll(dat.mMm, atsAdded);
                 // Clear to/cc/bcc from the MimeMessage, so that the sendCalendarMessage call only updates the organizer's
                 // own appointment without notifying any attendees.  Notifications will be sent later,
                 removeAllRecipients(dat.mMm);

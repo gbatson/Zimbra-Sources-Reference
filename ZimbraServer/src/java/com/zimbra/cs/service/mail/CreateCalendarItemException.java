@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -57,7 +57,8 @@ public class CreateCalendarItemException extends CalendarRequest {
             ParseMimeMessage.InviteParserResult toRet =
                 CalendarUtils.parseInviteForCreateException(
                         account, getItemType(), inviteElem,
-                        mDefaultInvite.getTimeZoneMap(), mUid, mDefaultInvite);
+                        (mDefaultInvite.getTimeZoneMap() != null ) ? mDefaultInvite.getTimeZoneMap().clone() : null,
+                        mUid, mDefaultInvite);
 
             // Send cancellations to any attendees who have been removed.
             List<ZAttendee> removedAttendees = CalendarUtils.getRemovedAttendees(

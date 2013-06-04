@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -189,7 +189,7 @@ public final class LC {
 
     @Supported
     public static final KnownKey zimbra_index_lru_size = KnownKey.newKey(100);
-    
+
     @Supported
     public static final KnownKey zimbra_index_lru_threshold_size = KnownKey.newKey(80);
 
@@ -303,7 +303,7 @@ public final class LC {
 
     @Supported
     public static final KnownKey zimbra_session_limit_imap = KnownKey.newKey(15);
-    
+
     @Supported
     public static final KnownKey zimbra_session_limit_sync = KnownKey.newKey(5);
 
@@ -346,7 +346,7 @@ public final class LC {
     @Reloadable
     @Supported
     public static final KnownKey servlet_max_concurrent_requests_per_session = KnownKey.newKey(0);
-    
+
     @Reloadable
     @Supported
     public static final KnownKey servlet_max_concurrent_http_requests_per_account = KnownKey.newKey(10);
@@ -746,6 +746,7 @@ public final class LC {
     public static final KnownKey imap_max_idle_time = KnownKey.newKey(60);
     public static final KnownKey imap_authenticated_max_idle_time = KnownKey.newKey(1800);
     public static final KnownKey pop3_max_idle_time = KnownKey.newKey(60);
+    public static final KnownKey imap_throttle_fetch = KnownKey.newKey(true);
     public static final KnownKey data_source_imap_reuse_connections = KnownKey.newKey(false);
 
     public static final KnownKey milter_bind_port = KnownKey.newKey(0);
@@ -876,6 +877,8 @@ public final class LC {
     public static final KnownKey javamail_pop3_enable_starttls = KnownKey.newKey(true);
     public static final KnownKey javamail_imap_enable_starttls = KnownKey.newKey(true);
     public static final KnownKey javamail_smtp_enable_starttls = KnownKey.newKey(true);
+
+    public static final KnownKey mime_max_recursion = KnownKey.newKey(20);
 
     public static final KnownKey yauth_baseuri = KnownKey.newKey("https://login.yahoo.com/WSLogin/V1");
 
@@ -1147,6 +1150,21 @@ public final class LC {
     public static final KnownKey http_store_local_cache_min_lifetime = KnownKey.newKey(Constants.MILLIS_PER_MINUTE);
 
     public static final KnownKey check_dl_membership_enabled = KnownKey.newKey(true);
+
+        
+    //Defanger
+    public static final KnownKey defang_style_unwanted_func = 
+        KnownKey.newKey("[\\S&&[^:]]+(?<!(rgb|and|not|media|,))\\s*\\(.*\\)");
+    public static final KnownKey defang_valid_ext_url = 
+        KnownKey.newKey("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)");
+    public static final KnownKey defang_valid_int_img = KnownKey.newKey("^data:|^cid:|\\.(jpg|jpeg|png|gif)$");
+
+
+    public static final KnownKey defang_comment = KnownKey.newKey("/\\*.*?\\*/");
+    public static final KnownKey defang_av_js_entity = KnownKey.newKey("&\\{[^}]*\\}");
+    public static final KnownKey defang_av_script_tag = KnownKey.newKey("</?script/?>");
+    public static final KnownKey defang_av_javascript = KnownKey.newKey("javascript");
+
 
     static {
         // Automatically set the key name with the variable name.

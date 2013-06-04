@@ -1,6 +1,4 @@
-<!--
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite J2ME Client
  * Copyright (C) 2007, 2010, 2011 VMware, Inc.
  * 
@@ -11,7 +9,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
 -->
 	custom-css-attributes.xml can define the CSS attributes of your

@@ -29,10 +29,12 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.account.ldap.ZimbraLdapContext;
 import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.common.service.ServiceException;
 
-/** @author mansoor peerbhoy 
+/** @author Rajesh Gadipuuri
  */
 public class ProxyPurgeUtil
 {
@@ -213,7 +215,7 @@ public class ProxyPurgeUtil
                 routes.add("route:proto=imap;user=" + uid + "@" + domain);
                 routes.add("route:proto=pop3;user=" + uid + "@" + domain);
                 routes.add("alias:user=" + uid + ";ip=" + domain);
-                
+
                 Domain d = prov.get(DomainBy.name, domain);
                 String[] vips = d.getVirtualIPAddress();
                 for (String vip : vips) {
@@ -223,21 +225,52 @@ public class ProxyPurgeUtil
                     routes.add("route:proto=pop3;user=" + uid + "@" + vip);
                     routes.add("alias:user=" + uid + ";ip=" + vip);
                 }
-                
+                String[] vhostnames = d.getVirtualHostname();
+                for (String vhost : vhostnames) {
+                    // for each virtual host name add the alias to the list
+                    routes.add("alias:user=" + uid + ";vhost=" + vhost);
+                }
                 String[] aliases = account.getMailAlias();
-                // for each alias add routes for it's domain and all virtual IPs for that domain
-                // I think, all the http routes are stored by user id, or, uid or, uid@domain. 
-                // I haven't found any alias in the http routes. Hence skipping it.
+                List<String> uids = new ArrayList<String>();
+                uids.add(uid);
                 for (String alias : aliases) {
+                    if (alias.indexOf('@') != -1 && alias.substring(alias.indexOf('@') +1).equals(domain)) {
+                        uids.add(alias.substring(0, alias.indexOf('@')));
+                    }
+                }
+                // get domain alias from the given the domain
+                // this logic works for for all cases of input account=addr@<alias domain> or or alias-name@<alias domain>
+                if (prov instanceof LdapProvisioning) {
+                    List<String> aliasDomainIds = ((LdapProvisioning) prov).getEmptyAliasDomainIds(new ZimbraLdapContext(true), d);
+                    if (aliasDomainIds != null) {
+                        for (String aliasDomainId : aliasDomainIds) {
+                            String aliasDomain = prov.getDomainById(aliasDomainId).getDomainName();
+                            for (String userName : uids) {
+                                routes.add("route:proto=http;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=imap;user=" + userName + "@" + aliasDomain);
+                                routes.add("route:proto=pop3;user=" + userName + "@" + aliasDomain);
+                                routes.add("alias:user=" + userName + ";ip=" + aliasDomain);
+                            }
+                        }
+                    }
+                }
+
+                // for each alias add routes for it's domain and all virtual IPs for that domain
+                // I think, all the http routes are stored by user id, or, uid or, uid@domain.
+                for (String alias : aliases) {
+                    routes.add("route:proto=http;user=" + alias);
                     routes.add("route:proto=imap;user=" + alias);
                     routes.add("route:proto=pop3;user=" + alias);
-                    
-                    routes.add("route:proto=imap;user=" + alias + "@" + domain);
-                    routes.add("route:proto=pop3;user=" + alias + "@" + domain);
-                    routes.add("alias:user=" + alias + ";ip=" + domain);
-                    
+                    if (alias.indexOf('@') != -1) {
+                        alias = alias.substring(0, alias.indexOf('@'));
+                    }
+                    for (String vhost : vhostnames) {
+                        // for each virtual host name add the alias to the alias user
+                        routes.add("alias:user=" + alias + ";vhost=" + vhost);
+                    }
                     for (String vip : vips) {
-                        // for each virtual ip add the routes to the list. 
+                        // for each virtual ip add the routes to the list.
+                        routes.add("route:proto=http;user=" + alias + "@" + vip);
                         routes.add("route:proto=imap;user=" + alias + "@" + vip);
                         routes.add("route:proto=pop3;user=" + alias + "@" + vip);
                         routes.add("alias:user=" + alias + ";ip=" + vip);

@@ -1,7 +1,6 @@
 <IssuedAssertions>
 <!--
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2010, 2011 VMware, Inc.
  * 
@@ -12,7 +11,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
 -->
     <saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="b07b804c-7c29-ea16-7300-4f3d6f7928ac" Version="2.0" IssueInstant="2010-03-09T09:22:05Z">

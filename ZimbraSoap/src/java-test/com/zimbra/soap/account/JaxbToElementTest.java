@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -96,8 +96,10 @@ public class JaxbToElementTest {
             String actual = el.prettyPrint();
             // TODO: At present the order varies a little and zimlets plus
             //       other things are missing - so just check the first part.
-            Assert.assertEquals(getInfoResponseXml.substring(0, 100),
-                    actual.substring(0, 100));
+            Assert.assertEquals(String.format(
+                    "First 8000 chars different from %s (Has that file been corrupted with Copyright change?)",
+                    "src/java-test/com/zimbra/soap/account/GetInfoResponse.xml"),
+                    getInfoResponseXml.substring(0, 8000), actual.substring(0, 8000));
         }
     }
 

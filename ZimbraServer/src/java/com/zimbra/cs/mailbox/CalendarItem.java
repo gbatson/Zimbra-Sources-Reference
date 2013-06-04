@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -46,7 +46,6 @@ import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.zmime.ZMimeBodyPart;
-import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.common.zmime.ZMimeMultipart;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.CalendarResource;
@@ -85,7 +84,6 @@ import com.zimbra.cs.mailbox.calendar.ZRecur;
 import com.zimbra.cs.mailbox.calendar.ZRecur.Frequency;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.Mime.FixedMimeMessage;
-import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.mime.ParsedMessage.CalendarPartInfo;
 import com.zimbra.cs.service.mail.CalendarUtils;
@@ -1371,21 +1369,25 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             ZimbraLog.calendar.warn("Unsupported METHOD " + method);
         return false;
     }
-    
+
+    private boolean persistBatchedChanges = false;
     void processNewInviteExceptions(List<SetCalendarItemData> scidList,
             int folderId, long nextAlarm,
             boolean preserveAlarms, boolean replaceExistingInvites) throws ServiceException {
+        persistBatchedChanges = false;
         for (SetCalendarItemData scid : scidList) {
             processNewInviteRequestOrCancel(scid.mPm, scid.mInv, folderId, nextAlarm,
                                                 preserveAlarms, replaceExistingInvites, true);
         }
         // now update the recurrence.
         updateRecurrence(nextAlarm);
-        // persist the data to the DB.
-        try {
-            setContent(null, null);
-        } catch (IOException e) {
-            throw ServiceException.FAILURE("IOException", e);
+        if  (persistBatchedChanges) {
+            // persist the data to the DB.
+            try {
+                setContent(null, null);
+            } catch (IOException e) {
+                throw ServiceException.FAILURE("IOException", e);
+            }
         }
     }
 
@@ -1403,16 +1405,16 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         else
             return r2 == null;
     }
-    
+
     /**
-     * 
+     *
      * @param pm
      * @param newInvite
      * @param folderId
      * @param nextAlarm
      * @param preserveAlarms
      * @param discardExistingInvites
-     * @param batch - if true this call will not update the recurrence and may not persist to the data. 
+     * @param batch - if true this call will not update the recurrence and may not persist to the data.
      *                The caller needs to persist the data by calling setContent().
      * @return
      * @throws ServiceException
@@ -1546,7 +1548,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                     // In that situation we simply skip the DTSTART shift calculation.
                     oldDtStart = defInv.getStartTime();
                     ParsedDateTime newDtStart = newInvite.getStartTime();
-                    //if (newDtStart != null && oldDtStart != null && !newDtStart.sameTime(oldDtStart)) {
+                    //if (newDtStart != null && oldDtStart != null && !newDtStart.sameTime(oldDtStart))
                     if (newDtStart != null && oldDtStart != null && !newDtStart.equals(oldDtStart)) {
                         // Find the series frequency.
                         Frequency freq = null;
@@ -2068,9 +2070,11 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                     } else {
                         markItemModified(Change.MODIFIED_INVITE);
                         try {
-                            // call setContent here so that MOD_CONTENT is updated...this is required
-                            // for the index entry to be correctly updated (bug 39463)
-                            if (!batch) {
+                            if (batch) {
+                                persistBatchedChanges = true;
+                            } else {
+                                // call setContent here so that MOD_CONTENT is updated...this is required
+                                // for the index entry to be correctly updated (bug 39463)
                                 setContent(null, null);
                             }
                         } catch (IOException e) {
@@ -3114,7 +3118,10 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                 //     response, so that any earlier responses from an "Attendee" that are
                 //     received out of order (e.g., due to a delay in the transport) can be
                 //     correctly discarded.
-                if (cur.getSeqNo() > reply.getSeqNo()) {
+                // bug 74117 : Allow the replies from attendees whose event sequence number is not
+                //             up to date with the organizer's event, provided there were no major changes.
+                if ((cur.isOrganizer() && (cur.getLastFullSeqNo() > reply.getSeqNo())) ||
+                        (!cur.isOrganizer() && (cur.getSeqNo() > reply.getSeqNo()))) {
                     sLog.info("Invite-Reply "+reply.toString()+" is outdated (Calendar entry has higher SEQUENCE), ignoring!");
                     return false;
                 }
@@ -3859,7 +3866,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     public void snapshotRevision() throws ServiceException {
         snapshotRevision(true);
     }
-    
+
     public void snapshotRevision(boolean updateFolderMODSEQ) throws ServiceException {
         addRevision(false, updateFolderMODSEQ);
     }

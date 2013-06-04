@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1694,25 +1694,28 @@ function(urlQueryStr){
 	urlQueryStr = urlQueryStr || '';
 
 	var match = urlQueryStr.match(/\bto=([^&]+)/);
-	var to = match ? AjxStringUtil.urlComponentDecode(match[1]) : null;
-
+	var to = match ? AjxStringUtil.urlComponentDecode(match[1].replace(/\+/g, " ")) : null;
+	to = to && AjxEmailAddress.isValid(to) ? to : AjxStringUtil.htmlEncode(to);
+	
 	match = urlQueryStr.match(/\bsubject=([^&]+)/);
 	var subject = match ? (AjxStringUtil.urlComponentDecode(match[1]).replace(/\+/g, " ")) : null;
 
 	match = urlQueryStr.match(/\bcc=([^&]+)/);
-	var cc = match ? AjxStringUtil.urlComponentDecode(match[1]) : null;
-
+	var cc = match ? AjxStringUtil.urlComponentDecode(match[1].replace(/\+/g, " ")) : null;
+	cc = cc && AjxEmailAddress.isValid(cc) ? cc : AjxStringUtil.htmlEncode(cc);
+	
 	match = urlQueryStr.match(/\bbcc=([^&]+)/);
-	var bcc = match ? AjxStringUtil.urlComponentDecode(match[1]) : null;
-
+	var bcc = match ? AjxStringUtil.urlComponentDecode(match[1].replace(/\+/g, " ")) : null;
+	bcc = bcc &  AjxEmailAddress.isValid(bcc) ? bcc : AjxStringUtil.htmlEncode(bcc);
+	
 	match = urlQueryStr.match(/\bbody=([^&]+)/);
 	var body = match ? (AjxStringUtil.urlComponentDecode(match[1]).replace(/\+/g, " ")) : null;
 
 	return {
-		to: AjxStringUtil.htmlEncode(to),
+		to: to,
 		subject: AjxStringUtil.htmlEncode(subject),
-		cc: AjxStringUtil.htmlEncode(cc),
-		bcc: AjxStringUtil.htmlEncode(bcc),
+		cc: cc,
+		bcc: bcc,
 		body: AjxStringUtil.htmlEncode(body)
 	};
 };

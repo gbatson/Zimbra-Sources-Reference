@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pburgu 20121116-1547 */
+    /* build: unknown unknown unknown unknown */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -7424,6 +7424,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1041)
     public static final String A_zimbraPrefSpellDictionary = "zimbraPrefSpellDictionary";
+
+    /**
+     * Regular Expression for words to ignore during spell check.
+     *
+     * @since ZCS 7.2.4
+     */
+    @ZAttr(id=1432)
+    public static final String A_zimbraPrefSpellIgnorePattern = "zimbraPrefSpellIgnorePattern";
 
     /**
      * List of words to ignore when checking spelling. The word list of an

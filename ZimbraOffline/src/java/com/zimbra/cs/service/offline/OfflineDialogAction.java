@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -46,7 +46,7 @@ public class OfflineDialogAction extends DocumentHandler {
     public static final String DIALOG_TYPE_FOLDER_MOVE_FAIL_MSG = "Folder move failed";
     public static final String DIALOG_TYPE_HEAP_DUMP_UPLOAD_CONSENT = "heapdump_upload";
     public static final String DIALOG_HEAP_DUMP_UPLOAD_CONSENT_MSG = "Do we have your consent to upload heap dump of ZD's previous crash ?";
-    public static final String DIALOG_TYPE_GAL_RESYNC = "gal_needs_resync";
+    public static final String DIALOG_TYPE_GAL_RESYNC = "gal_resync";
     public static final String DIALOG_TYPE_GAL_RESYNC_MSG = "GAL needs resync, please click Reset-GAL button at account setup page";
 
     private static enum DialogType {

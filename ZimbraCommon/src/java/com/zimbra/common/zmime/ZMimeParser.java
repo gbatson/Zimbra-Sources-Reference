@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -33,6 +33,7 @@ import javax.mail.internet.SharedInputStream;
 import javax.mail.util.SharedByteArrayInputStream;
 
 import com.sun.mail.util.ASCIIUtility;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.CharsetUtil;
 
@@ -96,7 +97,7 @@ class ZMimeParser {
     private enum ParserState {
         HEADER_LINESTART, HEADER, HEADER_CR,
         BODY_LINESTART, BODY, BODY_CR,
-        TERMINATED
+        TERMINATED, SKIP
     }
 
     private enum LineEnding { CR, LF, CRLF }
@@ -378,6 +379,8 @@ class ZMimeParser {
      *  we call it recursively.  <i>sigh</i> */
     boolean handleByte(byte b) {
         switch (state) {
+            case SKIP:
+                break;
             // after a CR character at the end of a header line, expecting an LF
             case HEADER_CR:
                 state = ParserState.HEADER_LINESTART;
@@ -594,9 +597,13 @@ class ZMimeParser {
             pcurrent.multi = null;
             state = ParserState.BODY_LINESTART;
         } else {
-            // new proper subpart of the multipart -- starting with its MIME headers
-            parts.add(pcurrent = new PartInfo(ZMimeBodyPart.newBodyPart(pcurrent.multi)));
-            state = ParserState.HEADER_LINESTART;
+            if (parts.size() > LC.mime_max_recursion.intValue()) {
+                state = ParserState.SKIP;
+            } else {
+                // new proper subpart of the multipart -- starting with its MIME headers
+                parts.add(pcurrent = new PartInfo(ZMimeBodyPart.newBodyPart(pcurrent.multi)));
+                state = ParserState.HEADER_LINESTART;
+            }
         }
 
         recalculateBoundaries();

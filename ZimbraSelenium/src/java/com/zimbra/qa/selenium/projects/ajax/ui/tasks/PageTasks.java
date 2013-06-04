@@ -1,8 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -11,7 +10,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -836,7 +834,9 @@ public class PageTasks extends AbsTab {
 	}
 	@Override
 	public AbsPage zKeyboardShortcut(Shortcut shortcut) throws HarnessException {
-
+		
+		SleepUtil.sleepSmall();
+		
 		if (shortcut == null)
 			throw new HarnessException("Shortcut cannot be null");
 
@@ -855,12 +855,15 @@ public class PageTasks extends AbsTab {
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
+		SleepUtil.sleepSmall();
 
 		// If a page is specified, wait for it to become active
 		if ( page != null ) {
 			page.zWaitForActive();	// This method throws a HarnessException if never active
 		}
 		return (page);
+		
+		
 	}
 
 	/**

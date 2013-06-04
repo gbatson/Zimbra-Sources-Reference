@@ -1,8 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2013 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -11,7 +10,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
@@ -194,8 +192,10 @@ public class DeleteTask extends AjaxCommonTest {
 		
 		// Click delete keyboard
 		logger.info("Typing shortcut key "+ name + " KeyEvent: "+ keyEvent);
-		app.zPageMail.zKeyboardKeyEvent(keyEvent);
 		
+		SleepUtil.sleepSmall();
+		app.zPageMail.zKeyboardKeyEvent(keyEvent);
+		SleepUtil.sleepMedium();
 		
 		List<TaskItem> tasks = app.zPageTasks.zGetTasks();
 		ZAssert.assertNotNull(tasks, "Verify the task list exists");
@@ -212,6 +212,9 @@ public class DeleteTask extends AjaxCommonTest {
 	
 	}
 
+	/* 	Commented DeleteTask_04 testcase (it will no longer pass in Helix because corresponding fix is
+	  	available from IronMaiden). See bug http://bugzilla.zimbra.com/show_bug.cgi?id=56467
+		
 	@Test(	description = "Delete a task by selecting and typing '.t' shortcut",
 			groups = { "functional" } )
 	public void DeleteTask_04() throws HarnessException {
@@ -243,10 +246,11 @@ public class DeleteTask extends AjaxCommonTest {
 		
 		// Refresh the tasks view
 		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
+		SleepUtil.sleepSmall();
 						
 		// Select the item
 		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
-
+		SleepUtil.sleepSmall();
 		
 		// Use Delete Keyboard Shortcut
 		app.zPageTasks.zKeyboardShortcut(Shortcut.S_MAIL_MOVETOTRASH);
@@ -266,7 +270,9 @@ public class DeleteTask extends AjaxCommonTest {
 		ZAssert.assertNull(found, "Verify the task is no longer present");
 	
 	}
-
+	
+	*/
+	
 	@Test(	description = "Delete multiple tasks (3) by select and toolbar delete",
 			groups = { "functional" })
 	public void DeleteTask_05() throws HarnessException {

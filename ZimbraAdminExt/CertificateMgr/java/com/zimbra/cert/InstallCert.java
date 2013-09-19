@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -106,6 +106,16 @@ public class InstallCert extends AdminDocumentHandler {
         String subjectAltNames = GenerateCSR.getSubjectAltNames(request) ;
 
         if (certType.equals("self")) {
+            Element digestEl = request.getElement(CertMgrConstants.E_DIGEST);
+            String digest = null;
+
+            if (digestEl != null && digestEl.getText() != null) {
+                digest = digestEl.getText();
+            } else {
+                digest = "sha1";
+            }
+            cmd += " -digest " + digest + " ";
+
             Element keysizeEl = request.getElement (CertMgrConstants.E_KEYSIZE) ;
             String keysize = null ;
 

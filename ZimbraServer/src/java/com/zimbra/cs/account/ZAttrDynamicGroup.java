@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -35,8 +35,6 @@ public abstract class ZAttrDynamicGroup extends Group {
     }
 
     ///// BEGIN-AUTO-GEN-REPLACE
-
-    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     /**
      * RFC2256: descriptive information
@@ -1521,7 +1519,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @return zimbraMailStatus, or null if unset and/or has invalid value
      */
@@ -1533,7 +1531,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @return zimbraMailStatus, or null if unset
      */
@@ -1545,7 +1543,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @param zimbraMailStatus new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -1560,7 +1558,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @param zimbraMailStatus new value
      * @param attrs existing map to populate, or null to create a new map
@@ -1576,7 +1574,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @param zimbraMailStatus new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -1591,7 +1589,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @param zimbraMailStatus new value
      * @param attrs existing map to populate, or null to create a new map
@@ -1607,7 +1605,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -1621,7 +1619,7 @@ public abstract class ZAttrDynamicGroup extends Group {
     /**
      * mail delivery status (enabled/disabled)
      *
-     * <p>Valid values: [enabled, disabled]
+     * <p>Valid values: [disabled, enabled]
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs

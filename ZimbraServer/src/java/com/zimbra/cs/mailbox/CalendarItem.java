@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -594,6 +595,58 @@ public abstract class CalendarItem extends MailItem {
         return 0;
     }
 
+    /**
+     * Find instances within 24 hours either side.  Assumption is that any timezone related problems
+     * causing {@code recurId} to be incorrect will only be relevant to times within that window.
+     * @param recurId
+     * @return
+     * @throws ServiceException
+     */
+    private Collection<Instance> instancesNear(RecurId recurId) throws ServiceException {
+        if (recurId == null) {
+            return Collections.emptyList();
+        }
+        ParsedDateTime dt = recurId.getDt();
+        if (dt == null) {
+            return Collections.emptyList();
+        }
+        long utcTime = dt.getUtcTime();
+        return this.expandInstances(utcTime - MILLIS_IN_DAY, utcTime + MILLIS_IN_DAY, false);
+    }
+
+    private boolean instanceMatches(RecurId recurId, Collection<Instance> instances) {
+        long utcTime = recurId.getDt().getUtcTime();
+        for (Instance instance: instances) {
+            if (utcTime == instance.getStart()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Diagnostic code to flag when odd EXDATE related changes are made
+     */
+    private void checkExdateIsSensible(RecurId exdateRecurId) throws ServiceException {
+        Collection<Instance> instancesNear = instancesNear(exdateRecurId);
+        if (instancesNear.isEmpty()) {
+            ZimbraLog.calendar.warn(
+                    "WARNING:Adding EXDATE %s, however, that does not exclude any pre-existing instances.",
+                    exdateRecurId.toString());
+
+        } else if (!instanceMatches(exdateRecurId, instancesNear)) {
+            ICalTimeZone exdateTZ = exdateRecurId.getDt().getTimeZone();
+            StringBuilder sb = new StringBuilder();
+            for (Instance instance: instancesNear) {
+                long dtStart = instance.getStart();
+                sb.append(" ").append(ParsedDateTime.fromUTCTime(dtStart, exdateTZ));
+            }
+            ZimbraLog.calendar.warn(
+                "WARNING:Adding EXDATE %s, however, that does not exclude any pre-existing instances.  Nearby times:%s",
+                exdateRecurId.toString(), sb.toString());
+        }
+    }
+
     private boolean updateRecurrence(long nextAlarm) throws ServiceException {
         long startTime, endTime;
 
@@ -614,8 +667,8 @@ public abstract class CalendarItem extends MailItem {
                     if (cur.isCancel()) {
                         assert(cur.hasRecurId());
                         if (cur.hasRecurId()) {
-                            Recurrence.CancellationRule cancelRule =
-                                new Recurrence.CancellationRule(cur.getRecurId());
+                            checkExdateIsSensible(cur.getRecurId());
+                            Recurrence.CancellationRule cancelRule = new Recurrence.CancellationRule(cur.getRecurId());
 
                             ((Recurrence.RecurrenceRule) mRecurrence).addException(cancelRule);
                         }
@@ -1513,7 +1566,7 @@ public abstract class CalendarItem extends MailItem {
 
         // If we got a cancel request, check if this cancel will result in canceling the entire appointment.
         // If so, move the appointment to trash folder.
-        // Also at the same time, check if the cancel request is oudated, i.e. there is already a newer version
+        // Also at the same time, check if the cancel request is outdated, i.e. there is already a newer version
         // of the invite.
         if (isCancel) {
             boolean cancelAll;
@@ -3451,7 +3504,8 @@ public abstract class CalendarItem extends MailItem {
             saveMetadata();
     }
 
-    private static final long MILLIS_IN_YEAR = 365L * 24L * 60L * 60L * 1000L;
+    public static final long MILLIS_IN_YEAR = 365L * 24L * 60L * 60L * 1000L;
+    public static final long MILLIS_IN_DAY = 24L * 60L * 60L * 1000L;
 
     private long getNextAlarmRecurrenceExpansionLimit() {
         long fromTime = Math.max(getStartTime(), System.currentTimeMillis());

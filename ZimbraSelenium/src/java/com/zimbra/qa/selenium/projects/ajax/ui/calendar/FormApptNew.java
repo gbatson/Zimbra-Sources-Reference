@@ -1,17 +1,15 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.calendar;
@@ -818,6 +816,8 @@ public class FormApptNew extends AbsForm {
 		    SleepUtil.sleepSmall();
 		    
 		    if (field == Field.Attendees || field == Field.Optional || field == Field.Location || field == Field.Equipment) {
+		    	this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_ENTER);
+		    	SleepUtil.sleepSmall();
 		    	this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_TAB);
 		    }
 		}
@@ -931,7 +931,7 @@ public class FormApptNew extends AbsForm {
 
 		// TODO: temporary workaround for
 		// main.projects.ajax.tests.calendar.appointments.views.day.allday.CreateAppointment.CreateAllDayAppointment_01
-		// REF: http://zqa-004.eng.vmware.com/testlogs/UBUNTU10_64/IRONMAIDEN-800/20120807000101_FOSS/SelNG-projects-ajax-tests/134432857672933/zqa-429.eng.vmware.com/AJAX/firefox/en_US/debug/projects/ajax/tests/calendar/appointments/views/day/allday/CreateAppointment/CreateAllDayAppointment_01ss191.png
+		// REF: http://server/testlogs/UBUNTU10_64/IRONMAIDEN-800/20120807000101_FOSS/SelNG-projects-ajax-tests/134432857672933/server/AJAX/firefox/en_US/debug/projects/ajax/tests/calendar/appointments/views/day/allday/CreateAppointment/CreateAllDayAppointment_01ss191.png
 		// which is failing to click the save/close button.
 		// It seems that the appointment compose is taking a long time to open
 		// instead of waiting for an element to appear (which is the preferred solution), just

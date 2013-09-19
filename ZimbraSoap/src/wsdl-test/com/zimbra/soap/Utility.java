@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -13,20 +13,6 @@
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.soap;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import javax.xml.ws.soap.SOAPFaultException;
-
-import com.google.common.collect.Maps;
-import com.sun.xml.ws.api.message.Header;
-import com.sun.xml.ws.api.message.Headers;
-import com.sun.xml.ws.developer.SchemaValidationFeature;
-import com.sun.xml.ws.developer.WSBindingProvider;
-import com.sun.xml.bind.api.JAXBRIContext;
 
 import generated.zcsclient.account.testAuthRequest;
 import generated.zcsclient.account.testAuthResponse;
@@ -95,10 +81,32 @@ import generated.zcsclient.ws.service.ZcsAdminPortType;
 import generated.zcsclient.ws.service.ZcsAdminService;
 import generated.zcsclient.ws.service.ZcsPortType;
 import generated.zcsclient.ws.service.ZcsService;
+import generated.zcsclient.zm.ObjectFactory;
 import generated.zcsclient.zm.testAccountBy;
 import generated.zcsclient.zm.testAccountSelector;
+import generated.zcsclient.zm.testHeaderContext;
+
+import java.io.File;
+import java.util.Map;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBElement;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.ws.soap.SOAPFaultException;
 
 import org.junit.Assert;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import com.google.common.collect.Maps;
+import com.sun.xml.bind.api.JAXBRIContext;
+import com.sun.xml.ws.api.message.Header;
+import com.sun.xml.ws.api.message.Headers;
+import com.sun.xml.ws.developer.SchemaValidationFeature;
+import com.sun.xml.ws.developer.WSBindingProvider;
 
 /**
  * Current assumption : user1 exists with password test123
@@ -112,24 +120,44 @@ public class Utility {
     private static String adminAuthToken = null;
     private static Map<String,String> acctAuthToks = Maps.newHashMap();
 
-    public static void addSoapAcctAuthHeader(WSBindingProvider bp,
-                String authToken)
-    throws Exception {
-        // Note that am not using JAXB generated HeaderContext here
-        JAXBRIContext jaxb = (JAXBRIContext) JAXBRIContext.newInstance(com.zimbra.soap.header.HeaderContext.class);
-        com.zimbra.soap.header.HeaderContext hdrCtx = new com.zimbra.soap.header.HeaderContext();
-        hdrCtx.setAuthToken(authToken);
-        Header soapHdr = Headers.create(jaxb,hdrCtx);
-        List <Header> soapHdrs = new ArrayList <Header>();
-        soapHdrs.add(soapHdr);
-        // See http://metro.java.net/1.5/guide/SOAP_headers.html
-        // WSBindingProvider bp = (WSBindingProvider)acctSvcEIF;
-        bp.setOutboundHeaders(soapHdrs);
+    public static void addSoapAuthHeader(WSBindingProvider bp, String authToken)
+    throws JAXBException, ParserConfigurationException {
+        JAXBRIContext.newInstance(testHeaderContext.class);
+        testHeaderContext zimbraSoapHdrContext = new testHeaderContext();
+        zimbraSoapHdrContext.setAuthToken(authToken);
+        // Seen failing intermittently on Mac OSX Mountain Lion claiming the create method does not exist - CP problem?
+        // so, use method based on Element instead
+        // Header soapHdr = Headers.create(jaxbriContext, jaxbHeaderContext);
+        Header soapHdr = Headers.create(makeZimbraSoapHeaderContext(zimbraSoapHdrContext));
+        bp.setOutboundHeaders(soapHdr);
+    }
+    public static void addSoapAcctAuthHeader(WSBindingProvider bp, String authToken)
+    throws JAXBException, ParserConfigurationException {
+        addSoapAuthHeader(bp, authToken);
+    }
+    public static void addSoapAdminAuthHeader(WSBindingProvider bp) throws JAXBException, ParserConfigurationException {
+        Utility.getAdminServiceAuthToken();
+        addSoapAuthHeader(bp, adminAuthToken);
     }
 
-    public static String addSoapAcctAuthHeaderForAcct(WSBindingProvider bp,
-            String acctName)
-    throws Exception {
+    public static Element makeZimbraSoapHeaderContext(testHeaderContext contextJaxb)
+    throws JAXBException, ParserConfigurationException {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
+        Document doc = dbf.newDocumentBuilder().newDocument();
+
+        JAXBContext jaxb = JAXBContext.newInstance(testHeaderContext.class);
+        Marshaller marshaller = jaxb.createMarshaller();
+        // testHeaderContext doesn't have an @XmlRootElement annotation for some reason, however the JAXBElement
+        // created using fact.createContext knows what the element name should be called, so use that.
+        ObjectFactory fact = new ObjectFactory();
+        JAXBElement<testHeaderContext> zimbraSoapHdrCtxt = fact.createContext(contextJaxb);
+        marshaller.marshal(zimbraSoapHdrCtxt, doc);
+        return doc.getDocumentElement();
+    }
+
+    public static String addSoapAcctAuthHeaderForAcct(WSBindingProvider bp, String acctName)
+    throws JAXBException, ParserConfigurationException {
         String authTok;
         if (acctAuthToks.containsKey(acctName))
             authTok = acctAuthToks.get(acctName);
@@ -154,9 +182,8 @@ public class Utility {
         return getAccountServiceAuthToken(acctName, DEFAULT_PASS);
     }
 
-    public static String getAccountServiceAuthToken(
-                    String acctName, String password)
-    throws Exception {
+    public static String getAccountServiceAuthToken(String acctName, String password)
+    {
         Utility.getZcsSvcEIF();
         testAuthRequest authReq = new testAuthRequest();
         testAccountSelector acct = new testAccountSelector();
@@ -188,7 +215,7 @@ public class Utility {
         Utility.nvAdminSvcEIF = svcEIF;
     }
 
-    public static ZcsPortType getZcsSvcEIF() throws Exception {
+    public static ZcsPortType getZcsSvcEIF() {
         if (zcsSvcEIF == null) {
             // The ZcsService class is the Java type bound to the service section of the WSDL document.
             ZcsService zcsSvc = new ZcsService();
@@ -206,7 +233,7 @@ public class Utility {
         return nvZcsSvcEIF;
     }
 
-    public static ZcsAdminPortType getAdminSvcEIF() throws Exception {
+    public static ZcsAdminPortType getAdminSvcEIF() {
         if (adminSvcEIF == null) {
             // The ZcsAdminService class is the Java type bound to the service section of the WSDL document.
             ZcsAdminService zcsSvc = new ZcsAdminService();
@@ -224,21 +251,7 @@ public class Utility {
         return nvAdminSvcEIF;
     }
 
-    public static void addSoapAdminAuthHeader(WSBindingProvider bp) throws Exception {
-        Utility.getAdminServiceAuthToken();
-        // Note that am not using JAXB generated HeaderContext here
-        JAXBRIContext jaxb = (JAXBRIContext) JAXBRIContext.newInstance(com.zimbra.soap.header.HeaderContext.class);
-        com.zimbra.soap.header.HeaderContext hdrCtx = new com.zimbra.soap.header.HeaderContext();
-        hdrCtx.setAuthToken(adminAuthToken);
-        Header soapHdr = Headers.create(jaxb,hdrCtx);
-        List <Header> soapHdrs = new ArrayList <Header>();
-        soapHdrs.add(soapHdr);
-        // See http://metro.java.net/1.5/guide/SOAP_headers.html
-        // WSBindingProvider bp = (WSBindingProvider)acctSvcEIF;
-        bp.setOutboundHeaders(soapHdrs);
-    }
-
-    public static String getAdminServiceAuthToken() throws Exception {
+    public static String getAdminServiceAuthToken() {
         Utility.getAdminSvcEIF();
         if (adminAuthToken == null) {
             Utility.getAdminSvcEIF();
@@ -279,7 +292,7 @@ public class Utility {
             javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
         } catch (Exception e) { }
     }
-    
+
     public static void deleteDomainIfExists(String domainName) throws Exception {
         Utility.addSoapAdminAuthHeader((WSBindingProvider)getAdminSvcEIF());
         try {
@@ -300,7 +313,7 @@ public class Utility {
         } catch (SOAPFaultException sfe) {
             String missive = sfe.getMessage();
             if (!missive.startsWith("no such domain:"))
-                System.err.println("Exception " + sfe.toString() + 
+                System.err.println("Exception " + sfe.toString() +
                         " thrown attempting to delete domain " + domainName);
         }
     }
@@ -325,7 +338,7 @@ public class Utility {
         } catch (SOAPFaultException sfe) {
             String missive = sfe.getMessage();
             if (!missive.startsWith("no such server:"))
-                System.err.println("Exception " + sfe.toString() + 
+                System.err.println("Exception " + sfe.toString() +
                         " thrown attempting to delete domain " + serverName);
         }
     }
@@ -353,7 +366,7 @@ public class Utility {
         } catch (SOAPFaultException sfe) {
             String missive = sfe.getMessage();
             if (!missive.startsWith("no such account:"))
-                System.err.println("Exception " + sfe.toString() + 
+                System.err.println("Exception " + sfe.toString() +
                         " thrown attempting to delete account " + accountName);
         }
     }
@@ -384,7 +397,7 @@ public class Utility {
         } catch (SOAPFaultException sfe) {
             String missive = sfe.getMessage();
             if (!missive.startsWith("no such calendar resource:"))
-                System.err.println("Exception " + sfe.toString() + 
+                System.err.println("Exception " + sfe.toString() +
                         " thrown attempting to delete CalendarResource "
                         + calResourceName);
         }
@@ -410,7 +423,7 @@ public class Utility {
         } catch (SOAPFaultException sfe) {
             String missive = sfe.getMessage();
             if (!missive.startsWith("no such cos:"))
-                System.err.println("Exception " + sfe.toString() + 
+                System.err.println("Exception " + sfe.toString() +
                         " thrown attempting to delete cos " + cosName);
         }
     }
@@ -430,7 +443,7 @@ public class Utility {
                     if (volRootpath != null && (volRootpath.length() > 0))
                         new File(volume.getRootpath()).deleteOnExit();
                 } catch (Exception ex) {
-                    System.err.println("Exception " + ex.toString() + 
+                    System.err.println("Exception " + ex.toString() +
                     " thrown inside deleteVolumeIfExists - deleting rootPath="
                             + volRootpath + " for volume=" + name);
                 return;
@@ -456,12 +469,12 @@ public class Utility {
         } catch (SOAPFaultException sfe) {
             String missive = sfe.getMessage();
             if (!missive.startsWith("no such distribution list:"))
-                System.err.println("Exception " + sfe.toString() + 
+                System.err.println("Exception " + sfe.toString() +
                         " thrown attempting to delete dl " + name);
         }
     }
 
-    public static String ensureDomainExists(String domainName) throws Exception {
+    public static String ensureDomainExists(String domainName) throws JAXBException, ParserConfigurationException {
         String domainId = null;
         Utility.addSoapAdminAuthHeader((WSBindingProvider)getAdminSvcEIF());
         testGetDomainInfoRequest getInfoReq = new testGetDomainInfoRequest();
@@ -516,8 +529,7 @@ public class Utility {
         }
     }
 
-    public static String ensureAccountExists(String accountName)
-    throws Exception {
+    public static String ensureAccountExists(String accountName) throws JAXBException, ParserConfigurationException {
         Utility.addSoapAdminAuthHeader((WSBindingProvider)getAdminSvcEIF());
         String domainName = accountName.substring(accountName.indexOf('@') + 1);
         ensureDomainExists(domainName);
@@ -576,7 +588,7 @@ public class Utility {
 
     /**
      * Creating an account does not create the associated mailbox until a Get is done for the mailbox.
-     * 
+     *
      * @param accountName - name of account - must have password "test123" if exists already
      * @return
      * @throws Exception
@@ -649,7 +661,7 @@ public class Utility {
                 getAdminSvcEIF().getAllVolumesRequest(gavReq);
         for (testVolumeInfo volume : gavResp.getVolume()) {
             if (name.equals(volume.getName())) {
-                if (rootPath.equals(volume.getRootpath())) 
+                if (rootPath.equals(volume.getRootpath()))
                     return volume.getId();
                 deleteVolumeIfExists(name);
                 break;

@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -14,9 +14,7 @@
  */
 package com.zimbra.cs.imap;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
@@ -29,8 +27,6 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.stats.RealtimeStatsCallback;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Server;
 import com.zimbra.cs.server.NioConnection;
 import com.zimbra.cs.server.NioHandler;
 import com.zimbra.cs.server.NioServer;
@@ -48,14 +44,7 @@ public final class NioImapServer extends NioServer implements ImapServer, Realti
         decoder.setMaxLiteralSize(config.getMaxMessageSize());
         registerMBean(getName());
         ZimbraPerf.addStatsCallback(this);
-        Set<String> safeHosts = new HashSet<String>();
-        for (Server server : Provisioning.getInstance().getAllServers()) {
-            safeHosts.add(server.getServiceHostname());
-        }
-        for (String ignoredHost : config.getIgnoredHosts()) {
-            safeHosts.add(ignoredHost);
-        }
-        ServerThrottle.configureThrottle(config.getProtocol(), LC.imap_throttle_ip_limit.intValue(), LC.imap_throttle_acct_limit.intValue(), safeHosts);
+        ServerThrottle.configureThrottle(config.getProtocol(), LC.imap_throttle_ip_limit.intValue(), LC.imap_throttle_acct_limit.intValue(), getThrottleSafeHosts(), getThrottleWhitelist());
     }
 
     @Override

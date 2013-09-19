@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -51,6 +51,8 @@ import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.soap.DocumentHandler;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.mail.type.MessageHitInfo;
+import com.zimbra.soap.util.JaxbInfo;
 
 /**
  * A helper class to build a search SOAP response.
@@ -67,7 +69,7 @@ final class SearchResponse {
     private final OperationContext octxt;
     private boolean includeMailbox = false;
     private int size = 0;
-    private ExpandResults expand;
+    private final ExpandResults expand;
     private SortBy sortOrder = SortBy.NONE;;
     private boolean allRead = false;
 
@@ -261,7 +263,13 @@ final class SearchResponse {
                 }
             }
         }
-        return el;
+        /* Different SOAP interfaces assemble elements in different orders.  WSDL/JAXB require a specific order,
+         * so force them into the correct order here.  When/if we change to using the JAXB objects, this problem
+         * will go away.
+         */
+        JaxbInfo jaxbInfo = JaxbInfo.getFromCache(MessageHitInfo.class);
+        List<List <org.dom4j.QName>> nameOrder = jaxbInfo.getElementNameOrder();
+        return Element.reorderChildElements(el, nameOrder);
     }
 
     private Element add(MessagePartHit hit) throws ServiceException {

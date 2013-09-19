@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -1478,7 +1478,7 @@ public final class ToXML {
         if (inv.hasRecurId()) {
             ie.addAttribute(MailConstants.A_CAL_RECURRENCE_ID, inv.getRecurId().toString());
         }
-        encodeInviteComponent(ie, ifmt, octxt, cal, inv, NOTIFY_FIELDS, neuter);
+        encodeInviteComponent(ie, ifmt, octxt, cal, (ItemId) null, inv, NOTIFY_FIELDS, neuter);
 
         if (includeContent && (inv.isPublic() || allowPrivateAccess(octxt, cal))) {
             int invId = inv.getMailItemId();
@@ -1671,7 +1671,7 @@ public final class ToXML {
                     encodeCalendarReplies(invElt, calItem, invites[0], recurIdZ);
                 }
                 for (Invite inv : invites) {
-                    encodeInviteComponent(invElt, ifmt, octxt, calItem, inv, NOTIFY_FIELDS, neuter);
+                    encodeInviteComponent(invElt, ifmt, octxt, calItem, (ItemId) null, inv, NOTIFY_FIELDS, neuter);
                 }
             }
 
@@ -1891,7 +1891,8 @@ public final class ToXML {
     }
 
     public static Element encodeInviteComponent(Element parent, ItemIdFormatter ifmt, OperationContext octxt,
-            CalendarItem calItem /* may be null */, Invite invite, int fields, boolean neuter)
+            CalendarItem calItem /* may be null */, ItemId calId /* may be null */,
+            Invite invite, int fields, boolean neuter)
     throws ServiceException {
         boolean allFields = true;
 
@@ -2024,14 +2025,21 @@ public final class ToXML {
             e.addAttribute(MailConstants.A_CAL_SEQUENCE, invite.getSeqNo());
             e.addAttribute(MailConstants.A_CAL_DATETIME, invite.getDTStamp()); //zdsync
 
-            if (calItem != null) {
-                String itemId = ifmt.formatItemId(calItem);
-                e.addAttribute(MailConstants.A_CAL_ID, itemId);
+            String itemId = null;
+            if (calId != null) {
+                itemId = calId.toString(ifmt);
+            } else if (calItem != null) {
+                itemId = ifmt.formatItemId(calItem);
+            }
+            if (itemId != null) {
+                e.addAttribute(MailConstants.A_CAL_ID /* calItemId */, itemId);
                 if (invite.isEvent()) {
-                    e.addAttribute(MailConstants.A_APPT_ID_DEPRECATE_ME, itemId);  // for backward compat
+                    e.addAttribute(MailConstants.A_APPT_ID_DEPRECATE_ME /* apptId */, itemId);  // for backward compat
                 }
-                ItemId ciFolderId = new ItemId(calItem.getMailbox(), calItem.getFolderId());
-                e.addAttribute(MailConstants.A_CAL_ITEM_FOLDER, ifmt.formatItemId(ciFolderId));
+                if (calItem != null) {
+                    ItemId ciFolderId = new ItemId(calItem.getMailbox(), calItem.getFolderId());
+                    e.addAttribute(MailConstants.A_CAL_ITEM_FOLDER /* ciFolder */, ifmt.formatItemId(ciFolderId));
+                }
             }
 
             Recurrence.IRecurrence recur = invite.getRecurrence();
@@ -2227,7 +2235,7 @@ public final class ToXML {
             if (invite != null) {
                 setCalendarItemType(ie, invite.getItemType());
                 encodeTimeZoneMap(ie, invite.getTimeZoneMap());
-                encodeInviteComponent(ie, ifmt, octxt, calItem, invite, fields, neuter);
+                encodeInviteComponent(ie, ifmt, octxt, calItem, info.getCalendarItemId(), invite, fields, neuter);
                 ICalTok invMethod = Invite.lookupMethod(invite.getMethod());
                 if (ICalTok.REQUEST.equals(invMethod) || ICalTok.PUBLISH.equals(invMethod)) {
                     InviteChanges invChanges = info.getInviteChanges();
@@ -3055,22 +3063,26 @@ public final class ToXML {
 
     private static void encodeAddrsWithGroupInfo(Element eParent,
             String emailElem, Account requestedAcct, Account authedAcct) {
-        GalGroupInfoProvider groupInfoProvider = GalGroupInfoProvider.getInstance();
+        if (requestedAcct.isFeatureGalEnabled()
+                && requestedAcct.isFeatureGalAutoCompleteEnabled()
+                && requestedAcct.isPrefGalAutoCompleteEnabled()) {
+            GalGroupInfoProvider groupInfoProvider = GalGroupInfoProvider.getInstance();
 
-        for (Element eEmail : eParent.listElements(emailElem)) {
-            String addr = eEmail.getAttribute(MailConstants.A_ADDRESS, null);
-            if (addr != null) {
-                // shortcut the check if the email address is the authed or requested account - it cannot be a group
-                if (addr.equalsIgnoreCase(requestedAcct.getName()) || addr.equalsIgnoreCase(authedAcct.getName()))
-                    continue;
+            for (Element eEmail : eParent.listElements(emailElem)) {
+                String addr = eEmail.getAttribute(MailConstants.A_ADDRESS, null);
+                if (addr != null) {
+                    // shortcut the check if the email address is the authed or requested account - it cannot be a group
+                    if (addr.equalsIgnoreCase(requestedAcct.getName()) || addr.equalsIgnoreCase(authedAcct.getName()))
+                        continue;
 
-                GroupInfo groupInfo = groupInfoProvider.getGroupInfo(addr, true, requestedAcct, authedAcct);
-                if (GroupInfo.IS_GROUP == groupInfo) {
-                    eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
-                    eEmail.addAttribute(MailConstants.A_EXP, false);
-                } else if (GroupInfo.CAN_EXPAND == groupInfo) {
-                    eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
-                    eEmail.addAttribute(MailConstants.A_EXP, true);
+                    GroupInfo groupInfo = groupInfoProvider.getGroupInfo(addr, true, requestedAcct, authedAcct);
+                    if (GroupInfo.IS_GROUP == groupInfo) {
+                        eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
+                        eEmail.addAttribute(MailConstants.A_EXP, false);
+                    } else if (GroupInfo.CAN_EXPAND == groupInfo) {
+                        eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
+                        eEmail.addAttribute(MailConstants.A_EXP, true);
+                    }
                 }
             }
         }

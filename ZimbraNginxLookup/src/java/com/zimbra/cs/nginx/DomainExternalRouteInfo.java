@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -20,6 +20,7 @@ public class DomainExternalRouteInfo extends LookupEntry {
     
     private boolean mUseExternalRoute;
     private boolean mUseExternalRouteIfAccountNotExist;
+    private boolean mExternalRouteIncludeOriginalAuthusername;
     
     private String mPop3Port;
     private String mPop3SSLPort;
@@ -33,6 +34,7 @@ public class DomainExternalRouteInfo extends LookupEntry {
     DomainExternalRouteInfo(String domainName,
                             String useExternalRoute,
                             String useExternalRouteIfAccountNotExist,
+                            String externalRouteIncludeOriginalAuthusername,
                             String pop3Port,
                             String pop3SSLPort,
                             String imapPort,
@@ -45,7 +47,8 @@ public class DomainExternalRouteInfo extends LookupEntry {
         
         mUseExternalRoute = LdapConstants.LDAP_TRUE.equals(useExternalRoute);
         mUseExternalRouteIfAccountNotExist = LdapConstants.LDAP_TRUE.equals(useExternalRouteIfAccountNotExist);
-        
+        mExternalRouteIncludeOriginalAuthusername = LdapConstants.LDAP_TRUE.equals(externalRouteIncludeOriginalAuthusername);
+
         mPop3Port        = pop3Port;
         mPop3SSLPort     = pop3SSLPort;
         mImapPort        = imapPort;
@@ -63,11 +66,15 @@ public class DomainExternalRouteInfo extends LookupEntry {
     boolean useExternalRoute() {
         return mUseExternalRoute;
     }
-    
+
     boolean useExternalRouteIfAccountNotExist() {
         return mUseExternalRouteIfAccountNotExist;
     }
-    
+
+    boolean externalRouteIncludeOriginalAuthusername() {
+        return mExternalRouteIncludeOriginalAuthusername;
+    }
+
     String getHostname(String proto) {
         if (NginxLookupExtension.NginxLookupHandler.POP3.equalsIgnoreCase(proto))
             return mPop3Hostname;

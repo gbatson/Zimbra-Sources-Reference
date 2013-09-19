@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -13,6 +13,82 @@
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.index.query.parser;
+
+import static com.zimbra.cs.index.query.parser.ParserConstants.AFTER;
+import static com.zimbra.cs.index.query.parser.ParserConstants.AND;
+import static com.zimbra.cs.index.query.parser.ParserConstants.APPT_END;
+import static com.zimbra.cs.index.query.parser.ParserConstants.APPT_START;
+import static com.zimbra.cs.index.query.parser.ParserConstants.ATTACHMENT;
+import static com.zimbra.cs.index.query.parser.ParserConstants.AUTHOR;
+import static com.zimbra.cs.index.query.parser.ParserConstants.BEFORE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.BIGGER;
+import static com.zimbra.cs.index.query.parser.ParserConstants.BRACED_TERM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CC;
+import static com.zimbra.cs.index.query.parser.ParserConstants.COMPANY;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONTACT;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONTENT;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONV;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONV_COUNT;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONV_END;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONV_MAXM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONV_MINM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.CONV_START;
+import static com.zimbra.cs.index.query.parser.ParserConstants.DATE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.DAY;
+import static com.zimbra.cs.index.query.parser.ParserConstants.ENVFROM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.ENVTO;
+import static com.zimbra.cs.index.query.parser.ParserConstants.FIELD;
+import static com.zimbra.cs.index.query.parser.ParserConstants.FILENAME;
+import static com.zimbra.cs.index.query.parser.ParserConstants.FROM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.FROMCC;
+import static com.zimbra.cs.index.query.parser.ParserConstants.HAS;
+import static com.zimbra.cs.index.query.parser.ParserConstants.IN;
+import static com.zimbra.cs.index.query.parser.ParserConstants.INID;
+import static com.zimbra.cs.index.query.parser.ParserConstants.IS;
+import static com.zimbra.cs.index.query.parser.ParserConstants.ITEM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.KEYWORDS;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MDATE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MESSAGE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.METADATA;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MINUS;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MODSEQ;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MONTH;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MSGID;
+import static com.zimbra.cs.index.query.parser.ParserConstants.MY;
+import static com.zimbra.cs.index.query.parser.ParserConstants.NOT;
+import static com.zimbra.cs.index.query.parser.ParserConstants.OR;
+import static com.zimbra.cs.index.query.parser.ParserConstants.PLUS;
+import static com.zimbra.cs.index.query.parser.ParserConstants.PRIORITY;
+import static com.zimbra.cs.index.query.parser.ParserConstants.QUOTED_TERM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.SIZE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.SMALLER;
+import static com.zimbra.cs.index.query.parser.ParserConstants.SUBJECT;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TAG;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TERM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TITLE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TO;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TOCC;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TOFROM;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TOFROMCC;
+import static com.zimbra.cs.index.query.parser.ParserConstants.TYPE;
+import static com.zimbra.cs.index.query.parser.ParserConstants.UNDER;
+import static com.zimbra.cs.index.query.parser.ParserConstants.UNDERID;
+import static com.zimbra.cs.index.query.parser.ParserConstants.WEEK;
+import static com.zimbra.cs.index.query.parser.ParserConstants.YEAR;
+import static com.zimbra.cs.index.query.parser.ParserConstants.tokenImage;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTCLAUSE;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTCONJUNCTION;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTDATECLAUSE;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTDATETERM;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTDEFAULTCLAUSE;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTITEMCLAUSE;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTITEMTERM;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTMODIFIER;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTQUERY;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTROOT;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTSORTBY;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTTEXTCLAUSE;
+import static com.zimbra.cs.index.query.parser.ParserTreeConstants.JJTTEXTTERM;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -36,6 +112,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.index.LuceneFields;
 import com.zimbra.cs.index.query.AddrQuery;
+import com.zimbra.cs.index.query.AddrQuery.Address;
 import com.zimbra.cs.index.query.AttachmentQuery;
 import com.zimbra.cs.index.query.BuiltInQuery;
 import com.zimbra.cs.index.query.ConjQuery;
@@ -51,7 +128,6 @@ import com.zimbra.cs.index.query.ItemQuery;
 import com.zimbra.cs.index.query.ModseqQuery;
 import com.zimbra.cs.index.query.PriorityQuery;
 import com.zimbra.cs.index.query.Query;
-import com.zimbra.cs.index.query.AddrQuery.Address;
 import com.zimbra.cs.index.query.Query.Modifier;
 import com.zimbra.cs.index.query.SenderQuery;
 import com.zimbra.cs.index.query.SizeQuery;
@@ -60,9 +136,6 @@ import com.zimbra.cs.index.query.SubjectQuery;
 import com.zimbra.cs.index.query.TagQuery;
 import com.zimbra.cs.index.query.TextQuery;
 import com.zimbra.cs.index.query.TypeQuery;
-import static com.zimbra.cs.index.query.parser.ParserConstants.*;
-import static com.zimbra.cs.index.query.parser.ParserTreeConstants.*;
-
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -219,6 +292,9 @@ public final class QueryParser {
      * @throws ServiceException if a grammar error detected
      */
     public List<Query> parse(String src) throws ServiceException {
+        if (Strings.isNullOrEmpty(src)) {
+            throw MailServiceException.QUERY_PARSE_ERROR(src, null, "", 0, "Empty query string not allowed");
+        }
         Parser parser = new Parser(new StringReader(src));
         try {
             SimpleNode node = parser.parse();
@@ -461,14 +537,14 @@ public final class QueryParser {
         switch (field.kind) {
             case HAS:
                 if (text.equalsIgnoreCase("attachment")) {
-                    return new AttachmentQuery("any");
+                    return AttachmentQuery.createQuery(LuceneFields.L_ATTACHMENT_ANY /* "any" */);
                 } else {
                     return new HasQuery(text);
                 }
             case ATTACHMENT:
-                return new AttachmentQuery(text);
+                return AttachmentQuery.createQuery(text);
             case TYPE:
-                return new TypeQuery(text);
+                return TypeQuery.createQuery(text);
             case ITEM:
                 return ItemQuery.create(mailbox, text);
             case UNDERID:

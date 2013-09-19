@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -19,7 +19,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.KeyStore;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,6 +40,7 @@ import org.apache.mina.core.filterchain.DefaultIoFilterChainBuilder;
 import org.apache.mina.core.filterchain.IoFilter;
 import org.apache.mina.core.service.IoProcessor;
 import org.apache.mina.core.service.SimpleIoProcessorPool;
+import org.apache.mina.core.session.IoEventType;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
@@ -58,6 +61,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.NetUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.util.Zimbra;
 
 /**
@@ -188,7 +192,10 @@ public abstract class NioServer implements Server {
         acceptor = new ZimbraSocketAcceptor(config.getServerSocketChannel(), IO_PROCESSOR_POOL);
         executorFilter = new ExecutorFilter(1, config.getMaxThreads(),
                 config.getThreadKeepAliveTime(), TimeUnit.SECONDS,
-                new ThreadFactoryBuilder().setNameFormat(getName() + "-%d").build());
+                new ThreadFactoryBuilder().setNameFormat(getName() + "-%d").build(), IoEventType.EXCEPTION_CAUGHT,
+                IoEventType.MESSAGE_RECEIVED, IoEventType.SESSION_CLOSED,
+                IoEventType.SESSION_IDLE, IoEventType.SESSION_OPENED);
+
     }
 
     /**
@@ -328,4 +335,26 @@ public abstract class NioServer implements Server {
         }
         return ((ThreadPoolExecutor) ex).getPoolSize();
     }
+
+    protected Set<String> getThrottleSafeHosts() throws ServiceException {
+
+        Set<String> safeHosts = new HashSet<String>();
+        for (com.zimbra.cs.account.Server server : Provisioning.getInstance().getAllServers()) {
+            safeHosts.add(server.getServiceHostname());
+        }
+        for (String ignoredHost : config.getThottleIgnoredHosts()) {
+            safeHosts.add(ignoredHost);
+        }
+        return safeHosts;
+    }
+
+    protected Set<String> getThrottleWhitelist() throws ServiceException {
+
+        Set<String> safeHosts = new HashSet<String>();
+        for (String whitelistHost : config.getThrottleWhitelist()) {
+            safeHosts.add(whitelistHost);
+        }
+        return safeHosts;
+    }
+
 }

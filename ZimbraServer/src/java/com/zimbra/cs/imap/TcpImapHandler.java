@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -14,23 +14,24 @@
  */
 package com.zimbra.cs.imap;
 
-import com.google.common.io.Closeables;
-import com.zimbra.common.io.TcpServerInputStream;
-import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.util.Constants;
-import com.zimbra.common.util.NetUtil;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.stats.ZimbraPerf;
-import com.zimbra.cs.server.ProtocolHandler;
-
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+import com.google.common.io.Closeables;
+import com.zimbra.common.io.TcpServerInputStream;
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.NetUtil;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.server.ProtocolHandler;
+import com.zimbra.cs.stats.ZimbraPerf;
 
 final class TcpImapHandler extends ProtocolHandler {
     private TcpServerInputStream input;
@@ -83,6 +84,7 @@ final class TcpImapHandler extends ProtocolHandler {
 
     @Override
     protected boolean processCommand() throws IOException {
+        delegate.setLoggingContext();
         // FIXME: throw an exception instead?
         if (input == null) {
             clearRequest();
@@ -112,9 +114,12 @@ final class TcpImapHandler extends ProtocolHandler {
             }
             // FIXME Shouldn't we do these before executing the request??
             setIdle(false);
-            ZimbraPerf.STOPWATCH_IMAP.stop(start);
+            long elapsed = ZimbraPerf.STOPWATCH_IMAP.stop(start);
             if (delegate.lastCommand != null) {
+                ZimbraLog.imap.info("%s elapsed=%d", delegate.lastCommand.toUpperCase(), elapsed);
                 ZimbraPerf.IMAP_TRACKER.addStat(delegate.lastCommand.toUpperCase(), start);
+            } else {
+                ZimbraLog.imap.info("(unknown) elapsed=%d", elapsed);
             }
             return keepGoing && (LC.imap_max_consecutive_error.intValue() <= 0 || delegate.consecutiveError < LC.imap_max_consecutive_error.intValue());
         } catch (TcpImapRequest.ImapContinuationException e) {

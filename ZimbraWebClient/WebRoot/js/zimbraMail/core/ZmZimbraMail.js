@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -2253,6 +2253,13 @@ function(parent, parentElement, adminUrl) {
 
     menu.createSeparator();
 
+	if (AjxEnv.isFirefox && AjxEnv.browserVersion >= 23.0) {
+		menu.createSeparator();
+
+		mi = menu.createMenuItem("socialfoxSettings", {text: ZmMsg.socialfoxEnableSidebar});
+		mi.addSelectionListener(new AjxListener(this, this._socialfoxSettingsListener));
+	}
+
 	if (appCtxt.get(ZmSetting.CHANGE_PASSWORD_ENABLED)) {
         mi = menu.createMenuItem("changePassword", {text: ZmMsg.changePassword});
         mi.addSelectionListener(new AjxListener(this, this._changePasswordListener));
@@ -2454,6 +2461,13 @@ function(ev) {
 	dialog.setMessage(AjxMessageFormat.format(aboutMsg, [version, release]), DwtMessageDialog.INFO_STYLE, ZmMsg.about);
 	dialog.popup();
 
+};
+
+
+ZmZimbraMail.prototype._socialfoxSettingsListener =
+function(ev) {
+    var dialog = new ZmSocialfoxActivationDialog();
+    dialog.popup();
 };
 
 

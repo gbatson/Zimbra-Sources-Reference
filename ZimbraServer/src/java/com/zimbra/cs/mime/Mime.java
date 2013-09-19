@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -226,17 +226,19 @@ public class Mime {
         }
 
         if (emptyMultipart != null && parts.size() == 1) {
-            ZimbraLog.misc.debug("single multipart with no children. promoting the preamble into a single text part");
-            parts.remove(0);
-            MPartInfo mpart = new MPartInfo();
-            ZMimeBodyPart mp = new  ZMimeBodyPart();
             String text = emptyMultipart.getPreamble();
-            mp.setText(text, defaultCharset);
-            mpart.mPart = mp;
-            mpart.mContentType = mp.getContentType();
-            mpart.mDisposition = "";
-            mpart.mPartName = "1";
-            parts.add(mpart);
+            if (!StringUtil.isNullOrEmpty(text)) {
+                ZimbraLog.misc.debug("single multipart with no children. promoting the preamble into a single text part");
+                parts.remove(0);
+                MPartInfo mpart = new MPartInfo();
+                ZMimeBodyPart mp = new  ZMimeBodyPart();
+                mp.setText(text, defaultCharset);
+                mpart.mPart = mp;
+                mpart.mContentType = mp.getContentType();
+                mpart.mDisposition = "";
+                mpart.mPartName = "1";
+                parts.add(mpart);
+            }
         }
 
         return parts;
@@ -644,6 +646,11 @@ public class Mime {
         }
     }
 
+    private static boolean isEmlAttachment(MimePart mp) {
+        String filename = getFilename(mp);
+        return filename != null && (filename.endsWith(".eml") || filename.endsWith(".msg"));
+    }
+
     public static MimePart getMimePart(MimePart mp, String part) throws IOException, MessagingException {
         if (mp == null) {
             return null;
@@ -676,7 +683,7 @@ public class Mime {
                         continue;
                     }
                 }
-            } else if (ct.equals(MimeConstants.CT_MESSAGE_RFC822) || ct.equals(MimeConstants.CT_APPLICATION_OCTET_STREAM)) {
+            } else if (ct.equals(MimeConstants.CT_MESSAGE_RFC822) || (ct.equals(MimeConstants.CT_APPLICATION_OCTET_STREAM) && isEmlAttachment(mp))) {
                 MimeMessage content = getMessageContent(mp);
                 if (content != null) {
                     if (mp instanceof MimeMessage) {

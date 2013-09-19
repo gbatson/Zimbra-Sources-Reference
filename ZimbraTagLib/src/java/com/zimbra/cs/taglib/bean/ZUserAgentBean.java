@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -25,6 +25,7 @@ public class ZUserAgentBean {
     // state
     Version browserVersion = new Version("-1");
     Version mozVersion = new Version("-1");
+    Version tridentVersion = new Version("-1");
     boolean isOsMac = false;
     boolean isOsWindows = false;
     boolean isOsLinux = false;
@@ -97,15 +98,7 @@ public class ZUserAgentBean {
                 } else if ((token.indexOf("iphone")) != -1) {
                     isIPhone = true;
                 } else if ((token.indexOf("ipad")) != -1) {
-                    /**
-                     * Flag used to redirect an iPad user to the touch client(if installed)
-                     */
                     isTouchiPad = true;
-                    /**
-                     * Faking iPad user agent as iPhone, this is a hack. On 8.0, we need to
-                     * redirect an iPad user to the mobile client.
-                     */
-                    isIPhone = true;
                 } else if ((token.indexOf("ipod")) != -1) {
                     isIPod = true;
                 } else if ((token.indexOf("hotjava")) != -1) {
@@ -116,6 +109,8 @@ public class ZUserAgentBean {
                     if (agtArr.hasMoreTokens()) {
                         browserVersion = new Version(agtArr.nextToken());
                     }
+                } else if ((index = token.indexOf("trident/")) != -1){
+					tridentVersion = new Version(token.substring(index + 8));
                 } else if ((index = token.indexOf("gecko/")) != -1){
                     isGeckoBased = true;
                     //bug:70005#c4 suggest to stop build date based version parsing
@@ -163,6 +158,13 @@ public class ZUserAgentBean {
                     !isSafari && !isChrome);
 
             isIE = (isIE && !isOpera);
+
+            // Note: unlike JP and later, we don't treat IE11+ as
+            // significantly different from IE10 and earlier
+            if (tridentVersion.getMajor() >= 7 && mozVersion.getMajor() >= 11) {
+                isIE = true;
+                browserVersion = mozVersion;
+            }
 
             isMozilla = ((isNav && mozVersion.getMajor() > -1 && isGeckoBased));
 
@@ -239,7 +241,11 @@ public class ZUserAgentBean {
     public boolean getIsIE10() { return (isIE && (browserVersion.equals(10,0))); }
     
     public boolean getIsIE10up() { return (isIE && (browserVersion.getMajor() >= 10)); }
+
+    public boolean getIsIE11() { return (isIE && (browserVersion.equals(11,0))); }
     
+    public boolean getIsIE11up() { return (isIE && (browserVersion.getMajor() >= 11)); }
+
     public boolean getIsMozilla() { return isMozilla; }
 
     public boolean getIsMozilla1_4up() { return (isMozilla && (mozVersion.greaterOrEqual(1,4))); }

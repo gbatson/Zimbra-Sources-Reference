@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -71,44 +71,29 @@ function() {
 };
 
 ZmAppCtxt.prototype._setAuthTokenWarning =
-function(timeLeftInMillis) {
-	var millisToLive = timeLeftInMillis || window.authTokenTimeLeftInMillis;
-	var wholeMinutesToLive = Math.floor(millisToLive / ZmAppCtxt.ONE_MINUTE);
-	var minutesToWarnBeforeLogout = Math.min(5, wholeMinutesToLive - 1); 
-
-	if (minutesToWarnBeforeLogout == 0) {
-		return; //before they know it, they will be logged out anyway. Rare case.
-	}
-
-	var millisToWarning = millisToLive - ZmAppCtxt.ONE_MINUTE * minutesToWarnBeforeLogout;
-	if (millisToWarning > 0) {
-		if (millisToWarning <= ZmAppCtxt.MAX_TIMEOUT_VALUE) {
-			window.setTimeout(this._authTokenWarningTimeout.bind(this, minutesToWarnBeforeLogout), millisToWarning);
-		} else {
-			//2147483647 is the max int value for which the timeout will work in most browsers. If the value exceeds the max
-			//then call this function again after the max time.
-			window.setTimeout(this._setAuthTokenWarning.bind(this, millisToLive - ZmAppCtxt.MAX_TIMEOUT_VALUE), ZmAppCtxt.MAX_TIMEOUT_VALUE);
-		}
-
-	}
+function() {
+	window.setInterval(this._authTokenWarningTimeout.bind(this), ZmAppCtxt.ONE_MINUTE);
 };
 
 
 ZmAppCtxt.prototype._authTokenWarningTimeout =
-function (minutesLeft) {
+function () {
 
-	var msg = AjxMessageFormat.format(ZmMsg.authTokenExpirationWarning, [minutesLeft, minutesLeft  > 1 ? ZmMsg.minutes : ZmMsg.minute]);
+	var now = new Date().getTime();
+	var millisToLive = window.authTokenExpires - now;
+	var minutesToLive = Math.floor(millisToLive / ZmAppCtxt.ONE_MINUTE);
+
+	if (minutesToLive > 5 || minutesToLive <= 0) {
+		return;
+	}
+
+	var msg = AjxMessageFormat.format(ZmMsg.authTokenExpirationWarning, [minutesToLive, minutesToLive  > 1 ? ZmMsg.minutes : ZmMsg.minute]);
 	var params = {
 		msg: msg,
 		level: ZmStatusView.LEVEL_WARNING,
 		transitions: [{type: "fade-in", duration: 500}, {type: "pause", duration: ZmAppCtxt.ONE_MINUTE / 4}, {type: "fade-out", duration: 500} ]
 	};
 	this.setStatusMsg(params);
-	//call again in a minute
-	if (minutesLeft > 1) {
-		window.setTimeout(this._authTokenWarningTimeout.bind(this, minutesLeft - 1), ZmAppCtxt.ONE_MINUTE);
-	}
-
 };
 
 /**
@@ -1416,6 +1401,8 @@ function(fullVersion, width, height, name) {
 	url[i++] = appCurrentSkin;
 	url[i++] = "&localeId=";
 	url[i++] = AjxEnv.DEFAULT_LOCALE || "";
+	url[i++] = "&authTokenExpires=";
+	url[i++] = window.authTokenExpires;
 	if (fullVersion) {
 		url[i++] = "&full=1";
 	}

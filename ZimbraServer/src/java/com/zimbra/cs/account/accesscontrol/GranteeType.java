@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -17,14 +17,15 @@ package com.zimbra.cs.account.accesscontrol;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.account.AccountServiceException;
-import com.zimbra.cs.account.NamedEntry;
-import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.accesscontrol.ZimbraACE.ExternalGroupInfo;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.account.Key.DomainBy;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.GuestAccount;
+import com.zimbra.cs.account.NamedEntry;
+import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.accesscontrol.ZimbraACE.ExternalGroupInfo;
 
 public enum GranteeType {
 
@@ -32,11 +33,13 @@ public enum GranteeType {
     GT_USER("usr",      com.zimbra.soap.type.GranteeType.usr, (short)(GranteeFlag.F_ADMIN | GranteeFlag.F_INDIVIDUAL | GranteeFlag.F_IS_ZIMBRA_ENTRY)),
     GT_GROUP("grp",     com.zimbra.soap.type.GranteeType.grp, (short)(GranteeFlag.F_ADMIN | GranteeFlag.F_GROUP      | GranteeFlag.F_IS_ZIMBRA_ENTRY)),
     GT_EXT_GROUP("egp", com.zimbra.soap.type.GranteeType.egp, (short)(GranteeFlag.F_ADMIN | GranteeFlag.F_GROUP)),
-    GT_AUTHUSER("all",  com.zimbra.soap.type.GranteeType.all, (short)(                      GranteeFlag.F_AUTHUSER)),
+    GT_AUTHUSER("all",  com.zimbra.soap.type.GranteeType.all, (                      GranteeFlag.F_AUTHUSER)), // all authenticated users
     GT_DOMAIN("dom",    com.zimbra.soap.type.GranteeType.dom, (short)(GranteeFlag.F_ADMIN | GranteeFlag.F_DOMAIN     | GranteeFlag.F_IS_ZIMBRA_ENTRY)),  // only for the admin crossDomainAdmin right and user rights
+    // "edom" - Used for grantee type in conjunction with sendToDistList for non-Zimbra domains
+    GT_EXT_DOMAIN("edom",com.zimbra.soap.type.GranteeType.dom,(                             GranteeFlag.F_INDIVIDUAL)),
     GT_GUEST("gst",     com.zimbra.soap.type.GranteeType.gst, (short)(                      GranteeFlag.F_INDIVIDUAL                                  | GranteeFlag.F_HAS_SECRET)),
     GT_KEY("key",       com.zimbra.soap.type.GranteeType.key, (short)(                      GranteeFlag.F_INDIVIDUAL                                  | GranteeFlag.F_HAS_SECRET)),
-    GT_PUBLIC("pub",    com.zimbra.soap.type.GranteeType.pub, (short)(                      GranteeFlag.F_PUBLIC)),
+    GT_PUBLIC("pub",    com.zimbra.soap.type.GranteeType.pub, (                      GranteeFlag.F_PUBLIC)),
 
     /*
      * pseudo grantee type that can be specified in granting requests.
@@ -180,8 +183,32 @@ public enum GranteeType {
                 throw AccountServiceException.NO_SUCH_DOMAIN(grantee);
             }
             break;
+        case GT_GUEST:
+            granteeEntry = new GuestAccount(grantee, null);
+            break;
+        case GT_EMAIL:
+            // see if it is an internal account
+            granteeEntry = prov.get(AccountBy.fromString(granteeBy.name()), grantee);
+            if (granteeEntry == null) {
+                // see if it is an internal group
+                granteeEntry = prov.getGroupBasic(Key.DistributionListBy.fromString(granteeBy.name()), grantee);
+            }
+            if (granteeEntry == null) {
+                // see if it is an external group
+                try {
+                    ExternalGroup.get(DomainBy.name, grantee, false /* asAdmin */);
+                } catch (ServiceException e) {
+                    // ignore, external group as grantee is probably not configured on the domain
+                }
+            }
+
+            if (granteeEntry == null) {
+                // still not found, must be a guest
+                granteeEntry = new GuestAccount(grantee, null);
+            }
+            break;
         default:
-            throw ServiceException.INVALID_REQUEST("invallid grantee type for lookupGrantee:" +
+            throw ServiceException.INVALID_REQUEST("invalid grantee type for lookupGrantee:" +
                     granteeType.getCode(), null);
         }
 

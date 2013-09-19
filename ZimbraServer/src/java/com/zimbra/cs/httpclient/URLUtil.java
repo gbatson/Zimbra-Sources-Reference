@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -41,8 +41,8 @@ public class URLUtil {
     public static final String PROTO_HTTP  = "http";
     public static final String PROTO_HTTPS = "https";
     
-    private static int DEFAULT_HTTP_PORT = 80;
-    private static int DEFAULT_HTTPS_PORT = 443;
+    public static int DEFAULT_HTTP_PORT = 80;
+    public static int DEFAULT_HTTPS_PORT = 443;
     
     /**
      * Return the URL where SOAP service is available for given store server.

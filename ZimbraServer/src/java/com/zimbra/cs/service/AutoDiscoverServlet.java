@@ -1,17 +1,15 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service;
@@ -94,12 +92,22 @@ public class AutoDiscoverServlet extends ZimbraServlet {
         Provisioning prov = Provisioning.getInstance();
         Server server = prov.getServer(acct);
         Domain domain = prov.getDomain(acct);
+        String serviceUrl = "";
 
         if (LC.zimbra_activesync_autodiscover_use_service_url.booleanValue()) {
-            return URLUtil.getServiceURL(server, AutoDiscoverServlet.MS_ACTIVESYNC_PATH, true);
+            serviceUrl = URLUtil.getServiceURL(server, AutoDiscoverServlet.MS_ACTIVESYNC_PATH, true);
+        } else {
+            serviceUrl = URLUtil.getPublicURLForDomain(server, domain, AutoDiscoverServlet.MS_ACTIVESYNC_PATH, true);
         }
 
-        return URLUtil.getPublicURLForDomain(server, domain, AutoDiscoverServlet.MS_ACTIVESYNC_PATH, true);
+        //fix for bug 83212 suppress port number, if default port is used as per the protocol
+        if (serviceUrl.toLowerCase().startsWith(URLUtil.PROTO_HTTPS)) {
+            serviceUrl = serviceUrl.replace(":" + URLUtil.DEFAULT_HTTPS_PORT + "/","/");
+        } else if (serviceUrl.toLowerCase().startsWith(URLUtil.PROTO_HTTP)) {
+            serviceUrl = serviceUrl.replace(":" + URLUtil.DEFAULT_HTTP_PORT + "/","/");
+        }
+
+        return serviceUrl;
     }
 
     //FIXME for windows phone
@@ -439,7 +447,7 @@ public class AutoDiscoverServlet extends ZimbraServlet {
         xmlDoc.appendChild(root);
 
         //Add the response element.
-        Element response = xmlDoc.createElementNS(NS, "Response");
+        Element response = xmlDoc.createElementNS(NS_MOBILE, "Response");
         root.appendChild(response);
 
         //Add culture to to response

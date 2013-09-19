@@ -20,10 +20,10 @@
  launchNewWindow.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -62,6 +62,8 @@
         skin = application.getInitParameter("zimbraDefaultSkin");
 	}
 	skin = skin.replaceAll("['\"<>&]", "");
+
+    String authTokenExpires = request.getParameter("authTokenExpires");
 
 	boolean isDev = getParameter(request, "dev", "0").equals("1");
 	if (isDev) {
@@ -114,6 +116,7 @@
 	// make variables available in page context (e.g. ${foo})
 	pageContext.setAttribute("contextPath", contextPath);
 	pageContext.setAttribute("skin", skin);
+    pageContext.setAttribute("authTokenExpires", authTokenExpires);
 	pageContext.setAttribute("ext", ext);
 	pageContext.setAttribute("vers", vers);
 	pageContext.setAttribute("locale", locale);
@@ -140,6 +143,7 @@
 	appExtension   = "${zm:jsEncode(ext)}";
 	window.appDevMode     = ${isDevMode};
     window.appCoverageMode = ${isCoverage};
+    window.authTokenExpires     = ${authTokenExpires};
 </script>
 
 <%@ include file="loadImgData.jsp" %>

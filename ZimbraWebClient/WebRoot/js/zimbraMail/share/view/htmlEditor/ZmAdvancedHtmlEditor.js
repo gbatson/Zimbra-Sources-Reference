@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -1957,7 +1957,7 @@ function(file) {
     var dfsrc = file.docpath;
     if (dfsrc && dfsrc.indexOf("doc:") == 0) {
         var url = [path, dfsrc.substring(4)].join('');
-        src = AjxStringUtil.fixCrossDomainReference(url);
+        src = AjxStringUtil.fixCrossDomainReference(url, false, true);
     }
     this.insertImage(src, null, null, null, dfsrc);
 };
@@ -2178,7 +2178,6 @@ function(pl, o) {
     if (lastChildren && lastChildren.nodeName.toLowerCase() === "table") {
         var doc = editor.getDoc(),
             div = doc.createElement("div");
-        div.appendChild(doc.createElement("br"));
         lastChildren.parentNode.appendChild(div);
     }
 

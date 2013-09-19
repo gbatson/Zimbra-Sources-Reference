@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -40,8 +40,6 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     ///// BEGIN-AUTO-GEN-REPLACE
-
-    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     /**
      * RFC2256: common name(s) for which the entity is known by
@@ -867,6 +865,222 @@ public abstract class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetAdminURL(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraAdminURL, "");
+        return attrs;
+    }
+
+    /**
+     * Loglevel for Amavis. Defaults to 1
+     *
+     * @return zimbraAmavisLogLevel, or 1 if unset
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1488)
+    public int getAmavisLogLevel() {
+        return getIntAttr(Provisioning.A_zimbraAmavisLogLevel, 1);
+    }
+
+    /**
+     * Loglevel for Amavis. Defaults to 1
+     *
+     * @param zimbraAmavisLogLevel new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1488)
+    public void setAmavisLogLevel(int zimbraAmavisLogLevel) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisLogLevel, Integer.toString(zimbraAmavisLogLevel));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Loglevel for Amavis. Defaults to 1
+     *
+     * @param zimbraAmavisLogLevel new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1488)
+    public Map<String,Object> setAmavisLogLevel(int zimbraAmavisLogLevel, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisLogLevel, Integer.toString(zimbraAmavisLogLevel));
+        return attrs;
+    }
+
+    /**
+     * Loglevel for Amavis. Defaults to 1
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1488)
+    public void unsetAmavisLogLevel() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisLogLevel, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Loglevel for Amavis. Defaults to 1
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1488)
+    public Map<String,Object> unsetAmavisLogLevel(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisLogLevel, "");
+        return attrs;
+    }
+
+    /**
+     * delay between each batch for zmspamextract
+     *
+     * @return zimbraAntispamExtractionBatchDelay, or 100 if unset
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1457)
+    public int getAntispamExtractionBatchDelay() {
+        return getIntAttr(Provisioning.A_zimbraAntispamExtractionBatchDelay, 100);
+    }
+
+    /**
+     * delay between each batch for zmspamextract
+     *
+     * @param zimbraAntispamExtractionBatchDelay new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1457)
+    public void setAntispamExtractionBatchDelay(int zimbraAntispamExtractionBatchDelay) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchDelay, Integer.toString(zimbraAntispamExtractionBatchDelay));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * delay between each batch for zmspamextract
+     *
+     * @param zimbraAntispamExtractionBatchDelay new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1457)
+    public Map<String,Object> setAntispamExtractionBatchDelay(int zimbraAntispamExtractionBatchDelay, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchDelay, Integer.toString(zimbraAntispamExtractionBatchDelay));
+        return attrs;
+    }
+
+    /**
+     * delay between each batch for zmspamextract
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1457)
+    public void unsetAntispamExtractionBatchDelay() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchDelay, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * delay between each batch for zmspamextract
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1457)
+    public Map<String,Object> unsetAntispamExtractionBatchDelay(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchDelay, "");
+        return attrs;
+    }
+
+    /**
+     * batch size for zmspamextract
+     *
+     * @return zimbraAntispamExtractionBatchSize, or 25 if unset
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1456)
+    public int getAntispamExtractionBatchSize() {
+        return getIntAttr(Provisioning.A_zimbraAntispamExtractionBatchSize, 25);
+    }
+
+    /**
+     * batch size for zmspamextract
+     *
+     * @param zimbraAntispamExtractionBatchSize new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1456)
+    public void setAntispamExtractionBatchSize(int zimbraAntispamExtractionBatchSize) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchSize, Integer.toString(zimbraAntispamExtractionBatchSize));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * batch size for zmspamextract
+     *
+     * @param zimbraAntispamExtractionBatchSize new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1456)
+    public Map<String,Object> setAntispamExtractionBatchSize(int zimbraAntispamExtractionBatchSize, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchSize, Integer.toString(zimbraAntispamExtractionBatchSize));
+        return attrs;
+    }
+
+    /**
+     * batch size for zmspamextract
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1456)
+    public void unsetAntispamExtractionBatchSize() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchSize, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * batch size for zmspamextract
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1456)
+    public Map<String,Object> unsetAntispamExtractionBatchSize(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAntispamExtractionBatchSize, "");
         return attrs;
     }
 
@@ -3755,7 +3969,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Maximum size in bytes for file uploads
+     * Maximum size in bytes for attachments
      *
      * @return zimbraFileUploadMaxSize, or 10485760 if unset
      */
@@ -3765,7 +3979,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Maximum size in bytes for file uploads
+     * Maximum size in bytes for attachments
      *
      * @param zimbraFileUploadMaxSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -3778,7 +3992,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Maximum size in bytes for file uploads
+     * Maximum size in bytes for attachments
      *
      * @param zimbraFileUploadMaxSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -3792,7 +4006,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Maximum size in bytes for file uploads
+     * Maximum size in bytes for attachments
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -3804,7 +4018,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Maximum size in bytes for file uploads
+     * Maximum size in bytes for attachments
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -4371,6 +4585,78 @@ public abstract class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetHsmPolicy(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraHsmPolicy, "");
+        return attrs;
+    }
+
+    /**
+     * Whether or not to enable HTTP compression. Defaults to true.
+     *
+     * @return zimbraHttpCompressionEnabled, or true if unset
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1467)
+    public boolean isHttpCompressionEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraHttpCompressionEnabled, true);
+    }
+
+    /**
+     * Whether or not to enable HTTP compression. Defaults to true.
+     *
+     * @param zimbraHttpCompressionEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1467)
+    public void setHttpCompressionEnabled(boolean zimbraHttpCompressionEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpCompressionEnabled, zimbraHttpCompressionEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether or not to enable HTTP compression. Defaults to true.
+     *
+     * @param zimbraHttpCompressionEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1467)
+    public Map<String,Object> setHttpCompressionEnabled(boolean zimbraHttpCompressionEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpCompressionEnabled, zimbraHttpCompressionEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether or not to enable HTTP compression. Defaults to true.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1467)
+    public void unsetHttpCompressionEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpCompressionEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether or not to enable HTTP compression. Defaults to true.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1467)
+    public Map<String,Object> unsetHttpCompressionEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpCompressionEnabled, "");
         return attrs;
     }
 
@@ -7283,6 +7569,78 @@ public abstract class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetIsMonitorHost(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraIsMonitorHost, "");
+        return attrs;
+    }
+
+    /**
+     * Maximum number of item to perform an ItemAction on at a time.
+     *
+     * @return zimbraItemActionBatchSize, or 1000 if unset
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1451)
+    public int getItemActionBatchSize() {
+        return getIntAttr(Provisioning.A_zimbraItemActionBatchSize, 1000);
+    }
+
+    /**
+     * Maximum number of item to perform an ItemAction on at a time.
+     *
+     * @param zimbraItemActionBatchSize new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1451)
+    public void setItemActionBatchSize(int zimbraItemActionBatchSize) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraItemActionBatchSize, Integer.toString(zimbraItemActionBatchSize));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of item to perform an ItemAction on at a time.
+     *
+     * @param zimbraItemActionBatchSize new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1451)
+    public Map<String,Object> setItemActionBatchSize(int zimbraItemActionBatchSize, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraItemActionBatchSize, Integer.toString(zimbraItemActionBatchSize));
+        return attrs;
+    }
+
+    /**
+     * Maximum number of item to perform an ItemAction on at a time.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1451)
+    public void unsetItemActionBatchSize() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraItemActionBatchSize, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of item to perform an ItemAction on at a time.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1451)
+    public Map<String,Object> unsetItemActionBatchSize(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraItemActionBatchSize, "");
         return attrs;
     }
 
@@ -14561,7 +14919,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @return zimbraMtaTlsSecurityLevel, or ZAttrProvisioning.MtaTlsSecurityLevel.may if unset and/or has invalid value
      *
@@ -14575,7 +14933,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @return zimbraMtaTlsSecurityLevel, or "may" if unset
      *
@@ -14589,7 +14947,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @param zimbraMtaTlsSecurityLevel new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -14606,7 +14964,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @param zimbraMtaTlsSecurityLevel new value
      * @param attrs existing map to populate, or null to create a new map
@@ -14624,7 +14982,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @param zimbraMtaTlsSecurityLevel new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -14641,7 +14999,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @param zimbraMtaTlsSecurityLevel new value
      * @param attrs existing map to populate, or null to create a new map
@@ -14659,7 +15017,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -14675,7 +15033,7 @@ public abstract class ZAttrServer extends NamedEntry {
     /**
      * Value for postconf smtpd_tls_security_level
      *
-     * <p>Valid values: [none, may]
+     * <p>Valid values: [may, none]
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -24214,7 +24572,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @return zimbraTableMaintenanceOperation, or ZAttrProvisioning.TableMaintenanceOperation.ANALYZE if unset and/or has invalid value
      */
@@ -24228,7 +24586,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @return zimbraTableMaintenanceOperation, or "ANALYZE" if unset
      */
@@ -24242,7 +24600,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @param zimbraTableMaintenanceOperation new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -24259,7 +24617,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @param zimbraTableMaintenanceOperation new value
      * @param attrs existing map to populate, or null to create a new map
@@ -24277,7 +24635,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @param zimbraTableMaintenanceOperation new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -24294,7 +24652,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @param zimbraTableMaintenanceOperation new value
      * @param attrs existing map to populate, or null to create a new map
@@ -24312,7 +24670,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -24328,7 +24686,7 @@ public abstract class ZAttrServer extends NamedEntry {
      * See bug 19145. Orig desc: table maintenance operation that will be
      * performed. Valid options: &quot;ANALYZE&quot;, &quot;OPTIMIZE&quot;
      *
-     * <p>Valid values: [ANALYZE, OPTIMIZE]
+     * <p>Valid values: [OPTIMIZE, ANALYZE]
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -24341,9 +24699,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @return zimbraThrottleSafeHosts, or empty array if unset
      *
@@ -24355,9 +24713,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param zimbraThrottleSafeHosts new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -24372,9 +24730,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param zimbraThrottleSafeHosts new value
      * @param attrs existing map to populate, or null to create a new map
@@ -24390,9 +24748,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param zimbraThrottleSafeHosts new to add to existing values
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -24407,9 +24765,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param zimbraThrottleSafeHosts new to add to existing values
      * @param attrs existing map to populate, or null to create a new map
@@ -24425,9 +24783,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param zimbraThrottleSafeHosts existing value to remove
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -24442,9 +24800,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param zimbraThrottleSafeHosts existing value to remove
      * @param attrs existing map to populate, or null to create a new map
@@ -24460,9 +24818,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -24476,9 +24834,9 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -24489,6 +24847,167 @@ public abstract class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetThrottleSafeHosts(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraThrottleSafeHosts, "");
+        return attrs;
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @return zimbraThrottleWhitelist, or empty array if unset
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public String[] getThrottleWhitelist() {
+        return getMultiAttr(Provisioning.A_zimbraThrottleWhitelist);
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param zimbraThrottleWhitelist new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public void setThrottleWhitelist(String[] zimbraThrottleWhitelist) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraThrottleWhitelist, zimbraThrottleWhitelist);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param zimbraThrottleWhitelist new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public Map<String,Object> setThrottleWhitelist(String[] zimbraThrottleWhitelist, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraThrottleWhitelist, zimbraThrottleWhitelist);
+        return attrs;
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param zimbraThrottleWhitelist new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public void addThrottleWhitelist(String zimbraThrottleWhitelist) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraThrottleWhitelist, zimbraThrottleWhitelist);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param zimbraThrottleWhitelist new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public Map<String,Object> addThrottleWhitelist(String zimbraThrottleWhitelist, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraThrottleWhitelist, zimbraThrottleWhitelist);
+        return attrs;
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param zimbraThrottleWhitelist existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public void removeThrottleWhitelist(String zimbraThrottleWhitelist) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraThrottleWhitelist, zimbraThrottleWhitelist);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param zimbraThrottleWhitelist existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public Map<String,Object> removeThrottleWhitelist(String zimbraThrottleWhitelist, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraThrottleWhitelist, zimbraThrottleWhitelist);
+        return attrs;
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public void unsetThrottleWhitelist() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraThrottleWhitelist, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public Map<String,Object> unsetThrottleWhitelist(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraThrottleWhitelist, "");
         return attrs;
     }
 
@@ -24645,6 +25164,78 @@ public abstract class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetVirusDefinitionsUpdateFrequency(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraVirusDefinitionsUpdateFrequency, "");
+        return attrs;
+    }
+
+    /**
+     * Whether or not to gzip static web content. Defaults to true.
+     *
+     * @return zimbraWebGzipEnabled, or true if unset
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1468)
+    public boolean isWebGzipEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraWebGzipEnabled, true);
+    }
+
+    /**
+     * Whether or not to gzip static web content. Defaults to true.
+     *
+     * @param zimbraWebGzipEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1468)
+    public void setWebGzipEnabled(boolean zimbraWebGzipEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebGzipEnabled, zimbraWebGzipEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether or not to gzip static web content. Defaults to true.
+     *
+     * @param zimbraWebGzipEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1468)
+    public Map<String,Object> setWebGzipEnabled(boolean zimbraWebGzipEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebGzipEnabled, zimbraWebGzipEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Whether or not to gzip static web content. Defaults to true.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1468)
+    public void unsetWebGzipEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebGzipEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether or not to gzip static web content. Defaults to true.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1468)
+    public Map<String,Object> unsetWebGzipEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebGzipEnabled, "");
         return attrs;
     }
 

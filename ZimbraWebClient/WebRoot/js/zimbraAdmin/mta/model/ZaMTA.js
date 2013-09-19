@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -67,7 +67,7 @@ ZaMTA.A_HoldQ = "hold";
 **/
 ZaMTA.A_rdomain = "todomain";
 ZaMTA.A_sdomain = "fromdomain";
-ZaMTA.A_origip = "addr";
+ZaMTA.A_origip = "received";
 ZaMTA.A_raddress = "to";
 ZaMTA.A_saddress = "from";
 ZaMTA.A_error = "reason";
@@ -611,7 +611,7 @@ ZaMTAQMsgItem.A_todomain = "todomain";
 ZaMTAQMsgItem.A_id = "id";
 ZaMTAQMsgItem.A_recipients = "to";
 ZaMTAQMsgItem.A_size = "size";
-ZaMTAQMsgItem.A_origin_ip = "addr";
+ZaMTAQMsgItem.A_origin_ip = "received";
 ZaMTAQMsgItem.A_error = "reason";
 
 ZaMTAQMsgItem.prototype = new ZaItem;

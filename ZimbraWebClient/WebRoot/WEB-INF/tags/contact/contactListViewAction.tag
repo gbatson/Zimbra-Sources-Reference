@@ -1,10 +1,10 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -162,7 +162,15 @@
                             <c:forEach var="member" items="${contact.groupMembers}">
                                 <c:if test="${not empty emailIds}"><c:set var="grpsep" value=", " /></c:if>
                                 <c:set var="memberContact" value="${zm:groupMemberById(contact, member)}"/>
-                                <c:set var="memberContactFullAddress" value="${memberContact.fullAddress}"/>
+                                <%--check for inline contact--%>
+                                <c:choose>
+                                    <c:when test="${memberContact.isTypeI}">
+                                        <c:set var="memberContactFullAddress" value="${memberContact.id}"/>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <c:set var="memberContactFullAddress" value="${memberContact.fullAddress}"/>
+                                    </c:otherwise>
+                                </c:choose>
                                 <c:set var="emailIds" value="${emailIds}${grpsep}${memberContactFullAddress}" />
                                 </tr>
                             </c:forEach>

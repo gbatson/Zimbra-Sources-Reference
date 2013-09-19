@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -220,6 +220,9 @@ public final class SoapToSieve {
     private static String toSieve(FilterTest.HeaderTest test) throws ServiceException {
         String header = getSieveHeaderList(test.getHeaders());
         Sieve.StringComparison comp = Sieve.StringComparison.fromString(test.getStringComparison());
+        if (Strings.isNullOrEmpty(test.getValue())) {
+            throw ServiceException.INVALID_REQUEST("missing required attribute: value" , null);
+        }
         return toSieve("header", header, comp, test.isCaseSensitive(), test.getValue());
     }
 

@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -65,10 +65,11 @@ public class GetInfoResponseTest {
                 identities.get(0).toString());
         Collection<String> sigHtml = result.getPrefsMultimap().get("zimbraPrefMailSignatureHTML");
         Assert.assertNotNull(sigHtml);
-        // Full comparison failing on Jenkins system due to environmental charset issues
         String sig = sigHtml.iterator().next();
-        // Assert.assertEquals("\u003Cstrong\u003Ef—— utf8\u003C/strong\u003E signature test" , sig);
-        Assert.assertTrue("Signature", sig.endsWith("signature test"));
+        // Full comparison failing on Jenkins system due to environmental charset issues
+        // Re-enabled stricter test.  Assuming use of Unicode escapes \u00F3 (twice) gets around this issue:
+        //     Assert.assertTrue("Signature", sig.endsWith("signature test"));
+        Assert.assertEquals("\u003Cstrong\u003Ef\u00F3\u00F3 utf8\u003C/strong\u003E signature test" , sig);
         Assert.assertTrue("Number of license attributes", 2 <= result.getLicense().getAttrs().size());
     }
     

@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -103,6 +103,7 @@ function() {
  * @param {Boolean}		noSession			if <code>true</code>, no session info is included
  * @param {String}		restUri				the REST URI to send the request to
  * @param {boolean}		emptyResponseOkay	if true, empty or no response from server is not an erro
+ * @param {boolean}		useChangeToken	    if true, request will try to use change token in header
  */
 ZmRequestMgr.prototype.sendRequest =
 function(params) {
@@ -140,12 +141,16 @@ function(params) {
 	}
 
 	var command = new ZmCsfeCommand();
-	// bug fix #10652 - dont set change token if accountName is specified
+	// bug fix #10652, 82704 - dont set change token if accountName is not main account or is not specified
 	// (since we're executing on someone else's mbox)
 	var accountName = params.accountName;
 	if (!accountName) {
 		var acct = appCtxt.getActiveAccount();
 		accountName = (acct && acct.id != ZmAccountList.DEFAULT_ID) ? acct.name : null;
+	}
+	var changeToken = null;
+	if (params.useChangeToken && (!accountName || (accountName === appCtxt.accountList.mainAccount.name))) {
+		changeToken = this._changeToken;
 	}
 	var cmdParams, methodName;
 
@@ -159,7 +164,7 @@ function(params) {
 						soapDoc:			params.soapDoc,
 						accountName:		accountName,
 						useXml:				this._useXml,
-						changeToken:		(accountName ? null : this._changeToken),
+						changeToken:		changeToken,
 						asyncMode:			params.asyncMode,
 						callback:			asyncCallback,
 						logRequest:			this._logRequest,

@@ -1,17 +1,15 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.newwindow.mail;
@@ -101,7 +99,20 @@ public class MarkUnSpamMail extends PrefGroupMailByMessageTest {
 		
 		// Get the mail item for the new message
 		// Need 'is:anywhere' to include the spam folder
-		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "is:anywhere subject:("+ subject +")");
+		MailItem mail = null;
+				
+		try{
+		    for(int i = 0; i < 10; i++){
+		    	mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "is:anywhere subject:("+ subject +")");
+			if(mail !=null){
+			    break;
+			}
+			SleepUtil.sleepSmall();
+		    }
+		}catch(Exception ex){
+		    logger.error(ex);
+		}
+				
 		ZAssert.assertNotNull(mail, "Make sure the mail is found");
 
 		ZAssert.assertEquals(mail.dFolderId, inbox.getId(), "Verify the message is in the inbox folder");

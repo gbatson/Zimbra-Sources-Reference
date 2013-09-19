@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
- *
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -46,6 +46,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.zimbra.client.ZFolder;
 import com.zimbra.client.ZMailbox;
 import com.zimbra.client.ZMailbox.Options;
@@ -1422,7 +1423,9 @@ public class Mailbox {
         lock.lock();
         try {
             if (maintenance != null) {
-                throw MailServiceException.MAINTENANCE(mId);
+                maintenance.startInnerMaintenance();
+                ZimbraLog.mailbox.info("already in maintenance, nesting access for mailboxId %d", getId());
+                return maintenance;
             }
             ZimbraLog.mailbox.info("Putting mailbox %d under maintenance.", getId());
 
@@ -1436,21 +1439,30 @@ public class Mailbox {
         }
     }
 
-    void endMaintenance(boolean success) throws ServiceException {
-        lock.lock();
-        try {
-            if (maintenance == null) {
-                throw ServiceException.FAILURE("mainbox not in maintenance mode", null);
-            }
-            if (success) {
-                ZimbraLog.mailbox.info("Ending maintenance on mailbox %d.", getId());
-                maintenance = null;
+
+    /**
+     * End maintenance mode
+     * @param success - whether to mark operation as success or take mailbox out of commision due to failure
+     * @return true if maintenance is actually ended; false if maintenance is still wrapped by outer lockout
+     * @throws ServiceException
+     */
+    synchronized boolean endMaintenance(boolean success) throws ServiceException {
+        if (maintenance == null)
+            throw ServiceException.FAILURE("mainbox not in maintenance mode", null);
+
+        if (success) {
+            ZimbraLog.mailbox.info("Ending maintenance on mailbox %d.", getId());
+            if (maintenance.endInnerMaintenance()) {
+                ZimbraLog.mailbox.info("decreasing depth for mailboxId %d", getId());
+                return false;
             } else {
-                ZimbraLog.mailbox.info("Ending maintenance and marking mailbox %d as unavailable.", getId());
-                maintenance.markUnavailable();
+                maintenance = null;
+                return true;
             }
-        } finally {
-            lock.release();
+        } else {
+            ZimbraLog.mailbox.info("Ending maintenance and marking mailbox %d as unavailable.", getId());
+            maintenance.markUnavailable();
+            return true;
         }
     }
 
@@ -3684,21 +3696,37 @@ public class Mailbox {
         return isVisible ? node : null;
     }
 
+    public static boolean isCalendarFolder(Folder f) {
+        MailItem.Type view = f.getDefaultView();
+        return (view == MailItem.Type.APPOINTMENT || view == MailItem.Type.TASK);
+    }
+
+    public List<Mountpoint> getCalendarMountpoints(OperationContext octxt, SortBy sort) throws ServiceException {
+        lock.lock();
+        try {
+            List<Mountpoint> calFolders = Lists.newArrayList();
+            for (MailItem item : getItemList(octxt, MailItem.Type.MOUNTPOINT, -1, sort)) {
+                if (isCalendarFolder((Mountpoint) item)) {
+                    calFolders.add((Mountpoint) item);
+                }
+            }
+            return calFolders;
+        } finally {
+            lock.release();
+        }
+    }
+
     public List<Folder> getCalendarFolders(OperationContext octxt, SortBy sort) throws ServiceException {
         lock.lock();
         try {
-            List<Folder> calFolders = new ArrayList<Folder>();
+            List<Folder> calFolders = Lists.newArrayList();
             for (MailItem item : getItemList(octxt, MailItem.Type.FOLDER, -1, sort)) {
-                Folder f = (Folder) item;
-                MailItem.Type view = f.getDefaultView();
-                if (view == MailItem.Type.APPOINTMENT || view == MailItem.Type.TASK) {
+                if (isCalendarFolder((Folder) item)) {
                     calFolders.add((Folder) item);
                 }
             }
             for (MailItem item : getItemList(octxt, MailItem.Type.MOUNTPOINT, -1, sort)) {
-                Folder f = (Folder) item;
-                MailItem.Type view = f.getDefaultView();
-                if (view == MailItem.Type.APPOINTMENT || view == MailItem.Type.TASK) {
+                if (isCalendarFolder((Folder) item)) {
                     calFolders.add((Folder) item);
                 }
             }
@@ -3951,6 +3979,17 @@ public class Mailbox {
         }
     }
 
+    /**
+     * Get Calendar entry associated with {@code id} as long as the calendar belongs to this mailbox
+     * Note: This means that entries for mounted calendars are NOT returned.
+     */
+    public CalendarItem getCalendarItemById(OperationContext octxt, ItemId id) throws ServiceException {
+        if ((id == null) || (!id.belongsTo(this))) {
+            return null;
+        }
+        return getCalendarItemById(octxt, id.getId());
+    }
+
     public CalendarItem getCalendarItemById(OperationContext octxt, int id) throws ServiceException {
         lock.lock();
         try {
@@ -3962,7 +4001,7 @@ public class Mailbox {
         }
     }
 
-    CalendarItem getCalendarItemById(int id) throws ServiceException {
+    private CalendarItem getCalendarItemById(int id) throws ServiceException {
         MailItem item = getItemById(id, MailItem.Type.UNKNOWN);
         checkCalendarType(item);
         return (CalendarItem) item;
@@ -5132,6 +5171,26 @@ public class Mailbox {
                     }
                 }
             }
+        }
+    }
+
+    public com.zimbra.soap.mail.type.CalendarItemInfo getRemoteCalItemByUID(Account ownerAccount, String uid,
+            boolean includeInvites, boolean includeContent)
+    throws ServiceException {
+        Options options = new Options();
+        options.setAuthToken(getAuthToken(getOperationContext()).toZAuthToken());
+        options.setTargetAccount(getAccount().getName());
+        options.setTargetAccountBy(AccountBy.name);
+        options.setUri(AccountUtil.getSoapUri(ownerAccount));
+        options.setNoSession(true);
+        ZMailbox zmbox = ZMailbox.getMailbox(options);
+        try {
+            return zmbox.getRemoteCalItemByUID(ownerAccount.getId(), uid, includeInvites, includeContent);
+        } catch (ServiceException e) {
+            if (e.getCode().equals(AccountServiceException.NO_SUCH_ACCOUNT))
+                return null;
+            else
+                throw e;
         }
     }
 
@@ -6534,19 +6593,21 @@ public class Mailbox {
         delete(octxt, new int[] { itemId }, type, tcon);
     }
 
-    /** Deletes the <tt>MailItem</tt>s with the given id.  If there is no
-     *  <tt>MailItem</tt> for a given id, that id is ignored.  If the id maps
-     *  to an existing <tt>MailItem</tt> of an incompatible type, however,
-     *  an error is thrown.
+    /**
+     * Delete the <tt>MailItem</tt>s with the given ids.  If there is no <tt>MailItem</tt> for a given id, that id is
+     * ignored.  If the id maps to an existing <tt>MailItem</tt> of an incompatible type, however, an error is thrown.
      *
      * @param octxt operation context or {@code null}
      * @param itemIds item ids
      * @param type item type or {@link MailItem.Type#UNKNOWN}
-     * @param tcon target constraint or {@code null} */
-    public void delete(OperationContext octxt, int[] itemIds, MailItem.Type type, TargetConstraint tcon)
+     * @param tcon target constraint or {@code null}
+     */
+    private void delete(OperationContext octxt, int[] itemIds, MailItem.Type type, TargetConstraint tcon,
+            boolean useEmptyForFolders)
     throws ServiceException {
         DeleteItem redoRecorder = new DeleteItem(mId, itemIds, type, tcon);
 
+        List<Integer> folderIds = Lists.newArrayList();
         boolean success = false;
         try {
             beginTransaction("delete", octxt, redoRecorder);
@@ -6570,9 +6631,12 @@ public class Mailbox {
                 } else if (!checkItemChangeID(item) && item instanceof Tag) {
                     throw MailServiceException.MODIFY_CONFLICT();
                 }
-
-                // delete the item, but don't write the tombstone until we're finished...
-                item.delete(false);
+                if (useEmptyForFolders && MailItem.Type.FOLDER.equals(item.getType())) {
+                    folderIds.add(id); // removed later to allow batching delete of contents in there own transactions
+                } else {
+                    // delete the item, but don't write the tombstone until we're finished...
+                    item.delete(false);
+                }
             }
 
             // deletes have already been collected, so fetch the tombstones and write once
@@ -6585,6 +6649,23 @@ public class Mailbox {
         } finally {
             endTransaction(success);
         }
+        for (Integer folderId : folderIds) {
+            emptyFolder(octxt, folderId, true /* removeTopLevelFolder */, true /* removeSubfolders */, tcon);
+        }
+    }
+
+    /**
+     * Delete the <tt>MailItem</tt>s with the given ids.  If there is no <tt>MailItem</tt> for a given id, that id is
+     * ignored.  If the id maps to an existing <tt>MailItem</tt> of an incompatible type, however, an error is thrown.
+     *
+     * @param octxt operation context or {@code null}
+     * @param itemIds item ids
+     * @param type item type or {@link MailItem.Type#UNKNOWN}
+     * @param tcon target constraint or {@code null}
+     */
+    public void delete(OperationContext octxt, int[] itemIds, MailItem.Type type, TargetConstraint tcon)
+    throws ServiceException {
+        delete(octxt, itemIds, type, tcon, true /* useEmptyForFolders */);
     }
 
     TypedIdList collectPendingTombstones() {
@@ -7428,26 +7509,42 @@ public class Mailbox {
                                 delete(octxtNoConflicts, calItem.getId(), MailItem.Type.UNKNOWN);
                                 importIt = true;
                             } else {
-                                // Don't import if item is in a different folder.  It might be a regular appointment, and
-                                // should not be overwritten by a feed version. (bug 14306)
-                                // Import only if downloaded version is newer.
-                                boolean changed;
-                                Invite curInv = calItem.getInvite(inv.getRecurId());
-                                if (curInv == null) {
-                                    // We have an appointment with the same UID, but don't have an invite
-                                    // with the same RECURRENCE-ID.  Treat it as a changed item.
-                                    changed = true;
+                                Invite oldInvites[] = calItem.getInvites();
+                                if ((oldInvites == null) || (oldInvites.length == 0)) {
+                                    // Something is seriously wrong with the existing calendar item.  Delete it so
+                                    // new invite will import cleanly
+                                    delete(octxtNoConflicts, calItem.getId(), MailItem.Type.UNKNOWN);
+                                    importIt = true;
                                 } else {
-                                    if (inv.getSeqNo() > curInv.getSeqNo()) {
+                                    // Don't import if item is in a different folder.  It might be a regular appointment, and
+                                    // should not be overwritten by a feed version. (bug 14306)
+                                    // Import only if downloaded version is newer.
+                                    boolean changed;
+                                    Invite curInv = calItem.getInvite(inv.getRecurId());
+                                    if (curInv == null) {
+                                        // We have an appointment with the same UID, but don't have an invite
+                                        // with the same RECURRENCE-ID.  Treat it as a changed item.
                                         changed = true;
-                                    } else if (inv.getSeqNo() == curInv.getSeqNo()) {
-                                        // Compare LAST-MODIFIED rather than DTSTAMP. (bug 55735)
-                                        changed = inv.getLastModified() > curInv.getLastModified();
                                     } else {
-                                        changed = false;
+                                        if (inv.getSeqNo() > curInv.getSeqNo()) {
+                                            changed = true;
+                                        } else if (inv.getSeqNo() == curInv.getSeqNo()) {
+                                            // Compare LAST-MODIFIED rather than DTSTAMP. (bug 55735)
+                                            changed = inv.getLastModified() > curInv.getLastModified();
+                                        } else {
+                                            changed = false;
+                                        }
+                                    }
+                                    importIt = sameFolder && changed;
+                                    if (!importIt && ZimbraLog.calendar.isDebugEnabled()) {
+                                        if (sameFolder) {
+                                            ZimbraLog.calendar.debug("Skip importing UID=%s. Already present & not newer", uid);
+                                        } else {
+                                            ZimbraLog.calendar.debug("Skip importing UID=%s. Already in different folder id=%d",
+                                                    uid, curFolder.getId());
+                                        }
                                     }
                                 }
-                                importIt = sameFolder && changed;
                             }
                         }
                         if (importIt) {
@@ -7523,12 +7620,41 @@ public class Mailbox {
         }
     }
 
-    public void emptyFolder(OperationContext octxt, int folderId, boolean removeSubfolders)
+    private boolean deletedBatchOfItemsInFolder(OperationContext octxt, QueryParams params, TargetConstraint tcon)
+    throws ServiceException {
+        // Lock this mailbox to make sure that no one modifies the items we're about to delete.
+        lock.lock();
+        try {
+            DeleteItem redoRecorder = new DeleteItem(mId, MailItem.Type.UNKNOWN, tcon);
+            boolean success = false;
+            try {
+                beginTransaction("delete", octxt, redoRecorder);
+                setOperationTargetConstraint(tcon);
+                PendingDelete info = DbMailItem.getLeafNodes(this, params);
+                if (info.itemIds.isEmpty()) {
+                    return false;
+                }
+                redoRecorder.setIds(ArrayUtil.toIntArray(info.itemIds.getAllIds()));
+                MailItem.delete(this, info, null, true /* writeTombstones */, false /* not fromDumpster */);
+                success = true;
+            } finally {
+                endTransaction(success);
+            }
+        } finally {
+            lock.release();
+        }
+        return true;
+    }
+
+    /**
+     * @param removeTopLevelFolder - delete folder after it has been emptied
+     */
+    private void emptyFolder(OperationContext octxt, int folderId,
+            boolean removeTopLevelFolder, boolean removeSubfolders, TargetConstraint tcon)
     throws ServiceException {
         int batchSize = Provisioning.getInstance().getLocalServer().getMailEmptyFolderBatchSize();
-        ZimbraLog.mailbox.debug("Emptying folder %s, removeSubfolders=%b, batchSize=%d",
-            folderId, removeSubfolders, batchSize);
-
+        ZimbraLog.mailbox.debug("Emptying folder %s, removeTopLevelFolder=%b, removeSubfolders=%b, batchSize=%d",
+            folderId, removeTopLevelFolder, removeSubfolders, batchSize);
         List<Integer> folderIds = new ArrayList<Integer>();
         if (!removeSubfolders) {
             folderIds.add(folderId);
@@ -7539,8 +7665,7 @@ public class Mailbox {
             }
         }
 
-        // Make sure that the user has the delete permission for all folders in
-        // the hierarchy.
+        // Make sure that the user has the delete permission for all folders in the hierarchy.
         for (int id : folderIds) {
             if ((getEffectivePermissions(octxt, id, MailItem.Type.FOLDER) & ACL.RIGHT_DELETE) == 0) {
                throw ServiceException.PERM_DENIED("not authorized to empty folder " + getFolderById(octxt, id).getPath());
@@ -7552,7 +7677,7 @@ public class Mailbox {
         QueryParams params = new QueryParams();
         params.setFolderIds(folderIds).setModifiedSequenceBefore(lastChangeID + 1).setRowLimit(batchSize);
         boolean firstTime = true;
-        while (true) {
+        do {
             // Give other threads a chance to use the mailbox between deletion batches.
             if (firstTime) {
                 firstTime = false;
@@ -7565,39 +7690,27 @@ public class Mailbox {
                     ZimbraLog.mailbox.warn("Sleep was interrupted", e);
                 }
             }
+        } while (deletedBatchOfItemsInFolder(octxt, params, tcon));
 
-            // Lock this mailbox to make sure that no one modifies the items we're about to delete.
-            lock.lock();
-            try {
-                DeleteItem redoRecorder = new DeleteItem(mId, MailItem.Type.UNKNOWN, null);
-                boolean success = false;
+        if ((removeTopLevelFolder || removeSubfolders) && (!folderIds.isEmpty())) {
+            if (!removeTopLevelFolder) {
+                folderIds.remove(0);   // 0th position is the folder being emptied
+            }
+            if (!folderIds.isEmpty()) {
+                lock.lock();
                 try {
-                    beginTransaction("delete", octxt, redoRecorder);
-                    PendingDelete info = DbMailItem.getLeafNodes(this, params);
-                    if (info.itemIds.isEmpty())
-                        break;
-
-                    redoRecorder.setIds(ArrayUtil.toIntArray(info.itemIds.getAllIds()));
-                    MailItem.delete(this, info, null, true, false);
-                    success = true;
+                    delete(octxt, ArrayUtil.toIntArray(folderIds), MailItem.Type.FOLDER, tcon,
+                            false /* don't useEmptyForFolders */);
                 } finally {
-                    endTransaction(success);
+                    lock.release();
                 }
-            } finally {
-                lock.release();
             }
         }
+    }
 
-        if (removeSubfolders && folderIds.size() > 1) {
-            // delete the subfolders
-            folderIds.remove(0);   // 0th position is the folder being emptied which we do not want to delete
-            lock.lock();
-            try {
-                delete(octxt, ArrayUtil.toIntArray(folderIds), MailItem.Type.FOLDER, null);
-            } finally {
-                lock.release();
-            }
-        }
+    public void emptyFolder(OperationContext octxt, int folderId, boolean removeSubfolders)
+    throws ServiceException {
+        emptyFolder(octxt, folderId, false /* removeTopLevelFolder */, removeSubfolders, null /* TargetConstraint */);
     }
 
     public SearchFolder createSearchFolder(OperationContext octxt, int folderId, String name, String query,

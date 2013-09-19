@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -98,7 +98,7 @@ public class Repository {
    /**
     * This method gets the type of JdbcDriver
     * and connects to the racetrack
-    * @throws com.vmware.qalib.HarnessException
+    * @throws com.server.qalib.HarnessException
     */
    public void
    connectingToRacetrack(String DbHostURL) throws HarnessException
@@ -112,7 +112,7 @@ public class Repository {
 
    /**
     * This method begins the testSet recording to racetrack
-    * @throws com.vmware.qalib.HarnessException
+    * @throws com.server.qalib.HarnessException
     */
    public void beginTestSet(String buildNumber,
                             String username,
@@ -177,7 +177,7 @@ public class Repository {
 
    /**
    * Connect to the DB
-   * @throws com.vmware.qalib.HarnessException
+   * @throws com.server.qalib.HarnessException
    */
    public boolean connect() throws HarnessException
    {
@@ -201,7 +201,7 @@ public class Repository {
 
    /**
     * Load the JDBC driver
-    * @throws com.vmware.qalib.HarnessException
+    * @throws com.server.qalib.HarnessException
     */
 
    @Parameters({"DbDriver"})

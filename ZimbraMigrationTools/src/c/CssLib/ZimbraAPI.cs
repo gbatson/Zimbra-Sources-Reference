@@ -44,6 +44,7 @@ public class ZimbraAPI
         "/MAPIRoot/Emailed Contacts", "/MAPIRoot/Chats",
         "/MAPIRoot/Tasks"
     };
+
     Dictionary<string ,string > specialFoldersMap = new Dictionary<string,string>()
     {{"","0"},{"/MAPIRoot","1"},{"/MAPIRoot/Inbox","2"},{"/MAPIRoot/Deleted Items","3"},
         {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Sent Items","5"},
@@ -59,79 +60,92 @@ public class ZimbraAPI
         {"/MAPIRoot/Unterhaltungen","9"},
         {"/MAPIRoot/Kalender","10"}, 
         {"/MAPIRoot/Mailempf\u00e4nger","13"},{"/MAPIRoot/Aufgaben","15"},
-       
-};
-    Dictionary<string, string> specialFoldersMap_es = new Dictionary<string, string>()
-    {{"","0"},{"/MAPIRoot","1"},{"/MAPIRoot/Inbox","2"},{"/MAPIRoot/Deleted Items","3"},
-        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Sent Items","5"},
-        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Contacts","7"},
-        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/Conversations","9"},
-        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Wiki","12"},
-        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Chats","14"},
-        {"/MAPIRoot/Tasks","15"},{"/MAPIRoot/Bandeja de entrada","2"},
-        {"/MAPIRoot//Papelera","4"},
-        {"/MAPIRoot/Enviados","5"},
-{"/MAPIRoot/Borradores","6"},
-{"/MAPIRoot/Contactos","7"},
- {"/MAPIRoot/Etiquetas","8"},
- {"/MAPIRoot/Agenda","10"},
-{"/MAPIRoot/Tareas","15"},
-{"/MAPIRoot/Conversaciones","9"},
- {"/MAPIRoot/Contactos respondidos","13"},
-{"/MAPIRoot/Chat","14"}};
-
-    Dictionary<string, string> specialFoldersMap_da = new Dictionary<string, string>()
-    {{"","0"},{"/MAPIRoot","1"},{"/MAPIRoot/Inbox","2"},{"/MAPIRoot/Deleted Items","3"},
-        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Sent Items","5"},
-        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Contacts","7"},
-        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/Conversations","9"},
-        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Wiki","12"},
-        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Chats","14"},
-        {"/MAPIRoot/Tasks","15"},
-        {"/MAPIRoot/Indbakke","2"},{"/MAPIRoot/Papirkurv","3"},
-        {"/MAPIRoot/U\u00f8nsket","4"}, {"/MAPIRoot/Sendt","5"},
-        {"/MAPIRoot/Kladder","6"}, {"/MAPIRoot/Kontakter","7"},
-        {"/MAPIRoot/M\u00e6rkater","8"}, {"/MAPIRoot/Samtaler","9"},
-        {"/MAPIRoot/Kalender","10"},
-        {"/MAPIRoot/Kontakter, der er sendt mail til","13"},
-        {"/MAPIRoot/Opgaver","15"}
     };
 
+    Dictionary<string, string> specialFoldersMap_es = new Dictionary<string, string>()
+    {{"","0"},{"/MAPIRoot","1"},
+        {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/Bandeja de entrada","2"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Papelera","3"}, {"/MAPIRoot/Elementos eliminados","3"},
+        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Correo no deseado","4"},
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/enviados","5"}, {"/MAPIRoot/Elementos enviados","5"},
+        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Borradores","6"},
+        {"/MAPIRoot/Contacts","7"}, {"/MAPIRoot/Contactos","7"},
+        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/Etiquetas","8"},
+        {"/MAPIRoot/Conversations","9"}, {"/MAPIRoot/Conversaciones","9"},
+        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Agenda","10"}, {"/MAPIRoot/Calendario","10"},
+        {"/MAPIRoot/Wiki","12"},
+        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Contactos respondidos","13"},
+        {"/MAPIRoot/Chats","14"},  {"/MAPIRoot/Chat","14"},
+        {"/MAPIRoot/Tasks","15"}, {"/MAPIRoot/Tareas","15"}
+    };
+
+    Dictionary<string, string> specialFoldersMap_da = new Dictionary<string, string>()
+    {{"","0"},{"/MAPIRoot","1"},
+        {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/Indbakke","2"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Papirkurv","3"}, {"/MAPIRoot/Slettet post","3"}, 
+        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/U\u00f8nsket e-mail","4"}, {"/MAPIRoot/U\u00f8nsket","4"}, 
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Sendt post","5"}, {"/MAPIRoot/Sendt","5"},
+        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Kladder","6"},
+        {"/MAPIRoot/Contacts","7"}, {"/MAPIRoot/Kontakter","7"}, {"/MAPIRoot/Kontaktpersoner","7"},
+        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/M\u00e6rkater","8"},
+        {"/MAPIRoot/Conversations","9"}, {"/MAPIRoot/Samtaler","9"},
+        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Kalender","10"},
+        {"/MAPIRoot/Wiki","12"},
+        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Kontakter, der er sendt mail til","13"},
+        {"/MAPIRoot/Chats","14"},
+        {"/MAPIRoot/Tasks","15"}, {"/MAPIRoot/Opgaver","15"}
+    };
+
+    Dictionary<string, string> specialFoldersMap_ge = new Dictionary<string, string>()
+    {{"","0"},{"/MAPIRoot","1"},
+        {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/Posteingang","2"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Gel\u00f6schte Objekte","3"},
+        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Junk-E-Mail","4"},
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Gesendete Objekte","5"},
+        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Entw\u00fcrfe","6"},
+        {"/MAPIRoot/Contacts","7"}, {"/MAPIRoot/Kontakte","7"},
+        {"/MAPIRoot/Tags","8"},
+        {"/MAPIRoot/Conversations","9"},
+        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Kalender","10"},
+        {"/MAPIRoot/Wiki","12"},
+        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Emailed Kontakte","13"},
+        {"/MAPIRoot/Chats","14"},
+        {"/MAPIRoot/Tasks","15"},  {"/MAPIRoot/Aufgaben","15"},
+    };
 
     Dictionary<string, string> specialFoldersMap_fr = new Dictionary<string, string>()
-    {{"","0"},{"/MAPIRoot","1"},{"/MAPIRoot/Bo\u00eete de R\u00e9ception","2"},{"/MAPIRoot/Corbeille","3"},
-        {"/MAPIRoot/Spam","4"}, {"/MAPIRoot/Envoy\u00e9","5"},
-        {"/MAPIRoot/Brouillons","6"},
-        {"/MAPIRoot/libell\u00e9s","8"},
-        {"/MAPIRoot/Calendrier","10"}, {"/MAPIRoot/Wiki","12"},
-        {"/MAPIRoot/Personnes contact\u00e9es par mail","13"}, {"/MAPIRoot/Discussions","14"},
-        {"/MAPIRoot/T\u00e2ches","15"},
-    
-        {"/MAPIRoot/Inbox","2"},{"/MAPIRoot/Deleted Items","3"},
-        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Sent Items","5"},
-        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Contacts","7"},
-        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/Conversations","9"},
-        {"/MAPIRoot/Calendar","10"}, 
-        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Chats","14"},
-        {"/MAPIRoot/Tasks","15"},
-    
-     };
+    {{"","0"},{"/MAPIRoot","1"},
+        {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/Bo\u00eete de R\u00e9ception","2"}, {"/MAPIRoot/Bo\u00eete de r\u00e9ception","2"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Corbeille","3"}, {"/MAPIRoot/\u00c9l\u00e9ments supprim\u00e9s","3"},
+        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Spam","4"}, {"/MAPIRoot/Courrier ind\u00e9sirable","4"}, {"/MAPIRoot/Courrier ind\u00e9sirables","4"},
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Envoy\u00e9","5"}, {"/MAPIRoot/\u00e9l\u00e9ments envoy\u00e9s","5"}, {"/MAPIRoot/\u00c9l\u00e9ments envoy\u00e9s","5"},
+        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Brouillons","6"},
+        {"/MAPIRoot/Contacts","7"},
+        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/libell\u00e9s","8"},
+        {"/MAPIRoot/Conversations","9"},
+        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Calendrier","10"},
+        {"/MAPIRoot/Wiki","12"},
+        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Personnes contact\u00e9es par mail","13"},
+        {"/MAPIRoot/Chats","14"}, {"/MAPIRoot/Discussions","14"},
+        {"/MAPIRoot/Tasks","15"}, {"/MAPIRoot/T\u00e2ches","15"}
+    };
 
     Dictionary<string, string> specialFoldersMap_ITA = new Dictionary<string, string>()
-    {{"","0"},{"/MAPIRoot","1"},{"/MAPIRoot/Inbox","2"},{"/MAPIRoot/Deleted Items","3"},
-        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Sent Items","5"},
-        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Contacts","7"},
-        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/Conversations","9"},
-        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Wiki","12"},
-        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Chats","14"},
-        {"/MAPIRoot/Tasks","15"},
-        {"/MAPIRoot/In arrivo","2"},{"/MAPIRoot/Cestino","3"},
-        {"/MAPIRoot/Posta indesiderata","4"}, {"/MAPIRoot/Inviati","5"},
-        {"/MAPIRoot/Bozze","6"}, {"/MAPIRoot/Contatti","7"},
-        {"/MAPIRoot/Tag","8"}, {"/MAPIRoot/Conversazioni","9"},
-        {"/MAPIRoot/Agenda","10"}, 
-        {"/MAPIRoot/Contatti usati per email","13"}, {"/MAPIRoot/Chat","14"},
-        {"/MAPIRoot/Impegni","15"}};
+    {{"","0"},{"/MAPIRoot","1"},
+        {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/In arrivo","2"}, {"/MAPIRoot/Posta in arrivo","2"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Cestino","3"}, {"/MAPIRoot/Posta eliminata","3"},
+        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Posta indesiderata","4"},
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Inviati","5"}, {"/MAPIRoot/Posta inviata","5"},
+        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Bozze","6"},
+        {"/MAPIRoot/Contacts","7"}, {"/MAPIRoot/Contatti","7"},
+        {"/MAPIRoot/Tags","8"}, {"/MAPIRoot/Tag","8"},
+        {"/MAPIRoot/Conversations","9"}, {"/MAPIRoot/Conversazioni","9"},
+        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Agenda","10"}, {"/MAPIRoot/Calendario","10"},
+        {"/MAPIRoot/Wiki","12"}, 
+        {"/MAPIRoot/Emailed Contacts","13"},{"/MAPIRoot/Contatti usati per email","13"}, {"/MAPIRoot/Contatti Email","13"},
+        {"/MAPIRoot/Chats","14"}, {"/MAPIRoot/Chat","14"},
+        {"/MAPIRoot/Tasks","15"}, {"/MAPIRoot/Impegni","15"}, {"/MAPIRoot/Attivit\u00e1","15"},
+    };
 
    
     Dictionary<string, string> specialFoldersMap_Ma = new Dictionary<string, string>()
@@ -233,6 +247,22 @@ public class ZimbraAPI
         {"/MAPIRoot/Kalender","10"}, 
         {"/MAPIRoot/E-postkontakter","13"}, {"/MAPIRoot/Chattar","14"},
         {"/MAPIRoot/Uppgifter","15"}};
+
+    Dictionary<string, string> specialFoldersMap_SLV = new Dictionary<string, string>()  //Slovanian locale support
+    {{"","0"},{"/MAPIRoot","1"},
+        {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/Prejeto","2"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Izbrisano","3"},
+        {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Ne\u017eelena e\u002dpo\u015dta","4"},
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Poslano","5"},
+        {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Odpo\u015dlji","6"}, {"/MAPIRoot/Osnutki","6"},
+        {"/MAPIRoot/Contacts","7"}, {"/MAPIRoot/Stiki","7"},
+        {"/MAPIRoot/Tags","8"},
+        {"/MAPIRoot/Conversations","9"},
+        {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Koledar","10"},
+        {"/MAPIRoot/Wiki","12"},
+        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/po e-po\u015dti stiki","13"},
+        {"/MAPIRoot/Chats","14"},
+        {"/MAPIRoot/Tasks","15"}, {"/MAPIRoot/Opravila","15"}};
 
 
    /* Dictionary<string, string> specialFoldersMap_tr = new Dictionary<string, string>()
@@ -403,8 +433,8 @@ public class ZimbraAPI
                 {
                     {
                         string tempstr = folderPath;
-                        if (specialFoldersMap.ContainsKey(tempstr))
-                            return specialFoldersMap[tempstr];
+                        if (specialFoldersMap_ge.ContainsKey(tempstr))
+                            return specialFoldersMap_ge[tempstr];
                         else
                             return "";
                     }
@@ -449,6 +479,7 @@ public class ZimbraAPI
 
 
                 }
+
             case 1040:
                 {
                     {
@@ -459,6 +490,18 @@ public class ZimbraAPI
                             return "";
                     }
 
+
+                }
+
+            case 1060:
+                {
+                    {
+                        string tempstr = folderPath;
+                        if (specialFoldersMap_SLV.ContainsKey(tempstr))
+                            return specialFoldersMap_SLV[tempstr];
+                        else
+                            return "";
+                    }
 
                 }
 

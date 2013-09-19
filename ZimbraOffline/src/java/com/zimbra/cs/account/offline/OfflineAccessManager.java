@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -25,6 +25,7 @@ import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Group;
+import com.zimbra.cs.account.MailTarget;
 import com.zimbra.cs.account.accesscontrol.Right;
 
 public class OfflineAccessManager extends AccessManager {
@@ -33,7 +34,7 @@ public class OfflineAccessManager extends AccessManager {
     public boolean isAdequateAdminAccount(Account acct) {
         return true;
     }
-    
+
 	@Override
 	public boolean canAccessAccount(AuthToken at, Account target,
 			boolean asAdmin) throws ServiceException {
@@ -69,13 +70,13 @@ public class OfflineAccessManager extends AccessManager {
 			throws ServiceException {
 		return true;
 	}
-	
+
 	@Override
 	public  boolean canAccessCos(AuthToken at, Cos cos)
 			throws ServiceException {
 		return true;
 	}
-	
+
 	@Override
 	public boolean canAccessEmail(AuthToken at, String email)
 			throws ServiceException {
@@ -92,47 +93,47 @@ public class OfflineAccessManager extends AccessManager {
 	public boolean isDomainAdminOnly(AuthToken at) {
 		return false;
 	}
-	
+
 	@Override
 	public boolean canDo(AuthToken grantee, Entry target, Right rightNeeded, boolean asAdmin) {
 	    return true;
 	}
-    
+
 	@Override
-	public boolean canDo(Account grantee, Entry target, Right rightNeeded, boolean asAdmin) {
+	public boolean canDo(MailTarget grantee, Entry target, Right rightNeeded, boolean asAdmin) {
 	    return true;
 	}
-	
+
 	@Override
 	public boolean canDo(String grantee, Entry target, Right rightNeeded, boolean asAdmin) {
 	    return true;
 	}
-	
+
 	@Override
     public boolean canGetAttrs(Account grantee,   Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException {
         return true;
     }
-	
+
 	@Override
     public boolean canGetAttrs(AuthToken grantee, Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException {
 	    return true;
     }
-	
+
 	@Override
     public boolean canSetAttrs(Account grantee,   Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException {
         return true;
     }
-	    
+
     @Override
     public boolean canSetAttrs(AuthToken grantee, Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException {
         return true;
     }
-	
+
 	@Override
     public boolean canSetAttrs(Account grantee,   Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException {
 	    return true;
     }
-	
+
 	@Override
     public boolean canSetAttrs(AuthToken grantee, Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException {
 	    return true;
@@ -143,7 +144,7 @@ public class OfflineAccessManager extends AccessManager {
             throws ServiceException {
         return true;
     }
-    
+
     @Override
     public boolean canAccessGroup(Account credentials, Group group, boolean asAdmin)
             throws ServiceException {

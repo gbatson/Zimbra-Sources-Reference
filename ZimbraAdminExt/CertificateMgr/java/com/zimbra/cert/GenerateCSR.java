@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -67,7 +67,8 @@ public class GenerateCSR extends AdminDocumentHandler {
         String cmd = ZimbraCertMgrExt.CREATE_CSR_CMD  ;
         String newCSR = request.getAttribute(CertMgrConstants.A_new);
         String type = request.getAttribute(AdminConstants.A_TYPE);
-        String keysize = request.getAttribute (CertMgrConstants.E_KEYSIZE) ; 
+        String digest = request.getAttribute(CertMgrConstants.E_DIGEST, "sha1");
+        String keysize = request.getAttribute (CertMgrConstants.E_KEYSIZE) ;
         if (keysize == null || (!(keysize.equalsIgnoreCase("1024") || keysize.equalsIgnoreCase("2048")))) {
             keysize = "2048";
         }
@@ -79,8 +80,8 @@ public class GenerateCSR extends AdminDocumentHandler {
             }else{
                 throw ServiceException.INVALID_REQUEST("Invalid CSR type: " + type +". Must be (self|comm).", null);    
             }
-            
-            cmd +=  " -new -keysize " + keysize + " " ;
+
+            cmd += " -new -digest " + digest + " -keysize " + keysize + " " ;
             String subject = getSubject (request);
             
             if (subject != null && subject.length() > 0) {

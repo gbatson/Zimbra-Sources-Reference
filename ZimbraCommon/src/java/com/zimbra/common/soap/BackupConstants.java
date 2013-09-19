@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -170,6 +170,7 @@ public final class BackupConstants {
     public static final String A_MINOR_VERSION = "minorVer";
     public static final String A_DB_VERSION = "dbVer";
     public static final String A_INDEX_VERSION = "indexVer";
+    public static final String A_SKIP_REMOTE_LOCKOUT = "skipRemoteLockout";
 
     // FileCopier options
     public static final String E_FILE_COPIER = "fileCopier";

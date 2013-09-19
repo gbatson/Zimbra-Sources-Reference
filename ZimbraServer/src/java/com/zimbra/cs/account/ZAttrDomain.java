@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -41,8 +41,6 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     ///// BEGIN-AUTO-GEN-REPLACE
-
-    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     /**
      * RFC2256: descriptive information
@@ -2031,7 +2029,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @return zimbraAutoProvAuthMech, or empty array if unset
      *
@@ -2049,7 +2047,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @param zimbraAutoProvAuthMech new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -2070,7 +2068,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @param zimbraAutoProvAuthMech new value
      * @param attrs existing map to populate, or null to create a new map
@@ -2092,7 +2090,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @param zimbraAutoProvAuthMech new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -2113,7 +2111,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @param zimbraAutoProvAuthMech new value
      * @param attrs existing map to populate, or null to create a new map
@@ -2135,7 +2133,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -2155,7 +2153,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * when the user account does not yet exist in Zimbra directory, an
      * account entry will be automatically created in Zimbra directory.
      *
-     * <p>Valid values: [KRB5, LDAP, PREAUTH, SPNEGO]
+     * <p>Valid values: [KRB5, SPNEGO, LDAP, PREAUTH]
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -3038,25 +3036,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory. At each eager provision interval, ZCS does an
-     * LDAP search based on the value configured in
-     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
-     * candidates to be auto provisioned in this batch. The
-     * zimbraAutoProvLdapSearchFilter should include an assertion that will
-     * only hit entries in the external directory that have not yet been
-     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
-     * be repeated pulled in to ZCS. After an account is auto provisioned in
-     * ZCS,
-     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
-     * domain, Account acct, String externalDN) will be called by the auto
-     * provisioning framework. Customer can implement the
-     * AutoProvisionListener interface in a ZCS server extension and get
-     * their AutoProvisionListener.postCreate() get called. The
-     * implementation of customer&#039;s postCreate method can be, for
-     * example, setting an attribute in the external directory on the account
-     * just provisioned in ZCS. The attribute can be included as a condition
-     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
-     * returned again by the LDAP search in the next interval.
+     * external LDAP directory.
      *
      * @return zimbraAutoProvListenerClass, or null if unset
      *
@@ -3074,25 +3054,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory. At each eager provision interval, ZCS does an
-     * LDAP search based on the value configured in
-     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
-     * candidates to be auto provisioned in this batch. The
-     * zimbraAutoProvLdapSearchFilter should include an assertion that will
-     * only hit entries in the external directory that have not yet been
-     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
-     * be repeated pulled in to ZCS. After an account is auto provisioned in
-     * ZCS,
-     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
-     * domain, Account acct, String externalDN) will be called by the auto
-     * provisioning framework. Customer can implement the
-     * AutoProvisionListener interface in a ZCS server extension and get
-     * their AutoProvisionListener.postCreate() get called. The
-     * implementation of customer&#039;s postCreate method can be, for
-     * example, setting an attribute in the external directory on the account
-     * just provisioned in ZCS. The attribute can be included as a condition
-     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
-     * returned again by the LDAP search in the next interval.
+     * external LDAP directory.
      *
      * @param zimbraAutoProvListenerClass new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -3113,25 +3075,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory. At each eager provision interval, ZCS does an
-     * LDAP search based on the value configured in
-     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
-     * candidates to be auto provisioned in this batch. The
-     * zimbraAutoProvLdapSearchFilter should include an assertion that will
-     * only hit entries in the external directory that have not yet been
-     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
-     * be repeated pulled in to ZCS. After an account is auto provisioned in
-     * ZCS,
-     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
-     * domain, Account acct, String externalDN) will be called by the auto
-     * provisioning framework. Customer can implement the
-     * AutoProvisionListener interface in a ZCS server extension and get
-     * their AutoProvisionListener.postCreate() get called. The
-     * implementation of customer&#039;s postCreate method can be, for
-     * example, setting an attribute in the external directory on the account
-     * just provisioned in ZCS. The attribute can be included as a condition
-     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
-     * returned again by the LDAP search in the next interval.
+     * external LDAP directory.
      *
      * @param zimbraAutoProvListenerClass new value
      * @param attrs existing map to populate, or null to create a new map
@@ -3153,25 +3097,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory. At each eager provision interval, ZCS does an
-     * LDAP search based on the value configured in
-     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
-     * candidates to be auto provisioned in this batch. The
-     * zimbraAutoProvLdapSearchFilter should include an assertion that will
-     * only hit entries in the external directory that have not yet been
-     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
-     * be repeated pulled in to ZCS. After an account is auto provisioned in
-     * ZCS,
-     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
-     * domain, Account acct, String externalDN) will be called by the auto
-     * provisioning framework. Customer can implement the
-     * AutoProvisionListener interface in a ZCS server extension and get
-     * their AutoProvisionListener.postCreate() get called. The
-     * implementation of customer&#039;s postCreate method can be, for
-     * example, setting an attribute in the external directory on the account
-     * just provisioned in ZCS. The attribute can be included as a condition
-     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
-     * returned again by the LDAP search in the next interval.
+     * external LDAP directory.
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -3191,25 +3117,7 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory. At each eager provision interval, ZCS does an
-     * LDAP search based on the value configured in
-     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
-     * candidates to be auto provisioned in this batch. The
-     * zimbraAutoProvLdapSearchFilter should include an assertion that will
-     * only hit entries in the external directory that have not yet been
-     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
-     * be repeated pulled in to ZCS. After an account is auto provisioned in
-     * ZCS,
-     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
-     * domain, Account acct, String externalDN) will be called by the auto
-     * provisioning framework. Customer can implement the
-     * AutoProvisionListener interface in a ZCS server extension and get
-     * their AutoProvisionListener.postCreate() get called. The
-     * implementation of customer&#039;s postCreate method can be, for
-     * example, setting an attribute in the external directory on the account
-     * just provisioned in ZCS. The attribute can be included as a condition
-     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
-     * returned again by the LDAP search in the next interval.
+     * external LDAP directory.
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -15679,6 +15587,103 @@ public abstract class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetReverseProxyClientCertMode(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraReverseProxyClientCertMode, "");
+        return attrs;
+    }
+
+    /**
+     * During migrations Nginx lookup handler rewrites non-qualified username
+     * to fully qualified breaking proxy to external legacy mail platform.
+     * When zimbraReverseProxyUseExternalRoute is set to TRUE and
+     * zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to
+     * FALSE nginx lookup handler drops the domain name from the userAccount
+     * and returns just the username.
+     *
+     * @return zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, or false if unset
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1454)
+    public boolean isReverseProxyExternalRouteIncludeOriginalAuthusername() {
+        return getBooleanAttr(Provisioning.A_zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, false);
+    }
+
+    /**
+     * During migrations Nginx lookup handler rewrites non-qualified username
+     * to fully qualified breaking proxy to external legacy mail platform.
+     * When zimbraReverseProxyUseExternalRoute is set to TRUE and
+     * zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to
+     * FALSE nginx lookup handler drops the domain name from the userAccount
+     * and returns just the username.
+     *
+     * @param zimbraReverseProxyExternalRouteIncludeOriginalAuthusername new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1454)
+    public void setReverseProxyExternalRouteIncludeOriginalAuthusername(boolean zimbraReverseProxyExternalRouteIncludeOriginalAuthusername) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, zimbraReverseProxyExternalRouteIncludeOriginalAuthusername ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * During migrations Nginx lookup handler rewrites non-qualified username
+     * to fully qualified breaking proxy to external legacy mail platform.
+     * When zimbraReverseProxyUseExternalRoute is set to TRUE and
+     * zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to
+     * FALSE nginx lookup handler drops the domain name from the userAccount
+     * and returns just the username.
+     *
+     * @param zimbraReverseProxyExternalRouteIncludeOriginalAuthusername new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1454)
+    public Map<String,Object> setReverseProxyExternalRouteIncludeOriginalAuthusername(boolean zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, zimbraReverseProxyExternalRouteIncludeOriginalAuthusername ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * During migrations Nginx lookup handler rewrites non-qualified username
+     * to fully qualified breaking proxy to external legacy mail platform.
+     * When zimbraReverseProxyUseExternalRoute is set to TRUE and
+     * zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to
+     * FALSE nginx lookup handler drops the domain name from the userAccount
+     * and returns just the username.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1454)
+    public void unsetReverseProxyExternalRouteIncludeOriginalAuthusername() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * During migrations Nginx lookup handler rewrites non-qualified username
+     * to fully qualified breaking proxy to external legacy mail platform.
+     * When zimbraReverseProxyUseExternalRoute is set to TRUE and
+     * zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to
+     * FALSE nginx lookup handler drops the domain name from the userAccount
+     * and returns just the username.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1454)
+    public Map<String,Object> unsetReverseProxyExternalRouteIncludeOriginalAuthusername(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyExternalRouteIncludeOriginalAuthusername, "");
         return attrs;
     }
 

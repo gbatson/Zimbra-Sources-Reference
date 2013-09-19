@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -20,7 +20,7 @@ import java.util.Date;
 
 public class ZDocumentHitBean extends ZSearchHitBean {
 
-    private ZDocumentHit mHit;
+    private final ZDocumentHit mHit;
 
     public ZDocumentHitBean(ZDocumentHit hit) {
         super(hit, HitType.briefcase);
@@ -40,15 +40,15 @@ public class ZDocumentHitBean extends ZSearchHitBean {
     }
 
     public Date getCreatedDate() {
-        return new Date(mHit.getDocument().getCreatedDate()/1000);
+        return new Date(mHit.getDocument().getCreatedDate());
     }
 
     public Date getModifiedDate() {
-        return new Date(mHit.getDocument().getModifiedDate()/1000);
+        return new Date(mHit.getDocument().getModifiedDate());
     }
 
     public Date getMetaDataChangedDate() {
-        return new Date(mHit.getDocument().getMetaDataChangedDate()/1000);
+        return new Date(mHit.getDocument().getMetaDataChangedDate());
     }
 
 }

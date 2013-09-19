@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -91,6 +91,8 @@ public class TagTest {
         checkName("invalid tag name (':')", "foo:bar", null);
         checkName("invalid tag name ('\\')", "foo\\bar", null);
         checkName("invalid tag name (control)", "foo\u0004bar", null);
+        // Note: ZWC currently disallows creation of tags containing double quotes but the server allows them
+        checkName("contains spaces and double quote", "Andrew \"Barney\"  Rubble", "Andrew \"Barney\"  Rubble");
     }
 
     private static final String tag1 = "foo", tag2 = "bar", tag3 = "baz", tag4 = "qux";
@@ -591,17 +593,20 @@ public class TagTest {
                 Assert.assertFalse("implicit tags should not be notified", item instanceof Tag);
             }
 
+            ml.clear();
             // new real tags *should* be included in notifications
             mbox.createTag(null, tag1, (byte) 0);
             Assert.assertFalse("explicit tag create must produce notifications", ml.pms.created.isEmpty());
             Assert.assertTrue("explicit tags must be notified", ml.pms.created.values().iterator().next() instanceof Tag);
 
+            ml.clear();
             // changes to implicit tags should not be included in notifications
             int msgId = mbox.addMessage(null, ThreaderTest.getRootMessage(), dopt, null).getId();
             for (Change chg : ml.pms.modified.values()) {
                 Assert.assertFalse("implicit tag changes should not be notified", chg.what instanceof Tag);
             }
 
+            ml.clear();
             // changes to real tags *should* be included in notifications
             mbox.alterTag(null, msgId, MailItem.Type.MESSAGE, tag1, true, null);
             Assert.assertFalse("explicit tag apply must produce notifications", ml.pms.modified == null || ml.pms.modified.isEmpty());

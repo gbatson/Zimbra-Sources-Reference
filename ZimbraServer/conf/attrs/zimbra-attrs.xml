@@ -957,7 +957,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>LDAP Gal attribute to contact attr mapping</desc>
 </attr>
 
-<attr id="154" name="zimbraMailPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="mailbox,mta,nginxproxy">
+<attr id="154" name="zimbraMailPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="MailPort" requiresRestart="mailbox,mta,nginxproxy">
   <globalConfigValue>80</globalConfigValue>
   <desc>HTTP port for end-user UI</desc>
 </attr>
@@ -6890,7 +6890,7 @@ TODO: delete them permanently from here
 </attr>
 
 <attr id="1383" name="zimbraThrottleSafeHosts" type="string" cardinality="multi" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="8.0.0">
-  <desc>Hosts to ignore during IP based throttling. Typically should list nginx hostname and any other mailbox servers which can proxy to this server</desc>
+  <desc>Hosts to ignore during IP based throttling. Account and command rate limits will still be applied. Typically should list nginx hostname and any other mailbox servers which can proxy to this server</desc>
 </attr>
 
 <attr id="1384" name="zimbraReverseProxyDnsLookupInServerEnabled" type="boolean" cardinality="single" optionalIn="server,globalConfig" flags="serverInherited" since="8.0.0">
@@ -7144,4 +7144,65 @@ TODO: delete them permanently from here
      The connect timeout is the time interval after which NGINX will disconnect while establishing an upstream HTTP connection. Measured in seconds, should not be more than 75 seconds.
   </desc>
 </attr>
+<attr id="1449" name="zimbraThrottleWhitelist" type="string" cardinality="multi" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="8.0.5">
+  <desc>Hosts to whitelist during IP based throttling. Account and command rate limits will not be applied. This should only be used for internal servers which cannot service end user traffic; e.g. migration or monitoring hosts</desc>
+</attr>
+<attr id="1450" name="zimbraDeviceCalendarSoftDeleteExcludePattern" type="cstring" cardinality="single" optionalIn="account,cos" flags="accountInherited" since="8.0.5">
+  <desc>
+    Regex to be matched for preventing devices from soft deletion of out of range calendar items.
+    Suppose device is set to sync calendar item of 2 months range then server will ONLY send softdelete for out of range (expired) calendar items, if device id DOES NOT match to the regex provided. 
+   </desc>
+</attr>
+
+<attr id="1451" name="zimbraItemActionBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.5">
+  <globalConfigValue>1000</globalConfigValue>
+  <desc>
+    Maximum number of item to perform an ItemAction on at a time.
+  </desc>
+</attr>
+
+<attr id="1453" name="zimbraMobileOutlookSyncEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="8.0.5">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>Whether to permit Outlook to sync via Active Sync</desc>
+</attr>
+
+<attr id="1454" name="zimbraReverseProxyExternalRouteIncludeOriginalAuthusername" type="boolean" cardinality="single" optionalIn="domain,globalConfig" flags="domainInherited,domainAdminModifiable" since="8.0.5">
+  <globalConfigValue>FALSE</globalConfigValue>
+  <desc>
+      During migrations Nginx lookup handler rewrites non-qualified username to fully qualified breaking proxy to external legacy mail platform.
+      When zimbraReverseProxyUseExternalRoute is set to TRUE and zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to FALSE
+      nginx lookup handler drops the domain name from the userAccount and returns just the username.
+  </desc>
+</attr>
+
+<attr id="1455" name="zimbraFeatureFromDisplayEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="8.0.5">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>whether to display from address control in user preferences</desc>
+</attr>
+
+<attr id="1456" name="zimbraAntispamExtractionBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.5">
+  <globalConfigValue>25</globalConfigValue>
+  <desc>batch size for zmspamextract</desc>
+</attr>
+
+<attr id="1457" name="zimbraAntispamExtractionBatchDelay" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.5">
+  <globalConfigValue>100</globalConfigValue>
+  <desc>delay between each batch for zmspamextract</desc>
+</attr>
+
+<attr id="1467" name="zimbraHttpCompressionEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="7.2.5">
+  <globalConfigValue>TRUE</globalConfigValue>
+  <desc>Whether or not to enable HTTP compression. Defaults to true.</desc>
+</attr>
+
+<attr id="1468" name="zimbraWebGzipEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="7.2.5">
+  <globalConfigValue>TRUE</globalConfigValue>
+  <desc>Whether or not to gzip static web content. Defaults to true.</desc>
+</attr>
+
+<attr id="1488" name="zimbraAmavisLogLevel" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.5">
+  <globalConfigValue>1</globalConfigValue>
+  <desc>Loglevel for Amavis. Defaults to 1</desc>
+</attr>
+
 </attrs>

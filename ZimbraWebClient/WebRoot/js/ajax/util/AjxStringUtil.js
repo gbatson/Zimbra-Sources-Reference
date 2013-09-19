@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -1483,16 +1483,21 @@ function(str, bold, fontSize) {
  *
  */
 AjxStringUtil.fixCrossDomainReference =
-function(url, restUrlAuthority) {
+function(url, restUrlAuthority, convertToRelativeURL) {
 	var urlParts = AjxStringUtil.parseURL(url);
 	if (urlParts.authority == window.location.host) {
 		return url;
 	}
 
 	if ((restUrlAuthority && url.indexOf(restUrlAuthority) >=0) || !restUrlAuthority) {
-		var oldRef = urlParts.protocol + "://" + urlParts.authority;
-		var newRef = window.location.protocol + "//" + window.location.host;
-		url = url.replace(oldRef, newRef);
+        if (convertToRelativeURL) {
+            url = urlParts.path;
+        }
+        else {
+            var oldRef = urlParts.protocol + "://" + urlParts.authority;
+            var newRef = window.location.protocol + "//" + window.location.host;
+            url = url.replace(oldRef, newRef);
+        }
 	}
 	return url;
 };
@@ -1597,7 +1602,7 @@ function(html) {
 		idoc = AjxStringUtil._htmlContentIframeDoc = Dwt.getIframeDoc(iframe);
 		AjxStringUtil.__curIframeId = AjxEnv.isFirefox ? iframe.id : null;
 	}
-    html = html && html.replace(AjxStringUtil.IMG_SRC_CID_REGEX, '<img pnsrc="cid:');
+    html = html && html.replace(AjxStringUtil.IMG_SRC_CID_REGEX, '<img $1 pnsrc="cid:');
 	idoc.open();
 	idoc.write(html);
 	idoc.close();

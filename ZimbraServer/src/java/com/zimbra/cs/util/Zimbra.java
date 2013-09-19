@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -21,12 +21,16 @@ import java.security.Security;
 import java.util.Timer;
 
 import org.apache.mina.core.buffer.IoBuffer;
+import org.dom4j.DocumentException;
 
 import com.zimbra.common.calendar.WellKnownTimeZones;
 import com.zimbra.common.lmtp.SmtpToLmtp;
+import com.zimbra.common.localconfig.ConfigException;
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.localconfig.LocalConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapTransport;
+import com.zimbra.common.util.FileUtil;
 import com.zimbra.common.util.ZimbraHttpConnectionManager;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager;
@@ -75,6 +79,41 @@ public final class Zimbra {
         System.setProperty("mail.mime.base64.ignoreerrors",     "true");
         System.setProperty("mail.mime.ignoremultipartencoding", "false");
         System.setProperty("mail.mime.multipart.allowempty",    "true");
+    }
+
+    private static final String HEAP_DUMP_JAVA_OPTION = "-xx:heapdumppath=";
+
+    private static void validateJavaOptions() throws ServiceException {
+        String options = LC.mailboxd_java_options.value();
+        if (options != null && options.toLowerCase().indexOf(HEAP_DUMP_JAVA_OPTION) > -1) {
+            int start = options.toLowerCase().indexOf(HEAP_DUMP_JAVA_OPTION) + HEAP_DUMP_JAVA_OPTION.length();
+            int end = -1;
+            for (int i = start; i < options.length(); i++) {
+                char c = options.charAt(i);
+                if (c == ' ') {
+                    end = i;
+                    break;
+                }
+            }
+            String path = null;
+            if (end > -1) {
+                path = options.substring(start, end);
+            } else {
+                path = options.substring(start);
+            }
+            try {
+                if (path.trim().length() <= 0) {
+                    throw new IOException("Heap dump path not specified correctly? mailboxd_java_options="+LC.mailboxd_java_options.value());
+                }
+                File dir = new File(path);
+                FileUtil.ensureDirExists(dir);
+                if (!dir.canWrite()) {
+                    throw new IOException("Heap dump path not writable: " + path);
+                }
+            } catch (IOException e) {
+                throw ServiceException.FAILURE("Unable to find/create HeapDumpPath", e);
+            }
+        }
     }
 
     private static void checkForClass(String clzName, String jarName) {
@@ -152,6 +191,7 @@ public final class Zimbra {
         }
 
         setSystemProperties();
+        validateJavaOptions();
 
         logVersionAndSysInfo();
 
@@ -300,6 +340,22 @@ public final class Zimbra {
                     ZimbraLog.misc.warn("can't start notification channels", e);
                 }
             }
+
+            Server localServer = Provisioning.getInstance().getLocalServer();
+            String provPort = localServer.getAttr(Provisioning.A_zimbraMailPort);
+            String lcPort = LC.zimbra_mail_service_port.value();
+            if (!lcPort.equals(provPort)) {
+                LocalConfig lc;
+                try {
+                    lc = new LocalConfig(null);
+                    lc.set(LC.zimbra_mail_service_port.key(), provPort);
+                    lc.save();
+                    LC.reload();
+                } catch (DocumentException | ConfigException | IOException e) {
+                    ZimbraLog.misc.warn("Cannot set LC zimbra_mail_service_port", e);
+                }
+            }
+
 
             // should be last, so that other subsystems can add dynamic stats counters
             if (app.supports(ZimbraPerf.class.getName())) {

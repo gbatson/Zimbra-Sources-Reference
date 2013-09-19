@@ -1,17 +1,15 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.util;
@@ -42,7 +40,7 @@ import com.zimbra.qa.selenium.framework.util.OperatingSystem.OsType;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 
 public class BuildUtility {
-   private static final StringBuilder _buildBaseUrl = new StringBuilder("http://zre-matrix.eng.vmware.com");
+	private static final StringBuilder _buildBaseUrl = new StringBuilder(ZimbraSeleniumProperties.getStringProperty("buildServer"));
    private static final String _buildUrl = new StringBuilder(_buildBaseUrl).append("/cgi-bin/build/builds.cgi").toString();
    protected static Logger logger = LogManager.getLogger(BuildUtility.class);
    public class Build {
@@ -153,7 +151,7 @@ public class BuildUtility {
       logger.debug("Build query result is: " + results);
 
       return results;
-      // For example: wget -m -nd -P C:\Jeff_Test\ http://zre-matrix.eng.vmware.com/links/WINDOWS/HELIX/20110110070101_ZDESKTOP/ZimbraBuild/i386/zdesktop_7_0_dev-helix_b10684_win32.msi
+      // For example: wget -m -nd -P C:\Jeff_Test\ http://buildserver/links/WINDOWS/HELIX/20110110070101_ZDESKTOP/ZimbraBuild/i386/zdesktop_7_0_dev-helix_b10684_win32.msi
    }
 
    /**

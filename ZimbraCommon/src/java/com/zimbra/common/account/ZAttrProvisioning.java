@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -27,8 +27,6 @@ import java.util.Arrays;
 public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
-
-    /* build: 9.0.0_BETA1_1111 rgadipuuri 20130510-1145 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -88,8 +86,8 @@ public class ZAttrProvisioning {
 
     public static enum AutoProvAuthMech {
         KRB5("KRB5"),
-        SPNEGO("SPNEGO"),
         LDAP("LDAP"),
+        SPNEGO("SPNEGO"),
         PREAUTH("PREAUTH");
         private String mValue;
         private AutoProvAuthMech(String value) { mValue = value; }
@@ -101,8 +99,8 @@ public class ZAttrProvisioning {
              throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
         }
         public boolean isKRB5() { return this == KRB5;}
-        public boolean isSPNEGO() { return this == SPNEGO;}
         public boolean isLDAP() { return this == LDAP;}
+        public boolean isSPNEGO() { return this == SPNEGO;}
         public boolean isPREAUTH() { return this == PREAUTH;}
     }
 
@@ -323,8 +321,8 @@ public class ZAttrProvisioning {
     }
 
     public static enum FeatureSocialFiltersEnabled {
-        Facebook("Facebook"),
         LinkedIn("LinkedIn"),
+        Facebook("Facebook"),
         SocialCast("SocialCast"),
         Twitter("Twitter");
         private String mValue;
@@ -336,8 +334,8 @@ public class ZAttrProvisioning {
              }
              throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
         }
-        public boolean isFacebook() { return this == Facebook;}
         public boolean isLinkedIn() { return this == LinkedIn;}
+        public boolean isFacebook() { return this == Facebook;}
         public boolean isSocialCast() { return this == SocialCast;}
         public boolean isTwitter() { return this == Twitter;}
     }
@@ -1035,8 +1033,8 @@ public class ZAttrProvisioning {
     }
 
     public static enum PrefPop3DeleteOption {
-        delete("delete"),
         trash("trash"),
+        delete("delete"),
         read("read"),
         keep("keep");
         private String mValue;
@@ -1048,8 +1046,8 @@ public class ZAttrProvisioning {
              }
              throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
         }
-        public boolean isDelete() { return this == delete;}
         public boolean isTrash() { return this == trash;}
+        public boolean isDelete() { return this == delete;}
         public boolean isRead() { return this == read;}
         public boolean isKeep() { return this == keep;}
     }
@@ -1289,8 +1287,8 @@ public class ZAttrProvisioning {
     }
 
     public static enum TableMaintenanceOperation {
-        OPTIMIZE("OPTIMIZE"),
-        ANALYZE("ANALYZE");
+        ANALYZE("ANALYZE"),
+        OPTIMIZE("OPTIMIZE");
         private String mValue;
         private TableMaintenanceOperation(String value) { mValue = value; }
         public String toString() { return mValue; }
@@ -1300,8 +1298,8 @@ public class ZAttrProvisioning {
              }
              throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
         }
-        public boolean isOPTIMIZE() { return this == OPTIMIZE;}
         public boolean isANALYZE() { return this == ANALYZE;}
+        public boolean isOPTIMIZE() { return this == OPTIMIZE;}
     }
 
     /**
@@ -1923,12 +1921,36 @@ public class ZAttrProvisioning {
     public static final String A_zimbraAllowNonLDHCharsInDomain = "zimbraAllowNonLDHCharsInDomain";
 
     /**
+     * Loglevel for Amavis. Defaults to 1
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1488)
+    public static final String A_zimbraAmavisLogLevel = "zimbraAmavisLogLevel";
+
+    /**
      * When a virus is detected quarantine message to this account
      *
      * @since ZCS 7.0.0
      */
     @ZAttr(id=1100)
     public static final String A_zimbraAmavisQuarantineAccount = "zimbraAmavisQuarantineAccount";
+
+    /**
+     * delay between each batch for zmspamextract
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1457)
+    public static final String A_zimbraAntispamExtractionBatchDelay = "zimbraAntispamExtractionBatchDelay";
+
+    /**
+     * batch size for zmspamextract
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1456)
+    public static final String A_zimbraAntispamExtractionBatchSize = "zimbraAntispamExtractionBatchSize";
 
     /**
      * Mailboxes in which the current account in archived. Multi-value attr
@@ -2281,25 +2303,7 @@ public class ZAttrProvisioning {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory. At each eager provision interval, ZCS does an
-     * LDAP search based on the value configured in
-     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
-     * candidates to be auto provisioned in this batch. The
-     * zimbraAutoProvLdapSearchFilter should include an assertion that will
-     * only hit entries in the external directory that have not yet been
-     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
-     * be repeated pulled in to ZCS. After an account is auto provisioned in
-     * ZCS,
-     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
-     * domain, Account acct, String externalDN) will be called by the auto
-     * provisioning framework. Customer can implement the
-     * AutoProvisionListener interface in a ZCS server extension and get
-     * their AutoProvisionListener.postCreate() get called. The
-     * implementation of customer&#039;s postCreate method can be, for
-     * example, setting an attribute in the external directory on the account
-     * just provisioned in ZCS. The attribute can be included as a condition
-     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
-     * returned again by the LDAP search in the next interval.
+     * external LDAP directory.
      *
      * @since ZCS 8.0.0
      */
@@ -3442,6 +3446,18 @@ public class ZAttrProvisioning {
     public static final String A_zimbraDeviceAllowedPasscodeLockoutDuration = "zimbraDeviceAllowedPasscodeLockoutDuration";
 
     /**
+     * Regex to be matched for preventing devices from soft deletion of out
+     * of range calendar items. Suppose device is set to sync calendar item
+     * of 2 months range then server will ONLY send softdelete for out of
+     * range (expired) calendar items, if device id DOES NOT match to the
+     * regex provided.
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1450)
+    public static final String A_zimbraDeviceCalendarSoftDeleteExcludePattern = "zimbraDeviceCalendarSoftDeleteExcludePattern";
+
+    /**
      * Whether OpenWith feature is enabled on devices.
      *
      * @since ZCS 8.0.0
@@ -4177,6 +4193,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFeatureFreeBusyViewEnabled = "zimbraFeatureFreeBusyViewEnabled";
 
     /**
+     * whether to display from address control in user preferences
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1455)
+    public static final String A_zimbraFeatureFromDisplayEnabled = "zimbraFeatureFromDisplayEnabled";
+
+    /**
      * enable auto-completion from the GAL, zimbraFeatureGalEnabled also has
      * to be enabled for the auto-completion feature
      */
@@ -4678,7 +4702,7 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFileShareLifetime = "zimbraFileShareLifetime";
 
     /**
-     * Maximum size in bytes for file uploads
+     * Maximum size in bytes for attachments
      */
     @ZAttr(id=227)
     public static final String A_zimbraFileUploadMaxSize = "zimbraFileUploadMaxSize";
@@ -5338,6 +5362,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraHsmPolicy = "zimbraHsmPolicy";
 
     /**
+     * Whether or not to enable HTTP compression. Defaults to true.
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1467)
+    public static final String A_zimbraHttpCompressionEnabled = "zimbraHttpCompressionEnabled";
+
+    /**
      * Maximum Idle time in milli seconds for a connection. This is applied
      * when waiting for a new request to be received on a connection; when
      * reading the headers and content of a request; when writing the headers
@@ -5755,6 +5787,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=376)
     public static final String A_zimbraIsSystemResource = "zimbraIsSystemResource";
+
+    /**
+     * Maximum number of item to perform an ItemAction on at a time.
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1451)
+    public static final String A_zimbraItemActionBatchSize = "zimbraItemActionBatchSize";
 
     /**
      * Whether to index junk messages
@@ -6846,6 +6886,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1425)
     public static final String A_zimbraMobileMetadataMaxSizeEnabled = "zimbraMobileMetadataMaxSizeEnabled";
+
+    /**
+     * Whether to permit Outlook to sync via Active Sync
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1453)
+    public static final String A_zimbraMobileOutlookSyncEnabled = "zimbraMobileOutlookSyncEnabled";
 
     /**
      * whether the Bluetooth capabilities are allowed on the device. The
@@ -9990,6 +10038,19 @@ public class ZAttrProvisioning {
     public static final String A_zimbraReverseProxyErrorHandlerURL = "zimbraReverseProxyErrorHandlerURL";
 
     /**
+     * During migrations Nginx lookup handler rewrites non-qualified username
+     * to fully qualified breaking proxy to external legacy mail platform.
+     * When zimbraReverseProxyUseExternalRoute is set to TRUE and
+     * zimbraReverseProxyExternalRouteIncludeOriginalAuthusername is set to
+     * FALSE nginx lookup handler drops the domain name from the userAccount
+     * and returns just the username.
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1454)
+    public static final String A_zimbraReverseProxyExternalRouteIncludeOriginalAuthusername = "zimbraReverseProxyExternalRouteIncludeOriginalAuthusername";
+
+    /**
      * Control whether to generate per virtual hostname nginx configuration.
      * This would be helpful when multiple virtual host names are defined,
      * but they are actually share the same configuration (like ssl cert,
@@ -11268,14 +11329,25 @@ public class ZAttrProvisioning {
     public static final String A_zimbraTextAnalyzer = "zimbraTextAnalyzer";
 
     /**
-     * Hosts to ignore during IP based throttling. Typically should list
-     * nginx hostname and any other mailbox servers which can proxy to this
-     * server
+     * Hosts to ignore during IP based throttling. Account and command rate
+     * limits will still be applied. Typically should list nginx hostname and
+     * any other mailbox servers which can proxy to this server
      *
      * @since ZCS 8.0.0
      */
     @ZAttr(id=1383)
     public static final String A_zimbraThrottleSafeHosts = "zimbraThrottleSafeHosts";
+
+    /**
+     * Hosts to whitelist during IP based throttling. Account and command
+     * rate limits will not be applied. This should only be used for internal
+     * servers which cannot service end user traffic; e.g. migration or
+     * monitoring hosts
+     *
+     * @since ZCS 8.0.5
+     */
+    @ZAttr(id=1449)
+    public static final String A_zimbraThrottleWhitelist = "zimbraThrottleWhitelist";
 
     /**
      * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc: Start
@@ -11654,6 +11726,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1047)
     public static final String A_zimbraWebClientShowOfflineLink = "zimbraWebClientShowOfflineLink";
+
+    /**
+     * Whether or not to gzip static web content. Defaults to true.
+     *
+     * @since ZCS 7.2.5
+     */
+    @ZAttr(id=1468)
+    public static final String A_zimbraWebGzipEnabled = "zimbraWebGzipEnabled";
 
     /**
      * XMPP Category of the component

@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -1625,8 +1625,12 @@ function(msg, container, callback, index) {
 		var len = bodyParts.length;
 		var html = [];
 		var hasHtmlPart = (htmlMode && msg.hasContentType(ZmMimeTable.TEXT_HTML)) || msg.hasInlineImage();
+        var isTruncated = false;
 		for (var i = 0; i < len; i++) {
 			var bp = bodyParts[i];
+            if (bp.isTruncated){
+                isTruncated = true;
+            }
 			var content = this._getBodyContent(bp);
 			if (ZmMimeTable.isRenderableImage(bp.contentType)) {
 				if (bp.contentDisposition == "inline") {
@@ -1671,7 +1675,7 @@ function(msg, container, callback, index) {
 		this._displayContent({	container:		el,
 								html:			html.join(""),
 								isTextMsg:		!hasHtmlPart,
-								isTruncated:	false,
+								isTruncated:	isTruncated,
 								index:			index,
 								origText:		origText
 							});

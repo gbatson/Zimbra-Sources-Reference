@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012 VMware, Inc.
+ * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -25,6 +25,7 @@ import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Session;
+import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
@@ -298,7 +299,14 @@ public class ZMimeMessage extends MimeMessage implements ZMimePart {
 
     private Address[] getAddressHeader(String name) throws MessagingException {
         String s = getHeader(name, ",");
-        return s == null ? null : InternetAddress.parseHeader(MimeUtility.unfold(s), false);
+        try {
+            return s == null ? null : InternetAddress.parseHeader(MimeUtility.unfold(s), false);
+        } catch (RuntimeException re) {
+            if (ZimbraLog.misc.isDebugEnabled()) {
+                ZimbraLog.misc.debug("Problem parsing Internet Address Header [%s:%s] %s", name, s, re.getMessage());
+            }
+            return null;
+        }
     }
 
     @Override

@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -148,7 +148,11 @@ public class MailServiceException extends ServiceException {
     }
 
     public static MailServiceException MAINTENANCE(int id) {
-        return new MailServiceException("mailbox in maintenance mode: "+ id, MAINTENANCE, RECEIVERS_FAULT, new Argument(MAILBOX_ID, id, Argument.Type.IID));
+        return MailServiceException.MAINTENANCE(id, null);
+    }
+
+    public static MailServiceException MAINTENANCE(int id, String message) {
+        return new MailServiceException("mailbox in maintenance mode: "+ id + ( message != null ? " reason: "+ message : ""), MAINTENANCE, RECEIVERS_FAULT, new Argument(MAILBOX_ID, id, Argument.Type.IID));
     }
 
     public static MailServiceException NO_SUCH_MBOX(int id) {
@@ -311,7 +315,7 @@ public class MailServiceException extends ServiceException {
     public static MailServiceException UPLOAD_REJECTED(String file, String reason) {
         return new MailServiceException("upload rejected: file '" + file + "': " + reason, UPLOAD_REJECTED, SENDERS_FAULT, new Argument(NAME, file, Argument.Type.STR), new Argument("reason", reason, Argument.Type.STR));
     }
-    
+
     public static MailServiceException UPLOAD_TOO_LARGE(String file, String reason) {
         return new MailServiceException("upload too large: file '" + file + "': " + reason, UPLOAD_TOO_LARGE, SENDERS_FAULT, new Argument(NAME, file, Argument.Type.STR), new Argument("reason", reason, Argument.Type.STR));
     }

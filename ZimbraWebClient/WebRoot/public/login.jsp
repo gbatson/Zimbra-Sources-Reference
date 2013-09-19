@@ -259,10 +259,10 @@ if (application.getInitParameter("offlineMode") != null)  {
  login.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -277,7 +277,7 @@ if (application.getInitParameter("offlineMode") != null)  {
         <c:set var="client" value="${useMobile ? 'mobile' : useStandard ? 'standard' : 'preferred' }"/>
     </c:if>
     <c:set var="smallScreen" value="${client eq 'mobile'}"/>
-    <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE9" />    
+    <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE9" />
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <title><fmt:message key="zimbraLoginTitle"/></title>
     <c:set var="version" value="${initParam.zimbraCacheBusterVersion}"/>
@@ -310,7 +310,6 @@ if (application.getInitParameter("offlineMode") != null)  {
 
 	<div class="LoginScreen">
 		<div class="${smallScreen?'center-small':'center'}">
-			<div class="ImgAltBanner"></div>
 			<h1><a href="http://www.zimbra.com/" id="bannerLink" target="_new">
 				<span class="Img${smallScreen?'App':'Login'}Banner"></span>
 			</a></h1>

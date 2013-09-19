@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -30,7 +30,7 @@
  *
  * handlers=java.util.logging.ConsoleHandler
  * java.util.logging.ConsoleHandler.level=FINEST
- * java.util.logging.ConsoleHandler.formatter=com.vmware.qalib.LogFormatter
+ * java.util.logging.ConsoleHandler.formatter=com.server.qalib.LogFormatter
  *
  * Debug usage:
  * - Debug messages     -> Level.FINE
@@ -337,7 +337,7 @@ public class Log {
 
       if(!System.getProperties().containsKey("java.util.logging.config.file")){
          String msg = "No log config file is specified. Setting log level to "
-            + "FINEST and log formatter to com.vmware.qalib.LogFormatter";
+            + "FINEST and log formatter to com.server.qalib.LogFormatter";
          System.out.println(msg);
          for(Handler h : logger.getHandlers()) {
             if(h instanceof ConsoleHandler){

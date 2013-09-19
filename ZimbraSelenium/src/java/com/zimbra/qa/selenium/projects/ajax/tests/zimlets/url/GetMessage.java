@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -51,7 +51,7 @@ public class GetMessage extends AjaxCommonTest {
 		
 		// Create the message data to be sent
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
-		String url = "http://www.vmware.com";
+		String url = "http://www.zimbra.com";
 		String body = "text " + System.getProperty("line.separator") + url + System.getProperty("line.separator") + "text"+ ZimbraSeleniumProperties.getUniqueString() + System.getProperty("line.separator") ;
 		
 		// Send the message from AccountA to the ZWC user
@@ -79,7 +79,7 @@ public class GetMessage extends AjaxCommonTest {
 		HtmlElement bodyElement = display.zGetMailPropertyAsHtml(Field.Body);
 		
 		// Verify that the phone zimlet has been applied
-		// <a href="http://www.vmware.com" target="_blank">http://www.vmware.com</a>
+		// <a href="http://www.zimbra.com" target="_blank">http://www.zimbra.com</a>
 		HtmlElement.evaluate(bodyElement, "//a[@href='"+ url +"']", null, (String)null, 1);
 		HtmlElement.evaluate(bodyElement, "//a[@href='"+ url +"']", "target", "_blank", 1);
 		HtmlElement.evaluate(bodyElement, "//a[@href='"+ url +"']", null, url, 1);
@@ -93,7 +93,7 @@ public class GetMessage extends AjaxCommonTest {
 		
 		// Create the message data to be sent
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
-		String url1 = "http://www.vmware.com";
+		String url1 = "http://www.zimbra.com";
 		String url2 = "http://www.google.com";
 		String body = "url1: " + url1 + " url2: "+ url2;
 		
@@ -140,8 +140,8 @@ public class GetMessage extends AjaxCommonTest {
 
 		final String subject = "subject12955323015009";
 		final String mime = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/mime/url01/valid_url.txt";
-		final String url1 = "http://www.vmware.com";
-		final String url2 = "https://www.vmware.com";
+		final String url1 = "http://www.zimbra.com";
+		final String url2 = "https://www.google.com";
 		
 		// Inject the example message
 		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mime));
@@ -207,7 +207,7 @@ public class GetMessage extends AjaxCommonTest {
 	public void GetMessage_05() throws HarnessException {
 		
 		// Create the message data to be sent
-		String url = "http://www.vmware.com";
+		String url = "http://www.zimbra.com";
 		String subject = "subject " + url;
 		
 		// Send the message from AccountA to the ZWC user

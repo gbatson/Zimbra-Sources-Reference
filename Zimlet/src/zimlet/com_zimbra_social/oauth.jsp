@@ -2,10 +2,10 @@
 
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -58,8 +58,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 <%
     Random RAND = new Random();
-    String consumerKey = "Xz2BKOKObTzpLrMXxJo2ww";
-    String consumerSecret = "bh4GXLP2pcu7u05ROylHXT7yCfZJfXhmDYSzvRUxI"; 
+    String consumerKey = "b1gijCj5UYKs5E5c3Nm5JA"; //The Twitter app consumer key
+    String consumerSecret = "bHR8q9JTPItSusFH8IrlUL1rsdQ1z6HQc86TVcet6o"; //The Twitter app consumer secret.
     String consumerKeyZD = "tE6IZlL1JJzHaRpIVDfljA";
     String  consumerSecretZD= "oyriZ32PAMNk3F6lGOeEE0GGyDSPHg1EjTMSWOKuIPw"; 
     long timeStamp = System.currentTimeMillis() / 1000;

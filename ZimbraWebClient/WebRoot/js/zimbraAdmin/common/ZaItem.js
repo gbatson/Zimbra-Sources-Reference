@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -968,4 +968,15 @@ ZaItem.getZeroIsUnlimitedItem = function () {
               content: ZaMsg.NAD_ZERO_UNLIMETED
             } ;
     return item ;
+}
+
+/**
+ * Returns the copyright information for the login screen and the subsequent splash screen
+ *
+ * @return {string} copyright string with the end year information
+ */
+ZaItem.getSplashScreenCopyright = function() {
+    var date = new Date();
+    var curYear = date.getFullYear() + "";
+    return AjxMessageFormat.format(ZaMsg.splashScreenCopyright, [curYear]);
 }

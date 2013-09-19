@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -2041,8 +2041,8 @@ abstract class ImapHandler extends ProtocolHandler {
      * of information for LSUB - see Bug 78659
      */
     private class SubscribedImapPath implements Comparable<SubscribedImapPath> {
-        private String imapPathString;
-        private boolean validSubscribeImapPath;
+        private final String imapPathString;
+        private final boolean validSubscribeImapPath;
         public SubscribedImapPath(ImapPath path)
         throws ServiceException {
             validSubscribeImapPath = path.isValidImapPath();
@@ -3073,7 +3073,9 @@ abstract class ImapHandler extends ProtocolHandler {
                 result.append(' ').append(getMessageId(i4msg, byUID));
             }
         } else if (options != RETURN_SAVE) {
-            result = new StringBuilder("E" + command + " (TAG \"").append(tag).append("\")");
+            // Note: rfc5267's ESORT reuses the ESEARCH response i.e. response result starts with "ESEARCH" NOT "ESORT"
+            //       This is slightly inconsistent as rfc5256's SORT response result starts with "SORT"...
+            result = new StringBuilder("ESEARCH (TAG \"").append(tag).append("\")");
             if (byUID) {
                 result.append(" UID");
             }

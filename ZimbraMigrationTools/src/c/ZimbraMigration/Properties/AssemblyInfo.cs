@@ -8,9 +8,11 @@ using System.Windows;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("ZimbraMigration")][assembly: AssemblyDescription(
-"Zimbra Migration GUI")][assembly: AssemblyConfiguration("")][assembly: AssemblyCompany(
-"VMware")][assembly: AssemblyProduct("ZimbraMigration")][assembly: AssemblyCopyright(
-"Copyright © VMware 2011")][assembly: AssemblyTrademark("")][assembly: AssemblyCulture("")]
+"Zimbra Migration GUI")][assembly: AssemblyConfiguration("")][assembly: AssemblyCompany("Telligent Systems, Inc.")]
+[assembly: AssemblyProduct("ZimbraMigration")]
+[assembly: AssemblyCopyright("Copyright © 2006-2013 Telligent Systems, Inc. All rights reserved.")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
 // Setting ComVisible to false makes the types in this assembly not visible
 // to COM components.  If you need to access a type in this assembly from
 // COM, set the ComVisible attribute to true on that type.

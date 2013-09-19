@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
  * 
  * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -191,6 +191,8 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
 
 	var query;
 	var queryHint = [];
+	var emailQueryTerm = "";
+	var phoneticQueryTerms = [];  // Should be ORed with nameQuery if both are present
 	var conds = [];
 	if (this._detailed) {
 		var nameQuery = this.getSearchFieldValue(ZmContactPicker.SEARCH_NAME);
@@ -219,20 +221,18 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
 				{attr:ZmContact.F_email16, op:"has", value: emailQuery}
 				]);
 			} else {
-				queryHint.push("to:"+emailQuery+"*");
+				emailQueryTerm = "to:"+emailQuery+"*";
 			}
 		}
 		if (deptQuery && isGal) {
 			conds.push({attr:ZmContact.F_department, op:"has", value: deptQuery});
 		}
 		if (phoneticQuery && !isGal) {
-			var condArr = [];
 			var phoneticQueryPieces = phoneticQuery.split(/\s+/);
 			for (var i=0; i<phoneticQueryPieces.length; i++) {
-				condArr.push("#"+ZmContact.F_phoneticFirstName + ":" + phoneticQueryPieces[i]);
-				condArr.push("#"+ZmContact.F_phoneticLastName + ":" + phoneticQueryPieces[i]);
+				phoneticQueryTerms.push("#"+ZmContact.F_phoneticFirstName + ":" + phoneticQueryPieces[i]);
+				phoneticQueryTerms.push("#"+ZmContact.F_phoneticLastName + ":" + phoneticQueryPieces[i]);
 			}
-			queryHint.push(condArr.join(" || "));
 		}
 	} else {
 		query = this.getSearchFieldValue(ZmContactPicker.SEARCH_BASIC);
@@ -261,7 +261,7 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
 			queryHint.push("is:local");
 		}
 	}
-    
+
     if (!query.length && this._contactSource == ZmId.SEARCH_GAL) {
 		query = this._defaultQuery;
 	}
@@ -270,6 +270,16 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
         query = query.replace(/\"/g, '\\"');
         query = "\"" + query + "\"";
     }
+	if (phoneticQueryTerms.length) {
+		// OR any phonetic query terms with the main (name) query
+		if (query.length) {
+			phoneticQueryTerms.unshift(query);
+		}
+		query = "(" + phoneticQueryTerms.join(" OR ") + ")";
+	}
+	if (emailQueryTerm.length) {
+		query = query + " " + emailQueryTerm;  // MUST match email term, hence AND rather than OR
+	}
 
 	this._searchIcon.className = "DwtWait16Icon";
 

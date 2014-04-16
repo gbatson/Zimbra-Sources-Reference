@@ -16,24 +16,21 @@ package com.zimbra.qa.selenium.projects.ajax.tests.preferences.mail.signatures;
 
 import java.util.HashMap;
 
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.zimbra.common.soap.Element;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.items.SignatureItem;
-import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
-
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-
 import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Field;
@@ -55,11 +52,9 @@ public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 		};
 	}
 
-	@BeforeClass(groups = { "always" })
+	@BeforeMethod(groups = { "always" })
 	public void CreateSignature() throws HarnessException {
-		System.out.println(this.sigName);
-		ZimbraAccount.AccountZWC().authenticate(
-				SOAP_DESTINATION_HOST_TYPE.SERVER);
+		ZimbraAccount.AccountZWC().authenticate();
 		ZimbraAccount.AccountZWC().soapSend(
 				"<CreateSignatureRequest xmlns='urn:zimbraAccount'>"
 				+ "<signature name='" + this.sigName + "' >"
@@ -67,6 +62,8 @@ public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 				+ "'</content>" + "</signature>"
 				+ "</CreateSignatureRequest>");
 
+		app.zPageLogin.zNavigateTo();
+		app.zPageMail.zNavigateTo();
 
 	}
 

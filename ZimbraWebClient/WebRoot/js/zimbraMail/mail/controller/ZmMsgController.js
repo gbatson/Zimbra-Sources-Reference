@@ -340,6 +340,11 @@ function(params) {
 	return this._msg;
 };
 
+ZmMsgController.prototype.getItems =
+function() {
+	return [this._msg];
+};
+
 ZmMsgController.prototype._getLoadedMsg =
 function(params, callback) {
 	callback.run(this._msg);
@@ -418,7 +423,12 @@ function(ev) {
         }
     } else {
         id = item.id;
-        if (item._part) { id+= "&part=" + item._part; }
+        // Fix for bug: 84261, bug: 85363. partId is present if original message is present as an attachment.
+        var part = item.partId;
+        if (part) {
+            id += "&part=" + part;
+        }
+
         if (item.showImages) {
             showImages = true;
         }

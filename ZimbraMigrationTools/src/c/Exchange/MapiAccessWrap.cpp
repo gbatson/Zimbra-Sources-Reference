@@ -56,10 +56,13 @@ STDMETHODIMP CMapiAccessWrap::UserUninit()
 {
     // TODO: Add your implementation code here
     dlog.trace(L" Begin mapiaccesswrap::UserUninit");
-     delete maapi;
-
+	if(maapi)
+	{
+		delete maapi;
+	}
+	maapi=NULL;
     // *StatusMsg = (lpStatus) ? CComBSTR(lpStatus) : SysAllocString(L"");
-     dlog.trace(L" End mapiaccesswrap::UserUninit");
+    dlog.trace(L" End mapiaccesswrap::UserUninit");
     return S_OK;
 }
 
@@ -79,7 +82,7 @@ STDMETHODIMP CMapiAccessWrap::GetFolderList(VARIANT *folders)
    if((lpStatus) != NULL )
    {
        dlog.err("GetRootFolderHierarchy errored with ", lpStatus);
-
+	   folders->parray = NULL;
        hr = S_FALSE;
        return hr;
 
@@ -811,7 +814,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
             else if (ft == 4)
             {
                 TaskItemData taskData;
-				dlog.err("Mapiaccess->getItem  TaskItemData ");
+				dlog.trace("Mapiaccess->getItem  TaskItemData ");
                 ret = maapi->GetItem(ItemID, taskData);
                 if((ret != NULL))
                 {

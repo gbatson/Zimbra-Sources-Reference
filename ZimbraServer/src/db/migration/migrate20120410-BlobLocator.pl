@@ -30,17 +30,22 @@ exit(0);
 
 sub doIt() {
   foreach my $group (Migrate::getMailboxGroups()) {
-    my $volumeIdInt = (Migrate::runSql("show columns from $group.mail_item where Field = 'volume_id' and Type like '%int%';"))[0];
+    my $volumeIdInt = (Migrate::runSql("show columns from $group.mail_item where Field = 'volume_id';"))[0];
     if (length $volumeIdInt == 0) {
-      #existing install using external store; volume_id was manually altered
-      Migrate::logSql("$group.mail_item.volume_id is not currently an int; this installation probably altered it for older StoreManager implementation");
-      fixVolumeId($group);	
+      Migrate::logSql("$group.mail_item.volume_id doesn't exist, assuming $group is already done, skipping...");
     } else {
-      #standard migration
-      Migrate::logSql("Adding blob locator columns in $group");
-      alterVolumeId($group);	
+      $volumeIdInt = (Migrate::runSql("show columns from $group.mail_item where Field = 'volume_id' and Type like '%int%';"))[0];
+      if (length $volumeIdInt == 0) {
+        #existing install using external store; volume_id was manually altered
+        Migrate::logSql("$group.mail_item.volume_id is not currently an int; this installation probably altered it for older StoreManager implementation");
+        fixVolumeId($group);	
+      } else {
+        #standard migration
+        Migrate::logSql("Adding blob locator columns in $group");
+        alterVolumeId($group);
+      }
     }
-  } 
+  }
 }
 
 sub alterVolumeId($) {
@@ -48,14 +53,14 @@ sub alterVolumeId($) {
   my ($group) = @_;
   my $sql;
   $sql = <<_EOF_;
-ALTER TABLE $group.mail_item DROP INDEX i_volume_id;
-ALTER TABLE $group.mail_item DROP FOREIGN KEY fk_mail_item_volume_id;
-ALTER TABLE $group.mail_item DROP KEY fk_mail_item_volume_id;
-ALTER TABLE $group.mail_item_dumpster DROP INDEX i_volume_id;
-ALTER TABLE $group.mail_item_dumpster DROP FOREIGN KEY fk_mail_item_dumpster_volume_id;
-ALTER TABLE $group.mail_item_dumpster DROP KEY fk_mail_item_dumpster_volume_id;
-ALTER TABLE $group.mail_item CHANGE volume_id locator VARCHAR(1024);
-ALTER TABLE $group.mail_item_dumpster CHANGE volume_id locator VARCHAR(1024);
+ALTER TABLE $group.mail_item DROP INDEX i_volume_id,
+                             DROP FOREIGN KEY fk_mail_item_volume_id,
+                             DROP KEY fk_mail_item_volume_id,
+                             CHANGE volume_id locator VARCHAR(1024);
+ALTER TABLE $group.mail_item_dumpster DROP INDEX i_volume_id,
+                                      DROP FOREIGN KEY fk_mail_item_dumpster_volume_id,
+                                      DROP KEY fk_mail_item_dumpster_volume_id,
+                                      CHANGE volume_id locator VARCHAR(1024);
 ALTER TABLE $group.revision CHANGE volume_id locator VARCHAR(1024);
 ALTER TABLE $group.revision_dumpster CHANGE volume_id locator VARCHAR(1024);
 _EOF_

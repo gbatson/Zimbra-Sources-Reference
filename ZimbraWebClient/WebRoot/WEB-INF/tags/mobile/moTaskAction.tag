@@ -40,7 +40,7 @@
     <c:when test="${zm:actionSet(param,'moreActions') && anAction eq 'selectNone'}">
         <c:set var="select" value="none" scope="request"/>
     </c:when>
-    <c:when test="${(zm:actionSet(param,'moreActions') && empty anAction) }">
+    <c:when test="${zm:actionSet(param,'moreActions') && empty anAction && empty param.actionDelete && empty param.actionHardDelete}">
         <mo:status style="Warning"><fmt:message key="actionNoActionSelected"/></mo:status>
     </c:when>
     <c:when test="${empty ids}">
@@ -57,7 +57,7 @@
         </mo:status>
     </c:when>
 
-    <c:when test="${zm:actionSet(param, 'actionHardDelete' || (zm:actionSet(param,'moreActions') && anAction == 'actionHardDelete'))}">
+    <c:when test="${zm:actionSet(param, 'actionHardDelete') || (zm:actionSet(param,'moreActions') && anAction == 'actionHardDelete')}">
         <c:set var="count" value="${0}"/>
                 <c:forEach var="taskId" items="${paramValues.id}">
                     <zm:getMessage var="message" id="${taskId}" markread="true" neuterimages="${empty param.xim}"/>

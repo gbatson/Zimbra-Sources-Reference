@@ -20,6 +20,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 
 
@@ -91,6 +92,17 @@ public class DialogShare extends AbsDialog {
 	
 	public void zSetEmailAddress(String email) throws HarnessException {
 		logger.info(myPageName() + " zSetEmailAddress(" + email + ")");
+
+		
+		/*
+		 * This test case frequently fails.  It seems the
+		 * typed characters are lost.  This is likely due
+		 * to the focus not being placed into the dialog
+		 * correctly.
+		 * 
+		 * Add delay to allow focus to take. 
+		 */
+		SleepUtil.sleepLong();
 
 		String locator = "css=div#ShareDialog_grantee>input";
 

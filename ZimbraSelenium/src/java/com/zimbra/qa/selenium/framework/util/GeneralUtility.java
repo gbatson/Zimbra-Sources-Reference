@@ -33,9 +33,6 @@ import org.apache.log4j.Logger;
 
 import com.zimbra.common.util.tar.TarEntry;
 import com.zimbra.common.util.tar.TarInputStream;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
-import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 
 /**
  * This class contains general utilities methods that can be used across the framework
@@ -304,41 +301,6 @@ public class GeneralUtility {
 	   }
 	   
 	   
-   }
-
-   /**
-    * Synchronizing ZD client to ZCS through SOAP for the same email address in provided account
-    * @param account Account
-    * @throws HarnessException
-    */
-   public static void syncDesktopToZcsWithSoap(ZimbraAccount account)
-   throws HarnessException {
-      syncDesktopToZcsWithSoap(account, account.EmailAddress);
-   }
-
-   /**
-    * Synchronizing ZD client to ZCS through SOAP for the specified email address
-    * @param account Account
-    * @param emailAddressToBeSynced Email address to be synced
-    * @throws HarnessException
-    */
-   public static void syncDesktopToZcsWithSoap(ZimbraAccount account,
-         String emailAddressToBeSynced)
-   throws HarnessException {
-      if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-         Stafpostqueue sp = new Stafpostqueue();
-         sp.waitForPostqueue();
-
-         String request =
-               "<SyncRequest xmlns=\"urn:zimbraOffline\"/>";
-
-         account.soapSend(request,
-               SOAP_DESTINATION_HOST_TYPE.CLIENT,
-               emailAddressToBeSynced);
-
-         sp.waitForPostqueue();
-
-      }
    }
 
    /**

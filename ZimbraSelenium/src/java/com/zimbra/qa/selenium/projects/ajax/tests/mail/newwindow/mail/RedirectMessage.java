@@ -105,9 +105,13 @@ public class RedirectMessage extends PrefGroupMailByMessageTest {
 
 	}
 
+	/*
+	 * Deprecated:
+	 * http://bugzilla.zimbra.com/show_bug.cgi?id=62170 currently not targeted, unlikely to fix in 8.X
+	 */
 	@Bugs( ids = "62170")
 	@Test(	description = "Redirect message, using 'Redirect' shortcut key  - in separate window",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void RedirectMessage_02() throws HarnessException {
 		throw new HarnessException("See bug https://bugzilla.zimbra.com/show_bug.cgi?id=62170");
 	}

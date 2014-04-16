@@ -164,6 +164,10 @@ function(params) {
 
 	this._setFromSelect(msg);
 
+	if (obo) {
+		this.identitySelect.setSelectedValue(obo);
+	}
+
 	if (params.identity) {
 		if (this.identitySelect) {
 			this.identitySelect.setSelectedValue(params.identity.id);
@@ -188,9 +192,6 @@ function(params) {
 		}
 	}
 
-	if (obo) {
-        this.identitySelect.setSelectedValue(obo);
-	}
 	this._setSubject(action, msg, params.subjOverride);
 	this._setBody(action, msg, params.extraBodyText);
 
@@ -206,7 +207,10 @@ function(params) {
 		this._setPriority(priority);
 	}
 
-	this._moveCaretOnTimer(true, params.extraBodyText ? params.extraBodyText.length : 0);
+    //Force focus on body only for reply and replyAll
+    if (ZmComposeController.IS_REPLY[action]) {
+        this._moveCaretOnTimer(true, params.extraBodyText ? params.extraBodyText.length : 0);
+    }
 
 	if (action != ZmOperation.FORWARD_ATT) {
 		this._saveExtraMimeParts();
@@ -403,15 +407,6 @@ function(opt){
 ZmComposeView.prototype._getIsAttInline =
 function(opt){
   return(this._isAttachInline);
-};
-
-ZmComposeView.prototype._checkIsOnBehalfOf =
-function(){
-    var oboCheck = appCtxt.getUsername() + " " + ZmMsg.sendOnBehalfOf + " ";
-    var opt = this.identitySelect.getSelectedOption();
-    var optDisplayName = opt && opt.getDisplayValue();
-    if (!optDisplayName) return false;
-    return !(optDisplayName.indexOf(oboCheck));
 };
 
 ZmComposeView.prototype._isInline =
@@ -668,10 +663,12 @@ function(attId, isDraft, dummyMsg, forceBail, contactId) {
 	msg.identity = this.getIdentity();
 	msg.sendUID = this.sendUID;
 
-    if(!msg.identity){
-      msg.delegatedSenderAddr = this.identitySelect.getValue();
-      msg.isOnBehalfOf = this._checkIsOnBehalfOf();
-    }
+    if (!msg.identity){
+		msg.delegatedSenderAddr = this.identitySelect.getValue();
+		var option = this.identitySelect.getSelectedOption();
+		msg.delegatedSenderAddrIsDL = option.getExtraData("isDL");
+		msg.isOnBehalfOf = option.getExtraData("isObo");
+	}
 	// save a reference to the original message
 	msg._origMsg = this._msg;
 	if (this._msg && this._msg._instanceDate) {
@@ -2351,6 +2348,9 @@ function(action, msg, extraBodyText) {
 		AjxDebug.println(AjxDebug.REPLY, "value snippet: " + AjxStringUtil.htmlEncode(value.substr(0, 200)));
 		if (!this.isHidden) {
 			this._htmlEditor.setContent(value);
+            if (!htmlMode && ZmComposeController.IS_REPLY[action]) {
+                this._setBodyFieldCursor();
+            }
 		}
 	}
 
@@ -2713,26 +2713,28 @@ function(templateId) {
 
 	this._createHtmlFromTemplate(templateId || this.TEMPLATE, data);
 };
+
 ZmComposeView.prototype._addSendAsAndSendOboAddresses  =
-function(menu){
+function(menu) {
 
-    var optData = null;
-    var displayName = appCtxt.getUsername();
-    for(var i=0;i<appCtxt.sendAsEmails.length;i++){
-        var email = appCtxt.sendAsEmails[i];
-        optData = new DwtSelectOptionData(email,email);
-        menu.addOption(optData);
-    }
-
-    for(var i=0;i<appCtxt.sendOboEmails.length;i++){
-        var email = appCtxt.sendOboEmails[i];
-        optData =new DwtSelectOptionData(email, displayName + " " + ZmMsg.sendOnBehalfOf + " "  + email);
-        optData.obo = true;
-        menu.addOption(optData);
-
-    }
-
+	var optData = null;
+	var displayName = appCtxt.getUsername();
+	this._addSendAsOrSendOboAddresses(menu, appCtxt.sendAsEmails, false, function(addr) {return addr;});
+	this._addSendAsOrSendOboAddresses(menu, appCtxt.sendOboEmails, true, function(addr) {return displayName + " " + ZmMsg.sendOnBehalfOf + " "  + addr;});
 };
+
+ZmComposeView.prototype._addSendAsOrSendOboAddresses  =
+function(menu, emails, isObo, displayValueFunc) {
+	for (var i = 0; i < emails.length; i++) {
+		var email = emails[i];
+		var addr = email.addr;
+		var extraData = {isDL: email.isDL, isObo: isObo};
+		var displayValue = displayValueFunc(addr);
+		var optData = new DwtSelectOptionData(addr, displayValue, null, null, null, extraData);
+		menu.addOption(optData);
+	}
+};
+
 
 ZmComposeView.prototype._createHtmlFromTemplate =
 function(templateId, data) {

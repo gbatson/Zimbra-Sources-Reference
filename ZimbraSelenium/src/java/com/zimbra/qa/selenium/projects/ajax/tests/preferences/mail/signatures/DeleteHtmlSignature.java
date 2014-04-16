@@ -14,8 +14,9 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.mail.signatures;
 
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
 import com.zimbra.qa.selenium.framework.items.SignatureItem;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
@@ -24,7 +25,6 @@ import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences.TreeItem;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.FormSignatureNew;
@@ -43,22 +43,27 @@ public class DeleteHtmlSignature extends AjaxCommonTest {
 		super.startingAccountPreferences = null;
 	}
 	/**
-	 * Added @beforeClass because after logged in ,when we try to create
+	 * Added @BeforeMethod because after logged in ,when we try to create
 	 * signature through soap, it doesn't shows in(GUI) 'Pref/signatures' unless and
 	 * until we refresh browser.
 	 * 
 	 * @throws HarnessException
 	 */
-	@BeforeClass(groups = { "always" })
+	@BeforeMethod(groups = { "always" })
 	public void CreateHtmlSignature() throws HarnessException {
 
-		ZimbraAccount.AccountZWC().authenticate(SOAP_DESTINATION_HOST_TYPE.SERVER);
+		ZimbraAccount.AccountZWC().authenticate();
 		ZimbraAccount.AccountZWC().soapSend(
 				"<CreateSignatureRequest xmlns='urn:zimbraAccount'>"
 				+ "<signature name='" + this.sigHtmlName + "' >"
 				+ "<content type='text/html'>'" + this.contentHTML
 				+ "'</content>" + "</signature>"
 				+ "</CreateSignatureRequest>");
+		
+		app.zPageLogin.zNavigateTo();
+		app.zPagePreferences.zNavigateTo();
+		
+
 	}
 	/**
 	 * Test case :Create Html signature through soap then delete and verify signature through GUI

@@ -1167,7 +1167,7 @@ function(id, section, value) {
 		var array = [value];
 		var seenComma = false;
 		for (var i = 0; i < folderIds.length; i++) {
-			var fid = ZmOrganizer.normalizeId(folderIds[i]);
+			var fid = folderIds[i];
 			var searchPath = array[i] = tree.getById(fid).getSearchPath();
 			seenComma = seenComma || searchPath.match(/,/);
 		}
@@ -1469,7 +1469,7 @@ function( displayOptions, fromAddress){
     var index = -1;
      // Add sendOnBehalfOf emails
     for (var i=0;i < appCtxt.sendOboEmails.length; i++){
-      email = appCtxt.sendOboEmails[i];
+      email = appCtxt.sendOboEmails[i].addr;
       index = -1;
       if (index = AjxUtil.indexOf(fromAddress,email) != -1)
           fromAddress.splice(index, 1);
@@ -1480,7 +1480,7 @@ function( displayOptions, fromAddress){
 
     // Add sendAs emails
     for (var i=0;i < appCtxt.sendAsEmails.length; i++){
-      email = appCtxt.sendAsEmails[i];
+      email = appCtxt.sendAsEmails[i].addr;
       index = -1;
       if ((index = AjxUtil.indexOf(fromAddress,email)) != -1)
           fromAddress.splice(index, 1);

@@ -2,29 +2,29 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.common.mime;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.zimbra.common.mime.MimeAddressHeader;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.util.CharsetUtil;
 
 public class InternetAddress implements Cloneable {
     private String display;
     private String email;
+    private String requestedCharset;
     private Charset charset;
 
     public InternetAddress() {
@@ -85,6 +85,10 @@ public class InternetAddress implements Cloneable {
         return charset;
     }
 
+    String getRequestedCharset() {
+        return requestedCharset;
+    }
+
     public InternetAddress setAddress(String address) {
         this.email = address;
         return this;
@@ -96,12 +100,14 @@ public class InternetAddress implements Cloneable {
     }
 
     public InternetAddress setCharset(String charset) {
+        this.requestedCharset = charset;
         this.charset = charset == null || charset.trim().equals("") ? CharsetUtil.UTF_8 : CharsetUtil.toCharset(charset.trim());
         return this;
     }
 
     public InternetAddress setCharset(Charset charset) {
         this.charset = charset == null ? CharsetUtil.UTF_8 : charset;
+        this.requestedCharset = this.charset.name();
         return this;
     }
 
@@ -109,7 +115,7 @@ public class InternetAddress implements Cloneable {
     @Override
     public String toString() {
         if (display != null) {
-            return MimeHeader.escape(display, charset, true) + (email != null ? (" <" + email + '>') : "");
+            return MimeHeader.escape(display, charset, requestedCharset, true) + (email != null ? (" <" + email + '>') : "");
         } else if (email != null) {
             return email;
         } else {
@@ -199,7 +205,7 @@ public class InternetAddress implements Cloneable {
             } else if (c == '"') {
                 quoted = true;
                 empty = false;
-            } else if (c == ',' || (c == ';' && group != null)) {
+            } else if (c == ',' || (c == ';' && (group != null || LC.mime_split_address_at_semicolon.booleanValue()))) {
                 // this concludes the address portion of our program
                 if (!empty) {
                     if (group != null) {
@@ -301,7 +307,7 @@ public class InternetAddress implements Cloneable {
 
         @Override
         public String toString() {
-            return MimeHeader.escape(getName(), getCharset(), true) + ": " + getAddress();
+            return MimeHeader.escape(getName(), getCharset(), getRequestedCharset(), true) + ": " + getAddress();
         }
 
         @Override

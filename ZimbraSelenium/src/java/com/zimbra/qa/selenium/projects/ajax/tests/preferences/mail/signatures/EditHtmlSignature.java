@@ -14,27 +14,22 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.mail.signatures;
 
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-
 import com.zimbra.qa.selenium.framework.items.SignatureItem;
-
 import com.zimbra.qa.selenium.framework.ui.Action;
-
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences.TreeItem;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.FormSignatureNew;
-import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.PageSignature;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.FormSignatureNew.Field;
+import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.PageSignature;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.PageSignature.Locators;
 
 
@@ -58,16 +53,19 @@ public class EditHtmlSignature extends AjaxCommonTest {
 	 * 
 	 * @throws HarnessException
 	 */
-	@BeforeClass(groups = { "always" })
+	@BeforeMethod(groups = { "always" })
 	public void CreateHtmlSignature() throws HarnessException {
-		System.out.println(this.sigName);
-		ZimbraAccount.AccountZWC().authenticate(SOAP_DESTINATION_HOST_TYPE.SERVER);
+		ZimbraAccount.AccountZWC().authenticate();
 		ZimbraAccount.AccountZWC().soapSend(
 				"<CreateSignatureRequest xmlns='urn:zimbraAccount'>"
 				+ "<signature name='" + this.sigName + "' >"
 				+ "<content type='text/html'>'" + this.contentHTML
 				+ "'</content>" + "</signature>"
 				+ "</CreateSignatureRequest>");
+		
+		app.zPageLogin.zNavigateTo();
+		app.zPagePreferences.zNavigateTo();
+
 	}
 
 	/**

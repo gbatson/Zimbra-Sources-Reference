@@ -519,7 +519,7 @@ ZaCos.getCosChoices = function () {
 
 
 ZaCos.getDefaultCos4Account =
-function (accountName){
+function (accountName, isExtVirtualAccount){
 	var defaultCos ;
 	var defaultDomainCos ;
 
@@ -527,7 +527,7 @@ function (accountName){
 	if (!accountName) {
 		return defaultCos; //default cos
 	}
-	
+
 	var domainName = ZaAccount.getDomain(accountName);
 	var domainCosId ;
 	var domain;
@@ -538,15 +538,16 @@ function (accountName){
     }
 
 	if(domain) {
-		domainCosId = domain.attrs[ZaDomain.A_domainDefaultCOSId] ;
+		domainCosId = isExtVirtualAccount ? domain.attrs[ZaDomain.A_domainDefaultExternalUserCOSId] : domain.attrs[ZaDomain.A_domainDefaultCOSId] ;
 		//when domainCosId doesn't exist, we always set default cos
+        var defaultCosName = isExtVirtualAccount ? "defaultExternal" : "default";
 		if (!domainCosId) {
-			var cos = ZaCos.getCosByName("default");
+			var cos = ZaCos.getCosByName(defaultCosName);
 			return cos ;
 		} else{
 			var cos = ZaCos.getCosById (domainCosId);
 			if(!cos)
-				cos = ZaCos.getCosByName("default");
+				cos = ZaCos.getCosByName(defaultCosName);
 			
 		 	return cos ;
 			//return cosList.getItemById(domainCosId);
@@ -905,7 +906,9 @@ ZaCos.prototype.countAllAccounts = function() {
 	var query = "(" + ZaAccount.A_COSId + "=" + this.id + ")";
 
     if(this.name == "default") {
-        query = "(|(!(" + ZaAccount.A_COSId + "=*))" + query + ")";
+        query = "(|(&(!(" + ZaAccount.A_COSId + "=*))(!(" + ZaAccount.A_zimbraIsExternalVirtualAccount + "=TRUE)))" + query + ")";
+    } else if(this.name == "defaultExternal") {
+        query = "(|(&(!(" + ZaAccount.A_COSId + "=*))(" + ZaAccount.A_zimbraIsExternalVirtualAccount + "=TRUE))" + query + ")";
     }
     query = "(&" + query + "(!("+ ZaAccount.A_zimbraIsSystemAccount +"=TRUE)))" ;
 	soapDoc.set("query", query);
@@ -933,6 +936,8 @@ ZaCos.prototype.countAllDomains = function() {
 
     if(this.name == "default") {
         query = "(|(!(" + ZaDomain.A_domainDefaultCOSId + "=*))" + query + ")";
+    } else if(this.name == "defaultExternal") {
+        query = "(|(!(" + ZaDomain.A_domainDefaultExternalUserCOSId + "=*))" + query + ")";
     }
 	soapDoc.set("query", query);
     soapDoc.set("types", ZaSearch.DOMAINS);

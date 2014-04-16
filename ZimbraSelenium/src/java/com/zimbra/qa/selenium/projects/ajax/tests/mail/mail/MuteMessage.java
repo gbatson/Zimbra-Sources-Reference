@@ -36,9 +36,13 @@ public class MuteMessage extends PrefGroupMailByMessageTest {
 		
 	}
 	
+	/*
+	 * Deprecated
+	 * https://bugzilla.zimbra.com/show_bug.cgi?id=38449 - Set for KISS
+	 */
 	@Bugs(ids = "38449")
 	@Test(	description = "Mute a message (conversation) using Actions -> Mute",
-			groups = { "smoke" })
+			groups = { "deprecated" })
 	public void MuteMessage_01() throws HarnessException {
 		
 		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();
@@ -76,15 +80,24 @@ public class MuteMessage extends PrefGroupMailByMessageTest {
 		
 	}
 
+	/*
+	 * Deprecated
+	 * https://bugzilla.zimbra.com/show_bug.cgi?id=38449 - Set for KISS
+	 */
 	@Bugs( ids = "65844")
 	@Test(	description = "Mute message, using 'Mute' shortcut key",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void MuteMessage_02() throws HarnessException {
 		throw new HarnessException("See bug https://bugzilla.zimbra.com/show_bug.cgi?id=65844");
 	}
 	
+	
+	/*
+	 * Deprecated
+	 * https://bugzilla.zimbra.com/show_bug.cgi?id=38449 - Set for KISS
+	 */
 	@Test(	description = "Mute message, using 'Right Click' -> 'Mute'",
-			groups = { "smoke" })
+			groups = { "deprecated" })
 	public void MuteMessage_03() throws HarnessException {
 		
 		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();

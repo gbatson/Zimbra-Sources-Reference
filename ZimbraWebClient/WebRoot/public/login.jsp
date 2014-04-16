@@ -21,8 +21,8 @@
 
 <%-- get useragent --%>
 <zm:getUserAgent var="ua" session="false"/>
-<c:set var="useMobile" value="${ua.isiPhone or ua.isiPod or (ua.isOsAndroid and not ua.isAndroidTablet)}"/>
-<c:set var="useTablet" value="${ua.isTouchiPad or (ua.isOsAndroid and ua.isAndroidTablet)}"/>
+<c:set var="useMobile" value="${ua.isiPhone or ua.isiPod or (ua.isMobile and not ua.isTouchiPad)}"/>
+<c:set var="useTablet" value="${ua.isTouchiPad or (ua.isOsAndroid and not ua.isMobile)}"/>
 <c:set var="trimmedUserName" value="${fn:trim(param.username)}"/>
 
 <%--'virtualacctdomain' param is set only for external virtual accounts--%>
@@ -135,7 +135,7 @@
         <c:otherwise>
             <c:set var="client" value="${param.client}"/>
             <c:if test="${empty client and useMobile}"><c:set var="client" value="mobile"/></c:if>
-            <c:if test="${empty client and useTablet}"><c:set var="client" value="touch"/></c:if>
+            <c:if test="${empty client and useTablet}"><c:set var="client" value="mobile"/></c:if>
             <c:if test="${empty client or client eq 'preferred'}">
                 <c:set var="client" value="${requestScope.authResult.prefs.zimbraPrefClientType[0]}"/>
             </c:if>
@@ -315,7 +315,7 @@ if (application.getInitParameter("offlineMode") != null)  {
     <c:set var="useStandard" value="${not (ua.isFirefox3up or ua.isGecko1_9up or ua.isIE7up or ua.isSafari4Up or ua.isChrome)}"/>
     <c:if test="${empty client}">
         <%-- set client select default based on user agent. --%>
-        <c:set var="client" value="${useTablet ? 'touch' : useMobile ? 'mobile' : useStandard ? 'standard' : 'preferred' }"/>
+        <c:set var="client" value="${useTablet ? 'mobile' : useMobile ? 'mobile' : useStandard ? 'standard' : 'preferred' }"/>
     </c:if>
     <c:set var="smallScreen" value="${client eq 'mobile' or client eq 'socialfox'}"/>
     <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE9" />
@@ -442,7 +442,7 @@ if (application.getInitParameter("offlineMode") != null)  {
                                             <option value="advanced"  <c:if test="${client eq 'advanced'}">selected</c:if>> <fmt:message key="clientAdvanced"/></option>
                                             <option value="standard"  <c:if test="${client eq 'standard'}">selected</c:if>> <fmt:message key="clientStandard"/></option>
                                             <option value="mobile"  <c:if test="${client eq 'mobile'}">selected</c:if>> <fmt:message key="clientMobile"/></option>
-                                            <option value="touch"  <c:if test="${client eq 'touch'}">selected</c:if>> <fmt:message key="clientTouch"/></option>
+                                            <%--<option value="touch"  <c:if test="${client eq 'touch'}">selected</c:if>> <fmt:message key="clientTouch"/></option>--%>
 
                                         </select>
                                     </c:otherwise>
@@ -523,6 +523,18 @@ function onLoad() {
 		}
 	}
 	clientChange("${zm:cook(client)}");
+	//check if the login page is loaded in the sidebar.
+    if (navigator.mozSocial) {
+        //send a ping so that worker knows about this page.
+        navigator.mozSocial.getWorker().port.postMessage({topic: "worker.reload", data: true});
+        //this page is loaded in firefox sidebar so listen for message from worker.
+        navigator.mozSocial.getWorker().port.onmessage = function onmessage(e) {
+            var topic = e.data.topic;
+            if (topic && topic == "sidebar.authenticated") {
+                window.location.href = "/public/launchSidebar.jsp";
+            }
+        };
+    }
 }
 
 </script>

@@ -14,7 +14,7 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.mail.signatures;
 
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.SignatureItem;
@@ -24,7 +24,6 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences.TreeItem;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.FormSignatureNew;
@@ -40,14 +39,13 @@ public class DeleteTextSignature extends AjaxCommonTest {
 	}
 
 	/**
-	 * Added @beforeClass because after logged in ,when we try to create signature through soap,
+	 * Added @BeforeMethod because after logged in ,when we try to create signature through soap,
 	 * it doesn't shows in (GUI)'Pref/signatures' unless and until we refresh browser.
 	 * @throws HarnessException
 	 */
-	@BeforeClass(groups = { "always" })
+	@BeforeMethod(groups = { "always" })
 	public void CreateSignature() throws HarnessException {
-		System.out.println(this.sigName);
-		ZimbraAccount.AccountZWC().authenticate(SOAP_DESTINATION_HOST_TYPE.SERVER);
+		ZimbraAccount.AccountZWC().authenticate();
 		ZimbraAccount.AccountZWC().soapSend(
 				"<CreateSignatureRequest xmlns='urn:zimbraAccount'>"
 				+ "<signature name='" + this.sigName + "' >"
@@ -55,6 +53,8 @@ public class DeleteTextSignature extends AjaxCommonTest {
 				+ "</content>" + "</signature>"
 				+ "</CreateSignatureRequest>");
 
+		app.zPageLogin.zNavigateTo();
+		app.zPagePreferences.zNavigateTo();
 	}
 
 	/**

@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -876,13 +876,19 @@ public final class LC {
     public static final KnownKey zmdisklog_warn_threshold = KnownKey.newKey(85);
     public static final KnownKey zmdisklog_critical_threshold = KnownKey.newKey(95);
 
-    // *_disable_tiemout settings are here for bug 56458
+    // *_disable_timeout settings are here for bug 56458
     // This is a workaround for an issue in Jetty 6.1.22.zc6m when we upgrade
     // we should re-evaluate/remove these settings and the code that uses them
     public static final KnownKey zimbra_archive_formatter_disable_timeout = KnownKey.newKey(true);
     public static final KnownKey zimbra_csv_formatter_disable_timeout = KnownKey.newKey(true);
     public static final KnownKey zimbra_archive_formatter_search_chunk_size = KnownKey.newKey(4096);
     public static final KnownKey zimbra_gal_sync_disable_timeout = KnownKey.newKey(true);
+    // for bug 79865
+    /**
+     * The max idle time for an HTTP DAV Method in milliseconds. Timeout 0 implies an infinite timeout
+     * If not setting to 0, suggest at least 600000 (10 minutes)
+     */
+    public static final KnownKey zimbra_dav_max_idle_time_ms = KnownKey.newKey(0);
 
     public static final KnownKey zimbra_admin_waitset_default_request_timeout = KnownKey.newKey(300);
     public static final KnownKey zimbra_admin_waitset_min_request_timeout = KnownKey.newKey(0);
@@ -938,6 +944,7 @@ public final class LC {
     public static final KnownKey mime_encode_missing_blob = KnownKey.newKey(true);
     public static final KnownKey mime_exclude_empty_content = KnownKey.newKey(true);
     public static final KnownKey mime_encode_compound_xwiniso2022jp_as_iso2022jp = KnownKey.newKey(true);
+    public static final KnownKey mime_split_address_at_semicolon = KnownKey.newKey(true);
 
     public static final KnownKey yauth_baseuri = KnownKey.newKey("https://login.yahoo.com/WSLogin/V1");
 
@@ -1280,6 +1287,7 @@ public final class LC {
     public static final KnownKey defang_av_js_entity = KnownKey.newKey("&\\{[^}]*\\}");
     public static final KnownKey defang_av_script_tag = KnownKey.newKey("</?script/?>");
     public static final KnownKey defang_av_javascript = KnownKey.newKey("^\\s*javascript:");
+       public static final KnownKey defang_block_form_same_host_post_req = KnownKey.newKey(true);
 
     static {
         // Automatically set the key name with the variable name.

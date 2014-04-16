@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,6 +19,7 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Set;
 
+import javax.mail.Address;
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
@@ -26,11 +27,15 @@ import javax.mail.internet.MimePart;
 import javax.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.util.JMSession;
+import com.zimbra.qa.unittest.TestUtil;
 
 /**
  * Unit test for {@link Mime}.
@@ -125,7 +130,7 @@ public class MimeTest {
     public void multiTextBody() throws Exception {
 
         StringBuilder content = new StringBuilder(baseMpMixedContent);
-        int count = 5;
+        int count = 42;
         for (int i = 0; i < count; i++) {
             content.append( "------------1111971890AC3BB91\r\n")
                 .append("Content-Type: text/html; charset=windows-1250\r\n")
@@ -297,4 +302,96 @@ public class MimeTest {
         MimePart part = Mime.getMimePart(mm, "1");
         Assert.assertEquals("application/octet-stream", Mime.getContentType(part.getContentType()));
     }
+
+    @Test
+    public void semiColonAddressSeparator() throws Exception {
+        StringBuilder to = new StringBuilder("To: ");
+        int count = 4;
+        for (int i = 1; i < count+1; i++) {
+            to.append("user").append(count).append("@example.com").append(";");
+        }
+        to.setLength(to.length() - 1);
+        to.append("\r\n");
+        String content =
+                        "From: user1@example.com\r\n"
+                        + to.toString()
+                        + "Subject: test\r\n"
+                        + "Content-Type: test/plain\r\n\r\n"
+                        + "test message";
+
+        MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(
+                        content.getBytes()));
+
+        Address[] recipients = mm.getAllRecipients();
+        Assert.assertEquals(count, recipients.length);
+    }
+
+    @Test
+    @Ignore("expensive test")
+    public void bigMime() throws Exception {
+        String content = baseMpMixedContent
+                        + "\r\n";
+        StringBuilder sb = new StringBuilder(content);
+        long total = 0;
+        int count = 10;
+        int partCount = 100;
+        int textcount = 1000000;
+        int lineSize = 200;
+        for (int i = 0; i < partCount; i++) {
+            sb.append( "------------1111971890AC3BB91\r\n")
+                .append("Content-Type: text/plain; charset=windows-1250\r\n")
+                .append("Content-Transfer-Encoding: quoted-printable\r\n\r\n");
+            for (int j = 0; j < textcount; j+=lineSize) {
+                String text = RandomStringUtils.randomAlphabetic(lineSize);
+                sb.append(text).append("\r\n");
+            }
+            sb.append("\r\n");
+        }
+        for (int i = 0; i < count; i++) {
+            long start = System.currentTimeMillis();
+            MimeMessage mm =
+
+                    new Mime.FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(
+                            sb.toString().getBytes()));
+
+            List<MPartInfo> parts = Mime.getParts(mm);
+            long end = System.currentTimeMillis();
+            total += (end - start);
+            ZimbraLog.test.info("took %dms", end - start);
+            Assert.assertNotNull(parts);
+            Assert.assertEquals(partCount + 1, parts.size());
+            MPartInfo body = Mime.getTextBody(parts, false);
+            Assert.assertNotNull(body);
+        }
+        ZimbraLog.test.info("Avg %dms", total/count);
+
+    }
+
+    @Test
+    public void strayBoundaryInEpilogue() throws Exception {
+        String content = baseMpMixedContent
+                + "\r\n";
+        StringBuilder sb = new StringBuilder(content);
+        sb.append( "------------1111971890AC3BB91\r\n")
+            .append("Content-Type: text/plain; charset=windows-1250\r\n")
+            .append("Content-Transfer-Encoding: quoted-printable\r\n\r\n");
+        String plainText = RandomStringUtils.randomAlphabetic(10);
+        sb.append(plainText).append("\r\n");
+        sb.append("------------1111971890AC3BB91--").append("\r\n");
+
+        //this is the point of this test; if MIME has a stray boundary it used to cause NPE
+        sb.append("\r\n").append("--bogusBoundary").append("\r\n").append("\r\n");
+
+        MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(
+                        sb.toString().getBytes()));
+        List<MPartInfo> parts = Mime.getParts(mm);
+
+        Assert.assertEquals(2, parts.size());
+
+        MPartInfo body = Mime.getTextBody(parts, false);
+        Assert.assertNotNull(body);
+
+        Assert.assertTrue(TestUtil.bytesEqual(plainText.getBytes(), body.getMimePart().getInputStream()));
+    }
+
 }

@@ -6866,6 +6866,22 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMimeType = "zimbraMimeType";
 
     /**
+     * Whether to force devices using Active Sync 2.5
+     *
+     * @since ZCS 8.0.7
+     */
+    @ZAttr(id=1573)
+    public static final String A_zimbraMobileForceProtocol25 = "zimbraMobileForceProtocol25";
+
+    /**
+     * Whether to force Samsung devices using Active Sync 2.5
+     *
+     * @since ZCS 8.0.7
+     */
+    @ZAttr(id=1572)
+    public static final String A_zimbraMobileForceSamsungProtocol25 = "zimbraMobileForceSamsungProtocol25";
+
+    /**
      * Max size of items in a folder that server tracks, categorized by
      * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
      * the max size of items to track for an Email folder to be 3000. If not

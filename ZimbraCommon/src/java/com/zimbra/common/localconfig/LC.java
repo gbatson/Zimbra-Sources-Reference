@@ -360,7 +360,7 @@ public final class LC {
     public static final KnownKey ldap_connect_timeout = KnownKey.newKey(30000);
 
     @Supported
-    public static final KnownKey ldap_read_timeout = KnownKey.newKey(0);
+    public static final KnownKey ldap_read_timeout = KnownKey.newKey(30000);
 
     @Supported
     public static final KnownKey ldap_deref_aliases = KnownKey.newKey("always");
@@ -448,7 +448,7 @@ public final class LC {
     public static final KnownKey ldap_cache_share_locator_maxage = KnownKey.newKey(15);
 
     @Supported
-    public static final KnownKey ldap_cache_domain_maxsize = KnownKey.newKey(100);
+    public static final KnownKey ldap_cache_domain_maxsize = KnownKey.newKey(500);
 
     @Supported
     public static final KnownKey ldap_cache_domain_maxage = KnownKey.newKey(15);
@@ -457,7 +457,7 @@ public final class LC {
     public static final KnownKey ldap_cache_mime_maxage = KnownKey.newKey(15);
 
 
-    public static final KnownKey ldap_cache_external_domain_maxsize = KnownKey.newKey(2000);
+    public static final KnownKey ldap_cache_external_domain_maxsize = KnownKey.newKey(10000);
     public static final KnownKey ldap_cache_external_domain_maxage = KnownKey.newKey(15);
     public static final KnownKey ldap_cache_group_maxsize = KnownKey.newKey(2000);
     public static final KnownKey ldap_cache_group_maxage = KnownKey.newKey(15);
@@ -478,6 +478,9 @@ public final class LC {
 
     @Supported
     public static final KnownKey ldap_cache_zimlet_maxage = KnownKey.newKey(15);
+
+    public static final KnownKey ldap_cache_custom_dynamic_group_membership_maxage_ms =
+            KnownKey.newKey(2 * Constants.MILLIS_PER_MINUTE);
 
     public static final KnownKey ldap_cache_reverseproxylookup_domain_maxsize = KnownKey.newKey(100);
     public static final KnownKey ldap_cache_reverseproxylookup_domain_maxage = KnownKey.newKey(15);
@@ -705,6 +708,12 @@ public final class LC {
     public static final KnownKey mailboxd_output_rotate_interval = KnownKey.newKey(86400);
 
     @Supported
+    public static final KnownKey client_ssl_truststore = KnownKey.newKey("${mailboxd_truststore}");
+
+    @Supported
+    public static final KnownKey client_ssl_truststore_password = KnownKey.newKey("${mailboxd_truststore_password}");
+
+    @Supported
     public static final KnownKey ssl_allow_untrusted_certs = KnownKey.newKey(false);
 
     public static final KnownKey ssl_allow_mismatched_certs = KnownKey.newKey(true);
@@ -776,8 +785,8 @@ public final class LC {
     public static final KnownKey imap_thread_keep_alive_time = KnownKey.newKey(60);
     public static final KnownKey imap_max_idle_time = KnownKey.newKey(60);
     public static final KnownKey imap_authenticated_max_idle_time = KnownKey.newKey(1800);
-    public static final KnownKey imap_throttle_ip_limit = KnownKey.newKey(250);
-    public static final KnownKey imap_throttle_acct_limit = KnownKey.newKey(250);
+    public static final KnownKey imap_throttle_ip_limit = KnownKey.newKey(5000);
+    public static final KnownKey imap_throttle_acct_limit = KnownKey.newKey(5000);
     public static final KnownKey imap_throttle_command_limit = KnownKey.newKey(25);
     public static final KnownKey imap_throttle_fetch = KnownKey.newKey(true);
     public static final KnownKey data_source_imap_reuse_connections = KnownKey.newKey(false);
@@ -785,8 +794,8 @@ public final class LC {
     public static final KnownKey pop3_write_timeout = KnownKey.newKey(10);
     public static final KnownKey pop3_thread_keep_alive_time = KnownKey.newKey(60);
     public static final KnownKey pop3_max_idle_time = KnownKey.newKey(60);
-    public static final KnownKey pop3_throttle_ip_limit = KnownKey.newKey(200);
-    public static final KnownKey pop3_throttle_acct_limit = KnownKey.newKey(200);
+    public static final KnownKey pop3_throttle_ip_limit = KnownKey.newKey(5000);
+    public static final KnownKey pop3_throttle_acct_limit = KnownKey.newKey(5000);
     public static final KnownKey pop3_max_consecutive_error = KnownKey.newKey(5);
 
     public static final KnownKey lmtp_throttle_ip_limit = KnownKey.newKey(0);
@@ -859,7 +868,6 @@ public final class LC {
     public static final KnownKey search_dbfirst_term_percentage_cutoff = KnownKey.newKey(0.8F);
     public static final KnownKey search_tagged_item_count_join_query_cutoff = KnownKey.newKey(1000); //beyond this limit server will not use join in the query while fetching unread items
 
-    public static final KnownKey zmstat_log_directory = KnownKey.newKey("${zimbra_home}/zmstat");
     public static final KnownKey zmstat_interval = KnownKey.newKey(30);
     public static final KnownKey zmstat_disk_interval = KnownKey.newKey(600);
     public static final KnownKey zmstat_max_retention = KnownKey.newKey(0);
@@ -1261,6 +1269,9 @@ public final class LC {
     @Supported
     public static final KnownKey external_store_local_cache_min_lifetime = KnownKey.newKey(Constants.MILLIS_PER_MINUTE);
 
+    @Supported
+    public static final KnownKey external_store_delete_max_ioexceptions = KnownKey.newKey(25);
+
     //Triton integration
     public static final KnownKey triton_store_url = KnownKey.newKey("");
     public static final KnownKey triton_hash_type = KnownKey.newKey("SHA0");
@@ -1279,7 +1290,7 @@ public final class LC {
         KnownKey.newKey("[\\S&&[^:]]+(?<!(rgb|and|not|media|,))\\s*\\(.*\\)");
     public static final KnownKey defang_valid_ext_url =
         KnownKey.newKey("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)");
-    public static final KnownKey defang_valid_int_img = KnownKey.newKey("^data:|^cid:");
+    public static final KnownKey defang_valid_int_img = KnownKey.newKey("^data:image/|^cid:");
     public static final KnownKey defang_valid_img_file = KnownKey.newKey("\\.(jpg|jpeg|png|gif)((\\?)?)");
 
     public static final KnownKey defang_valid_convertd_file = KnownKey.newKey("^index\\..*\\..*\\.(jpg|jpeg|png|gif)$");

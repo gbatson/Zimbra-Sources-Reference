@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -37,7 +37,6 @@ import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AttributeManager;
-import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.MailTarget;
 import com.zimbra.cs.account.NamedEntry;
@@ -1178,30 +1177,6 @@ public class RightCommand {
         }
 
         /*
-         * dynamic group with custom memberURL cannot be the grantee of any grants
-         */
-        if (granteeEntry instanceof DynamicGroup) {
-            if (!((DynamicGroup)granteeEntry).isIsACLGroup()) {
-                throw ServiceException.INVALID_REQUEST(
-                        "dynamic group with custom memberURL cannot be the grantee of any grant", null);
-            }
-        }
-
-        /*
-         * dynamic group with custom memberURL can only be the target group level rights,
-         * not account rights, because given an account, we can't answer the question
-         * "is the account a member of this group?".
-         */
-        if (targetEntry instanceof DynamicGroup) {
-            if (!((DynamicGroup)targetEntry).isIsACLGroup()) {
-                if (!right.isValidTargetForCustomDynamicGroup()) {
-                    throw ServiceException.INVALID_REQUEST(
-                            "dynamic group with custom memberURL can only be the target of dynamic group rights", null);
-                }
-            }
-        }
-
-        /*
          * check if the right can be granted on the target type
          */
         // first the "normal" checking
@@ -1275,14 +1250,13 @@ public class RightCommand {
             if (granteeType == GranteeType.GT_EXT_GROUP) {
                 // must be system admin
                 if (!AccessControlUtil.isGlobalAdmin(authedAcct)) {
-                    throw ServiceException.PERM_DENIED("only global admins can grant to " +
-                            "external group");
+                    throw ServiceException.PERM_DENIED("only global admins can grant to external group");
                 }
             } else {
                 boolean canGrant = am.canPerform(authedAcct, targetEntry, right, true, null, true, null);
                 if (!canGrant) {
-                    throw ServiceException.PERM_DENIED("insuffcient right to " +
-                            (revoking?"revoke":"grant"));
+                    throw ServiceException.PERM_DENIED(String.format("insufficient right to %s '%s' right",
+                            (revoking?"revoke":"grant"), right.getName()));
                 }
 
                 ParticallyDenied.checkPartiallyDenied(authedAcct, targetType, targetEntry, right);

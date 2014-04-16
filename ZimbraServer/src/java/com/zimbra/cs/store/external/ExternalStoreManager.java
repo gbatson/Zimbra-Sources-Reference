@@ -131,8 +131,27 @@ public abstract class ExternalStoreManager extends StoreManager implements Exter
     @Override
     public boolean deleteStore(Mailbox mbox, Iterable<MailboxBlob.MailboxBlobInfo> blobs) throws IOException, ServiceException {
         // the default implementation iterates through the mailbox's blobs and deletes them one by one
+        IOException ioException = null;
+        int consecutiveIoExceptions = 0;
         for (MailboxBlob.MailboxBlobInfo mbinfo : blobs) {
-            delete(getMailboxBlob(mbox, mbinfo.itemId, mbinfo.revision, mbinfo.locator));
+            try {
+                delete(getMailboxBlob(mbox, mbinfo.itemId, mbinfo.revision, mbinfo.locator));
+                consecutiveIoExceptions = 0;
+            } catch (IOException ioe) {
+                if (ioException == null) {
+                    ioException = ioe;
+                }
+                consecutiveIoExceptions++;
+                ZimbraLog.store.warn("IOException during deleteStore() for mbox [%d] item [%d] revision [%d] locator [%s]"
+                    , mbox.getId(), mbinfo.itemId, mbinfo.revision, mbinfo.locator, ioe);
+                if (consecutiveIoExceptions > LC.external_store_delete_max_ioexceptions.intValue()) {
+                    ZimbraLog.store.error("too many consecutive IOException during delete store, bailing");
+                    break;
+                }
+            }
+        }
+        if (ioException != null) {
+            throw new IOException("deleteStore failed due to IOException", ioException);
         }
         return true;
     }
@@ -153,7 +172,7 @@ public abstract class ExternalStoreManager extends StoreManager implements Exter
 
     @Override
     public InputStream getContent(Blob blob) throws IOException {
-        return new BlobInputStream(blob);
+        return new ExternalBlobInputStream(blob);
     }
 
     protected Blob getLocalBlob(Mailbox mbox, String locator, boolean fromCache) throws IOException {
@@ -161,7 +180,10 @@ public abstract class ExternalStoreManager extends StoreManager implements Exter
         if (fromCache) {
             cached = localCache.get(locator);
             if (cached != null) {
-                return new ExternalBlob(cached);
+                ExternalBlob blob = new ExternalBlob(cached);
+                blob.setLocator(locator);
+                blob.setMbox(mbox);
+                return blob;
             }
         }
 
@@ -170,7 +192,10 @@ public abstract class ExternalStoreManager extends StoreManager implements Exter
             throw new IOException("Store " + this.getClass().getName() +" returned null for locator " + locator);
         } else {
             cached = localCache.put(locator, is);
-            return new ExternalBlob(cached);
+            ExternalBlob blob = new ExternalBlob(cached);
+            blob.setLocator(locator);
+            blob.setMbox(mbox);
+            return blob;
         }
     }
 
@@ -180,7 +205,8 @@ public abstract class ExternalStoreManager extends StoreManager implements Exter
 
     @Override
     public MailboxBlob getMailboxBlob(Mailbox mbox, int itemId, int revision, String locator) throws ServiceException {
-        return new ExternalMailboxBlob(mbox, itemId, revision, locator);
+        ExternalMailboxBlob mblob = new ExternalMailboxBlob(mbox, itemId, revision, locator);
+        return mblob.validateBlob() ? mblob : null;
     }
 
     @Override

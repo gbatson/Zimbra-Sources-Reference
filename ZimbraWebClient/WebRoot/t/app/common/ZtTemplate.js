@@ -37,7 +37,7 @@ Ext.define('ZCS.common.ZtTemplate', {
 
 	loadTemplates: function(callback) {
 		Ext.Ajax.request({
-			url: '/t/resources/templates/zcs.tpl',
+			url: 'resources/templates/zcs.tpl',
 			async: false,
 			success: function(response){
 				var text = response.responseText,
@@ -68,7 +68,21 @@ Ext.define('ZCS.common.ZtTemplate', {
 				}
 			}
 		});
+	},
+
+	/**
+	 * Easy way to include output from a template within another template.
+	 *
+	 * @param {String|XTemplate}    tpl     template to include
+	 * @param {Object}              values  data for included template
+	 *
+	 * @returns {String}    output of template with given values
+	 */
+	includeTpl: function(tpl, values) {
+		tpl = Ext.isString(tpl) ? Ext.create('Ext.XTemplate', ZCS.template[tpl]) : tpl;
+		return tpl.apply(values);
 	}
+
 }, function () {
 	ZCS.common.ZtTemplate.loadTemplates();
 });

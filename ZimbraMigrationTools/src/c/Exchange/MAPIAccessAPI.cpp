@@ -16,6 +16,7 @@
 #include "Exchange.h"
 #include "MAPIAccessAPI.h"
 #include "Logger.h"
+#include "Util.h"
 
 Zimbra::MAPI::MAPISession *MAPIAccessAPI::m_zmmapisession = NULL;
 Zimbra::MAPI::MAPIStore *MAPIAccessAPI::m_defaultStore = NULL;
@@ -451,76 +452,88 @@ LPCWSTR MAPIAccessAPI::_GetRootFolderHierarchy(vector<Folder_Data> &vfolderlist)
     return lpwstrStatus;
 }
 
+void AssignFolderData(Zimbra::MAPI::MAPIFolder *childFolder, Folder_Data &flderdata)
+{
+	ULONG itemCount = 0;
+	// folder item count
+	childFolder->GetItemCount(itemCount);
+    flderdata.itemcount = itemCount;
+
+    // store Folder EntryID
+    SBinary sbin = childFolder->EntryID();
+
+    CopyEntryID(sbin, flderdata.sbin);
+
+    // folder path
+    flderdata.folderpath = childFolder->GetFolderPath();
+
+    // container class
+	wstring wstrContainerClass;
+    childFolder->ContainerClass(wstrContainerClass);
+    flderdata.containerclass = wstrContainerClass;
+
+    // ExchangeFolderID
+    flderdata.zimbraid = (long)childFolder->GetZimbraFolderId();
+
+	//folderName
+	if(flderdata.zimbraid == ZM_ROOT)
+	{
+		flderdata.name =CONST_ROOTFOLDERNAME;
+	}
+	else
+	{
+		flderdata.name = childFolder->Name();
+	}
+}
+
+
 HRESULT MAPIAccessAPI::Iterate_folders(Zimbra::MAPI::MAPIFolder &folder,
     vector<Folder_Data> &fd)
 {
-    Zimbra::MAPI::FolderIterator *folderIter = new Zimbra::MAPI::FolderIterator;
+	BOOL bMore = TRUE;
+	bool bSkipFolder = false;
+	wstring wstrContainerClass;
+	
+	ExchangeSpecialFolderId exfid = folder.GetExchangeFolderId();
+    folder.ContainerClass(wstrContainerClass);
 
-    folder.GetFolderIterator(*folderIter);
-
-    BOOL bMore = TRUE;
-
-    while (bMore)
+    // skip folders in exclusion list, hidden folders and non-standard type folders
+    if (SkipFolder(exfid) || folder.HiddenFolder() || (((wstrContainerClass !=
+        L"IPF.Note") && (wstrContainerClass != L"IPF.Contact") && (wstrContainerClass !=
+        L"IPF.Appointment") && (wstrContainerClass != L"IPF.Task") && (wstrContainerClass !=
+        L"IPF.StickyNote") && (wstrContainerClass != L"IPF.Imap") 
+		&& (wstrContainerClass != L"")) && (exfid ==
+        SPECIAL_FOLDER_ID_NONE)))
+        bSkipFolder = true;
+    if (!bSkipFolder)
     {
-        ULONG itemCount = 0;
+		// get folder data
+        Folder_Data flderdata;
+		AssignFolderData(&folder,flderdata);
+        // Dont add root folder, if it has no data items
+		if((flderdata.zimbraid != ZM_ROOT) || ((flderdata.zimbraid == ZM_ROOT)&&(flderdata.itemcount>0)))
+			fd.push_back(flderdata);
 
-        // delete them while clearing the tree nodes
-        Zimbra::MAPI::MAPIFolder *childFolder = new Zimbra::MAPI::MAPIFolder(*m_zmmapisession,
+		Zimbra::MAPI::FolderIterator *folderIter = new Zimbra::MAPI::FolderIterator;
+		folder.GetFolderIterator(*folderIter);		
+
+		while(bMore)
+		{
+			Zimbra::MAPI::MAPIFolder *childFolder = new Zimbra::MAPI::MAPIFolder(*m_zmmapisession,
             *m_userStore);
+			bMore = folderIter->GetNext(*childFolder);
+			if (bMore)
+				Iterate_folders(*childFolder, fd);
 
-        bMore = folderIter->GetNext(*childFolder);
-
-        bool bSkipFolder = false;
-        ExchangeSpecialFolderId exfid = childFolder->GetExchangeFolderId();
-        wstring wstrContainerClass;
-
-        childFolder->ContainerClass(wstrContainerClass);
-        // skip folders in exclusion list, hidden folders and non-standard type folders
-        if (SkipFolder(exfid) || childFolder->HiddenFolder() || (((wstrContainerClass !=
-            L"IPF.Note") && (wstrContainerClass != L"IPF.Contact") && (wstrContainerClass !=
-            L"IPF.Appointment") && (wstrContainerClass != L"IPF.Task") && (wstrContainerClass !=
-            L"IPF.StickyNote") && (wstrContainerClass != L"IPF.Imap") 
-			&& (wstrContainerClass != L"")) && (exfid ==
-            SPECIAL_FOLDER_ID_NONE)))
-            bSkipFolder = true;
-        if (bMore && !bSkipFolder)
-        {
-            childFolder->GetItemCount(itemCount);
-
-            // store foldername
-            Folder_Data flderdata;
-
-            flderdata.name = childFolder->Name();
-
-            // folder item count
-            flderdata.itemcount = itemCount;
-
-            // store Folder EntryID
-            SBinary sbin = childFolder->EntryID();
-
-            CopyEntryID(sbin, flderdata.sbin);
-
-            // folder path
-            flderdata.folderpath = childFolder->GetFolderPath();
-
-            // container class
-            flderdata.containerclass = wstrContainerClass;
-
-            // ExchangeFolderID
-            flderdata.zimbraid = (long)childFolder->GetZimbraFolderId();
-
-            // append
-            fd.push_back(flderdata);
-        }
-        if (bMore && !bSkipFolder)
-            Iterate_folders(*childFolder, fd);
-        delete childFolder;
-        childFolder = NULL;
+			delete childFolder;
+			childFolder = NULL;
+		}
+		delete folderIter;
+		folderIter = NULL;
     }
-    delete folderIter;
-    folderIter = NULL;
-    return S_OK;
+	return S_OK;
 }
+
 
 HRESULT MAPIAccessAPI::GetInternalFolder(SBinary sbFolderEID, MAPIFolder &folder)
 {
@@ -680,13 +693,15 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
     HRESULT hr = S_OK;
     LPMESSAGE pMessage = NULL;
     ULONG objtype;
+	
+	LPTSTR pszBin = SBinToStr(sbItemEID);
+	dlogd("Item EntryID: %s",pszBin);
 
     if (FAILED(hr = m_userStore->OpenEntry(sbItemEID.cb, (LPENTRYID)sbItemEID.lpb, NULL,
             MAPI_BEST_ACCESS, &objtype, (LPUNKNOWN *)&pMessage)))
     {
         lpwstrStatus = FormatExceptionInfo(hr, L"MAPIAccessAPI::GetItem() Failed", __FILE__,
-            __LINE__);
-		dloge("MAPIAccessAPI -- User Store OpenEntry failed");
+            __LINE__);		
 		dloge(lpwstrStatus);
 		Zimbra::Util::CopyString(lpwstrRetVal, ERR_OPEN_ENTRYID);
         goto ZM_EXIT;
@@ -959,11 +974,29 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             ad->EndDate = mapiappointment.GetEndDate();
 			dlogi("EndDate: ",ad->EndDate.c_str());
             ad->Location = mapiappointment.GetLocation();
-            ad->PartStat = mapiappointment.GetResponseStatus();
+
+			if(!mapiappointment.GetResponseStatus().empty())
+				ad->PartStat = mapiappointment.GetResponseStatus();
+			else
+				ad->PartStat = L"NE";
+
 			ad->CurrStat = mapiappointment.GetCurrentStatus();
-			ad->RSVP = mapiappointment.GetResponseRequested();
-            ad->FreeBusy = mapiappointment.GetBusyStatus();
-            ad->AllDay = mapiappointment.GetAllday();
+
+			if(!mapiappointment.GetResponseRequested().empty())
+				ad->RSVP = mapiappointment.GetResponseRequested();
+			else
+				ad->RSVP = L"0";
+
+			if(!mapiappointment.GetBusyStatus().empty())
+				ad->FreeBusy = mapiappointment.GetBusyStatus();
+			else
+				ad->FreeBusy = L"F";
+
+			if(!mapiappointment.GetAllday().empty())
+				ad->AllDay = mapiappointment.GetAllday();
+			else
+				ad->AllDay = L"0";
+
             ad->Transparency = mapiappointment.GetTransparency();
             ad->ApptClass = mapiappointment.GetPrivate();
             ad->AlarmTrigger = mapiappointment.GetReminderMinutes();

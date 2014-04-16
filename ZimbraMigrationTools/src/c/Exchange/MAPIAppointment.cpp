@@ -72,17 +72,17 @@ MAPIAppointment::MAPIAppointment(Zimbra::MAPI::MAPISession &session, Zimbra::MAP
     m_pEndDate = L"";
     m_pInstanceUID = L"";
     m_pLocation = L"";
-    m_pBusyStatus = L"";
-    m_pAllday = L"";
-    m_pTransparency = L"";
+    m_pBusyStatus = L"F";
+    m_pAllday = L"0";
+    m_pTransparency = L"O";
     m_pReminderMinutes = L"";
-    m_pCurrentStatus = L"";
-	m_pResponseStatus = L"";
+    m_pCurrentStatus = L"F";
+	m_pResponseStatus = L"NE";
     m_pOrganizerName = L"";
     m_pOrganizerAddr = L"";
     m_pPrivate = L"";
 	m_pReminderSet = L"";
-	m_pResponseRequested = L"";
+	m_pResponseRequested = L"0";
 	    
 	HRESULT hr=session.OpenAddressBook(&m_pAddrBook);
 	if(!SUCCEEDED(hr))
@@ -255,6 +255,10 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
         SetAllday(m_pPropVals[C_ALLDAY].Value.b);
         bAllday = (m_pPropVals[C_ALLDAY].Value.b == 1);
     }
+	else
+	{
+		dlogd("allday-No value found: Setting to Default (0)");
+	}
     if (m_pPropVals[C_SUBJECT].ulPropTag == appointmentProps.aulPropTag[C_SUBJECT])
     {
 	SetSubject(m_pPropVals[C_SUBJECT].Value.lpszW);
@@ -279,15 +283,26 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
     {
 	SetBusyStatus(m_pPropVals[C_BUSYSTATUS].Value.l);
     }
+	else
+	{
+		dlogd("fb-No value found: Setting to Default (F)");
+	}
     if (m_pPropVals[C_RESPONSESTATUS].ulPropTag == appointmentProps.aulPropTag[C_RESPONSESTATUS])
     {
-	SetResponseStatus(m_pPropVals[C_RESPONSESTATUS].Value.l);
+		SetResponseStatus(m_pPropVals[C_RESPONSESTATUS].Value.l);
     }
-	 if (m_pPropVals[C_RESPONSEREQUESTED].ulPropTag == appointmentProps.aulPropTag[C_RESPONSEREQUESTED])
+	else
+	{
+		dlogd("ptst-No value found: Setting to Default (NE)");
+	}
+	if (m_pPropVals[C_RESPONSEREQUESTED].ulPropTag == appointmentProps.aulPropTag[C_RESPONSEREQUESTED])
     {
-	SetResponseRequested(m_pPropVals[C_RESPONSEREQUESTED].Value.b);
+		SetResponseRequested(m_pPropVals[C_RESPONSEREQUESTED].Value.b);
     }
-	
+	else
+	{
+		dlogd("RSVP-No value found: Setting to Default (0)");
+	}
 	unsigned short usReminderSet=1;
 	if (m_pPropVals[C_REMINDERSET].ulPropTag == appointmentProps.aulPropTag[C_REMINDERSET])
     {

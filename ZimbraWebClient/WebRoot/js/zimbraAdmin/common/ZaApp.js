@@ -521,7 +521,6 @@ function (params, resp) {
 			var response = resp.getResponse().Body.SearchDirectoryResponse;
 			var domainList = new ZaItemList(ZaDomain);	
 			domainList.loadFromJS(response);
-			domainList.loadEffectiveRights();
 			if(ZaSettings.TREE_ENABLED) {
 				this._appCtxt.getAppController().getOverviewPanelController().updateDomainList(domainList);
 			}
@@ -539,11 +538,11 @@ function (params, resp) {
 		}		
 	}
 }
+
 ZaApp.prototype.getDomainList =
 function(refresh) {
 	if (refresh || this._domainList == null) {
 		this._domainList = ZaDomain.getAll();
-		this._domainList.loadEffectiveRights();
 	}
 	return this._domainList;	
 }
@@ -608,28 +607,29 @@ function(refresh) {
 }
 
 ZaApp.prototype.getPostQList = 
-function (refresh) {
-	if (refresh || this._postqList == null) {
-		this._postqList = ZaMTA.getAll();
+function (refresh, callback) {
+	if (refresh || this._postqList == null || callback) {
+		this._postqList = ZaMTA.getAll(callback);
 	}
 	return this._postqList;	
 }
 
 ZaApp.prototype.getMailServers =
-function(refresh) {
-	if (refresh || this._mbsList == null) {
-		this._mbsList = ZaServer.getAllMBSs([ZaServer.A_ServiceHostname, ZaServer.A_description, ZaServer.A_zimbraServiceEnabled, ZaServer.A_zimbraServiceInstalled, ZaItem.A_zimbraId]);
-		//this._serverList = ZaServer.getAll([ZaServer.A_ServiceHostname, ZaServer.A_description, ZaServer.A_zimbraServiceEnabled, ZaServer.A_zimbraServiceInstalled, ZaItem.A_zimbraId]);
+function(refresh, callback) {
+	if (refresh || this._mbsList == null || callback) {
+		this._mbsList = ZaServer.getAllMBSs([ZaServer.A_ServiceHostname, ZaServer.A_description, ZaServer.A_zimbraServiceEnabled, ZaServer.A_zimbraServiceInstalled, ZaItem.A_zimbraId], callback);
 	}
-	var resArray = new Array();
-	var tmpArray = this._mbsList.getArray();
-	var cnt = tmpArray.length;
-	for(var i = 0; i < cnt; i++) {
-		if(tmpArray[i].attrs[ZaServer.A_zimbraMailboxServiceEnabled]) {
-			resArray.push(tmpArray[i]);
+	if(!callback) {
+		var resArray = new Array();
+		var tmpArray = this._mbsList.getArray();
+		var cnt = tmpArray.length;
+		for(var i = 0; i < cnt; i++) {
+			if(tmpArray[i].attrs[ZaServer.A_zimbraMailboxServiceEnabled]) {
+				resArray.push(tmpArray[i]);
+			}
 		}
+		return resArray;
 	}
-	return resArray;
 }
 
 ZaApp.prototype.getServerListChoices =
@@ -749,32 +749,6 @@ function(refresh) {
 
 	}
 	return this._cosListChoices;	
-}
-
-/*
-ZaApp.prototype.getStatusList =
-function(refresh) {
-	if (refresh || this._statusList == null) {
-		this._statusList = ZaStatus.loadStatusTable();
-	}
-	return this._statusList;	
-}
-*/
-/*
-ZaApp.prototype.getAccountList =
-function(refresh) {
-	if (refresh || this._accountList == null) {
-		this._accountList = ZaSearch.getAll(this).list;
-	}
-	return this._accountList;	
-}*/
-
-ZaApp.prototype.getAccountStats =
-function(refresh) {
-    if (refresh || this._accountStats == null) {
-        this._accountStats = ZaSearch.getAccountStats();
-    }
-    return this._accountStats;
 }
 
 ZaApp.prototype.getGlobalConfig =

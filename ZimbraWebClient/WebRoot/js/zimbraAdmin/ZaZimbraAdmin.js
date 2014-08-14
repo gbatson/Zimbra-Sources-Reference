@@ -1381,11 +1381,94 @@ ZaZimbraAdmin.isGlobalAdmin = function () {
 }
 
 ZaZimbraAdmin.hasGlobalDomainListAccess = function () {
-    return (ZaZimbraAdmin.isGlobalAdmin() || ZaDomain.globalRights[ZaDomain.RIGHT_LIST_DOMAIN]);
+	return (ZaZimbraAdmin.isGlobalAdmin() || 
+			(ZaSettings.targetRights[ZaItem.DOMAIN] 
+				&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaCos.RIGHT_LIST_DOMAIN] 
+				&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaCos.RIGHT_LIST_DOMAIN].some));
 }
 
 ZaZimbraAdmin.hasGlobalCOSSListAccess = function () {
-	return (ZaZimbraAdmin.isGlobalAdmin() || ZaCos.globalRights[ZaCos.RIGHT_LIST_COS]);
+	return (ZaZimbraAdmin.isGlobalAdmin() || 
+			(ZaSettings.targetRights[ZaItem.COS] 
+				&& ZaSettings.targetRights[ZaItem.COS][ZaCos.RIGHT_LIST_COS] 
+			&& ZaSettings.targetRights[ZaItem.COS][ZaCos.RIGHT_LIST_COS].some));
 }
 
+ZaZimbraAdmin.canCreateTopDomain = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_TOP_DOMAIN]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_TOP_DOMAIN].some));
+}
 
+ZaZimbraAdmin.canCreateDomain = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_TOP_DOMAIN]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_TOP_DOMAIN].some) 
+		|| (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_SUB_DOMAIN]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_SUB_DOMAIN].some)
+		|| (ZaSettings.targetRights[ZaItem.DOMAIN]
+			&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_SUB_DOMAIN]
+			&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_SUB_DOMAIN].some));
+}
+
+ZaZimbraAdmin.canCreateAccount = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.DOMAIN]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_ACCOUNT]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_ACCOUNT].some)
+		|| (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_ACCOUNT]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_ACCOUNT].some));
+}
+
+ZaZimbraAdmin.canCreateAlias = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.DOMAIN]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_ALIAS]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_ALIAS].some)
+		|| (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_ALIAS]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_ALIAS].some));
+}
+
+ZaZimbraAdmin.canCreateDL = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.DOMAIN]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_DL]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_DL].some)
+		|| (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_DL]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_DL].some));
+}
+
+ZaZimbraAdmin.canCreateCalRes = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.DOMAIN]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_CALRES]
+		&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.RIGHT_CREATE_CALRES].some)
+		|| (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_CALRES]
+			&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.RIGHT_CREATE_CALRES].some));
+}
+
+ZaZimbraAdmin.canCreateCos = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.CREATE_COS_RIGHT]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.CREATE_COS_RIGHT].some));
+}
+
+ZaZimbraAdmin.canChangeExchangeConfig = function() {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[ZaItem.DOMAIN]
+	&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT]
+	&& ZaSettings.targetRights[ZaItem.DOMAIN][ZaDomain.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT].some)
+	|| (ZaSettings.targetRights[ZaItem.GLOBAL_GRANT]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT]
+		&& ZaSettings.targetRights[ZaItem.GLOBAL_GRANT][ZaDomain.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT].some));
+}
+
+ZaZimbraAdmin.haveTargetRight = function(targetType, rightName, targetName) {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[targetType][rightName] 
+			&& ZaSettings.targetRights[targetType][rightName][targetName]));
+}
+
+ZaZimbraAdmin.haveAnyTargetRight = function(targetType, rightName) {
+	return (ZaZimbraAdmin.isGlobalAdmin() || (ZaSettings.targetRights[targetType][rightName] 
+			&& ZaSettings.targetRights[targetType][rightName].some));
+}

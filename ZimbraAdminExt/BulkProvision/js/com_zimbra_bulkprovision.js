@@ -78,38 +78,7 @@ bulkprovision.bulkprovOvTreeModifier = function (tree) {
 if(ZaOverviewPanelController.treeModifiers)
 	ZaOverviewPanelController.treeModifiers.push(bulkprovision.bulkprovOvTreeModifier);
 
-//add the bulk provision account toolbar button
-/*if (ZaController.initToolbarMethods["ZaAccountListController"]) {
-    ZaOperation.BULK_PROVISION = ++ ZA_OP_INDEX;
-    ZaAccountListController.initExtraToolbarMethod = function () {
-		var showBulkProvision = false;
-		if(ZaSettings.HAVE_MORE_DOMAINS || ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
-			showBulkProvision = true;
-		} else {
-			var domainList = ZaApp.getInstance().getDomainList().getArray();
-			var cnt = domainList.length;
-			for(var i = 0; i < cnt; i++) {
-				if(ZaItem.hasRight(ZaDomain.RIGHT_CREATE_ACCOUNT,domainList[i])) {
-					showBulkProvision = true;
-					break;
-				}	
-			}
-		}	
-		if(showBulkProvision) {    	
-	        this._toolbarOperations [ZaOperation.BULK_PROVISION] = 
-	                new ZaOperation(ZaOperation.BULK_PROVISION, com_zimbra_bulkprovision.ACTBB_BulkProvision,
-	                        com_zimbra_bulkprovision.ACTBB_BulkProvision_tt, "BulkProvision", "BulkProvisionDis", 
-	                        new AjxListener(this, ZaAccountListController.prototype._bulkProvisionListener)
-	                        );
-	        // only add the bulk provision for account list view.
-	        if (this._defaultType == ZaItem.ACCOUNT) {
-	           this._toolbarOrder.push(ZaOperation.BULK_PROVISION) ;
-	        }
-	
-	    }
-	}
-    ZaController.initToolbarMethods["ZaAccountListController"].push(ZaAccountListController.initExtraToolbarMethod);
-}*/
+
  if(ZaTabView.XFormModifiers["ZaHomeXFormView"]) {
 
     ZaHomeXFormView.onDoMigration = function (ev) {

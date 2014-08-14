@@ -49,17 +49,10 @@ function(list, openInNewTab) {
 ZaBulkProvisionTasksController.initToolbarMethod =
 function () {
 	var showBulkProvision = false;
-	if(ZaSettings.HAVE_MORE_DOMAINS || ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
+	if(ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
 		showBulkProvision = true;
 	} else {
-		var domainList = ZaApp.getInstance().getDomainList().getArray();
-		var cnt = domainList.length;
-		for(var i = 0; i < cnt; i++) {
-			if(ZaItem.hasRight(ZaDomain.RIGHT_CREATE_ACCOUNT,domainList[i])) {
-				showBulkProvision = true;
-				break;
-			}	
-		}
+		showBulkProvision = ZaZimbraAdmin.canCreateAccount();
 	}	
 	if(showBulkProvision) {    	
 		this._toolbarOperations[ZaOperation.BULK_DATA_IMPORT]=new ZaOperation(ZaOperation.BULK_DATA_IMPORT,com_zimbra_bulkprovision.TB_IMAP_Import, com_zimbra_bulkprovision.TB_IMAP_Import_tt, "ApplianceMigration", "ApplianceMigration", new AjxListener(this, this.bulkDataImportListener));
@@ -84,14 +77,7 @@ function () {
 	if(ZaSettings.HAVE_MORE_DOMAINS || ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
 		showBulkProvision = true;
 	} else {
-		var domainList = ZaApp.getInstance().getDomainList().getArray();
-		var cnt = domainList.length;
-		for(var i = 0; i < cnt; i++) {
-			if(ZaItem.hasRight(ZaDomain.RIGHT_CREATE_ACCOUNT,domainList[i])) {
-				showBulkProvision = true;
-				break;
-			}
-		}
+		showBulkProvision = ZaZimbraAdmin.canCreateAccount();
 	}
 	if(showBulkProvision) {
 		this._popupOperations[ZaOperation.BULK_DATA_IMPORT]=new ZaOperation(ZaOperation.BULK_DATA_IMPORT,com_zimbra_bulkprovision.TB_IMAP_Import, com_zimbra_bulkprovision.TB_IMAP_Import_tt, "ApplianceMigration", "ApplianceMigration", new AjxListener(this, this.bulkDataImportListener));

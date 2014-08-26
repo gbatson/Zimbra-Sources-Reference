@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
@@ -17,13 +19,13 @@ package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-
+import org.testng.Assert;
 import com.zimbra.qa.selenium.framework.items.AttachmentItem;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.calendar.FormApptNew;
 
 /**
  * The <code>DisplayMail<code> object defines a read-only view of a message
@@ -61,6 +63,8 @@ public class DisplayMail extends AbsDisplay {
 		//public static final String ConversationViewPreviewAtRightCSS	= "css=div[id='zv__CLV__MSG']";
 	
 		// Accept, Decline & Tentative button, menus and dropdown locators
+		public static final String CalendarDropdown = "css=td[id$='_calendarSelectToolbarCell'] td[id$='_select_container']";
+		
 		public static final String AcceptButton = "css=td[id$='__Inv__REPLY_ACCEPT_title']";
 		public static final String AcceptDropdown = "css=td[id$='__Inv__REPLY_ACCEPT_dropdown']>div";
 		public static final String AcceptNotifyOrganizerMenu = "id=REPLY_ACCEPT_NOTIFY_title";
@@ -79,7 +83,15 @@ public class DisplayMail extends AbsDisplay {
 		public static final String DeclineEditReplyMenu = "id=INVITE_REPLY_DECLINE_title";
 		public static final String DeclineDontNotifyOrganizerMenu = "id=REPLY_DECLINE_IGNORE_title";
 		
+		public static final String AcceptProposeNewTimeButton = "css=td[id$='Cou__ACCEPT_PROPOSAL_title']";
+		public static final String DeclineProposeNewTimeButton = "css=td[id$='Cou__DECLINE_PROPOSAL_title']";
 		public static final String ProposeNewTimeButton = "css=td[id$='__Inv__PROPOSE_NEW_TIME_title']";
+		
+		public static final String zSubjectField = "css=div[id^=zv__COMPOSE] input[id$=_subject_control]";
+		public static final String zReplyButton ="css=div[id$='__REPLY']";
+		public static final String zReplyAllButton ="css=div[id$='__REPLY_ALL']";
+		public static final String zForwardButton ="css=div[id$='__FORWARD']";
+	
 	}
 
 	/**
@@ -130,7 +142,24 @@ public class DisplayMail extends AbsDisplay {
 		String locator = null;
 		boolean doPostfixCheck = false;
 
-		if ( button == Button.B_VIEW_ENTIRE_MESSAGE ) {
+		if ( button == Button.B_REMOVE_ALL ) {
+			
+			locator = this.ContainerLocator + " a[id$='_removeAll']";
+			page = new DialogWarning(
+					DialogWarning.DialogWarningID.PermanentlyRemoveTheAttachment,
+					MyApplication, 
+					((AppAjaxClient) MyApplication).zPageMail);
+ 
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("locator is not present for button "+ button +" : "+ locator);
+			
+			this.sClick(locator); // sClick() is required for this element
+			
+			this.zWaitForBusyOverlay();
+
+			return (page);
+
+		} else if ( button == Button.B_VIEW_ENTIRE_MESSAGE ) {
 			
 			locator = this.ContainerLocator + " span[id$='_msgTruncation_link']";
 
@@ -232,7 +261,20 @@ public class DisplayMail extends AbsDisplay {
 		} else if ( button == Button.B_PROPOSE_NEW_TIME ) {
 			
 			locator = Locators.ProposeNewTimeButton;
-			page = null;
+			page = new FormApptNew(this.MyApplication);
+			doPostfixCheck = true;
+		
+		} else if ( button == Button.B_ACCEPT_PROPOSE_NEW_TIME ) {
+					
+			locator = Locators.AcceptProposeNewTimeButton;
+			page = new FormApptNew(this.MyApplication);
+			doPostfixCheck = true;
+					
+		} else if ( button == Button.B_DECLINE_PROPOSE_NEW_TIME ) {
+			
+			locator = Locators.DeclineProposeNewTimeButton;
+			page = new FormMailNew(this.MyApplication);
+			doPostfixCheck = true;
 
 		} else if ( button == Button.B_ACCEPT_SHARE ) {
 
@@ -246,6 +288,21 @@ public class DisplayMail extends AbsDisplay {
 			page = new DialogShareDecline(MyApplication, ((AppAjaxClient) MyApplication).zPageMail);
 			doPostfixCheck = true;
 
+		}else if ( button == Button.B_FORWARD) {
+
+			locator = Locators.zForwardButton;
+			page = null;
+			doPostfixCheck = true;
+		}else if ( button == Button.B_REPLY) {
+
+			locator = Locators.zReplyButton;
+			page = null;
+			doPostfixCheck = true;
+		}else if ( button == Button.B_REPLYALL) {
+
+			locator = Locators.zReplyAllButton;
+			page = null;
+			doPostfixCheck = true;
 		} else  {
 			
 			throw new HarnessException("no implementation for button: "+ button);
@@ -258,14 +315,14 @@ public class DisplayMail extends AbsDisplay {
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("locator is not present for button "+ button +" : "+ locator);
 		
-		this.zClick(locator);
+		this.zClickAt(locator , "");
 		
 		this.zWaitForBusyOverlay();
 
 		if ( page != null ) {
 			page.zWaitForActive();
 		}
-		
+		logger.info("postfix"+ doPostfixCheck);
 		if ( doPostfixCheck ) {
 			// Make sure the response is delivered before proceeding
 			Stafpostqueue sp = new Stafpostqueue();
@@ -365,13 +422,71 @@ public class DisplayMail extends AbsDisplay {
 				optionLocator = Locators.DeclineDontNotifyOrganizerMenu;
 				doPostfixCheck = false;
 				page = this;
-				
-			} else {
-	
-				throw new HarnessException("No logic defined for pulldown " + pulldown + " and option " + option);
-
 			}
 			
+		} else if ( pulldown == Button.B_CALENDAR ) {
+				
+			pulldownLocator = Locators.CalendarDropdown;
+			optionLocator = "css=div[id*='Menu_'] td[id$='_title']:contains('" + option + "')";
+			doPostfixCheck = true;
+			page = this;
+					
+		} else {
+
+			throw new HarnessException("No logic defined for pulldown " + pulldown + " and option " + option);
+
+		}
+
+		// Click to dropdown and corresponding option
+		
+		zClickAt(pulldownLocator, "");
+		
+		zWaitForBusyOverlay();
+		
+		zClick(optionLocator);
+		
+		zWaitForBusyOverlay();
+
+		if (page != null) {
+			page.zWaitForActive();
+		}
+
+		if ( doPostfixCheck ) {
+			// Make sure the response is delivered before proceeding
+			Stafpostqueue sp = new Stafpostqueue();
+			sp.waitForPostqueue();
+		}
+
+		return (page);
+		
+	}
+	
+	public AbsPage zPressButtonPulldown(Button pulldown, String option) throws HarnessException {
+		
+		SleepUtil.sleepMedium(); //test fails because it immidiately tries to select dropdown
+		
+		logger.info(myPageName() + " zPressButtonPulldown(" + pulldown + ", " + option + ")");
+		
+		tracer.trace("Click pulldown " + pulldown + " then " + option);
+
+		if (pulldown == null || option == null) throw new HarnessException("Button/options cannot be null!");
+		
+		String pulldownLocator = null;
+		String optionLocator = null;
+		AbsPage page = this;
+		boolean doPostfixCheck = false;
+
+		if ( pulldown == Button.B_CALENDAR ) {
+				
+			pulldownLocator = Locators.CalendarDropdown;
+			optionLocator = "css=div[id*='Menu_'] td[id$='_title']:contains('" + option + "')";
+			doPostfixCheck = false;
+			page = this;
+					
+		} else {
+
+			throw new HarnessException("No logic defined for pulldown " + pulldown + " and option " + option);
+
 		}
 
 		// Click to dropdown and corresponding option
@@ -510,7 +625,41 @@ public class DisplayMail extends AbsDisplay {
 			}
 			
 			return (page);
+			
+		} else if ( button == Button.B_ADD_TO_CALENDAR ) {
 
+			locator = attachment.getLocator() + "a[id$='_calendar']";
+			page = new DialogAddToCalendar(				
+					MyApplication, 
+					((AppAjaxClient) MyApplication).zPageMail);
+
+			this.sClick(locator);
+			
+			this.zWaitForBusyOverlay();
+
+			if ( page != null ) {
+				page.zWaitForActive();
+			}
+			
+			return (page);
+
+		} else if ( button == Button.B_BRIEFCASE ) {
+			
+		    locator = attachment.getLocator() + "a[id$='_briefcase']";
+			page = new DialogAddToBriefcase(				
+					MyApplication, 
+					((AppAjaxClient) MyApplication).zPageMail);
+
+			this.sClick(locator);
+			
+			this.zWaitForBusyOverlay();
+
+			if ( page != null ) {
+				page.zWaitForActive();
+			}
+			
+			return (page);
+			
 		} else if ( button == Button.B_ADD_TO_MY_FILES ) {
 			
 			locator = "implement me!";
@@ -586,6 +735,41 @@ public class DisplayMail extends AbsDisplay {
 			locator = "implement me!";
 			page = null;
 			
+		} else if ( action == Action.A_HOVEROVER ) {
+			
+			locator = attachment.getLocator() + "a[id$='_main']";
+			page = new TooltipImage(MyApplication);
+			
+			// If another tooltip is active, sometimes it takes a few seconds for the new text to show
+			// So, wait if the tooltip is already active
+			// Don't wait if the tooltip is not active
+			//
+			
+			if (page.zIsActive()) {
+				
+				// Mouse over
+				this.sMouseOver(locator);
+				this.zWaitForBusyOverlay();
+				
+				// Wait for the new text
+				SleepUtil.sleep(5000);
+				
+				// Make sure the tooltip is active
+				page.zWaitForActive();
+
+			} else {
+				
+				// Mouse over
+				this.sMouseOver(locator);
+				this.zWaitForBusyOverlay();
+
+				// Make sure the tooltip is active
+				page.zWaitForActive();
+
+			}
+						
+			return (page);
+			
 		} else {
 			throw new HarnessException("implement me!  action = "+ action);
 		}
@@ -597,6 +781,77 @@ public class DisplayMail extends AbsDisplay {
 
 		// default return command
 		return (page);
+
+	}
+	
+	/**
+	 * Get a list of bubble objects form the field
+	 * @param field - must be To, Cc, Bcc
+	 * @return
+	 * @throws HarnessException
+	 */
+	public List<AbsBubble> zListGetBubbles(Field field) throws HarnessException {
+		logger.info("DisplayMail.zListGetBubbles(" + field + ")");
+
+		List<AbsBubble> bubbles = new ArrayList<AbsBubble>();
+		String locator = null;
+		String fieldLocator = null;
+		
+		if ( field == Field.To ) {
+		
+			fieldLocator = " tr[id$='_to'] ";
+
+		} else if ( field == Field.Cc ) {
+			
+			fieldLocator = " tr[id$='_cc'] ";
+			
+		} else if ( field == Field.From ) {
+			
+			fieldLocator = " tr[id$='_from'] ";
+
+		} else if ( field == Field.OnBehalfOf ) {
+			
+			fieldLocator = " tr[id$='_obo'] ";
+
+		} else if ( field == Field.ResentFrom ) {
+			
+			fieldLocator = " tr[id$='_bwo'] ";
+
+		} else if ( field == Field.ReplyTo ) {
+			
+			fieldLocator = " tr[id$='_reply to'] ";
+
+		} else if ( field == Field.Bcc ) {
+
+			throw new HarnessException("implement me");
+
+		} else {
+			
+			throw new HarnessException("no logic defined for field "+ field);
+			
+		}
+
+		
+		// Determine how many bubles are listed
+		locator = this.ContainerLocator + fieldLocator + " td[class~='LabelColValue'] span[class='addrBubble']";
+		
+		int count = this.sGetCssCount(locator);
+		
+		for (int i = 1; i <= count; i++) {
+			
+			locator = this.ContainerLocator + fieldLocator + " td[class~='LabelColValue']>span:nth-of-type("+ i +")";
+			
+			// Create a new bubble item
+			AbsBubble bubble = new BubbleEmailAddress(MyApplication);
+			bubble.parseBubble(locator);
+			
+			// Add the item to the list
+			bubbles.add(bubble);
+			
+		}
+				
+		return(bubbles);
+
 
 	}
 	
@@ -684,8 +939,111 @@ public class DisplayMail extends AbsDisplay {
 
 
 	}
-
 	
+	public String zGetHtmlMailBodyText(Field field ) throws HarnessException {
+		if ( field == Field.Body) {
+
+			try {
+				this.sSelectFrame("css=iframe[id$='_body_ifr']");
+				String bodyhtml = this.sGetHtmlSource();
+				return bodyhtml;				
+			} finally {
+				// Make sure to go back to the original iframe
+				this.sSelectFrame("relative=top");
+			}
+		} else {
+			throw new HarnessException("not implemented for field "+ field);
+		}
+
+	}
+
+	public String zGetMailPropertyAsText(Field field) throws HarnessException {
+
+		//String source = null;
+
+		if ( field == Field.Body) {
+
+			try {
+				String bodyLocator= "css=div[class='ZmComposeView'] textarea[id$='_body']";
+				this.sFocus(bodyLocator);
+				this.zClick(bodyLocator);
+				logger.info(this.sGetValue(bodyLocator));
+				String BodyText=this.sGetValue(bodyLocator);
+				return (BodyText);
+				
+			
+				
+			} finally {
+				// Make sure to go back to the original iframe
+				//this.sSelectFrame("relative=top");
+			}
+
+		} else if ( field == Field.Subject ) {
+			
+			String locator = Locators.zSubjectField;
+			this.sFocus(locator);
+			this.zClick(locator);
+			logger.info(this.sGetValue(locator));
+			String Subject=this.sGetValue(locator);
+			return (Subject);
+			
+			// FALL THROUGH
+			
+		} else {
+			throw new HarnessException("not implemented for field "+ field);
+		}
+	}
+	
+	public void zVerifySignaturePlaceInText(String placeOfSignature,
+			String signatureBody, String mode) throws HarnessException {
+		int indexOfSignature;
+		int indexOfOrignalMsg;
+		mode = mode.toLowerCase();
+		String displayedBody = this.zGetMailPropertyAsText(Field.Body);// obj.zEditor.zGetInnerText("");
+		indexOfSignature = displayedBody.indexOf(signatureBody);
+		if (mode.equals("forward")) {
+			indexOfOrignalMsg = displayedBody.indexOf("Forwarded Message");
+		} else {
+			indexOfOrignalMsg = displayedBody.indexOf("Original Message");
+		}
+
+		if (placeOfSignature.equals("AboveIncludedMsg")) {
+			Assert.assertTrue(indexOfSignature <= indexOfOrignalMsg,
+					"The signature body " + signatureBody
+					+ " is  displayed above the Mail body");
+
+		} else if (placeOfSignature.equals("BelowIncludedMsg")) {
+			Assert.assertTrue(indexOfSignature > indexOfOrignalMsg,
+					"The signature body " + signatureBody
+					+ " is  displayed below the Mail body");
+		}
+	}
+
+	public void zVerifySignaturePlaceInHTML(String placeOfSignature,
+			String signatureBody, String mode) throws HarnessException {
+		int indexOfSignature;
+		int indexOfOrignalMsg;
+		mode = mode.toLowerCase();
+		String displayedBody = this.zGetHtmlMailBodyText(Field.Body);// obj.zEditor.zGetInnerText("");
+		indexOfSignature = displayedBody.indexOf(signatureBody);
+		if (mode.equals("forward")) {
+			indexOfOrignalMsg = displayedBody.indexOf("From");
+		} else {
+			indexOfOrignalMsg = displayedBody.indexOf("From");
+		}
+
+		if (placeOfSignature.equals("AboveIncludedMsg")) {
+			Assert.assertTrue(indexOfSignature <= indexOfOrignalMsg,
+					"The signature body " + signatureBody
+					+ " is  displayed above the Mail body");
+
+		} else if (placeOfSignature.equals("BelowIncludedMsg")) {
+			Assert.assertTrue(indexOfSignature > indexOfOrignalMsg,
+					"The signature body " + signatureBody
+					+ " is  displayed below the Mail body");
+		}
+	}
+		
 	/**
 	 * Get the string value of the specified field
 	 * @return the displayed string value
@@ -746,7 +1104,9 @@ public class DisplayMail extends AbsDisplay {
 
 		} else if ( field == Field.OnBehalfOf ) {
 			
-			locator = this.ContainerLocator + " td[id$='_obo'] span[id$='_com_zimbra_email'] span span";
+			//locator = this.ContainerLocator + " td[id$='_obo'] span[id$='_com_zimbra_email'] span span";
+			locator = this.ContainerLocator + "td[id$='_from'] span[id$='_com_zimbra_email'] span:contains(on behalf of)";
+			
 			if ( !sIsElementPresent(locator) ) {
 				// no email zimlet case
 				locator = this.ContainerLocator + " td[id$='_obo']";
@@ -844,7 +1204,7 @@ public class DisplayMail extends AbsDisplay {
 		
 		if ( field == Field.From ) {
 			
-			locator = this.ContainerLocator + " td[id$='_from'] span[id$='_com_zimbra_email'] span";
+			locator = this.ContainerLocator + " td[id$='_from'] span[class='addrBubble']";
 
 		} else {
 			throw new HarnessException("Logic not defined for field="+ field);

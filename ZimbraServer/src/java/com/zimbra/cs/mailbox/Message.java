@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox;
@@ -211,12 +213,15 @@ public class Message extends MailItem {
     private ArrayList<CalendarItemInfo> calendarItemInfos;
     private String calendarIntendedFor;
 
+    Message(Mailbox mbox, UnderlyingData ud) throws ServiceException {
+        this(mbox, ud, false);
+    }
 
     /**
      * this one will call back into decodeMetadata() to do our initialization.
      */
-    Message(Mailbox mbox, UnderlyingData ud) throws ServiceException {
-        super(mbox, ud);
+    Message(Mailbox mbox, UnderlyingData ud, boolean skipCache) throws ServiceException {
+        super(mbox, ud, skipCache);
         if (mData.type != Type.MESSAGE.toByte()  && mData.type != Type.CHAT.toByte()) {
             throw new IllegalArgumentException();
         }
@@ -633,6 +638,47 @@ public class Message extends MailItem {
         return false;
     }
 
+    /**
+     * Return the value of the "X-Zimbra-Calendar-Intended-For" header if present and non-empty.
+     */
+    private static String getCalendarIntendedFor(MimeMessage msg) {
+        String headerVal;
+        try {
+            headerVal = msg.getHeader(CalendarMailSender.X_ZIMBRA_CALENDAR_INTENDED_FOR, null);
+        } catch (MessagingException e) {
+            ZimbraLog.calendar.warn("ignoring error while checking for %s header on incoming message",
+                    CalendarMailSender.X_ZIMBRA_CALENDAR_INTENDED_FOR, e);
+            return null;
+        }
+        if (headerVal == null || headerVal.length() == 0) {
+            return null;
+        }
+        return headerVal;
+    }
+
+    /**
+     * If this invite doesn't appear in the mailbox for this user, this will retrieve details for it if it is in
+     * a shared calendar that this user manages.
+     */
+    public com.zimbra.soap.mail.type.CalendarItemInfo getRemoteCalendarItem(Invite invite) {
+        com.zimbra.soap.mail.type.CalendarItemInfo remoteCalendarItem = null;
+        String headerVal;
+        try {
+            headerVal = getCalendarIntendedFor(getMimeMessage());
+            if (headerVal != null && headerVal.length() > 0) {
+                AccountAddressMatcher acctMatcher = new AccountAddressMatcher(mMailbox.getAccount());
+                if (!acctMatcher.matches(headerVal) && manageCalendar(headerVal)) {
+                    Provisioning prov = Provisioning.getInstance();
+                    Account ownerAcct = prov.get(AccountBy.name, headerVal);
+                    remoteCalendarItem = mMailbox.getRemoteCalItemByUID(ownerAcct, invite.getUid(), true, false);
+                }
+            }
+        } catch (ServiceException e) {
+            return null;
+        }
+        return remoteCalendarItem;
+    }
+
     private class ProcessInvitesStatus {
         // since this is the first time we've seen this Invite Message, we need to process it
         // and see if it updates an existing CalendarItem in the database table, or whatever...
@@ -654,21 +700,15 @@ public class Message extends MailItem {
 
         ProcessInvitesStatus(Account acct, ParsedMessage pm) throws ServiceException {
             account = acct;
-            try {
-                String headerVal = pm.getMimeMessage().getHeader(CalendarMailSender.X_ZIMBRA_CALENDAR_INTENDED_FOR, null);
-                if (headerVal != null && headerVal.length() > 0) {
-                    isForwardedInvite = true;
-                    intendedForAddress = headerVal;
-                    intendedForMe = getAcctMatcher().matches(headerVal);
-                    if (!intendedForMe) {
-                        calendarIntendedFor = headerVal;
-                        intendedForCalendarIManage = manageCalendar(calendarIntendedFor);
-                    }
+            String headerVal = getCalendarIntendedFor(pm.getMimeMessage());
+            if (headerVal != null && headerVal.length() > 0) {
+                isForwardedInvite = true;
+                intendedForAddress = headerVal;
+                intendedForMe = getAcctMatcher().matches(headerVal);
+                if (!intendedForMe) {
+                    calendarIntendedFor = headerVal;
+                    intendedForCalendarIManage = manageCalendar(calendarIntendedFor);
                 }
-            } catch (MessagingException e) {
-                ZimbraLog.calendar.warn(
-                        "ignoring error while checking for " + CalendarMailSender.X_ZIMBRA_CALENDAR_INTENDED_FOR +
-                        " header on incoming message", e);
             }
         }
 
@@ -743,31 +783,8 @@ public class Message extends MailItem {
             }
             if (!canInvite) {
                 Invite invite = invites.get(0);
-                boolean sameDomain = false;
-                if (senderAcct != null) {
-                    String senderDomain = senderAcct.getDomainName();
-                    sameDomain = senderDomain != null && senderDomain.equalsIgnoreCase(acct.getDomainName());
-                }
-                boolean directAttendee =
-                        DebugConfig.calendarEnableInviteDeniedReplyForUnlistedAttendee
-                        || invite.getMatchingAttendee(acct) != null;
-                // Send auto replies only to users in the same domain and if addressed directly as an attendee,
-                // not indirectly via a mailing list.
-                if (acct.isPrefCalendarSendInviteDeniedAutoReply() && senderEmail != null && sameDomain && directAttendee) {
-                    RedoableOp redoPlayer = octxt != null ? octxt.getPlayer() : null;
-                    RedoLogProvider redoProvider = RedoLogProvider.getInstance();
-                    // Don't generate auto-reply email during redo playback or if delivering to a system account. (e.g. archiving, galsync, ham/spam)
-                    boolean needAutoReply =
-                            applyToCalendar &&  // no auto-reply when processing as message-only
-                            redoProvider.isMaster() &&
-                            (redoPlayer == null || redoProvider.getRedoLogManager().getInCrashRecovery()) &&
-                            !acct.isIsSystemResource();
-                    if (needAutoReply) {
-                        ItemId origMsgId = new ItemId(getMailbox(), getId());
-                        CalendarMailSender.sendInviteDeniedMessage(
-                                octxt, acct, senderAcct, onBehalfOf, true, getMailbox(), origMsgId, senderEmail, invite);
-                    }
-                }
+                CalendarMailSender.handleInviteAutoDeclinedNotification(octxt, getMailbox(), acct,
+                        senderEmail, senderAcct, onBehalfOf, applyToCalendar, getId(), invite);
                 String inviteSender = senderEmail != null ? senderEmail : "unknown sender";
                 ZimbraLog.calendar.info("Calendar invite from %s to %s is not allowed", inviteSender, acct.getName());
 

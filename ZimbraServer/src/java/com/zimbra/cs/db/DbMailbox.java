@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.db;
@@ -30,17 +32,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.zimbra.cs.db.DbPool.DbConnection;
-import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.MailboxVersion;
-import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.db.DbPool.DbConnection;
+import com.zimbra.cs.mailbox.MailServiceException;
+import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxVersion;
+import com.zimbra.cs.mailbox.Metadata;
 
 /**
  * @since Oct 28, 2004
@@ -293,7 +296,11 @@ public final class DbMailbox {
             data.version = MailboxVersion.getCurrent();
             return data;
         } catch (SQLException e) {
-            throw ServiceException.FAILURE("writing new mailbox row for account " + accountId, e);
+        	if (Db.errorMatches(e, Db.Error.DUPLICATE_ROW)) {
+                throw MailServiceException.ALREADY_EXISTS(accountId, e);
+        	} else {
+               throw ServiceException.FAILURE("writing new mailbox row for account " + accountId, e);
+        	}
         } finally {
             DbPool.closeResults(rs);
             DbPool.closeStatement(stmt);
@@ -403,8 +410,9 @@ public final class DbMailbox {
             Collections.reverse(tables);
 
             for (String tableName : tables) {
-                if (tableName == null)
+                if (tableName == null) {
                     continue;
+                }
 
                 PreparedStatement stmt = null;
                 try {
@@ -438,8 +446,9 @@ public final class DbMailbox {
     }
 
     public static void renameMailbox(Mailbox mbox, String newName) throws ServiceException {
-        if (DebugConfig.externalMailboxDirectory)
+        if (DebugConfig.externalMailboxDirectory) {
             return;
+        }
 
         int mailboxId = mbox.getId();
         ZimbraLog.mailbox.info("Renaming email/comment of mailbox " + mailboxId + " to " + newName);
@@ -630,6 +639,27 @@ public final class DbMailbox {
         }
     }
 
+    public static void deleteConfig(Mailbox mbox, String sectionPart) throws ServiceException {
+        DbConnection conn = mbox.getOperationConnection();
+        PreparedStatement stmt = null;
+        try {
+            stmt = conn.prepareStatement("DELETE FROM " + qualifyZimbraTableName(mbox, TABLE_METADATA) +
+                    " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND + "section like ?");
+            int pos = 1;
+            if (!DebugConfig.disableMailboxGroups) {
+                stmt.setInt(pos++, mbox.getId());
+            }
+            stmt.setString(pos++, sectionPart);
+            stmt.executeUpdate();
+            stmt.close();
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE(
+                    "delete metadata sections like '" + sectionPart + "' in mailbox " + mbox.getId(), e);
+        } finally {
+            DbPool.closeStatement(stmt);
+        }
+    }
+
     public static void updateVersion(Mailbox mbox, MailboxVersion version) throws ServiceException {
         DbConnection conn = mbox.getOperationConnection();
         PreparedStatement stmt = null;
@@ -660,6 +690,22 @@ public final class DbMailbox {
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw ServiceException.FAILURE("setting mailbox last_purge_at to '" + (int) (lastPurgeAt / 1000) + "' in mailbox " + mbox.getId(), e);
+        } finally {
+            DbPool.closeStatement(stmt);
+        }
+    }
+
+    public static void incrementItemcacheCheckpoint(Mailbox mbox) throws ServiceException {
+        DbConnection conn = mbox.getOperationConnection();
+        PreparedStatement stmt = null;
+        try {
+            stmt = conn.prepareStatement("UPDATE " + qualifyZimbraTableName(mbox, TABLE_MAILBOX) +
+                    " SET itemcache_checkpoint = itemcache_checkpoint + 1 WHERE id = ?");
+            int pos = 1;
+            pos = DbMailItem.setMailboxId(stmt, mbox, pos++);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("incrementing mailbox itemcache_checkpoint", e);
         } finally {
             DbPool.closeStatement(stmt);
         }
@@ -697,6 +743,31 @@ public final class DbMailbox {
             return result;
         } catch (SQLException e) {
             throw ServiceException.FAILURE("fetching mailboxes", e);
+        } finally {
+            DbPool.closeResults(rs);
+            DbPool.closeStatement(stmt);
+        }
+    }
+
+    public static int getMailboxId(DbConnection conn, String accountId) throws ServiceException {
+
+        if (DebugConfig.externalMailboxDirectory) {
+            return -1;
+        }
+
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            stmt = conn.prepareStatement("SELECT id FROM mailbox WHERE account_id = ?");
+            int pos = 1;
+            stmt.setString(pos++, accountId);
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return -1;
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("fetching mailboxId", e);
         } finally {
             DbPool.closeResults(rs);
             DbPool.closeStatement(stmt);
@@ -793,8 +864,11 @@ public final class DbMailbox {
         }
     }
 
-    public static final int CHANGE_CHECKPOINT_INCREMENT = Math.max(1, LC.zimbra_mailbox_change_checkpoint_frequency.intValue());
-    public static final int ITEM_CHECKPOINT_INCREMENT   = 20;
+    // For AlwaysOn, checkpoint for every item/change.
+    //public static final int CHANGE_CHECKPOINT_INCREMENT = Math.max(1, LC.zimbra_mailbox_change_checkpoint_frequency.intValue());
+    //public static final int ITEM_CHECKPOINT_INCREMENT   = 20;
+    public static final int CHANGE_CHECKPOINT_INCREMENT = 1;
+    public static final int ITEM_CHECKPOINT_INCREMENT   = 1;
 
     public static Mailbox.MailboxData getMailboxStats(DbConnection conn, int mailboxId) throws ServiceException {
         // no locking check because it's a mailbox-level op done before the Mailbox object is instantiated...
@@ -802,14 +876,15 @@ public final class DbMailbox {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            if (DebugConfig.disableMailboxGroups)
+            if (DebugConfig.disableMailboxGroups) {
                 Db.getInstance().registerDatabaseInterest(conn, getDatabaseName(mailboxId));
+            }
 
             // note that if groups are disabled, mailboxId == groupId
             stmt = conn.prepareStatement(
                     "SELECT account_id," + (DebugConfig.disableMailboxGroups ? mailboxId : " group_id") + "," +
                     " size_checkpoint, contact_count, item_id_checkpoint, change_checkpoint, tracking_sync," +
-                    " tracking_imap, index_volume_id, last_soap_access, new_messages, version" +
+                    " tracking_imap, index_volume_id, last_soap_access, new_messages, version, itemcache_checkpoint" +
                     " FROM " + qualifyZimbraTableName(mailboxId, TABLE_MAILBOX) + " WHERE id = ?");
             stmt.setInt(1, mailboxId);
 
@@ -845,6 +920,7 @@ public final class DbMailbox {
             if (version != null) {
                 mbd.version = MailboxVersion.parse(version);
             }
+            mbd.itemcacheCheckpoint = rs.getInt(pos++);
 
             // round lastItemId and lastChangeId up so that they get written on the next change
             mbd.lastItemId += ITEM_CHECKPOINT_INCREMENT - 1;
@@ -947,8 +1023,9 @@ public final class DbMailbox {
     }
 
     private static void addToDeletedAccount(DbConnection conn, Mailbox mbox) throws ServiceException {
-        if (DebugConfig.externalMailboxDirectory)
+        if (DebugConfig.externalMailboxDirectory) {
             return;
+        }
 
         // Get email address for mailbox by querying the mailbox table.  We can't get it by
         // calling mbox.getAccount().getName() because the account was already deleted from LDAP.
@@ -1031,10 +1108,10 @@ public final class DbMailbox {
     }
 
     public static class DeletedAccount {
-        private String mEmail;
-        private String mAccountId;
-        private int mMailboxId;
-        private long mDeletedAt;
+        private final String mEmail;
+        private final String mAccountId;
+        private final int mMailboxId;
+        private final long mDeletedAt;
 
         public DeletedAccount(String email, String accountId, int mailboxId, long deletedAt) {
             mEmail = email;
@@ -1168,7 +1245,7 @@ public final class DbMailbox {
     }
 
     public static void optimize(DbConnection conn, Mailbox mbox, int level) throws ServiceException {
-        assert(mbox.lock.isLocked());
+        assert(mbox.lock.isWriteLockedByCurrentThread());
 
         String name = getDatabaseName(mbox);
 
@@ -1222,5 +1299,4 @@ public final class DbMailbox {
 
         return groups;
     }
-
 }

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -88,12 +90,13 @@ public class FolderAction extends ItemAction {
     public static final String OP_RETENTIONPOLICY = "retentionpolicy";
     public static final String OP_DISABLE_ACTIVESYNC = "disableactivesync";
     public static final String OP_ENABLE_ACTIVESYNC = '!' + OP_DISABLE_ACTIVESYNC;
-    
+    public static final String OP_WEBOFFLINESYNCDAYS = "webofflinesyncdays";
+
 
     private static final Set<String> FOLDER_OPS = ImmutableSet.of(
         OP_EMPTY, OP_REFRESH, OP_SET_URL, OP_IMPORT, OP_FREEBUSY, OP_CHECK, OP_UNCHECK, OP_GRANT,
         OP_REVOKE, OP_REVOKEORPHANGRANTS, OP_UPDATE, OP_SYNCON, OP_SYNCOFF, OP_RETENTIONPOLICY,
-        OP_DISABLE_ACTIVESYNC, OP_ENABLE_ACTIVESYNC
+        OP_DISABLE_ACTIVESYNC, OP_ENABLE_ACTIVESYNC, OP_WEBOFFLINESYNCDAYS
     );
 
     @Override public Element handle(Element request, Map<String, Object> context) throws ServiceException {
@@ -291,6 +294,9 @@ public class FolderAction extends ItemAction {
                 new RetentionPolicy(action.getElement(MailConstants.E_RETENTION_POLICY)));
         } else if (operation.equals(OP_DISABLE_ACTIVESYNC) || operation.equals(OP_ENABLE_ACTIVESYNC)) {
             mbox.setActiveSyncDisabled(octxt, iid.getId(), operation.equals(OP_DISABLE_ACTIVESYNC));
+        } else if (operation.equals(OP_WEBOFFLINESYNCDAYS)) {
+            mbox.setFolderWebOfflineSyncDays(octxt, iid.getId(),
+                    action.getAttributeInt(MailConstants.A_NUM_DAYS));
         } else {
             throw ServiceException.INVALID_REQUEST("unknown operation: " + operation, null);
         }
@@ -313,9 +319,9 @@ public class FolderAction extends ItemAction {
             byte gtype   = ACL.stringToType(grant.getAttribute(MailConstants.A_GRANT_TYPE));
             short rights = ACL.stringToRights(grant.getAttribute(MailConstants.A_RIGHTS));
             long expiry = gtype == ACL.GRANTEE_PUBLIC ?
-                    validateGrantExpiry(eAcl.getAttribute(MailConstants.A_EXPIRY, null),
+                    validateGrantExpiry(grant.getAttribute(MailConstants.A_EXPIRY, null),
                             AccountUtil.getMaxPublicShareLifetime(account, folderType)) :
-                    eAcl.getAttributeLong(MailConstants.A_EXPIRY, 0);
+                    grant.getAttributeLong(MailConstants.A_EXPIRY, 0);
 
             String secret = null;
             if (gtype == ACL.GRANTEE_KEY) {

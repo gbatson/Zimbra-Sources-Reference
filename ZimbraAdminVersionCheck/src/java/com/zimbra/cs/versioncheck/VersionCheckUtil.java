@@ -1,35 +1,38 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.versioncheck;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Date;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import com.zimbra.common.util.ZimbraLog;
+
 import com.zimbra.common.account.Key;
-import com.zimbra.common.account.Key.ServerBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.util.CliUtil;
+import com.zimbra.common.util.DateUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
@@ -39,7 +42,6 @@ import com.zimbra.cs.client.soap.LmcVersionCheckRequest;
 import com.zimbra.cs.client.soap.LmcVersionCheckResponse;
 import com.zimbra.cs.util.BuildInfo;
 import com.zimbra.cs.util.SoapCLI;
-import com.zimbra.common.util.DateUtil;
 /**
  * @author Greg Solovyev
  */
@@ -47,11 +49,11 @@ public class VersionCheckUtil extends SoapCLI {
     private static final String OPT_CHECK_VERSION = "c";
     private static final String OPT_MANUAL_CHECK_VERSION = "m";
     private static final String SHOW_LAST_STATUS = "r";
-    
+
     protected VersionCheckUtil() throws ServiceException {
         super();
     }
-    
+
     public static void main(String[] args) {
         CliUtil.toolSetup();
         SoapTransport.setDefaultUserAgent("zmcheckversion", BuildInfo.VERSION);
@@ -73,32 +75,32 @@ public class VersionCheckUtil extends SoapCLI {
                 util.usage();
                 System.exit(1);
             }
-            
+
             if (cl == null) {
                 System.exit(1);
             }
-            
-            if (cl.hasOption(OPT_CHECK_VERSION)) {
+
+            if (cl.hasOption(OPT_CHECK_VERSION) || cl.hasOption(OPT_MANUAL_CHECK_VERSION)) {
             	//check schedule
         		Provisioning prov = Provisioning.getInstance();
         		Config config;
         		config = prov.getConfig();
             	String updaterServerId = config.getAttr(Provisioning.A_zimbraVersionCheckServer);
-            	
+
                 if (updaterServerId != null) {
                     Server server = prov.get(Key.ServerBy.id, updaterServerId);
                     if (server != null) {
                     	Server localServer = prov.getLocalServer();
-                    	if (localServer!=null) { 
+                    	if (localServer!=null) {
                     		if(!localServer.getId().equalsIgnoreCase(server.getId())) {
                     			System.out.println("Wrong server");
                     			System.exit(0);
                     		}
                     	}
                     }
-                }        		
+                }
         		String versionInterval = config.getAttr(Provisioning.A_zimbraVersionCheckInterval);
-        		if(versionInterval == null || versionInterval.length()==0 || versionInterval.equalsIgnoreCase("0")) {
+        		if (cl.hasOption(OPT_CHECK_VERSION) && (versionInterval == null || versionInterval.length()==0 || versionInterval.equalsIgnoreCase("0"))) {
         			System.out.println("Automatic updates are disabled");
         			System.exit(0);
         		} else {
@@ -117,8 +119,6 @@ public class VersionCheckUtil extends SoapCLI {
         				util.doVersionCheck();
         			}
         		}
-            } else if (cl.hasOption(OPT_MANUAL_CHECK_VERSION)) {
-                util.doVersionCheck();
             } else if (cl.hasOption(SHOW_LAST_STATUS)) {
                 util.doResult();
                 System.exit(0);
@@ -133,7 +133,7 @@ public class VersionCheckUtil extends SoapCLI {
             System.exit(1);
         }
     }
-    
+
     private void doVersionCheck() throws SoapFaultException, IOException, ServiceException, LmcSoapClientException {
         LmcSession session = auth();
         LmcVersionCheckRequest req = new LmcVersionCheckRequest();
@@ -141,7 +141,7 @@ public class VersionCheckUtil extends SoapCLI {
         req.setSession(session);
         req.invoke(getServerUrl());
     }
-    
+
     private void doResult() throws SoapFaultException, IOException, ServiceException, LmcSoapClientException {
     	try {
 	    	LmcSession session = auth();
@@ -150,20 +150,20 @@ public class VersionCheckUtil extends SoapCLI {
 	        req.setSession(session);
 	        LmcVersionCheckResponse res = (LmcVersionCheckResponse) req.invoke(getServerUrl());
 	    	List <VersionUpdate> updates = res.getUpdates();
-	    	
+
 	    	for(Iterator <VersionUpdate> iter = updates.iterator();iter.hasNext();){
 	    		VersionUpdate update = iter.next();
 	    		String critical;
 	    		if(update.isCritical()) {
 	    			critical = "critical";
-	    		} else { 
+	    		} else {
 	    			critical = "not critical";
 	    		}
 	    		System.out.println(
-	    				String.format("Found a %s update. Update is %s . Update version: %s. For more info visit: %s", 
+	    				String.format("Found a %s update. Update is %s . Update version: %s. For more info visit: %s",
 	    						update.getType(),critical,update.getVersion(),update.getUpdateURL())
-	   			);   		
-	    	}   
+	   			);
+	    	}
     	} catch (SoapFaultException soape) {
     		System.out.println("Cought SoapFaultException");
     		System.out.println(soape.getStackTrace().toString());
@@ -182,16 +182,18 @@ public class VersionCheckUtil extends SoapCLI {
     		throw (ioe);
     	}
     }
-    
+
+    @Override
     protected void setupCommandLineOptions() {
        // super.setupCommandLineOptions();
         Options options = getOptions();
         Options hiddenOptions = getHiddenOptions();
-        hiddenOptions.addOption(OPT_CHECK_VERSION, "autocheck", false, "Initiate version check request (exits if zimbraVersionCheckInterval==0)");        
+        hiddenOptions.addOption(OPT_CHECK_VERSION, "autocheck", false, "Initiate version check request (exits if zimbraVersionCheckInterval==0)");
         options.addOption(SHOW_LAST_STATUS, "result", false, "Show results of last version check.");
         options.addOption(OPT_MANUAL_CHECK_VERSION, "manual", false, "Initiate version check request.");
     }
-    
+
+    @Override
     protected String getCommandUsage() {
         return "zmcheckversion <options>";
     }

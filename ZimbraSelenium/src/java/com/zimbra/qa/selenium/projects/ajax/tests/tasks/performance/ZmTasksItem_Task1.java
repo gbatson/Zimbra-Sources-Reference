@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks.performance;
@@ -39,56 +41,58 @@ public class ZmTasksItem_Task1 extends AjaxCommonTest{
    }
 
    @Test(description="Measure the time to view a task",
-         groups={"performance"})
-   public void ZmTasksItem_01() throws HarnessException {
-      String subject1 = "task1"+ ZimbraSeleniumProperties.getUniqueString();
-      String subject2 = "task2"+ ZimbraSeleniumProperties.getUniqueString();
+		   groups={"performance"})
+		   public void ZmTasksItem_01() throws HarnessException {
+	   String subject1 = "task1"+ ZimbraSeleniumProperties.getUniqueString();
+	   String subject2 = "task2"+ ZimbraSeleniumProperties.getUniqueString();
 
-      // Create 2 tasks because by default when the latest one on the list
-      // will be selected, thus selecting the first one to measure the performance
-      app.zGetActiveAccount().soapSend(
-            "<CreateTaskRequest xmlns='urn:zimbraMail'>" +
-            "<m >" +
-            "<inv>" +
-            "<comp name='"+ subject1 +"'>" +
-            "<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
-            "</comp>" +
-            "</inv>" +
-            "<su>"+ subject1 +"</su>" +
-            "<mp ct='text/plain'>" +
-            "<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
-            "</mp>" +
-            "</m>" +
-      "</CreateTaskRequest>");
+	   // Create 2 tasks because by default when the latest one on the list
+	   // will be selected, thus selecting the first one to measure the performance
+	   app.zGetActiveAccount().soapSend(
+			   "<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+			   "<m >" +
+			   "<inv>" +
+			   "<comp name='"+ subject1 +"'>" +
+			   "<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+			   "</comp>" +
+			   "</inv>" +
+			   "<su>"+ subject1 +"</su>" +
+			   "<mp ct='text/plain'>" +
+			   "<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+			   "</mp>" +
+			   "</m>" +
+	   "</CreateTaskRequest>");
 
-      FolderItem taskFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(),
-            SystemFolder.Tasks);
+	   FolderItem taskFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(),
+			   SystemFolder.Tasks);
 
-      // Create the second item
-      app.zGetActiveAccount().soapSend(
-            "<CreateTaskRequest xmlns='urn:zimbraMail'>" +
-            "<m >" +
-            "<inv>" +
-            "<comp name='"+ subject2 +"'>" +
-            "<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
-            "</comp>" +
-            "</inv>" +
-            "<su>"+ subject2 +"</su>" +
-            "<mp ct='text/plain'>" +
-            "<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
-            "</mp>" +
-            "</m>" +
-      "</CreateTaskRequest>");
+	   // Create the second item
+	   app.zGetActiveAccount().soapSend(
+			   "<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+			   "<m >" +
+			   "<inv>" +
+			   "<comp name='"+ subject2 +"'>" +
+			   "<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+			   "</comp>" +
+			   "</inv>" +
+			   "<su>"+ subject2 +"</su>" +
+			   "<mp ct='text/plain'>" +
+			   "<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+			   "</mp>" +
+			   "</m>" +
+	   "</CreateTaskRequest>");
 
-      // Refresh the tasks view
-      app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
+	   // Refresh the tasks view
+	   app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
 
-      PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmTaskItem,
-            "Load the Task item");
+	   PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmTaskItem,
+	   "Load the Task item");
 
-      // Select the item
-      app.zPageTasks.zListItem(Action.A_LEFTCLICK, subject1);
+	   // Select the item
+	   // app.zPageTasks.zListItem(Action.A_LEFTCLICK, subject1);
 
-      PerfMetrics.waitTimestamp(token);
+	   app.zPageTasks.zClickAt("css=div[id='zl__TKL__rows'] div[id^='zli__TKL'] td[id$='_su']:contains('"+subject1+"')","");
+
+	   PerfMetrics.waitTimestamp(token);
    }
 }

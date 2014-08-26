@@ -1,25 +1,31 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.store.http;
 
 import java.io.File;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.io.Files;
@@ -27,6 +33,9 @@ import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.FileUtil;
 import com.zimbra.cs.account.MockProvisioning;
+import com.zimbra.cs.db.DbMailItem;
+import com.zimbra.cs.db.DbPool;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.MailboxTest;
@@ -101,5 +110,55 @@ public class HttpStoreManagerTest extends AbstractExternalStoreManagerTest {
 
         mbox.deleteMailbox();
         Assert.assertEquals("end with no blobs in the store", 0, MockHttpStore.size());
+    }
+
+    @Test
+    public void fail() throws Exception {
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        int count = countMailItems(mbox);
+        MockHttpStore.setFail();
+        try {
+            mbox.addMessage(null, MailboxTestUtil.generateMessage("test"), MailboxTest.STANDARD_DELIVERY_OPTIONS, null).getId();
+            Assert.fail("expected exception not thrown");
+        } catch (ServiceException expected) {
+
+        }
+        Assert.assertEquals(count, countMailItems(mbox));
+    }
+
+    @Ignore("long running test")
+    @Test
+    public void timeout() throws Exception {
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        int count = countMailItems(mbox);
+        MockHttpStore.setDelay();
+        try {
+            mbox.addMessage(null, MailboxTestUtil.generateMessage("test"), MailboxTest.STANDARD_DELIVERY_OPTIONS, null).getId();
+            Assert.fail("expected exception not thrown");
+        } catch (ServiceException expected) {
+
+        }
+        Assert.assertEquals(count, countMailItems(mbox));
+    }
+
+
+    private int countMailItems(Mailbox mbox) throws ServiceException, SQLException {
+        DbConnection connection = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            connection = DbPool.getConnection();
+            stmt = connection.prepareStatement("select count(*) from " + DbMailItem.getMailItemTableName(mbox));
+            rs = stmt.executeQuery();
+            rs.next();
+            return rs.getInt(1);
+        } finally {
+            DbPool.closeResults(rs);
+            DbPool.closeStatement(stmt);
+            if (connection != null) {
+                connection.closeQuietly();
+            }
+        }
+
     }
 }

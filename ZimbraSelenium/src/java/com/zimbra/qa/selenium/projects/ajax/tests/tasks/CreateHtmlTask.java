@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
@@ -17,7 +19,8 @@ package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
 import java.util.HashMap;
 import org.testng.annotations.Test;
 
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
+import com.zimbra.common.soap.Element;
+import com.zimbra.qa.selenium.framework.items.FileItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.items.TaskItem;
@@ -35,6 +38,7 @@ import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew;
 import com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew.Field;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.PageTasks.Locators;
 
 public class CreateHtmlTask extends AjaxCommonTest {
 
@@ -64,9 +68,10 @@ public class CreateHtmlTask extends AjaxCommonTest {
 		//taskNew.zToolbarPressPulldown(Button.B_OPTIONS, Button.O_OPTION_FORMAT_AS_HTML);	
 			
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load 
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}
+		//}
 		// Fill out the resulting form
 		taskNew.zFillField(Field.Subject, subject);
 		taskNew.zFillField(Field.HtmlBody, taskHtmlbody);
@@ -102,9 +107,10 @@ public class CreateHtmlTask extends AjaxCommonTest {
 		//Pull down Options drop down and select Format As Html option
 		//taskNew.zToolbarPressPulldown(Button.B_OPTIONS, Button.O_OPTION_FORMAT_AS_HTML);
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load 
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}
+		//}
 		//Fill out resulting form		
 		taskNew.zFillField(Field.Subject, subject);
 		taskNew.zFillField(Field.HtmlBody, taskHtmlbody);
@@ -137,9 +143,10 @@ public class CreateHtmlTask extends AjaxCommonTest {
 		//Pull down Options drop down and select Format As Html option
 		//taskNew.zToolbarPressPulldown(Button.B_OPTIONS, Button.O_OPTION_FORMAT_AS_HTML);
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load 
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}
+		//}
 
 		// Fill out the resulting form
 		taskNew.zFillField(Field.Subject, subject);
@@ -163,7 +170,7 @@ public class CreateHtmlTask extends AjaxCommonTest {
 	 * @throws HarnessException
 	 */
 	@Test(description = "Create new Html task using keyboard shortcut 'NK'- Verify through Soap", groups = { "smoke" })
-	public void CreateTask_04() throws HarnessException {
+	public void CreateHtmlTask_04() throws HarnessException {
 
 		Shortcut shortcut = Shortcut.S_NEWTASK;
 		String subject = "task" + ZimbraSeleniumProperties.getUniqueString();
@@ -176,9 +183,10 @@ public class CreateHtmlTask extends AjaxCommonTest {
 		//Pull down Options drop down and select Format As Html option
 		//taskNew.zToolbarPressPulldown(Button.B_OPTIONS, Button.O_OPTION_FORMAT_AS_HTML);
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load 
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}
+		//}
 
 		// Fill out the resulting form
 		taskNew.zFillField(Field.Subject, subject);
@@ -195,7 +203,7 @@ public class CreateHtmlTask extends AjaxCommonTest {
 
 	@Test(	description = "Create Html Tasks, using 'Right Click' Html Mail subject -> 'Create Task'-Verify through Soap",
 			groups = { "smoke" })
-	public void CreateTask_05() throws HarnessException {
+	public void CreateHtmlTask_05() throws HarnessException {
 
 		app.zPageMail.zNavigateTo();
 		
@@ -250,5 +258,113 @@ public class CreateHtmlTask extends AjaxCommonTest {
 		ZAssert.assertEquals(task.getName(), subject, "Verify task subject");
 		ZAssert.assertStringContains(task.getHtmlTaskBody().trim().toLowerCase(), taskHtmlbody.trim(), "Verify the html content of task body");
 	}
+	
+	@Test(description = "Create Html task with attachment through RestUtil - verify through GUI", groups = { "smoke" })
+	public void CreateHtmlTask_06() throws HarnessException {
+		ZimbraAccount account = app.zGetActiveAccount();
+		FolderItem taskFolder = FolderItem.importFromSOAP(account, SystemFolder.Tasks);
+
+		String subject = "task"+ ZimbraSeleniumProperties.getUniqueString();
+		String taskHtmlbody = "task<b>bold"+ ZimbraSeleniumProperties.getUniqueString()+"</b>task";
+		String contentHTML = XmlStringUtil.escapeXml("<html>"+"<body>"+"<div>"+taskHtmlbody+"</div>"+"</body>"+"</html>");		
+		String filePath = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/Files/Basic01/BasicExcel2007.xlsx";
+		
+		// Upload file to server through RestUtil
+		String attachmentId = account.uploadFile(filePath);	
+		
+		app.zGetActiveAccount().soapSend(
+				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+				"<m >" +
+				"<inv>" +
+				"<comp name='"+ subject +"'>" +
+				"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+				"</comp>" +
+				"</inv>" +
+				"<su>"+ subject +"</su>" +
+				"<mp ct='multipart/alternative'>" +
+				"<mp ct='text/plain'>" +
+				"<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+				"</mp>" +
+				"<mp ct='text/html'>" +
+				"<content>"+contentHTML+"</content>" +
+				"</mp>" +
+				"</mp>" +
+				"<attach aid='"+attachmentId+"'>"+
+				"</attach>" +
+				"</m>" +
+		"</CreateTaskRequest>");
+
+		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
+		ZAssert.assertStringContains(task.getHtmlTaskBody().trim().toLowerCase(), taskHtmlbody.trim(), "Verify the html content of task body");
+
+		// Refresh the tasks view
+		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
+
+		// Select the item
+		app.zPageTasks.zListItem(Action.A_LEFTCLICK, subject);
+		ZAssert.assertTrue(app.zPageTasks.sIsElementPresent(Locators.zAttachmentsLabel),"Verify Attachments: label");
+		
+
+	}
+	
+	@Test(description = "Create Html task with attachment through RestUtil - verify through Soap", groups = { "smoke" })
+	public void CreateHtmlTask_07() throws HarnessException {
+		ZimbraAccount account = app.zGetActiveAccount();
+		FolderItem taskFolder = FolderItem.importFromSOAP(account, SystemFolder.Tasks);
+
+		String subject = "task" + ZimbraSeleniumProperties.getUniqueString();
+		String taskHtmlbody = "task<b>bold"	+ ZimbraSeleniumProperties.getUniqueString() + "</b>task";
+		String contentHTML = XmlStringUtil.escapeXml("<html>" + "<body>"
+				+ "<div>" + taskHtmlbody + "</div>" + "</body>" + "</html>");
+		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
+		+ "/data/public/Files/Basic01/BasicExcel2007.xlsx";
+		FileItem file = new FileItem(filePath);
+		String fileName = file.getName();
+
+		// Upload file to server through RestUtil
+		String attachmentId = account.uploadFile(filePath);	
+
+		app.zGetActiveAccount().soapSend(
+				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+				"<m >" +
+				"<inv>" +
+				"<comp name='"+ subject +"'>" +
+				"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+				"</comp>" +
+				"</inv>" +
+				"<su>"+ subject +"</su>" +
+				"<mp ct='multipart/alternative'>" +
+				"<mp ct='text/plain'>" +
+				"<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+				"</mp>" +
+				"<mp ct='text/html'>" +
+				"<content>"+contentHTML+"</content>" +
+				"</mp>" +
+				"</mp>" +
+				"<attach aid='"+attachmentId+"'>"+
+				"</attach>" +
+				"</m>" +
+		"</CreateTaskRequest>");
+
+		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
+		ZAssert.assertStringContains(task.getHtmlTaskBody().trim().toLowerCase(), taskHtmlbody.trim(), "Verify the html content of task body");
+
+		// Refresh the tasks view
+		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
+
+		account.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='task' >"
+				+ "<query>" + subject + "</query>" + "</SearchRequest>");
+
+		String invId = account.soapSelectValue("//mail:SearchResponse/mail:task", "invId");
+		account.soapSend("<GetMsgRequest xmlns='urn:zimbraMail'>" + "<m id='"
+				+ invId + "' />" + "</GetMsgRequest>");
+
+		Element getMsgResponse = account.soapSelectNode("//mail:GetMsgResponse", 1);
+		Element m = ZimbraAccount.SoapClient.selectNode(getMsgResponse,"//mail:mp[@s='9055']");
+		
+		ZAssert.assertEquals(m.getAttribute("filename", null), fileName, "Verify file name through SOAP");
+
+	}
+
 
 }

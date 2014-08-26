@@ -709,6 +709,8 @@ public class ScheduleViewModel: BaseViewModel
          importOpts.SpecialCharRep = ovm.SpecialCharReplace;
          importOpts.LangID = ovm.LangID;
          importOpts.MaxRetries = ovm.MaxRetries;
+         importOpts.IsPublicFolders = ovm.IsPublicFolders;
+         importOpts.IsZDesktop = ovm.IsZDesktop;
         return importOpts;
     }
 
@@ -777,6 +779,10 @@ public class ScheduleViewModel: BaseViewModel
         string accountname = accountResultsViewModel.AccountResultsList[num].AccountName;
         string accountid = "";
 
+        ConfigViewModelS eparams =
+                   ((ConfigViewModelS)ViewModelPtrs[(int)ViewType.SVRSRC]);
+        MyAcct.ProfileName = eparams.OutlookProfile;
+
         if (isServer)
         {
             accountname = accountname + "@" + usersViewModel.ZimbraDomain;
@@ -789,14 +795,30 @@ public class ScheduleViewModel: BaseViewModel
         }
         else
         {
-            ConfigViewModelU sourceModel =
-                ((ConfigViewModelU)ViewModelPtrs[(int)ViewType.USRSRC]);
-            ConfigViewModelUDest destModel =
-                ((ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST]);
+            if (!isDesktop)
+            {
+                ConfigViewModelU sourceModel =
+                    ((ConfigViewModelU)ViewModelPtrs[(int)ViewType.USRSRC]);
+                ConfigViewModelUDest destModel =
+                    ((ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST]);
 
-            accountname = ZimbraValues.GetZimbraValues().AccountName;//accountname + "@" + destModel.ZimbraServerHostName;
-            accountid = (sourceModel.IspST) ? sourceModel.PSTFile :
-                sourceModel.ProfileList[sourceModel.CurrentProfileSelection];
+                accountname = ZimbraValues.GetZimbraValues().AccountName;//accountname + "@" + destModel.ZimbraServerHostName;
+                accountid = (sourceModel.IspST) ? sourceModel.PSTFile :
+                    sourceModel.ProfileList[sourceModel.CurrentProfileSelection];
+            }
+            else
+            {
+
+                ConfigViewModelZU sourceModel =
+                    ((ConfigViewModelZU)ViewModelPtrs[(int)ViewType.ZDSRC]);
+                ConfigViewModelUDest destModel =
+                    ((ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST]);
+
+                accountname = ZimbraValues.GetZimbraValues().AccountName;//accountname + "@" + destModel.ZimbraServerHostName;
+                accountid = (sourceModel.IspST) ? sourceModel.PSTFile :
+                    sourceModel.ProfileList[sourceModel.CurrentProfileSelection];
+
+            }
         }
         MyAcct.AccountName = accountname;
         MyAcct.AccountID = accountid;
@@ -873,7 +895,7 @@ public class ScheduleViewModel: BaseViewModel
             if ((!(MyAcct.IsValid)) && (MyAcct.TotalErrors > 0))
             {
                 Log.info(" in DOWORK -- Migration failed for usernum: " + MyAcct.AccountNum + " and threadnum" + tnum);
-                accountResultsViewModel.AccountResultsList[num].PBMsgValue = "Migration Failed - Invalid account";
+                accountResultsViewModel.AccountResultsList[num].PBMsgValue = MyAcct.LastProblemInfo.Msg;//"Migration Failed - Invalid account";
                 accountResultsViewModel.AccountResultsList[num].AcctProgressMsg = "Failed";
             }
             else
@@ -928,17 +950,15 @@ public class ScheduleViewModel: BaseViewModel
         }
         else if (e.Error != null)
         {
-            Log.info(" in worker_RunWorkerCompleted -- thread errored  ");
             accountResultsViewModel.PBMsgValue = "Migration exception: " + e.Error.ToString();
-            Log.info(" in worker_RunWorkerCompleted -- thread errored with message  ",e.Error.ToString());
+            Log.err(" in worker_RunWorkerCompleted -- thread errored with message  ",e.Error.ToString());
         }
         else
         {
             if (!m_isPreview)
             {
                 accountResultsViewModel.PBMsgValue = "Migration complete";
-                Log.info(" in worker_RunWorkerCompleted -- Migration completed ");
-                Log.info(" in worker_RunWorkerCompleted -- Migration completed lets cehck overflow count and it is",overflowList.Count);
+                Log.info(" in worker_RunWorkerCompleted -- Migration completed lets check overflow count and it is", overflowList.Count);
                 if (overflowList.Count == 0)
                 {
                     Log.info(" in worker_RunWorkerCompleted -- Migration completed overflowcount is zero");

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #include "common.h"
@@ -53,8 +55,8 @@ MAPIContact::MAPIContact(Zimbra::MAPI::MAPISession &session,
     pr_business_address_state = 0, pr_business_address_street = 0, pr_contact_user1_idx = 0,
     pr_contact_user2_idx = 0, pr_contact_user3_idx = 0, pr_contact_user4_idx = 0,
     pr_contact_oneoffmemebrs = 0, pr_imaddress = 0;
-    pr_anniversary = 0;
-
+    pr_anniversary = 0, pr_department = 0, pr_nickname = 0, pr_assistantphone = 0, pr_business2_phone = 0, pr_company_phone = 0, pr_primary_phone = 0;
+	//, pr_primary_phone = 0
     // init named props
     nameIds[0] = 0x8083;
     nameIds[1] = 0x8085;
@@ -82,9 +84,12 @@ MAPIContact::MAPIContact(Zimbra::MAPI::MAPISession &session,
     nameIds[23] = 0x8054;
     nameIds[24] = 0x8062;
 
+    m_pAssistantPhone = L"";
     m_pCallbackPhone = L"";
     m_pCarPhone = L"";
     m_pCompany = L"";
+    m_pCompanyPhone = L"";
+    m_pDepartment = L"";
     m_pEmail = L"";
     m_pEmail2 = L"";
     m_pEmail3 = L"";
@@ -115,10 +120,12 @@ MAPIContact::MAPIContact(Zimbra::MAPI::MAPISession &session,
     m_pOtherStreet = L"";
     m_pOtherURL = L"";
     m_pPager = L"";
+    m_pPrimaryPhone = L"";
     m_pWorkCity = L"";
     m_pWorkCountry = L"";
     m_pWorkFax = L"";
     m_pWorkPhone = L"";
+    m_pWorkPhone2 = L"";
     m_pWorkPostalCode = L"";
     m_pWorkState = L"";
     m_pWorkStreet = L"";
@@ -210,8 +217,13 @@ HRESULT MAPIContact::Init()
     pr_contact_oneoffmemebrs = SetPropType(
         pContactTags->aulPropTag[N_CONTACT_ONEOFFMEMEBRS_IDX], PT_MV_BINARY);
     pr_imaddress = SetPropType(pContactTags->aulPropTag[N_IMADDRESS], PT_TSTRING);
-
     pr_anniversary = SetPropType(pContactTags->aulPropTag[N_ANNIVERSARY], PT_TSTRING);
+    pr_department = SetPropType(pContactTags->aulPropTag[N_DEPARTMENT], PT_TSTRING);
+    pr_nickname = SetPropType(pContactTags->aulPropTag[N_NICKNAME], PT_TSTRING);
+    pr_assistantphone = SetPropType(pContactTags->aulPropTag[N_ASSISTANT_TELEPHONE_NUMBER], PT_TSTRING);
+    pr_business2_phone = SetPropType(pContactTags->aulPropTag[N_OFFICE2_TELEPHONE_NUMBER], PT_TSTRING);
+    pr_company_phone = SetPropType(pContactTags->aulPropTag[N_COMPANY_MAIN_PHONE_NUMBER], PT_TSTRING);
+    pr_primary_phone = SetPropType(pContactTags->aulPropTag[N_PRIMARY_TELEPHONE_NUMBER], PT_TSTRING);
     // free the memory we allocated on the head
     for (int i = 0; i < N_NUM_NAMES; i++)
         MAPIFreeBuffer(ppNames[i]);
@@ -239,7 +251,7 @@ HRESULT MAPIContact::Init()
             pr_business_address_street, PR_BUSINESS_HOME_PAGE, PR_BIRTHDAY,
             pr_contact_user1_idx, pr_contact_user2_idx, pr_contact_user3_idx,
             pr_contact_user4_idx, pr_contact_oneoffmemebrs, pr_imaddress,
-            PR_WEDDING_ANNIVERSARY
+            PR_WEDDING_ANNIVERSARY, PR_DEPARTMENT_NAME, PR_NICKNAME, PR_ASSISTANT_TELEPHONE_NUMBER, PR_OFFICE2_TELEPHONE_NUMBER, PR_COMPANY_MAIN_PHONE_NUMBER, PR_PRIMARY_TELEPHONE_NUMBER
         }
     };
 
@@ -284,9 +296,21 @@ HRESULT MAPIContact::Init()
         }
     }
     // process all "String" properties
+    if (m_pPropVals[C_ASSISTANT_TELEPHONE_NUMBER].ulPropTag ==
+        contactProps.aulPropTag[C_ASSISTANT_TELEPHONE_NUMBER])
+        AssistantPhone(m_pPropVals[C_ASSISTANT_TELEPHONE_NUMBER].Value.lpszW);
     if (m_pPropVals[C_CALLBACK_TELEPHONE_NUMBER].ulPropTag ==
         contactProps.aulPropTag[C_CALLBACK_TELEPHONE_NUMBER])
         CallbackPhone(m_pPropVals[C_CALLBACK_TELEPHONE_NUMBER].Value.lpszW);
+    if (m_pPropVals[C_COMPANY_MAIN_PHONE_NUMBER].ulPropTag ==
+        contactProps.aulPropTag[C_COMPANY_MAIN_PHONE_NUMBER])
+        CompanyPhone(m_pPropVals[C_COMPANY_MAIN_PHONE_NUMBER].Value.lpszW);
+    if (m_pPropVals[C_DEPARTMENT].ulPropTag ==
+        contactProps.aulPropTag[C_DEPARTMENT])
+        Department(m_pPropVals[C_DEPARTMENT].Value.lpszW);
+    if (m_pPropVals[C_NICKNAME].ulPropTag ==
+        contactProps.aulPropTag[C_NICKNAME])
+        NickName(m_pPropVals[C_NICKNAME].Value.lpszW);
     if (m_pPropVals[C_CAR_TELEPHONE_NUMBER].ulPropTag ==
         contactProps.aulPropTag[C_CAR_TELEPHONE_NUMBER])
         CarPhone(m_pPropVals[C_CAR_TELEPHONE_NUMBER].Value.lpszW);
@@ -381,6 +405,9 @@ HRESULT MAPIContact::Init()
     if (m_pPropVals[C_OTHER_ADDRESS_COUNTRY].ulPropTag ==
         contactProps.aulPropTag[C_OTHER_ADDRESS_COUNTRY])
         OtherCountry(m_pPropVals[C_OTHER_ADDRESS_COUNTRY].Value.lpszW);
+    if (m_pPropVals[C_PRIMARY_TELEPHONE_NUMBER].ulPropTag ==
+        contactProps.aulPropTag[C_PRIMARY_TELEPHONE_NUMBER])
+        PrimaryPhone(m_pPropVals[C_PRIMARY_TELEPHONE_NUMBER].Value.lpszW);
     if (m_pPropVals[C_PRIMARY_FAX_NUMBER].ulPropTag ==
         contactProps.aulPropTag[C_PRIMARY_FAX_NUMBER])
         OtherFax(m_pPropVals[C_PRIMARY_FAX_NUMBER].Value.lpszW);
@@ -411,6 +438,9 @@ HRESULT MAPIContact::Init()
     if (m_pPropVals[C_OFFICE_TELEPHONE_NUMBER].ulPropTag ==
         contactProps.aulPropTag[C_OFFICE_TELEPHONE_NUMBER])
         WorkPhone(m_pPropVals[C_OFFICE_TELEPHONE_NUMBER].Value.lpszW);
+    if (m_pPropVals[C_OFFICE2_TELEPHONE_NUMBER].ulPropTag ==
+        contactProps.aulPropTag[C_OFFICE2_TELEPHONE_NUMBER])
+        WorkPhone2(m_pPropVals[C_OFFICE2_TELEPHONE_NUMBER].Value.lpszW);
     if (m_pPropVals[C_BUSINESS_ADDRESS_POSTAL_CODE].ulPropTag ==
         contactProps.aulPropTag[C_BUSINESS_ADDRESS_POSTAL_CODE])
         WorkPostalCode(m_pPropVals[C_BUSINESS_ADDRESS_POSTAL_CODE].Value.lpszW);

@@ -1,22 +1,26 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.index;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Objects;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -34,14 +39,21 @@ import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.Server;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.service.mail.ToXML.OutputParticipants;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.base.CalTZInfoInterface;
+import com.zimbra.soap.base.SearchParameters;
+import com.zimbra.soap.mail.type.MailSearchParams;
+import com.zimbra.soap.type.AttributeName;
+import com.zimbra.soap.type.CursorInfo;
+import com.zimbra.soap.type.WantRecipsSetting;
+import com.zimbra.soap.type.ZmBoolean;
 
 /**
  * Encapsulates all parameters in a search request.
@@ -52,8 +64,11 @@ import com.zimbra.soap.ZimbraSoapContext;
  */
 public final class SearchParams implements Cloneable {
 
+	private static final int DEFAULT_LIMIT = 10; // Default limit per query
     private static final int MAX_OFFSET = 10000000; // 10M
+    private static final int MAX_PARSABLE_LIMIT = 1000; // 1K
     private static final int MAX_LIMIT = 10000000; // 10M
+
     private final static Pattern LOCALE_PATTERN = Pattern.compile("([a-zA-Z]{2})(?:[-_]([a-zA-Z]{2})([-_](.+))?)?");
 
     private ZimbraSoapContext requestContext;
@@ -74,10 +89,11 @@ public final class SearchParams implements Cloneable {
     private boolean wantExpandGroupInfo = false;
     private boolean neuterImages = false;
     private Set<String> inlinedHeaders;
-    private String recipients;
+    private OutputParticipants recipients;
     private long calItemExpandStart = -1;
     private long calItemExpandEnd = -1;
     private boolean inDumpster = false;  // search live data or dumpster data
+    private boolean fullConversation = false;  // All messages in a matching conversation should be returned
 
     /** If FALSE, then items with the \Deleted tag set are not returned. */
     private boolean includeTagDeleted = false;
@@ -162,13 +178,7 @@ public final class SearchParams implements Cloneable {
     }
 
     public OutputParticipants getWantRecipients() {
-        if (StringUtil.equal(recipients, "2")) {
-            return OutputParticipants.PUT_BOTH;
-        } else if (StringUtil.equal(recipients, "1")) {
-            return OutputParticipants.PUT_RECIPIENTS;
-        } else {
-            return OutputParticipants.PUT_SENDERS;
-        }
+        return recipients;
     }
 
     public TimeZone getTimeZone() {
@@ -217,6 +227,14 @@ public final class SearchParams implements Cloneable {
 
     public void setInDumpster(boolean value) {
         inDumpster = value;
+    }
+
+    public boolean fullConversation() {
+        return fullConversation;
+    }
+
+    public void setFullConversation(boolean value) {
+        fullConversation = value;
     }
 
     public void setHopCount(int value) {
@@ -363,8 +381,20 @@ public final class SearchParams implements Cloneable {
         inlinedHeaders.add(value);
     }
 
-    public void setWantRecipients(String value) {
-        recipients = value;
+    public void setWantRecipients(WantRecipsSetting jaxbValue) {
+        recipients = OutputParticipants.fromJaxb(jaxbValue);
+    }
+
+    public void setWantRecipients(Integer value) {
+        if (value == null) {
+            recipients = OutputParticipants.PUT_SENDERS;
+        } else if (2 == value) {
+            recipients = OutputParticipants.PUT_BOTH;
+        } else if (1 == value) {
+            recipients = OutputParticipants.PUT_RECIPIENTS;
+        } else {
+            recipients = OutputParticipants.PUT_SENDERS;
+        }
     }
 
     public void setTimeZone(TimeZone value) {
@@ -436,7 +466,9 @@ public final class SearchParams implements Cloneable {
                 el.addElement(MailConstants.A_HEADER).addAttribute(MailConstants.A_ATTRIBUTE_NAME, name);
             }
         }
-        el.addAttribute(MailConstants.A_RECIPIENTS, recipients);
+        if (recipients != null) {
+            el.addAttribute(MailConstants.A_RECIPIENTS, recipients.getIntValue());
+        }
 
         if (getLocale() != null) {
             el.addElement(MailConstants.E_LOCALE).setText(getLocale().toString());
@@ -455,6 +487,106 @@ public final class SearchParams implements Cloneable {
 
         // skip cursor data
     }
+
+    /**
+     * Parse the search parameters from a {@code <SearchRequest>} or similar element.
+     *
+     * @param request {@code <SearchRequest>} itself, or similar element ({@code <SearchConvRequest>}, etc)
+     * @param requestedAccount account who's mailbox we should search in
+     * @param zsc SoapContext of the request
+     */
+    public static SearchParams parse(SearchParameters soapParams, ZimbraSoapContext zsc, String defaultQueryStr)
+            throws ServiceException {
+        SearchParams params = new SearchParams();
+
+        params.requestContext = zsc;
+        params.setHopCount(zsc.getHopCount());
+        params.setCalItemExpandStart(Objects.firstNonNull(soapParams.getCalItemExpandStart(), -1L));
+        params.setCalItemExpandEnd(Objects.firstNonNull(soapParams.getCalItemExpandEnd(), -1L));
+        String query = soapParams.getQuery() == null ? defaultQueryStr : soapParams.getQuery();
+        if (query == null) {
+            throw ServiceException.INVALID_REQUEST("no query submitted and no default query found", null);
+        }
+        params.setQueryString(query);
+        params.setInDumpster(Objects.firstNonNull(soapParams.getInDumpster(), false));
+        params.setQuick(Objects.firstNonNull(soapParams.getQuick(), false));
+        String types = soapParams.getSearchTypes() == null ? soapParams.getGroupBy() : soapParams.getSearchTypes();
+        if (Strings.isNullOrEmpty(types)) {
+            params.setTypes(EnumSet.of(params.isQuick() ? MailItem.Type.MESSAGE : MailItem.Type.CONVERSATION));
+        } else {
+            params.setTypes(types);
+        }
+        params.setSortBy(soapParams.getSortBy());
+
+        params.setIncludeTagDeleted(Objects.firstNonNull(soapParams.getIncludeTagDeleted(), false));
+        params.setIncludeTagMuted(Objects.firstNonNull(soapParams.getIncludeTagMuted(), true));
+        String allowableTasks = soapParams.getAllowableTaskStatus();
+        if (allowableTasks != null) {
+            params.allowableTaskStatuses = new HashSet<TaskHit.Status>();
+            for (String task : Splitter.on(',').split(allowableTasks)) {
+                try {
+                    TaskHit.Status status = TaskHit.Status.valueOf(task.toUpperCase());
+                    params.allowableTaskStatuses.add(status);
+                } catch (IllegalArgumentException e) {
+                    ZimbraLog.index.debug("Skipping unknown task completion status: %s", task);
+                }
+            }
+        }
+
+        params.setInlineRule(ExpandResults.valueOf(soapParams.getFetch(), zsc));
+        if (params.getInlineRule() != ExpandResults.NONE) {
+            params.setMarkRead(Objects.firstNonNull(soapParams.getMarkRead(), false));
+            params.setMaxInlinedLength(Objects.firstNonNull(soapParams.getMaxInlinedLength(), -1));
+            params.setWantHtml(Objects.firstNonNull(soapParams.getWantHtml(), false));
+            params.setWantExpandGroupInfo(Objects.firstNonNull(soapParams.getNeedCanExpand(), false));
+            params.setNeuterImages(Objects.firstNonNull(soapParams.getNeuterImages(), true));
+            for (AttributeName hdr : soapParams.getHeaders()) {
+                params.addInlinedHeader(hdr.getName());
+            }
+        }
+        params.setWantRecipients(soapParams.getWantRecipients());
+
+        CalTZInfoInterface calTZ = soapParams.getCalTz();
+        if (calTZ != null) {
+            params.setTimeZone(parseTimeZonePart(calTZ));
+        }
+
+        String locale = soapParams.getLocale();
+        if (locale != null) {
+            params.setLocale(parseLocale(locale));
+        }
+
+        params.setPrefetch(Objects.firstNonNull(soapParams.getPrefetch(), true));
+        String resultMode = soapParams.getResultMode();
+        if (!Strings.isNullOrEmpty(resultMode)) {
+            try {
+                params.setFetchMode(Fetch.valueOf(resultMode.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw ServiceException.INVALID_REQUEST(
+                        String.format("Invalid %s \"%s\"", MailConstants.A_RESULT_MODE, resultMode), e);
+            }
+        }
+
+        String field = params.getDefaultField();
+        if (field != null) {
+            params.setDefaultField(field);
+        }
+
+        params.setLimit(parseLimit(soapParams.getLimit()));
+        params.setOffset(Objects.firstNonNull(soapParams.getOffset(), 0));
+
+        CursorInfo cursor = soapParams.getCursor();
+        if (cursor != null) {
+            params.parseCursor(cursor, zsc.getRequestedAccountId());
+        }
+
+        if (soapParams instanceof MailSearchParams) {
+            MailSearchParams mailParams = (MailSearchParams) soapParams;
+            params.setFullConversation(ZmBoolean.toBool(mailParams.getFullConversation(), false));
+        }
+        return params;
+    }
+
 
     /**
      * Parse the search parameters from a {@code <SearchRequest>} or similar element.
@@ -512,7 +644,7 @@ public final class SearchParams implements Cloneable {
                 params.addInlinedHeader(elt.getAttribute(MailConstants.A_ATTRIBUTE_NAME));
             }
         }
-        params.setWantRecipients(request.getAttribute(MailConstants.A_RECIPIENTS, null));
+        params.setWantRecipients((int) request.getAttributeLong(MailConstants.A_RECIPIENTS, 0));
 
         Element tz = request.getOptionalElement(MailConstants.E_CAL_TZ);
         if (tz != null) {
@@ -562,6 +694,36 @@ public final class SearchParams implements Cloneable {
         cursor.sortValue = el.getAttribute(MailConstants.A_SORTVAL, null); // optional
         cursor.endSortValue = el.getAttribute(MailConstants.A_ENDSORTVAL, null); // optional
         cursor.includeOffset = el.getAttributeBool(MailConstants.A_INCLUDE_OFFSET, false); // optional
+    }
+
+    /**
+     * Parse a cursor element.
+     *
+     * @param cursorInfo cursor element taken from a {@code <SearchRequest>}
+     * @param acctId requested account id
+     */
+    public void parseCursor(CursorInfo cursorInfo, String acctId) throws ServiceException {
+        cursor = new Cursor();
+        if (null == cursorInfo.getId()) {
+                throw ServiceException.INVALID_REQUEST("Invalid ID for " + MailConstants.E_CURSOR, null);
+        }
+        cursor.itemId = new ItemId(cursorInfo.getId(), acctId);
+        cursor.sortValue = cursorInfo.getSortVal(); // optional
+        cursor.endSortValue = cursorInfo.getEndSortVal(); // optional
+        cursor.includeOffset = Objects.firstNonNull(cursorInfo.getIncludeOffset(), false); // optional
+    }
+
+    private static TimeZone parseTimeZonePart(CalTZInfoInterface calTZ) throws ServiceException {
+        String id = calTZ.getId();
+
+        // is it a well-known timezone?  if so then we're done here
+        ICalTimeZone knownTZ = WellKnownTimeZones.getTimeZoneById(id);
+        if (knownTZ != null) {
+            return knownTZ;
+        }
+
+        // custom timezone!
+        return CalendarUtils.parseTimeZone(calTZ);
     }
 
     private static TimeZone parseTimeZonePart(Element tzElt) throws ServiceException {
@@ -620,14 +782,17 @@ public final class SearchParams implements Cloneable {
         return null;
     }
 
-    private static int parseLimit(Element request) throws ServiceException {
-        int limit = request.getAttributeInt(MailConstants.A_QUERY_LIMIT, -1);
-        if (limit <= 0) {
-            limit = 10;
-        } else if (limit > 1000) {
-            limit = 1000;
+    private static int parseLimit(Integer limit) throws ServiceException {
+        if ((null == limit) || (limit <= 0)) {
+            return DEFAULT_LIMIT;
+        } else if (limit > MAX_PARSABLE_LIMIT) {
+            return MAX_PARSABLE_LIMIT;
         }
         return limit;
+    }
+
+    private static int parseLimit(Element request) throws ServiceException {
+        return parseLimit(request.getAttributeInt(MailConstants.A_QUERY_LIMIT, -1));
     }
 
     @Override
@@ -697,6 +862,29 @@ public final class SearchParams implements Cloneable {
          */
         public static final ExpandResults ALL = new ExpandResults("all");
 
+        /**
+         * For searchConv: expand only the first message in the conversation
+         */
+        public static final ExpandResults FIRST_MSG = new ExpandResults("first-msg");
+
+        /**
+         * For searchConv: if there are matching hits, expand them, otherwise expand the first message in the conversation
+         */
+        public static final ExpandResults HITS_OR_FIRST_MSG = new ExpandResults("hits!");
+
+        /**
+         * For searchConv: if there are unread matching hits, expand them, otherwise expand first message in the conversation
+         * This is a little ambiguous - should 1st msg be expanded if there are no matching hits at all, or if there are no UNREAD matching hits?
+         * For now, expand 1st msg if there are no UNREAD matching hits (or no matching hits at all, obviously)
+         */
+        public static final ExpandResults U_OR_FIRST_MSG = new ExpandResults("u!");
+
+        /**
+         * For searchConv: if there are unread matching hits, expand them, otherwise expand first hit AND first message in conversation
+         * Somewhat ambiguous: what to do if no matching hits? For now, expand the first message.
+         */
+        public static final ExpandResults U1_OR_FIRST_MSG = new ExpandResults("u1!");
+
         private static final Map<String, ExpandResults> MAP = ImmutableMap.<String, ExpandResults>builder()
             .put(NONE.name, NONE).put("0", NONE).put("false", NONE)
             .put(FIRST.name, FIRST).put("1", FIRST)
@@ -704,26 +892,30 @@ public final class SearchParams implements Cloneable {
             .put(UNREAD_FIRST.name, UNREAD_FIRST).put("u1", UNREAD_FIRST)
             .put(HITS.name, HITS)
             .put(ALL.name, ALL)
+            .put(FIRST_MSG.name, FIRST_MSG).put("!",FIRST_MSG)
+            .put(HITS_OR_FIRST_MSG.name,HITS_OR_FIRST_MSG)
+            .put(U_OR_FIRST_MSG.name,U_OR_FIRST_MSG)
+            .put(U1_OR_FIRST_MSG.name,U1_OR_FIRST_MSG).put("u!1",U1_OR_FIRST_MSG)
             .build();
 
         private final String name;
-        private ItemId itemId;
+        private List<ItemId> itemIds;
 
         private ExpandResults(String name) {
             this.name = name;
         }
 
-        private ExpandResults(String name, ItemId id) {
-            this.name = name;
-            this.itemId = id;
+        private ExpandResults(String name,List<ItemId> ids)
+        {
+        	this.name = name;
+        	this.itemIds = ids;
         }
-
         public boolean matches(MailItem item) {
-            return itemId != null && item != null && matches(new ItemId(item));
+            return itemIds != null && item != null && matches(new ItemId(item));
         }
 
         public boolean matches(ItemId id) {
-            return id != null && id.equals(itemId);
+        	return itemIds != null && itemIds.contains(id);
         }
 
         public static ExpandResults valueOf(String value, ZimbraSoapContext zsc) throws ServiceException {
@@ -736,7 +928,12 @@ public final class SearchParams implements Cloneable {
                 return result;
             }
             try {
-                return new ExpandResults(value, new ItemId(value, zsc));
+            	String[] split = value.split(",");
+            	ArrayList<ItemId> itemIds = new ArrayList<ItemId>();
+            	for (int i = 0; i < split.length; i++) {
+            		itemIds.add(new ItemId(split[i],zsc));
+            	}
+            	return new ExpandResults(value,itemIds);
             } catch (Exception e) {
                 throw ServiceException.INVALID_REQUEST("invalid 'fetch' value: " + value, null);
             }
@@ -745,6 +942,34 @@ public final class SearchParams implements Cloneable {
         @Override
         public String toString() {
             return name;
+        }
+
+        private static final Map<String, ExpandResults> LEGACY_MAP = ImmutableMap.<String, ExpandResults>builder()
+                .put(FIRST.name, FIRST).put("1", FIRST)
+                .put(HITS.name, HITS)
+                .put(ALL.name, ALL)
+                .build();
+
+        public ExpandResults toLegacyExpandResults(Server server) {
+            if (server != null && server.getServerVersion() == null) {
+                if (LEGACY_MAP.containsKey(this.name)) {
+                    return this;
+                } else {
+                    //pre 8.5; no way to know which version
+                    //assume HELIX as lowest common - fetch="1|hits|all|{item-id}"
+                    ExpandResults mapped = ALL;
+                    if (this == FIRST_MSG || this == U_OR_FIRST_MSG || this == U1_OR_FIRST_MSG) {
+                        mapped = FIRST;
+                    } else if (this == HITS_OR_FIRST_MSG) {
+                        mapped = HITS;
+                    }
+                    ZimbraLog.search.debug("mapped current ExpandResults %s to %s for legacy server %s", this, mapped, server.getName());
+                    return mapped;
+                }
+            } else {
+                //for now 8.5+ supports the same set of expands; would add code here if 8.6 or 9.0 changes it
+                return this;
+            }
         }
     }
 

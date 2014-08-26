@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -17,7 +19,6 @@ package generated.zcsclient.mail;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
 
@@ -31,7 +32,11 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;complexContent>
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
  *       &lt;sequence>
- *         &lt;element ref="{urn:zimbraMail}folder"/>
+ *         &lt;choice minOccurs="0">
+ *           &lt;element ref="{urn:zimbraMail}folder"/>
+ *           &lt;element ref="{urn:zimbraMail}link"/>
+ *           &lt;element ref="{urn:zimbraMail}search"/>
+ *         &lt;/choice>
  *       &lt;/sequence>
  *     &lt;/restriction>
  *   &lt;/complexContent>
@@ -42,12 +47,15 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "getFolderResponse", propOrder = {
-    "folder"
+    "folder",
+    "link",
+    "search"
 })
 public class testGetFolderResponse {
 
-    @XmlElement(required = true)
     protected testFolder folder;
+    protected testMountpoint link;
+    protected testSearchFolder search;
 
     /**
      * Gets the value of the folder property.
@@ -71,6 +79,54 @@ public class testGetFolderResponse {
      */
     public void setFolder(testFolder value) {
         this.folder = value;
+    }
+
+    /**
+     * Gets the value of the link property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link testMountpoint }
+     *     
+     */
+    public testMountpoint getLink() {
+        return link;
+    }
+
+    /**
+     * Sets the value of the link property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link testMountpoint }
+     *     
+     */
+    public void setLink(testMountpoint value) {
+        this.link = value;
+    }
+
+    /**
+     * Gets the value of the search property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link testSearchFolder }
+     *     
+     */
+    public testSearchFolder getSearch() {
+        return search;
+    }
+
+    /**
+     * Sets the value of the search property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link testSearchFolder }
+     *     
+     */
+    public void setSearch(testSearchFolder value) {
+        this.search = value;
     }
 
 }

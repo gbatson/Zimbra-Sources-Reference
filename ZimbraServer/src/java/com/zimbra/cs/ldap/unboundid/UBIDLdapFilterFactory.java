@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.ldap.unboundid;
@@ -34,8 +36,6 @@ public class UBIDLdapFilterFactory extends ZLdapFilterFactory {
 
     @Override
     public void debug() {
-        // TODO Auto-generated method stub
-
     }
 
 
@@ -61,6 +61,7 @@ public class UBIDLdapFilterFactory extends ZLdapFilterFactory {
     private static Filter FILTER_ALL_NON_SYSTEM_ARCHIVING_ACCOUNTS;
     private static Filter FILTER_ALL_NON_SYSTEM_INTERNAL_ACCOUNTS;
     private static Filter FILTER_ALL_SERVERS;
+    private static Filter FILTER_ALL_ALWAYSONCLUSTERS;
     private static Filter FILTER_ALL_UC_SERVICES;
     private static Filter FILTER_ALL_SHARE_LOCATORS;
     private static Filter FILTER_ALL_SIGNATURES;
@@ -152,6 +153,10 @@ public class UBIDLdapFilterFactory extends ZLdapFilterFactory {
         FILTER_ALL_SERVERS =
                 Filter.createEqualityFilter(
                 LdapConstants.ATTR_objectClass, AttributeClass.OC_zimbraServer);
+
+        FILTER_ALL_ALWAYSONCLUSTERS =
+                Filter.createEqualityFilter(
+                LdapConstants.ATTR_objectClass, AttributeClass.OC_zimbraAlwaysOnCluster);
 
         FILTER_ALL_UC_SERVICES =
             Filter.createEqualityFilter(
@@ -980,6 +985,50 @@ public class UBIDLdapFilterFactory extends ZLdapFilterFactory {
                         Filter.createEqualityFilter(Provisioning.A_zimbraServiceEnabled, service)));
     }
 
+    @Override
+    public ZLdapFilter serverByAlwaysOnCluster(String clusterId) {
+        return new UBIDLdapFilter(
+                FilterId.SERVER_BY_ALWAYSONCLUSTER,
+                Filter.createANDFilter(
+                        FILTER_ALL_SERVERS,
+                        Filter.createEqualityFilter(Provisioning.A_zimbraAlwaysOnClusterId, clusterId)));
+    }
+
+    @Override
+    public ZLdapFilter serverByServiceAndAlwaysOnCluster(String service, String clusterId) {
+        if (clusterId == null) {
+            return serverByService(service);
+        } else if (service == null) {
+            return serverByAlwaysOnCluster(clusterId);
+        } else {
+            return new UBIDLdapFilter(
+                FilterId.SERVERY_BY_SERVICE_AND_ALWAYSONCLUSTER,
+                Filter.createANDFilter(
+                        FILTER_ALL_SERVERS,
+                        Filter.createEqualityFilter(Provisioning.A_zimbraServiceEnabled, service),
+                        Filter.createEqualityFilter(Provisioning.A_zimbraAlwaysOnClusterId, clusterId)));
+        }
+    }
+
+    /*
+     * alwaysOnCluster
+     */
+    @Override
+    public ZLdapFilter allAlwaysOnClusters() {
+        return new UBIDLdapFilter(
+                FilterId.ALL_ALWAYSONCLUSTERS,
+                FILTER_ALL_ALWAYSONCLUSTERS);
+    }
+
+    @Override
+    public ZLdapFilter alwaysOnClusterById(String id) {
+        return new UBIDLdapFilter(
+                FilterId.ALWAYSONCLUSTER_BY_ID,
+                Filter.createANDFilter(
+                        Filter.createEqualityFilter(Provisioning.A_zimbraId, id),
+                        FILTER_ALL_ALWAYSONCLUSTERS));
+    }
+
     /*
      * UC service
      */
@@ -1091,6 +1140,12 @@ public class UBIDLdapFilterFactory extends ZLdapFilterFactory {
                 Provisioning.A_zimbraMailDeliveryAddress, null, null, "@" + domainName);
     }
 
+    private Filter velodromeMailOrZimbraMailAliasOnDomainFilter(String domainName) {
+        return Filter.createORFilter(
+                Filter.createSubstringFilter( Provisioning.A_mail, null, null, "@" + domainName),
+                Filter.createSubstringFilter(Provisioning.A_zimbraMailAlias, null, null, "@" + domainName));
+    }
+
     @Override
     public ZLdapFilter velodromeAllAccountsByDomain(String domainName) {
         return new UBIDLdapFilter(
@@ -1150,6 +1205,34 @@ public class UBIDLdapFilterFactory extends ZLdapFilterFactory {
                         homedOnServerFilter(serverServiceHostname),
                         velodromePrimaryEmailOnDomainFilter(domainName)));
 
+    }
+
+    /**
+     * DistributionLists in customDIT do not have the "zimbraMailDeliveryAddress" attribute.
+     * From an earlier comment in CustomLdapDIT we can't tell whether the main email is "zimbraMailAlias" or "mail".
+     * So, accept either.
+     */
+    @Override
+    public ZLdapFilter velodromeAllDistributionListsByDomain(String domainName) {
+        return new UBIDLdapFilter(
+                FilterId.VELODROME_ALL_DISTRIBUTION_LISTS_BY_DOMAIN,
+                Filter.createANDFilter(
+                        FILTER_ALL_DISTRIBUTION_LISTS,
+                        velodromeMailOrZimbraMailAliasOnDomainFilter (domainName)));
+    }
+
+    /**
+     * DistributionLists in customDIT do not have the "zimbraMailDeliveryAddress" attribute.
+     * From an earlier comment in CustomLdapDIT we can't tell whether the main email is "zimbraMailAlias" or "mail".
+     * So, accept either.
+     */
+    @Override
+    public ZLdapFilter velodromeAllGroupsByDomain(String domainName) {
+        return new UBIDLdapFilter(
+                FilterId.VELODROME_ALL_GROUPS_BY_DOMAIN,
+                Filter.createANDFilter(
+                        FILTER_ALL_GROUPS,
+                        velodromeMailOrZimbraMailAliasOnDomainFilter (domainName)));
     }
 
     @Override

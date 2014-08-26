@@ -2,21 +2,24 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.mailbox.acl;
 
-import static org.junit.Assert.*;
-
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -47,7 +50,7 @@ import com.zimbra.cs.mailbox.ScheduledTaskManager;
 
 /**
  * @author zimbra
- * 
+ *
  */
 public class AclPushTest {
 
@@ -84,6 +87,7 @@ public class AclPushTest {
 		connection.close();
 	}
 
+
 	@Test
 	public void getAclPushEntriesMultipleGrantForSameItem() throws Exception {
 
@@ -96,26 +100,30 @@ public class AclPushTest {
 		Folder folder = mbox.createFolder(null, "shared",
 				new Folder.FolderOptions()
 						.setDefaultView(MailItem.Type.DOCUMENT));
-		OperationContext octxt = new OperationContext(owner);
 
+		OperationContext octxt = new OperationContext(owner);
 		Multimap<Integer, Integer> mboxIdToItemIds = null;
-		
-		synchronized (mbox) {
-			mbox.grantAccess(octxt, folder.getId(), grantee.getId(),
-					ACL.GRANTEE_USER, ACL.stringToRights("r"), null);
-			mbox.grantAccess(octxt, folder.getId(), grantee.getId(),
-					ACL.GRANTEE_USER, ACL.stringToRights("rw"), null);
-			mboxIdToItemIds = DbPendingAclPush
-					.getEntries(new Date());
-//			assertTrue(mboxIdToItemIds.size() == 1);
+		mbox.lock.lock();
+		try {
+    		mbox.grantAccess(octxt, folder.getId(), grantee.getId(),
+    				ACL.GRANTEE_USER, ACL.stringToRights("r"), null);
+    		mbox.grantAccess(octxt, folder.getId(), grantee.getId(),
+    				ACL.GRANTEE_USER, ACL.stringToRights("rw"), null);
+
+    		mboxIdToItemIds = DbPendingAclPush
+    				.getEntries(new Date());
+		} finally {
+		    mbox.lock.release();
 		}
+//		assertTrue(mboxIdToItemIds.size() == 1);
+
 		Thread.sleep(1000);
 		mboxIdToItemIds = DbPendingAclPush.getEntries(new Date());
 		assertTrue(mboxIdToItemIds.size() == 0);
 		short rights = folder.getACL().getGrantedRights(grantee);
 		assertEquals(3, rights);
-
 	}
+
 
 	@Test
 	public void getAclPushEntriesFolderNameWithSemiColon() throws Exception {
@@ -127,7 +135,7 @@ public class AclPushTest {
 				"principal@zimbra.com");
 		Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(owner);
 
-		Folder folder = mbox.createFolder(null, "shared1",
+		Folder folder = mbox.createFolder(null, "shared",
 				new Folder.FolderOptions()
 						.setDefaultView(MailItem.Type.DOCUMENT));
 		Folder folder2 = mbox.createFolder(null, "shared; hello",
@@ -135,18 +143,21 @@ public class AclPushTest {
 						.setDefaultView(MailItem.Type.DOCUMENT));
 
 		OperationContext octxt = new OperationContext(owner);
-
 		Multimap<Integer, Integer> mboxIdToItemIds = null;
-		synchronized (mbox) {
-		mbox.grantAccess(octxt, folder.getId(), grantee.getId(),
-				ACL.GRANTEE_USER, ACL.stringToRights("r"), null);
-		mbox.grantAccess(octxt, folder2.getId(), grantee.getId(),
-				ACL.GRANTEE_USER, ACL.stringToRights("rw"), null);
-		mboxIdToItemIds = DbPendingAclPush
-				.getEntries(new Date());
-//		assertTrue(mboxIdToItemIds.size() == 2);
+
+        mbox.lock.lock();
+        try {
+    		mbox.grantAccess(octxt, folder.getId(), grantee.getId(),
+    				ACL.GRANTEE_USER, ACL.stringToRights("r"), null);
+    		mbox.grantAccess(octxt, folder2.getId(), grantee.getId(),
+    				ACL.GRANTEE_USER, ACL.stringToRights("rw"), null);
+
+    		mboxIdToItemIds = DbPendingAclPush
+    				.getEntries(new Date());
+		} finally {
+		    mbox.lock.release();
 		}
- 
+//		assertTrue(mboxIdToItemIds.size() == 2);
 
 		Thread.sleep(1000);
 		mboxIdToItemIds = DbPendingAclPush.getEntries(new Date());
@@ -155,5 +166,6 @@ public class AclPushTest {
 			fail("Should not throw an exception.");
 		}
 	}
+
 
 }

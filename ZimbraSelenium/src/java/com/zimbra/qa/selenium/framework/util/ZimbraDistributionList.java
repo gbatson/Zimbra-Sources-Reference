@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.util;
@@ -23,6 +25,7 @@ public class ZimbraDistributionList {
 	public String DisplayName = null;
 	public String EmailAddress = null;
 	public String Password = null;
+	public ZimbraDomain Domain = null;
 
 	public ZimbraDistributionList() {
 		this(null, null);
@@ -53,16 +56,8 @@ public class ZimbraDistributionList {
 		try {
 
 			// Make sure domain exists
-			String domain = EmailAddress.split("@")[1];
-
-
-			// If the domain does not exist, create it
-			ZimbraAdminAccount.GlobalAdmin().soapSend(
-						"<CreateDomainRequest xmlns='urn:zimbraAdmin'>"
-					+		"<name>"+ domain +"</name>"
-					+	"</CreateDomainRequest>");
-
-
+			Domain = new ZimbraDomain( EmailAddress.split("@")[1]);
+			Domain.provision();
 
 
 			// Create the account
@@ -85,6 +80,14 @@ public class ZimbraDistributionList {
 //
 //			}
 			
+			// Need to sync the GSA
+			Domain.syncGalAccount();
+			
+			// Need to flush galgroup cache after creating a new DL (https://bugzilla.zimbra.com/show_bug.cgi?id=78970#c7)
+			ZimbraAdminAccount.GlobalAdmin().soapSend(
+					"<FlushCacheRequest  xmlns='urn:zimbraAdmin'>" +
+						"<cache type='galgroup'/>" +
+	            	"</FlushCacheRequest>");
 
 		} catch (HarnessException e) {
 
@@ -113,6 +116,15 @@ public class ZimbraDistributionList {
 				+		"<id>"+ this.ZimbraId +"</id>"
 				+		"<dlm>"+ email +"</dlm>"
 				+	"</AddDistributionListMemberRequest>");
+
+		// Sync the GSA
+		Domain.syncGalAccount();
+		
+		// Need to flush galgroup cache after creating a new DL (https://bugzilla.zimbra.com/show_bug.cgi?id=78970#c7)
+		ZimbraAdminAccount.GlobalAdmin().soapSend(
+				"<FlushCacheRequest  xmlns='urn:zimbraAdmin'>" +
+					"<cache type='galgroup'/>" +
+            	"</FlushCacheRequest>");
 
 		return (this);
 	}

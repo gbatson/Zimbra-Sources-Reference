@@ -1,20 +1,23 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
 
 import java.io.IOException;
+import java.util.Enumeration;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.Servlet;
@@ -22,10 +25,17 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
 import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.methods.GetMethod;
 
+import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.WebSplitUtil;
+import com.zimbra.common.util.ZimbraHttpConnectionManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
@@ -51,6 +61,7 @@ public class HtmlFormatter extends Formatter {
 
     private static final String ATTR_INTERNAL_DISPATCH   = "zimbra_internal_dispatch";
     private static final String ATTR_AUTH_TOKEN          = "zimbra_authToken";
+    private static final String ATTR_CSRF_ENABLED        = "zimbra_csrfEnabled";
     private static final String ATTR_TARGET_ACCOUNT_NAME = "zimbra_target_account_name";
     private static final String ATTR_TARGET_ACCOUNT_ID   = "zimbra_target_account_id";
     private static final String ATTR_TARGET_ITEM_ID      = "zimbra_target_item_id";
@@ -141,6 +152,7 @@ public class HtmlFormatter extends Formatter {
         context.req.setAttribute(ATTR_INTERNAL_DISPATCH, "yes");
         context.req.setAttribute(ATTR_REQUEST_URI, uri != null ? uri : context.req.getRequestURI());
         context.req.setAttribute(ATTR_AUTH_TOKEN, authString);
+        context.req.setAttribute(ATTR_CSRF_ENABLED, auth.isCsrfTokenEnabled());
         if (targetAccount != null) {
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_NAME, targetAccount.getName());
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_ID, targetAccount.getId());
@@ -182,12 +194,48 @@ public class HtmlFormatter extends Formatter {
             context.req.setAttribute(ATTR_TARGET_ITEM_NAME, context.fakeTarget.getName());
         }
         String mailUrl = PATH_MAIN_CONTEXT;
-        try {
-            mailUrl = Provisioning.getInstance().getLocalServer().getMailURL();
-        } catch (Exception e) {
+        if (WebSplitUtil.isZimbraServiceSplitEnabled()) {
+            mailUrl = Provisioning.getInstance().getLocalServer().getWebClientURL() + PATH_JSP_REST_PAGE;
+            HttpClient httpclient = ZimbraHttpConnectionManager.getInternalHttpConnMgr().getDefaultHttpClient();
+            /*
+             * Retest the code with POST to check whether it works
+            PostMethod postMethod = new PostMethod(mailUrl);
+            Enumeration<String> attributeNames = context.req.getAttributeNames();
+            List<Part> parts = new ArrayList<Part>();
+            while(attributeNames.hasMoreElements())
+            {
+                String attrName = (String) attributeNames.nextElement();
+                String attrValue = context.req.getAttribute(attrName).toString();
+                Part part = new StringPart(attrName, attrValue);
+                parts.add(part);
+            }
+            postMethod.setRequestEntity(new MultipartRequestEntity(parts.toArray(new Part[0]), new HttpMethodParams()));
+
+            HttpClientUtil.executeMethod(httpclient, postMethod);
+            ByteUtil.copy(postMethod.getResponseBodyAsStream(), true, context.resp.getOutputStream(), true);
+            */
+
+            Enumeration<String> attributeNames = context.req.getAttributeNames();
+            StringBuilder sb = new StringBuilder(mailUrl);
+            sb.append("?");
+            while(attributeNames.hasMoreElements())
+            {
+                String attrName = attributeNames.nextElement();
+                String attrValue = context.req.getAttribute(attrName).toString();
+                sb.append(attrName).append("=").append(HttpUtil.urlEscape(attrValue)).append("&");
+            }
+            GetMethod postMethod = new GetMethod(sb.toString());
+
+            HttpClientUtil.executeMethod(httpclient, postMethod);
+            ByteUtil.copy(postMethod.getResponseBodyAsStream(), true, context.resp.getOutputStream(), false);
+        } else {
+            try {
+                mailUrl = Provisioning.getInstance().getLocalServer().getMailURL();
+            } catch (Exception e) {
+            }
+            ServletContext targetContext = servlet.getServletConfig().getServletContext().getContext(mailUrl);
+            RequestDispatcher dispatcher = targetContext.getRequestDispatcher(PATH_JSP_REST_PAGE);
+            dispatcher.forward(context.req, context.resp);
         }
-        ServletContext targetContext = servlet.getServletConfig().getServletContext().getContext(mailUrl);
-        RequestDispatcher dispatcher = targetContext.getRequestDispatcher(PATH_JSP_REST_PAGE);
-        dispatcher.forward(context.req, context.resp);
     }
 }

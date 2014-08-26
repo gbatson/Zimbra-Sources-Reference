@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2014 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.unittest;
@@ -17,7 +19,10 @@ package com.zimbra.qa.unittest;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.List;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -30,10 +35,16 @@ import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
+import org.apache.commons.httpclient.methods.EntityEnclosingMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZFolder.View;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.calendar.ICalTimeZone;
 import com.zimbra.common.calendar.ParsedDateTime;
 import com.zimbra.common.calendar.WellKnownTimeZones;
@@ -47,19 +58,43 @@ import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.dav.resource.UrlNamespace;
+import com.zimbra.cs.dav.service.DavServlet;
 
 public class TestCalDav extends TestCase {
 
     static final boolean runningOutsideZimbra = false;  // set to true if running inside an IDE instead of from RunUnitTests
     static final TimeZoneRegistry tzRegistry = TimeZoneRegistryFactory.getInstance().createRegistry();
+    private static String NAME_PREFIX = "TestCalDav";
+    private static String USER_NAME = "user1";
     private static String DAV1 = "dav1";
     private static String DAV2 = "dav2";
     private static String DAV3 = "dav3";
+
+    public static class MkColMethod extends EntityEnclosingMethod {
+        @Override
+        public String getName() {
+            return "MKCOL";
+        }
+        public  MkColMethod(String uri) {
+            super(uri);
+        }
+    }
+
+    public static class PropPatchMethod extends EntityEnclosingMethod {
+        @Override
+        public String getName() {
+            return "PROPPATCH";
+        }
+        public  PropPatchMethod(String uri) {
+            super(uri);
+        }
+    }
 
     public static ParsedDateTime parsedDateTime(int year, int month, int day, int hour, int min,
             ICalTimeZone icalTimeZone) {
@@ -124,29 +159,45 @@ public class TestCalDav extends TestCase {
         return icalString;
     }
 
-    public void executeHttpMethod(HttpClient client, HttpMethod method, int expectedCode) throws IOException {
-        try {
-            int respCode = HttpClientUtil.executeMethod(client, method);
-            int statusCode = method.getStatusCode();
-            String statusLine = method.getStatusLine().toString();
+    public static class HttpMethodExecutor {
+        public int respCode;
+        public int statusCode;
+        public String statusLine;
+        public Header[] respHeaders;
+        public byte[] responseBodyBytes;
 
-            Header[] respHeaders = method.getResponseHeaders();
-            StringBuilder hdrsSb = new StringBuilder();
-            for (Header hdr : respHeaders) {
-                hdrsSb.append(hdr.toString());
+        public HttpMethodExecutor(HttpClient client, HttpMethod method, int expectedCode) throws IOException {
+            try {
+                respCode = HttpClientUtil.executeMethod(client, method);
+                statusCode = method.getStatusCode();
+                statusLine = method.getStatusLine().toString();
+
+                respHeaders = method.getResponseHeaders();
+                StringBuilder hdrsSb = new StringBuilder();
+                for (Header hdr : respHeaders) {
+                    hdrsSb.append(hdr.toString());
+                }
+                responseBodyBytes = ByteUtil.getContent(method.getResponseBodyAsStream(), -1);
+                ZimbraLog.test.debug("RESPONSE:\n%s\n%s\n\n", statusLine, hdrsSb.toString(),
+                        new String(responseBodyBytes));
+                assertEquals("Response code", expectedCode, respCode);
+                assertEquals("Status code", expectedCode, statusCode);
+            } catch (IOException e) {
+                ZimbraLog.test.debug("Exception thrown", e);
+                fail("Unexpected Exception" + e);
+                throw e;
+            } finally {
+                method.releaseConnection();
             }
+        }
 
-            byte[] responseBodyBytes = ByteUtil.getContent(method.getResponseBodyAsStream(), -1);
-            ZimbraLog.test.debug("RESPONSE:\n%s\n%s\n\n", statusLine, hdrsSb.toString(), new String(responseBodyBytes));
+        public static HttpMethodExecutor execute(HttpClient client, HttpMethod method, int expectedCode)
+                throws IOException {
+            return new HttpMethodExecutor(client, method, expectedCode);
+        }
 
-            assertEquals("Response code", expectedCode, respCode);
-            assertEquals("Status code", expectedCode, statusCode);
-        } catch (IOException e) {
-            ZimbraLog.test.debug("Exception thrown", e);
-            fail("Unexpected Exception" + e);
-            throw e;
-        } finally {
-            method.releaseConnection();
+        public String getResponseAsString() {
+            return new String(responseBodyBytes);
         }
     }
 
@@ -157,9 +208,7 @@ public class TestCalDav extends TestCase {
         String url = getSchedulingOutboxUrl(dav1, dav1);
         HttpClient client = new HttpClient();
         PostMethod method = new PostMethod(url);
-        String basicAuthEncoding = DatatypeConverter.printBase64Binary(
-                String.format("%s:%s", dav1.getName(), "test123").getBytes("UTF-8"));
-        method.addRequestHeader("Authorization", "Basic " + basicAuthEncoding);
+        addBasicAuthHeaderForUser(method, dav1);
         method.addRequestHeader("Content-Type", "text/calendar");
         method.addRequestHeader("Originator", "mailto:" + dav1.getName());
         method.addRequestHeader("Recipient", "mailto:" + dav2.getName());
@@ -168,7 +217,7 @@ public class TestCalDav extends TestCase {
         method.setRequestEntity(new ByteArrayRequestEntity(exampleCancelIcal(dav1, dav2, dav3).getBytes(),
                 MimeConstants.CT_TEXT_CALENDAR));
 
-        executeHttpMethod(client, method, HttpStatus.SC_OK);
+        HttpMethodExecutor.execute(client, method, HttpStatus.SC_OK);
     }
 
     public void testBadPostToSchedulingOutbox() throws Exception {
@@ -178,9 +227,7 @@ public class TestCalDav extends TestCase {
         String url = getSchedulingOutboxUrl(dav2, dav2);
         HttpClient client = new HttpClient();
         PostMethod method = new PostMethod(url);
-        String basicAuthEncoding = DatatypeConverter.printBase64Binary(
-                String.format("%s:%s", dav2.getName(), "test123").getBytes("UTF-8"));
-        method.addRequestHeader("Authorization", "Basic " + basicAuthEncoding);
+        addBasicAuthHeaderForUser(method, dav2);
         method.addRequestHeader("Content-Type", "text/calendar");
         method.addRequestHeader("Originator", "mailto:" + dav2.getName());
         method.addRequestHeader("Recipient", "mailto:" + dav3.getName());
@@ -188,15 +235,212 @@ public class TestCalDav extends TestCase {
         method.setRequestEntity(new ByteArrayRequestEntity(exampleCancelIcal(dav1, dav2, dav3).getBytes(),
                 MimeConstants.CT_TEXT_CALENDAR));
 
-        executeHttpMethod(client, method, HttpStatus.SC_BAD_REQUEST);
+        HttpMethodExecutor.execute(client, method, HttpStatus.SC_BAD_REQUEST);
     }
 
-    public String getSchedulingOutboxUrl(Account auth, Account target) throws ServiceException {
+    public static void addBasicAuthHeaderForUser(HttpMethod method, Account acct) throws UnsupportedEncodingException {
+        String basicAuthEncoding = DatatypeConverter.printBase64Binary(
+                String.format("%s:%s", acct.getName(), "test123").getBytes("UTF-8"));
+        method.addRequestHeader("Authorization", "Basic " + basicAuthEncoding);
+    }
+
+    public static StringBuilder getLocalServerRoot() throws ServiceException {
         Server localServer = Provisioning.getInstance().getLocalServer();
         StringBuilder sb = new StringBuilder();
         sb.append("http://localhost:").append(localServer.getIntAttr(Provisioning.A_zimbraMailPort, 0));
+        return sb;
+    }
+
+    public static String getSchedulingOutboxUrl(Account auth, Account target) throws ServiceException {
+        StringBuilder sb = getLocalServerRoot();
         sb.append(UrlNamespace.getSchedulingOutboxUrl(auth.getName(), target.getName()));
         return sb.toString();
+    }
+
+    public static String getSchedulingInboxUrl(Account auth, Account target) throws ServiceException {
+        StringBuilder sb = getLocalServerRoot();
+        sb.append(UrlNamespace.getSchedulingInboxUrl(auth.getName(), target.getName()));
+        return sb.toString();
+    }
+
+    public void testSimpleMkcol() throws Exception {
+        Account dav1 = TestUtil.createAccount(DAV1);
+        StringBuilder url = getLocalServerRoot();
+        url.append(DavServlet.DAV_PATH).append("/").append(dav1.getName()).append("/simpleMkcol/");
+        MkColMethod method = new MkColMethod(url.toString());
+        addBasicAuthHeaderForUser(method, dav1);
+        HttpClient client = new HttpClient();
+        HttpMethodExecutor.execute(client, method, HttpStatus.SC_CREATED);
+    }
+
+    public void testMkcol4addressBook() throws Exception {
+        String xml = "<D:mkcol xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:carddav\">" +
+                "     <D:set>" +
+                "       <D:prop>" +
+                "         <D:resourcetype>" +
+                "           <D:collection/>" +
+                "           <C:addressbook/>" +
+                "         </D:resourcetype>" +
+                "         <D:displayname>OtherContacts</D:displayname>" +
+                "         <C:addressbook-description xml:lang=\"en\">Extra Contacts</C:addressbook-description>" +
+                "       </D:prop>" +
+                "     </D:set>" +
+                "</D:mkcol>";
+        Account dav1 = TestUtil.createAccount(DAV1);
+        StringBuilder url = getLocalServerRoot();
+        url.append(DavServlet.DAV_PATH).append("/").append(dav1.getName()).append("/OtherContacts/");
+        MkColMethod method = new MkColMethod(url.toString());
+        addBasicAuthHeaderForUser(method, dav1);
+        HttpClient client = new HttpClient();
+        method.addRequestHeader("Content-Type", MimeConstants.CT_TEXT_XML);
+        method.setRequestEntity(new ByteArrayRequestEntity(xml.getBytes(), MimeConstants.CT_TEXT_XML));
+        HttpMethodExecutor.execute(client, method, HttpStatus.SC_MULTI_STATUS);
+
+        ZMailbox.Options options = new ZMailbox.Options();
+        options.setAccount(dav1.getName());
+        options.setAccountBy(AccountBy.name);
+        options.setPassword(TestUtil.DEFAULT_PASSWORD);
+        options.setUri(TestUtil.getSoapUrl());
+        options.setNoSession(true);
+        ZMailbox mbox = ZMailbox.getMailbox(options);
+        ZFolder folder = mbox.getFolderByPath("/OtherContacts");
+        assertEquals("OtherContacts", folder.getName());
+        assertEquals("OtherContacts default view", View.contact, folder.getDefaultView());
+    }
+
+    public String makeFreeBusyRequestIcal(Account organizer, List<Account> attendees, Date start, Date end)
+    throws IOException {
+        ZVCalendar vcal = new ZVCalendar();
+        vcal.addVersionAndProdId();
+
+        vcal.addProperty(new ZProperty(ICalTok.METHOD, ICalTok.REQUEST.toString()));
+        ZComponent vfreebusy = new ZComponent(ICalTok.VFREEBUSY);
+        ParsedDateTime dtstart = ParsedDateTime.fromUTCTime(start.getTime());
+        vfreebusy.addProperty(dtstart.toProperty(ICalTok.DTSTART, false));
+        ParsedDateTime dtend = ParsedDateTime.fromUTCTime(end.getTime());
+        vfreebusy.addProperty(dtend.toProperty(ICalTok.DTEND, false));
+        vfreebusy.addProperty(new ZProperty(ICalTok.DTSTAMP, "20140108T224700Z"));
+        vfreebusy.addProperty(new ZProperty(ICalTok.UID, "d123f102-42a7-4283-b025-3376dabe53b3"));
+        vfreebusy.addProperty(organizer(organizer));
+        for (Account attendee : attendees) {
+            vfreebusy.addProperty(new ZProperty(ICalTok.ATTENDEE, "mailto:" + attendee.getName()));
+        }
+        vcal.addComponent(vfreebusy);
+        StringWriter calWriter = new StringWriter();
+        vcal.toICalendar(calWriter);
+        String icalString = calWriter.toString();
+        Closeables.closeQuietly(calWriter);
+        return icalString;
+    }
+
+    public HttpMethodExecutor doFreeBusyCheck(Account organizer, List<Account> attendees, Date start, Date end)
+    throws ServiceException, IOException {
+        HttpClient client = new HttpClient();
+        String outboxurl = getSchedulingOutboxUrl(organizer, organizer);
+        PostMethod postMethod = new PostMethod(outboxurl);
+        postMethod.addRequestHeader("Content-Type", "text/calendar");
+        postMethod.addRequestHeader("Originator", "mailto:" + organizer.getName());
+        for (Account attendee : attendees) {
+            postMethod.addRequestHeader("Recipient", "mailto:" + attendee.getName());
+        }
+
+        addBasicAuthHeaderForUser(postMethod, organizer);
+        String fbIcal = makeFreeBusyRequestIcal(organizer, attendees, start, end);
+        postMethod.setRequestEntity(new ByteArrayRequestEntity(fbIcal.getBytes(), MimeConstants.CT_TEXT_CALENDAR));
+
+        return HttpMethodExecutor.execute(client, postMethod, HttpStatus.SC_OK);
+    }
+
+    public HttpMethodExecutor doPropPatch(Account account, String url, String body)
+    throws IOException {
+        HttpClient client = new HttpClient();
+        PropPatchMethod propPatchMethod = new PropPatchMethod(url);
+        addBasicAuthHeaderForUser(propPatchMethod, account);
+        propPatchMethod.addRequestHeader("Content-Type", MimeConstants.CT_TEXT_XML);
+        propPatchMethod.setRequestEntity(
+                new ByteArrayRequestEntity(body.getBytes(), MimeConstants.CT_TEXT_XML));
+        return HttpMethodExecutor.execute(client, propPatchMethod, HttpStatus.SC_MULTI_STATUS);
+    }
+
+    /**
+     * http://tools.ietf.org/html/draft-desruisseaux-caldav-sched-03#section-5.3.1
+     * 5.3. Scheduling Inbox Properties
+     * 5.3.1. CALDAV:calendar-free-busy-set Property
+     * Purpose:  Identify the calendars that contribute to the free-busy information for the calendar user associated
+     * with the scheduling Inbox.
+     *
+     * If the list is empty - NO calendars affect freebusy.
+     * If the list is not empty, each listed calendar affects freebusy.
+     * Bug 85275 - Apple Calendar specifies URLs with "@" encoded as %40 - causing us to drop all calendar from FB set
+     */
+    public void testPropPatchCalendarFreeBusySetSettingUsingEscapedUrls() throws Exception {
+        String disableFreeBusyXml =
+                "<A:propertyupdate xmlns:A=\"DAV:\">" +
+                "  <A:set>" +
+                "    <A:prop>" +
+                "      <B:calendar-free-busy-set xmlns:B=\"urn:ietf:params:xml:ns:caldav\"/>" +
+                "    </A:prop>" +
+                "  </A:set>" +
+                "</A:propertyupdate>";
+        String enableFreeBusyTemplateXml =
+                "<A:propertyupdate xmlns:A=\"DAV:\">" +
+                "  <A:set>" +
+                "    <A:prop>" +
+                "      <B:calendar-free-busy-set xmlns:B=\"urn:ietf:params:xml:ns:caldav\">" +
+                "        <A:href>/dav/%s/Tasks/</A:href>" +
+                "        <A:href>/dav/%s/Calendar/</A:href>" +
+                "      </B:calendar-free-busy-set>" +
+                "    </A:prop>" +
+                "  </A:set>" +
+                "</A:propertyupdate>";
+
+        Account dav1 = TestUtil.createAccount(DAV1);
+
+        // Create an event in Dav1's calendar
+        ZMailbox organizer = TestUtil.getZMailbox(DAV1);
+        String subject = NAME_PREFIX + " testInvite request 1";
+        Date startDate = new Date(System.currentTimeMillis() + Constants.MILLIS_PER_DAY);
+        Date endDate = new Date(startDate.getTime() + Constants.MILLIS_PER_HOUR);
+        Date fbStartDate = new Date(startDate.getTime() - (Constants.MILLIS_PER_DAY * 2));
+        Date fbEndDate = new Date(endDate.getTime() + (Constants.MILLIS_PER_DAY * 3));
+        String busyTentativeMarker = "FREEBUSY;FBTYPE=BUSY";
+
+        // seed an appointment in dav1's calendar
+        TestUtil.createAppointment(organizer, subject, dav1.getName(), startDate, endDate);
+
+        String fbResponse;
+        fbResponse = doFreeBusyCheck(dav1, Lists.newArrayList(dav1), fbStartDate, fbEndDate).getResponseAsString();
+        assertTrue(String.format("First FB check Response [%s] should contain [%s]", fbResponse, busyTentativeMarker),
+                fbResponse.contains(busyTentativeMarker));
+
+        String inboxurl = getSchedulingInboxUrl(dav1, dav1);
+        doPropPatch(dav1, inboxurl, disableFreeBusyXml);
+
+        fbResponse = doFreeBusyCheck(dav1, Lists.newArrayList(dav1), fbStartDate, fbEndDate).getResponseAsString();
+        assertFalse(String.format("2nd FB check after disabling - Response [%s] should NOT contain [%s]",
+                fbResponse, busyTentativeMarker), fbResponse.contains(busyTentativeMarker));
+
+        String enableWithRawAt = String.format(enableFreeBusyTemplateXml, dav1.getName(), dav1.getName());
+        String encodedName = dav1.getName().replace("@", "%40");
+        String enableWithEncodedAt = String.format(enableFreeBusyTemplateXml, encodedName, encodedName);
+
+        doPropPatch(dav1, inboxurl, enableWithRawAt);
+
+        fbResponse = doFreeBusyCheck(dav1, Lists.newArrayList(dav1), fbStartDate, fbEndDate).getResponseAsString();
+        assertTrue(String.format("3rd FB check after enabling Response [%s] should contain [%s]",
+                fbResponse, busyTentativeMarker), fbResponse.contains(busyTentativeMarker));
+
+        doPropPatch(dav1, inboxurl, disableFreeBusyXml);
+
+        fbResponse = doFreeBusyCheck(dav1, Lists.newArrayList(dav1), fbStartDate, fbEndDate).getResponseAsString();
+        assertFalse(String.format("4th FB check after disabling - Response [%s] should NOT contain [%s]",
+                fbResponse, busyTentativeMarker), fbResponse.contains(busyTentativeMarker));
+
+        doPropPatch(dav1, inboxurl, enableWithEncodedAt);
+
+        fbResponse = doFreeBusyCheck(dav1, Lists.newArrayList(dav1), fbStartDate, fbEndDate).getResponseAsString();
+        assertTrue(String.format("4th FB check after enabling (encoded urls) Response [%s] should contain [%s]",
+                fbResponse, busyTentativeMarker), fbResponse.contains(busyTentativeMarker));
     }
 
     @Override
@@ -215,6 +459,7 @@ public class TestCalDav extends TestCase {
         TestUtil.deleteAccount(DAV1);
         TestUtil.deleteAccount(DAV2);
         TestUtil.deleteAccount(DAV3);
+        TestUtil.deleteTestData(USER_NAME, NAME_PREFIX);
     }
 
     /**

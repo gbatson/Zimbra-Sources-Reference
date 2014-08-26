@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
@@ -27,6 +29,9 @@ import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.PageTasks;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.PageTasks.Locators;
 
 
 public class DeleteTask extends AjaxCommonTest {
@@ -133,8 +138,9 @@ public class DeleteTask extends AjaxCommonTest {
 		app.zPageTasks.zToolbarPressButton(Button.B_REFRESH);
 		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
 						
-		// Select the item
-		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
+		if(!app.zPageTasks.sIsElementPresent(PageTasks.Locators.zCheckboxenable)){
+			app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
+		}
 		
 		// Click delete
 		app.zPageTasks.zToolbarPressButton(Button.B_DELETE);
@@ -196,8 +202,9 @@ public class DeleteTask extends AjaxCommonTest {
 		app.zPageTasks.zToolbarPressButton(Button.B_REFRESH);
 		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
 						
-		// Select the item
-		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
+		if(!app.zPageTasks.sIsElementPresent(PageTasks.Locators.zCheckboxenable)){
+			app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
+		}
 
 		
 		// Click delete keyboard
@@ -253,8 +260,9 @@ public class DeleteTask extends AjaxCommonTest {
 		app.zPageTasks.zToolbarPressButton(Button.B_REFRESH);
 		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
 						
-		// Select the item
-		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
+		if(!app.zPageTasks.sIsElementPresent(PageTasks.Locators.zCheckboxenable)){
+			app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject);
+		}
 
 		
 		// Use Delete Keyboard Shortcut
@@ -349,6 +357,7 @@ public class DeleteTask extends AjaxCommonTest {
 		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
 						
 		// Select the items
+		app.zPageTasks.zListItem(Action.A_MAIL_UNCHECKBOX, subject3);
 		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject1);
 		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject2);
 		app.zPageTasks.zListItem(Action.A_MAIL_CHECKBOX, subject3);
@@ -662,6 +671,64 @@ public class DeleteTask extends AjaxCommonTest {
 		}
 		ZAssert.assertNull(found, "Verify the task is no longer present");
 	
+	}
+	
+	@Test(description = "Delete Attachment from edit window and - verify through GUI", groups = { "smoke" })
+	public void DeleteAttachment_10() throws HarnessException {
+
+		String subject = "task" + ZimbraSeleniumProperties.getUniqueString();
+
+
+		ZimbraAccount account = app.zGetActiveAccount();
+		FolderItem taskFolder = FolderItem.importFromSOAP(account,SystemFolder.Tasks);
+
+		// Create file item
+		String filePath = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/Files/Basic01/BasicExcel2007.xlsx";
+		// Upload file to server through RestUtil
+		String attachmentId = account.uploadFile(filePath);		
+
+
+		app.zGetActiveAccount().soapSend(
+				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+				"<m >" +
+				"<inv>" +
+				"<comp name='"+ subject +"'>" +
+				"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+				"</comp>" +
+				"</inv>" +
+				"<su>"+ subject +"</su>" +
+				"<mp ct='text/plain'>" +
+				"<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+				"</mp>" +
+				"<attach aid='"+attachmentId+"'>"+
+				"</attach>"+
+				"</m>" +
+		"</CreateTaskRequest>");
+
+		
+
+		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
+		ZAssert.assertNotNull(task, "Verify the task is created");
+
+		// Refresh the tasks view
+		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
+
+		// Select the item
+		app.zPageTasks.zListItem(Action.A_LEFTCLICK, subject);
+		ZAssert.assertTrue(app.zPageTasks.sIsElementPresent(Locators.zAttachmentsLabel),"Verify Attachments: label");
+		//app.zPageTasks.zClickAt(Locators.zEditButton, "0,0");
+		//Press Edit tool bar button
+		FormTaskNew taskedit = (FormTaskNew) app.zPageTasks.zToolbarPressButton(Button.B_EDIT);
+		SleepUtil.sleepMedium();
+
+		//Uncheck Attachment		
+		app.zPageTasks.sUncheck(Locators.zEditAttachmentCheckbox);
+		taskedit.zSubmit();
+		SleepUtil.sleepMedium();
+		//Verify Attachment exist or not (Expected: should not exist)
+		ZAssert.assertFalse(app.zPageTasks.sIsElementPresent(Locators.zAttachmentsLabel),"Verify Attachments: label");
+
+
 	}
 
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -89,7 +91,7 @@ public class SeparateWindowDialogRedirect extends AbsDialogSeparateWindow {
 		// Seems that the client can't handle filling out the new mail form too quickly
 		// Click in the "To" fields, etc, to make sure the client is ready
 		MyWindow.sFocus(locator);
-		MyWindow.zClick(locator);
+		MyWindow.zClickAt(locator, "");
 		MyWindow.zWaitForBusyOverlay();
 
 		// Enter text
@@ -112,7 +114,7 @@ public class SeparateWindowDialogRedirect extends AbsDialogSeparateWindow {
 
 			locator = Locators.ButtonOkButtonLocator;
 
-			MyWindow.zClick(locator);
+			MyWindow.zClickAt(locator, "");
 
 			MyWindow.zWaitForBusyOverlay();
 
@@ -147,7 +149,7 @@ public class SeparateWindowDialogRedirect extends AbsDialogSeparateWindow {
 			throw new HarnessException("Button "+ button +" locator "+ locator +" not present!");
 		}
 
-		MyWindow.zClick(locator);
+		MyWindow.zClickAt(locator, "");
 
 		MyWindow.zWaitForBusyOverlay();
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox;
@@ -55,8 +57,8 @@ import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
 import com.zimbra.cs.service.util.ItemId;
-import com.zimbra.soap.type.GalSearchType;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.GalSearchType;
 
 public class ContactAutoComplete {
     public static final class AutoCompleteResult {
@@ -527,8 +529,13 @@ public class ContactAutoComplete {
                 return true;
             }
             String fullName = getFieldAsString(attrs, ContactConstants.A_fullName);
-            if (!Strings.isNullOrEmpty(fullName) && fullName.toLowerCase().startsWith(token)) {
-                return true;
+            if (!Strings.isNullOrEmpty(fullName)) {
+                for (String fullNameToken : TOKEN_SPLITTER.split(fullName)) {
+                    if (!Strings.isNullOrEmpty(fullNameToken) &&
+                        fullNameToken.toLowerCase().startsWith(token)) {
+                        return true;
+                    }
+                }
             }
             String nickname = getFieldAsString(attrs, ContactConstants.A_nickname);
             if (!Strings.isNullOrEmpty(nickname) && nickname.toLowerCase().startsWith(token)) {
@@ -558,7 +565,8 @@ public class ContactAutoComplete {
             if (pattern.matcher(Joiner.on(' ').skipNulls().join(lastName, firstName, middleName)).matches()) {
                 return true;
             }
-
+            
+      
             String fullName = getFieldAsString(attrs, ContactConstants.A_fullName);
             if (!Strings.isNullOrEmpty(fullName) && pattern.matcher(fullName).matches()) {
                 return true;
@@ -586,7 +594,7 @@ public class ContactAutoComplete {
     private Pattern toPattern(List<String> tokens) {
         StringBuilder regex = new StringBuilder();
         for (String token : tokens) {
-            regex.append(regex.length() == 0 ? "(^|\\s)" : "\\s").append(Pattern.quote(token)).append(".*");
+            regex.append(regex.length() == 0 ? "(^|.*\\s)" : "\\s").append(Pattern.quote(token)).append(".*");
         }
         return Pattern.compile(regex.toString(), Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     }

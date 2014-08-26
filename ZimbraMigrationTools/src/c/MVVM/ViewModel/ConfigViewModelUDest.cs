@@ -9,6 +9,7 @@ using System.Text;
 using System.Windows.Input;
 using System.Windows;
 using System;
+using System.Xml;
 
 namespace MVVM.ViewModel
 {
@@ -16,6 +17,10 @@ public class ConfigViewModelUDest: BaseViewModel
 {
     public ConfigViewModelUDest()
     {
+        if(isDesktop)
+        {
+            DesktopLoad();
+        }
         this.LoadCommand = new ActionCommand(this.Load, () => true);
         this.SaveCommand = new ActionCommand(this.Save, () => true);
         this.BackCommand = new ActionCommand(this.Back, () => true);
@@ -78,6 +83,111 @@ public class ConfigViewModelUDest: BaseViewModel
                     return;
                 }
             }
+        }
+    }
+    public void DesktopLoad()
+    {
+        
+        
+        string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string filePath = Path.Combine(appDataFolder, "Zimbra\\Zimbra Desktop\\conf\\localconfig.xml");
+
+        if (File.Exists(filePath))
+        {
+
+
+            try
+            {
+
+                XmlDocument xml = new XmlDocument();
+                xml.Load(filePath);  // suppose that str string contains "<Names>...</Names>"
+
+                XmlNodeList xnList = xml.SelectNodes("//localconfig/key[@name='zdesktop_installation_key']");
+
+                string pwd = "";
+                foreach (XmlNode xn in xnList)
+                {
+                    pwd = xn.InnerText;
+                }
+
+                xnList = xml.SelectNodes("//localconfig/key[@name='zimbra_admin_service_port']");
+
+                string port = "";
+                foreach (XmlNode xn in xnList)
+                {
+                    port = xn.InnerText;
+                }
+
+
+                ZimbraServerHostName = "localhost";
+                ZimbraPort = port;
+                ZimbraUser = "local@host.local";
+                ZimbraUserPasswd = pwd;
+                ZimbraSSL = false;
+
+                if ((this.ZimbraServerHostName.Length == 0) || (this.ZimbraPort.Length == 0))
+                {
+                    MessageBox.Show("Please fill in the host name and port", "Zimbra Migration",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                try
+                {
+                    System.Net.IPAddress address = System.Net.IPAddress.Parse(ZimbraServerHostName);
+                    MessageBox.Show("Please enter a valid host name rather than an IP address",
+                        "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                catch (Exception)
+                { }
+                ZimbraAPI zimbraAPI = new ZimbraAPI(false);
+
+                int stat = -1;
+                try
+                {
+                    stat = zimbraAPI.Logon(this.ZimbraServerHostName, this.ZimbraPort, this.ZimbraUser,
+                        this.ZimbraUserPasswd, this.ZimbraSSL, false);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(e.Message, "Logon", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if (stat == 0)
+                {
+                    string authToken = ZimbraValues.GetZimbraValues().AuthToken;
+
+                    if (authToken.Length > 0)
+                    {
+                        zimbraAPI.GetInfo();
+                        lb.SelectedIndex = 3;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(string.Format("Logon Unsuccessful: {0}", zimbraAPI.LastError),
+                        "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+            }
+            catch (Exception e)
+            {
+                string temp = string.Format("Incorrect configuration file format.\n{0}", e.Message);
+                MessageBox.Show(temp, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                //fileRead.Close();
+                return;
+            }
+
+
+        }
+        else
+        {
+
+            MessageBox.Show("Please Install Zimbra Desktop before executing migration ", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+            lb.SelectedIndex = 1;
+            throw new Exception("Can't find Zimbra Desktop installation");
+        
         }
     }
     public ICommand SaveCommand {

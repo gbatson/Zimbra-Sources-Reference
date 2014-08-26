@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -37,6 +39,8 @@ import javax.xml.bind.annotation.XmlType;
  *       &lt;attribute name="s" use="required" type="{http://www.w3.org/2001/XMLSchema}long" />
  *       &lt;attribute name="volumeId" use="required" type="{http://www.w3.org/2001/XMLSchema}short" />
  *       &lt;attribute name="blobPath" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
+ *       &lt;attribute name="external" use="required" type="{http://www.w3.org/2001/XMLSchema}boolean" />
+ *       &lt;attribute name="version" use="required" type="{http://www.w3.org/2001/XMLSchema}int" />
  *     &lt;/restriction>
  *   &lt;/complexContent>
  * &lt;/complexType>
@@ -58,6 +62,10 @@ public class testMissingBlobInfo {
     protected short volumeId;
     @XmlAttribute(name = "blobPath", required = true)
     protected String blobPath;
+    @XmlAttribute(name = "external", required = true)
+    protected boolean external;
+    @XmlAttribute(name = "version", required = true)
+    protected int version;
 
     /**
      * Gets the value of the id property.
@@ -145,6 +153,38 @@ public class testMissingBlobInfo {
      */
     public void setBlobPath(String value) {
         this.blobPath = value;
+    }
+
+    /**
+     * Gets the value of the external property.
+     * 
+     */
+    public boolean isExternal() {
+        return external;
+    }
+
+    /**
+     * Sets the value of the external property.
+     * 
+     */
+    public void setExternal(boolean value) {
+        this.external = value;
+    }
+
+    /**
+     * Gets the value of the version property.
+     * 
+     */
+    public int getVersion() {
+        return version;
+    }
+
+    /**
+     * Sets the value of the version property.
+     * 
+     */
+    public void setVersion(int value) {
+        this.version = value;
     }
 
 }

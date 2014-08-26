@@ -1,44 +1,42 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.calendar.mountpoints;
 
-
 import org.testng.annotations.Test;
-
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
 
+public class DeleteMountpoint extends CalendarWorkWeekTest {
 
-public class DeleteMountpoint extends AjaxCommonTest {
-
-	
 	
 	public DeleteMountpoint() {
 		logger.info("New "+ DeleteMountpoint.class.getCanonicalName());
 		
 		// All tests start at the login page
 		super.startingPage = app.zPageCalendar;
-		super.startingAccountPreferences = null;
 
 	}
 	
 	@Test(	description = "Delete a mountpoint to a shared calendar (right click -> Delete)",
-			groups = { "smoke" })
+			groups = { "functional" })
+			
 	public void DeleteMountpoint_01() throws HarnessException {
 		
 		ZimbraAccount Owner = (new ZimbraAccount()).provision().authenticate();
@@ -72,16 +70,11 @@ public class DeleteMountpoint extends AjaxCommonTest {
 		FolderMountpointItem mountpoint = FolderMountpointItem.importFromSOAP(app.zGetActiveAccount(), mountpointFoldername);
 		ZAssert.assertNotNull(mountpoint, "Verify the subfolder is available");
 
-
-		
-		
-		
-		// Click Get Mail button
+		// Click to Refresh button
 		app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
 		
 		// Delete the folder using context menu
 		app.zTreeCalendar.zTreeItem(Action.A_RIGHTCLICK, Button.B_DELETE, mountpoint);
-		
 		
 		// Verify the folder is now in the trash
 		FolderItem trash = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
@@ -89,11 +82,6 @@ public class DeleteMountpoint extends AjaxCommonTest {
 		ZAssert.assertNotNull(mountpoint, "Verify the subfolder is again available");
 		ZAssert.assertEquals(trash.getId(), mountpoint.getParentId(), "Verify the subfolder's parent is now the trash folder ID");
 		
-	}
-
-	
-	
-
-	
+	}	
 
 }

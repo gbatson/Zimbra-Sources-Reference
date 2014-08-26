@@ -1,6 +1,21 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.unittest;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,12 +27,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.zimbra.common.account.ProvisioningConstants;
-import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.SoapFaultException;
-import com.zimbra.common.soap.SoapHttpTransport;
-import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Cos;
@@ -26,7 +37,7 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.cs.account.accesscontrol.generated.RightConsts;
-import com.zimbra.soap.JaxbUtil;
+import com.zimbra.qa.unittest.prov.soap.SoapTest;
 import com.zimbra.soap.admin.message.CountObjectsRequest;
 import com.zimbra.soap.admin.message.CountObjectsResponse;
 import com.zimbra.soap.admin.type.CountObjectsType;
@@ -134,47 +145,16 @@ public class TestCountObjects extends TestCase {
         }
     }
 
-    static SoapTransport authAdmin(String acctName, String password)
-            throws Exception {
-        SoapHttpTransport transport = new SoapHttpTransport(
-                TestUtil.getAdminSoapUrl());
-
-        com.zimbra.soap.admin.message.AuthRequest req = new com.zimbra.soap.admin.message.AuthRequest(
-                acctName, password);
-        com.zimbra.soap.admin.message.AuthResponse resp = invokeJaxb(transport,
-                req);
-        transport.setAuthToken(resp.getAuthToken());
-        return transport;
-    }
-
-    static SoapTransport authZimbraAdmin() throws Exception {
-        return authAdmin(LC.zimbra_ldap_user.value(),
-                LC.zimbra_ldap_password.value());
-    }
-
-    static <T> T invokeJaxb(SoapTransport transport, Object jaxbObject)
-            throws ServiceException, IOException {
-        return (T) invokeJaxb(transport, jaxbObject, SoapProtocol.Soap12);
-    }
-
-    static <T> T invokeJaxb(SoapTransport transport, Object jaxbObject,
-            SoapProtocol proto) throws ServiceException, IOException {
-        Element req = JaxbUtil.jaxbToElement(jaxbObject, proto.getFactory());
-
-        Element res = transport.invoke(req);
-        return (T) JaxbUtil.elementToJaxb(res);
-    }
-
     @Test
     public void testDomainAdmin() throws Exception {
         try {
-            SoapTransport transport = authAdmin(DOMAIN_ADMIN_USER_EMAIL,
+            SoapTransport transport = SoapTest.authAdmin(DOMAIN_ADMIN_USER_EMAIL,
                     PASSWORD);
             // count domains
             try {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.domain);
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 fail("should not be able to count domains");
             } catch (SoapFaultException e) {
                 assertEquals("should not be able to count domains",
@@ -185,7 +165,7 @@ public class TestCountObjects extends TestCase {
             try {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.cos);
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 fail("should not be able to count COSes");
             } catch (SoapFaultException e) {
                 assertEquals("should not be able to count COSes",
@@ -195,33 +175,33 @@ public class TestCountObjects extends TestCase {
             // count user accounts
             CountObjectsRequest req = new CountObjectsRequest(
                     CountObjectsType.userAccount);
-            CountObjectsResponse resp = invokeJaxb(transport, req);
+            CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one account", resp.getNum() > 0);
             assertEquals("object type in response should be 'userAccount'", "userAccount",resp.getType());
 
             // count accounts
             req = new CountObjectsRequest(CountObjectsType.account);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one account", resp.getNum() > 0);
             assertEquals("object type in response should be 'account'", "account",resp.getType());
 
             // count distribution lists
             req = new CountObjectsRequest(CountObjectsType.dl);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one distribution list",
                     resp.getNum() > 0);
             assertEquals("object type in response should be 'dl'", "dl",resp.getType());
 
             // count aliases without a domain filter
             req = new CountObjectsRequest(CountObjectsType.alias);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one alias", resp.getNum() > 0);
             assertEquals("object type in response should be 'alias'", "alias",resp.getType());
 
             // count user accounts with domain filter
             req = new CountObjectsRequest(CountObjectsType.userAccount);
             req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one userAccount",
                     resp.getNum() > 0);
             assertEquals("object type in response should be 'userAccount'", "userAccount",resp.getType());
@@ -229,14 +209,14 @@ public class TestCountObjects extends TestCase {
             // count accounts with domain filter
             req = new CountObjectsRequest(CountObjectsType.account);
             req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one account", resp.getNum() > 0);
             assertEquals("object type in response should be 'account'", "account",resp.getType());
 
             // count DLs with domain filter
             req = new CountObjectsRequest(CountObjectsType.dl);
             req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one distribution list",
                     resp.getNum() > 0);
             assertEquals("object type in response should be 'dl'", "dl",resp.getType());
@@ -244,7 +224,7 @@ public class TestCountObjects extends TestCase {
             // count aliases with domain filter
             req = new CountObjectsRequest(CountObjectsType.alias);
             req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one alias", resp.getNum() > 0);
             assertEquals("object type in response should be 'alias'", "alias",resp.getType());
 
@@ -256,13 +236,13 @@ public class TestCountObjects extends TestCase {
     @Test
     public void testRogueAdmin() throws Exception {
         try {
-            SoapTransport transport = authAdmin(ROGUE_ADMIN_USER_EMAIL,
+            SoapTransport transport = SoapTest.authAdmin(ROGUE_ADMIN_USER_EMAIL,
                     PASSWORD);
             // count domains
             try {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.domain);
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 fail("should not be able to count domains");
             } catch (SoapFaultException e) {
                 assertEquals(ServiceException.PERM_DENIED, e.getCode());
@@ -273,7 +253,7 @@ public class TestCountObjects extends TestCase {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.userAccount);
                 req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 fail("should not be able to count accounts");
             } catch (SoapFaultException e) {
                 assertEquals(ServiceException.PERM_DENIED, e.getCode());
@@ -284,7 +264,7 @@ public class TestCountObjects extends TestCase {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.account);
                 req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 fail("should not be able to count accounts");
             } catch (SoapFaultException e) {
                 assertEquals(ServiceException.PERM_DENIED, e.getCode());
@@ -295,7 +275,7 @@ public class TestCountObjects extends TestCase {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.dl);
                 req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 assertTrue("should have at least one distribution list",
                         resp.getNum() > 0);
             } catch (ServiceException e) {
@@ -308,7 +288,7 @@ public class TestCountObjects extends TestCase {
                 CountObjectsRequest req = new CountObjectsRequest(
                         CountObjectsType.alias);
                 req.setDomain(new DomainSelector(DomainBy.name, DOMAIN_NAME));
-                CountObjectsResponse resp = invokeJaxb(transport, req);
+                CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
                 fail("should not be able to count aliases");
             } catch (SoapFaultException e) {
                 assertEquals(ServiceException.PERM_DENIED, e.getCode());
@@ -321,42 +301,41 @@ public class TestCountObjects extends TestCase {
     @Test
     public void testSuperAdmin() {
         try {
-            SoapTransport transport = authZimbraAdmin();
+            SoapTransport transport = TestUtil.getAdminSoapTransport();
             // count domains
             CountObjectsRequest req = new CountObjectsRequest(
                     CountObjectsType.domain);
-            CountObjectsResponse resp = invokeJaxb(transport, req);
+            CountObjectsResponse resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one domain", resp.getNum() > 0);
 
             // count user accounts
             req = new CountObjectsRequest(CountObjectsType.userAccount);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one userAccount",
                     resp.getNum() > 0);
 
             // count accounts
             req = new CountObjectsRequest(CountObjectsType.account);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one account", resp.getNum() > 0);
 
             // count DLs
             req = new CountObjectsRequest(CountObjectsType.dl);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one distribution list",
                     resp.getNum() > 0);
 
             // count aliases
             req = new CountObjectsRequest(CountObjectsType.alias);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one alias", resp.getNum() > 0);
 
             // count COSes
             req = new CountObjectsRequest(CountObjectsType.cos);
-            resp = invokeJaxb(transport, req);
+            resp = SoapTest.invokeJaxb(transport, req);
             assertTrue("should have at least one COS", resp.getNum() > 0);
         } catch (Exception e) {
             fail(e.getLocalizedMessage());
         }
     }
-
 }

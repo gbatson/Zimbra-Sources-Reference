@@ -1,29 +1,35 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.calendar.appointments.views.workweek.singleday;
 
 import java.awt.event.KeyEvent;
 import java.util.Calendar;
+
 import org.testng.annotations.*;
+
 import com.zimbra.common.soap.Element;
 import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.DialogConfirmDeleteAppointment;
 
+@SuppressWarnings("unused")
 public class DeleteAppointment extends CalendarWorkWeekTest {
 	
 	public DeleteAppointment() {
@@ -69,8 +75,7 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
 		dlgConfirm.zClickButton(Button.B_YES);
 		dlgConfirm.zWaitForClose();
 		
-		app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
-		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetApptLocator(apptSubject)), false, "Verify appointment is deleted");
+		ZAssert.assertEquals(app.zPageCalendar.zIsAppointmentExists(apptSubject), false, "Verify appointment is deleted");
 
 	}
 	
@@ -104,6 +109,7 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
                                "<su>"+ apptSubject +"</su>" +
                                "</m>" +
                          "</CreateAppointmentRequest>");
+        String apptId = app.zGetActiveAccount().soapSelectValue("//mail:CreateAppointmentResponse//mail:appt", "id");
         
         // Right click to appointment and delete it
         app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
@@ -111,8 +117,7 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
 		dlgConfirm.zClickButton(Button.B_YES);
 		dlgConfirm.zWaitForClose();
 		
-		app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
-		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetApptLocator(apptSubject)), false, "Verify appointment is deleted");
+		ZAssert.assertEquals(app.zPageCalendar.zIsAppointmentExists(apptSubject), false, "Verify appointment is deleted");
 	
 	}
 	
@@ -155,13 +160,13 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
                                "<su>"+ apptSubject +"</su>" +
                                "</m>" +
                          "</CreateAppointmentRequest>");
+        String apptId = app.zGetActiveAccount().soapSelectValue("//mail:CreateAppointmentResponse//mail:appt", "id");
         
         // Delete appointment using keyboard Del and Backspace key
         app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
         app.zPageCalendar.zListItem(Action.A_LEFTCLICK, apptSubject);
         DialogConfirmDeleteAppointment dlgConfirm = (DialogConfirmDeleteAppointment)app.zPageCalendar.zKeyboardKeyEvent(keyEvent);
 		dlgConfirm.zClickButton(Button.B_YES);
-		app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
 		
 		//-- Verification
 		app.zGetActiveAccount().soapSend(

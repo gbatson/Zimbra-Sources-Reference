@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.common.soap;
@@ -116,6 +118,18 @@ public final class AdminConstants {
     public static final String E_GET_ALL_SERVERS_REQUEST = "GetAllServersRequest";
     public static final String E_GET_ALL_SERVERS_RESPONSE = "GetAllServersResponse";
 
+    public static final String E_CREATE_ALWAYSONCLUSTER_REQUEST = "CreateAlwaysOnClusterRequest";
+    public static final String E_CREATE_ALWAYSONCLUSTER_RESPONSE = "CreateAlwaysOnClusterResponse";
+    public static final String E_GET_ALWAYSONCLUSTER_REQUEST = "GetAlwaysOnClusterRequest";
+    public static final String E_GET_ALWAYSONCLUSTER_RESPONSE = "GetAlwaysOnClusterResponse";
+
+    public static final String E_MODIFY_ALWAYSONCLUSTER_REQUEST = "ModifyAlwaysOnClusterRequest";
+    public static final String E_MODIFY_ALWAYSONCLUSTER_RESPONSE = "ModifyAlwaysOnClusterResponse";
+    public static final String E_DELETE_ALWAYSONCLUSTER_REQUEST = "DeleteAlwaysOnClusterRequest";
+    public static final String E_DELETE_ALWAYSONCLUSTER_RESPONSE = "DeleteAlwaysOnClusterResponse";
+    public static final String E_GET_ALL_ALWAYSONCLUSTERS_REQUEST = "GetAllAlwaysOnClustersRequest";
+    public static final String E_GET_ALL_ALWAYSONCLUSTERS_RESPONSE = "GetAllAlwaysOnClustersResponse";
+
     public static final String E_CREATE_UC_SERVICE_REQUEST = "CreateUCServiceRequest";
     public static final String E_CREATE_UC_SERVICE_RESPONSE = "CreateUCServiceResponse";
     public static final String E_DELETE_UC_SERVICE_REQUEST = "DeleteUCServiceRequest";
@@ -187,6 +201,12 @@ public final class AdminConstants {
     public static final String E_EXPORT_AND_DELETE_ITEMS_RESPONSE = "ExportAndDeleteItemsResponse";
     public static final String E_DEDUPE_BLOBS_REQUEST = "DedupeBlobsRequest";
     public static final String E_DEDUPE_BLOBS_RESPONSE = "DedupeBlobsResponse";
+    public static final String E_GET_ALL_ACTIVE_SERVERS_REQUEST = "GetAllActiveServersRequest";
+    public static final String E_GET_ALL_ACTIVE_SERVERS_RESPONSE = "GetAllActiveServersResponse";
+    public static final String E_SET_SERVER_OFFLINE_REQUEST = "SetServerOfflineRequest";
+    public static final String E_SET_SERVER_OFFLINE_RESPONSE = "SetServerOfflineResponse";
+    public static final String E_SET_LOCAL_SERVER_ONLINE_REQUEST = "SetLocalServerOnlineRequest";
+    public static final String E_SET_LOCAL_SERVER_ONLINE_RESPONSE = "SetLocalServerOnlineResponse";
 
     public static final String E_CREATE_DISTRIBUTION_LIST_REQUEST = "CreateDistributionListRequest";
     public static final String E_CREATE_DISTRIBUTION_LIST_RESPONSE = "CreateDistributionListResponse";
@@ -450,6 +470,8 @@ public final class AdminConstants {
     // cookie
     public static final String E_CLEAR_COOKIE_REQUEST = "ClearCookieRequest";
     public static final String E_CLEAR_COOKIE_RESPONSE = "ClearCookieResponse";
+    public static final String E_REFRESH_REGISTERED_AUTHTOKENS_REQUEST = "RefreshRegisteredAuthTokensRequest";
+    public static final String E_REFRESH_REGISTERED_AUTHTOKENS_RESPONSE = "RefreshRegisteredAuthTokensResponse";
 
     // SMIME config
     public static final String E_GET_SMIME_CONFIG_REQUEST = "GetSMIMEConfigRequest";
@@ -589,6 +611,18 @@ public final class AdminConstants {
     public static final QName GET_ALL_SERVERS_REQUEST = QName.get(E_GET_ALL_SERVERS_REQUEST, NAMESPACE);
     public static final QName GET_ALL_SERVERS_RESPONSE = QName.get(E_GET_ALL_SERVERS_RESPONSE, NAMESPACE);
 
+    public static final QName CREATE_ALWAYSONCLUSTER_REQUEST = QName.get(E_CREATE_ALWAYSONCLUSTER_REQUEST, NAMESPACE);
+    public static final QName CREATE_ALWAYSONCLUSTER_RESPONSE = QName.get(E_CREATE_ALWAYSONCLUSTER_RESPONSE, NAMESPACE);
+    public static final QName GET_ALWAYSONCLUSTER_REQUEST = QName.get(E_GET_ALWAYSONCLUSTER_REQUEST, NAMESPACE);
+    public static final QName GET_ALWAYSONCLUSTER_RESPONSE = QName.get(E_GET_ALWAYSONCLUSTER_RESPONSE, NAMESPACE);
+
+    public static final QName MODIFY_ALWAYSONCLUSTER_REQUEST = QName.get(E_MODIFY_ALWAYSONCLUSTER_REQUEST, NAMESPACE);
+    public static final QName MODIFY_ALWAYSONCLUSTER_RESPONSE = QName.get(E_MODIFY_ALWAYSONCLUSTER_RESPONSE, NAMESPACE);
+    public static final QName DELETE_ALWAYSONCLUSTER_REQUEST = QName.get(E_DELETE_ALWAYSONCLUSTER_REQUEST, NAMESPACE);
+    public static final QName DELETE_ALWAYSONCLUSTER_RESPONSE = QName.get(E_DELETE_ALWAYSONCLUSTER_RESPONSE, NAMESPACE);
+    public static final QName GET_ALL_ALWAYSONCLUSTERS_REQUEST = QName.get(E_GET_ALL_ALWAYSONCLUSTERS_REQUEST, NAMESPACE);
+    public static final QName GET_ALL_ALWAYSONCLUSTERS_RESPONSE = QName.get(E_GET_ALL_ALWAYSONCLUSTERS_RESPONSE, NAMESPACE);
+
     public static final QName CREATE_UC_SERVICE_REQUEST = QName.get(E_CREATE_UC_SERVICE_REQUEST, NAMESPACE);
     public static final QName CREATE_UC_SERVICE_RESPONSE = QName.get(E_CREATE_UC_SERVICE_RESPONSE, NAMESPACE);
     public static final QName DELETE_UC_SERVICE_REQUEST = QName.get(E_DELETE_UC_SERVICE_REQUEST, NAMESPACE);
@@ -660,6 +694,13 @@ public final class AdminConstants {
     public static final QName EXPORT_AND_DELETE_ITEMS_RESPONSE = QName.get(E_EXPORT_AND_DELETE_ITEMS_RESPONSE, NAMESPACE);
     public static final QName DEDUPE_BLOBS_REQUEST = QName.get(E_DEDUPE_BLOBS_REQUEST, NAMESPACE);
     public static final QName DEDUPE_BLOBS_RESPONSE = QName.get(E_DEDUPE_BLOBS_RESPONSE, NAMESPACE);
+    public static final QName GET_ALL_ACTIVE_SERVERS_REQUEST = QName.get(E_GET_ALL_ACTIVE_SERVERS_REQUEST, NAMESPACE);
+    public static final QName GET_ALL_ACTIVE_SERVERS_RESPONSE = QName.get(E_GET_ALL_ACTIVE_SERVERS_RESPONSE, NAMESPACE);
+
+    public static final QName SET_SERVER_OFFLINE_REQUEST = QName.get(E_SET_SERVER_OFFLINE_REQUEST, NAMESPACE);
+    public static final QName SET_SERVER_OFFLINE_RESPONSE = QName.get(E_SET_SERVER_OFFLINE_RESPONSE, NAMESPACE);
+    public static final QName SET_LOCAL_SERVER_ONLINE_REQUEST = QName.get(E_SET_LOCAL_SERVER_ONLINE_REQUEST, NAMESPACE);
+    public static final QName SET_LOCAL_SERVER_ONLINE_RESPONSE = QName.get(E_SET_LOCAL_SERVER_ONLINE_RESPONSE, NAMESPACE);
 
     public static final QName CREATE_DISTRIBUTION_LIST_REQUEST = QName.get(E_CREATE_DISTRIBUTION_LIST_REQUEST, NAMESPACE);
     public static final QName CREATE_DISTRIBUTION_LIST_RESPONSE = QName.get(E_CREATE_DISTRIBUTION_LIST_RESPONSE, NAMESPACE);
@@ -925,6 +966,8 @@ public final class AdminConstants {
     // cookie
     public static final QName CLEAR_COOKIE_REQUEST = QName.get(E_CLEAR_COOKIE_REQUEST, NAMESPACE);
     public static final QName CLEAR_COOKIE_RESPONSE = QName.get(E_CLEAR_COOKIE_RESPONSE, NAMESPACE);
+    public static final QName REFRESH_REGISTERED_AUTHTOKENS_REQUEST = QName.get(E_REFRESH_REGISTERED_AUTHTOKENS_REQUEST, NAMESPACE);
+    public static final QName REFRESH_REGISTERED_AUTHTOKENS_RESPONSE = QName.get(E_REFRESH_REGISTERED_AUTHTOKENS_RESPONSE, NAMESPACE);
 
     public static final QName GET_SMIME_CONFIG_REQUEST = QName.get(E_GET_SMIME_CONFIG_REQUEST, NAMESPACE);
     public static final QName GET_SMIME_CONFIG_RESPONSE = QName.get(E_GET_SMIME_CONFIG_RESPONSE, NAMESPACE);
@@ -1015,6 +1058,7 @@ public final class AdminConstants {
     public static final String E_QUEUE = "queue";
     public static final String E_ACTION = "action";
     public static final String E_SERVER = "server";
+    public static final String E_ALWAYSONCLUSTER = "alwaysOnCluster";
     public static final String E_UC_SERVICE = "ucservice";
     public static final String E_XMPP_COMPONENT = "xmppcomponent";
     public static final String E_STATUS = "status";
@@ -1052,6 +1096,7 @@ public final class AdminConstants {
     public static final String E_KEY = "key";
     public static final String E_PRINCIPAL = "principal";
     public static final String E_SKIN = "skin";
+    public static final String E_TOKEN = "token";
 
     public static final String A_ACCOUNT = "account";
     public static final String A_CALENDAR_RESOURCE = "calresource";
@@ -1126,6 +1171,7 @@ public final class AdminConstants {
     public static final String A_HEALTHY = "healthy";
     public static final String A_SIZE = "s";
     public static final String A_SERVICE = "service";
+    public static final String A_ALWAYSONCLUSTER_ID = "alwaysOnClusterId";
     public static final String A_STATUS = "status";
     public static final String A_TIME = "time";
     public static final String A_TYPES = "types";

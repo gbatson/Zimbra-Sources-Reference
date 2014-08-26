@@ -1,30 +1,31 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.util;
 
 import java.io.File;
 
-import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.util.Constants;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.memcached.MemcachedConnector;
-
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.config.CacheConfiguration;
 import net.sf.ehcache.config.Configuration;
 import net.sf.ehcache.config.DiskStoreConfiguration;
+
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.memcached.MemcachedConnector;
 
 /**
  * Ehcache configurator.
@@ -41,6 +42,7 @@ public final class EhcacheManager {
 
     public static final String IMAP_ACTIVE_SESSION_CACHE = "imap-active-session-cache";
     public static final String IMAP_INACTIVE_SESSION_CACHE = "imap-inactive-session-cache";
+    public static final String SYNC_STATE_ITEM_CACHE = "sync-state-item-cache";
 
     private EhcacheManager() {
         Configuration conf = new Configuration();
@@ -52,6 +54,7 @@ public final class EhcacheManager {
             ZimbraLog.imap.info("Using Memcached for inactive session cache");
         } else {
             conf.addCache(createImapInactiveSessionCache());
+            conf.addCache(createSyncStateItemCache());
         }
         conf.setUpdateCheck(false);
         CacheManager.create(conf);
@@ -81,6 +84,17 @@ public final class EhcacheManager {
         conf.setDiskPersistent(true);
         conf.setMaxElementsInMemory(1); // virtually disk cache only
         conf.setMaxElementsOnDisk(LC.imap_inactive_session_cache_size.intValue());
+        return conf;
+    }
+
+    private CacheConfiguration createSyncStateItemCache() {
+        CacheConfiguration conf = new CacheConfiguration();
+        conf.setName(SYNC_STATE_ITEM_CACHE);
+        conf.setOverflowToDisk(true);
+        conf.setDiskPersistent(true);
+        conf.setMaxBytesLocalHeap(LC.zimbra_activesync_syncstate_item_cache_heap_size.value());
+        conf.setMaxElementsOnDisk(0); //infinite
+        conf.setTimeToLiveSeconds(LC.zimbra_activesync_metadata_cache_expiration.intValue());
         return conf;
     }
 

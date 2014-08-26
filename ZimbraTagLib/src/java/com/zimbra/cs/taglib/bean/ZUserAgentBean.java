@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.taglib.bean;
@@ -26,12 +28,16 @@ public class ZUserAgentBean {
     Version browserVersion = new Version("-1");
     Version mozVersion = new Version("-1");
     Version tridentVersion = new Version("-1");
+    Version androidVersion = new Version("-1");
+    Version iOsVersion = new Version("-1");
     boolean isOsMac = false;
     boolean isOsWindows = false;
     boolean isOsLinux = false;
     boolean isOsAndroid = false;
+    boolean isOsBlackBerry = false;
     boolean isNav  = false;
     boolean isIE = false;
+    boolean isModernIE = false;
     boolean trueNs = false;
     boolean isFirefox = false;
     boolean isMozilla = false;
@@ -67,6 +73,8 @@ public class ZUserAgentBean {
         double geckoDate = 0;
         boolean beginsWithMozilla = false;
         boolean isCompatible = false;
+        boolean isTokenAndroid = false;
+        boolean isTokenOS = false;
         if (agtArr.hasMoreTokens()) {
             String token = agtArr.nextToken();
             Pattern pattern = Pattern.compile("\\s*mozilla");
@@ -140,11 +148,26 @@ public class ZUserAgentBean {
                     isOsLinux = true;
                 }else if (token.indexOf("android") != -1){
                     isOsAndroid = true;
+                    isTokenAndroid = true;
+                } else if (token.indexOf("blackberry") != -1 || token.startsWith("bb")) {
+                    isOsBlackBerry = true;
                 }else if ((index = token.indexOf("version/")) != -1){
                     //In case of safari, get the browser version here
                     browserVersion = new Version(token.substring(index + 8));
                 }else if (token.indexOf("mobile") != -1) {
                     isMobile = true;
+                } else if (token.indexOf("touch") != -1 || token.indexOf("tablet") != -1) {
+                    isMobile = true;
+                } else if (token.equals("os") && (isIPhone || isIPod || isTouchiPad)) {
+                    isTokenOS = true;
+                } else if (isTokenAndroid && token.matches("^(\\d).*")) {
+                    androidVersion = new Version(token);
+                    isTokenAndroid = false;
+                } else if (isTokenOS && token.matches("^(\\d).*")) {
+                    //iOS version is separated using "_", replace it with "."
+                    token = token.replaceAll("_", ".");
+                    iOsVersion = new Version(token);
+                    isTokenOS = false;
                 }
 
                 token = agtArr.hasMoreTokens() ? agtArr.nextToken() : null;
@@ -158,16 +181,15 @@ public class ZUserAgentBean {
 
             isIE = (isIE && !isOpera);
 
-            // Note: unlike JP and later, we don't treat IE11+ as
-            // significantly different from IE10 and earlier
-            if (tridentVersion.getMajor() >= 7 && mozVersion.getMajor() >= 11) {
-                isIE = true;
-                browserVersion = mozVersion;
-            }
+            isModernIE = (!isIE && tridentVersion.getMajor() >= 7 &&
+                          mozVersion.getMajor() >= 11);
 
             isMozilla = ((isNav && mozVersion.getMajor() > -1 && isGeckoBased));
 
             isFirefox = ((isMozilla && isFirefox));
+
+            if (isModernIE)
+                browserVersion = mozVersion;
         }
     }
 
@@ -239,9 +261,7 @@ public class ZUserAgentBean {
     
     public boolean getIsIE10up() { return (isIE && (browserVersion.getMajor() >= 10)); }
 
-    public boolean getIsIE11() { return (isIE && (browserVersion.equals(11,0))); }
-    
-    public boolean getIsIE11up() { return (isIE && (browserVersion.getMajor() >= 11)); }
+    public boolean getIsModernIE() { return isModernIE; }
 
     public boolean getIsMozilla() { return isMozilla; }
 
@@ -266,6 +286,12 @@ public class ZUserAgentBean {
     public boolean getIsiPhone() { return isIPhone; }
 
     public boolean getIsiPod() { return isIPod; }
+
+    public boolean getIsOsBlackBerry() { return isOsBlackBerry; }
+
+    public boolean getIsAndroid4_0up() { return (isOsAndroid && androidVersion.greaterOrEqual(4, 0)); }
+
+    public boolean getIsIos6_0up() { return ((isIPhone || isIPod || isTouchiPad) && iOsVersion.greaterOrEqual(6, 0)); }
 
     @Deprecated
     public boolean getIsiPad() { return isIPad; }

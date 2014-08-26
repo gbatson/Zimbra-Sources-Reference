@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -59,91 +61,11 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testDeviceStatusInfo }
-     * 
-     */
-    public testDeviceStatusInfo createtestDeviceStatusInfo() {
-        return new testDeviceStatusInfo();
-    }
-
-    /**
-     * Create an instance of {@link testDeviceId }
-     * 
-     */
-    public testDeviceId createtestDeviceId() {
-        return new testDeviceId();
-    }
-
-    /**
-     * Create an instance of {@link testRemoteWipeRequest }
-     * 
-     */
-    public testRemoteWipeRequest createtestRemoteWipeRequest() {
-        return new testRemoteWipeRequest();
-    }
-
-    /**
-     * Create an instance of {@link testGetDeviceStatusResponse }
-     * 
-     */
-    public testGetDeviceStatusResponse createtestGetDeviceStatusResponse() {
-        return new testGetDeviceStatusResponse();
-    }
-
-    /**
-     * Create an instance of {@link testCancelPendingRemoteWipeRequest }
-     * 
-     */
-    public testCancelPendingRemoteWipeRequest createtestCancelPendingRemoteWipeRequest() {
-        return new testCancelPendingRemoteWipeRequest();
-    }
-
-    /**
-     * Create an instance of {@link testRemoveDeviceRequest }
-     * 
-     */
-    public testRemoveDeviceRequest createtestRemoveDeviceRequest() {
-        return new testRemoveDeviceRequest();
-    }
-
-    /**
-     * Create an instance of {@link testResumeDeviceResponse }
-     * 
-     */
-    public testResumeDeviceResponse createtestResumeDeviceResponse() {
-        return new testResumeDeviceResponse();
-    }
-
-    /**
      * Create an instance of {@link testSuspendDeviceRequest }
      * 
      */
     public testSuspendDeviceRequest createtestSuspendDeviceRequest() {
         return new testSuspendDeviceRequest();
-    }
-
-    /**
-     * Create an instance of {@link testRemoveDeviceResponse }
-     * 
-     */
-    public testRemoveDeviceResponse createtestRemoveDeviceResponse() {
-        return new testRemoveDeviceResponse();
-    }
-
-    /**
-     * Create an instance of {@link testGetDeviceStatusRequest }
-     * 
-     */
-    public testGetDeviceStatusRequest createtestGetDeviceStatusRequest() {
-        return new testGetDeviceStatusRequest();
-    }
-
-    /**
-     * Create an instance of {@link testResumeDeviceRequest }
-     * 
-     */
-    public testResumeDeviceRequest createtestResumeDeviceRequest() {
-        return new testResumeDeviceRequest();
     }
 
     /**
@@ -163,11 +85,91 @@ public class ObjectFactory {
     }
 
     /**
+     * Create an instance of {@link testResumeDeviceRequest }
+     * 
+     */
+    public testResumeDeviceRequest createtestResumeDeviceRequest() {
+        return new testResumeDeviceRequest();
+    }
+
+    /**
+     * Create an instance of {@link testDeviceStatusInfo }
+     * 
+     */
+    public testDeviceStatusInfo createtestDeviceStatusInfo() {
+        return new testDeviceStatusInfo();
+    }
+
+    /**
+     * Create an instance of {@link testGetDeviceStatusResponse }
+     * 
+     */
+    public testGetDeviceStatusResponse createtestGetDeviceStatusResponse() {
+        return new testGetDeviceStatusResponse();
+    }
+
+    /**
+     * Create an instance of {@link testResumeDeviceResponse }
+     * 
+     */
+    public testResumeDeviceResponse createtestResumeDeviceResponse() {
+        return new testResumeDeviceResponse();
+    }
+
+    /**
      * Create an instance of {@link testCancelPendingRemoteWipeResponse }
      * 
      */
     public testCancelPendingRemoteWipeResponse createtestCancelPendingRemoteWipeResponse() {
         return new testCancelPendingRemoteWipeResponse();
+    }
+
+    /**
+     * Create an instance of {@link testRemoteWipeRequest }
+     * 
+     */
+    public testRemoteWipeRequest createtestRemoteWipeRequest() {
+        return new testRemoteWipeRequest();
+    }
+
+    /**
+     * Create an instance of {@link testGetDeviceStatusRequest }
+     * 
+     */
+    public testGetDeviceStatusRequest createtestGetDeviceStatusRequest() {
+        return new testGetDeviceStatusRequest();
+    }
+
+    /**
+     * Create an instance of {@link testRemoveDeviceRequest }
+     * 
+     */
+    public testRemoveDeviceRequest createtestRemoveDeviceRequest() {
+        return new testRemoveDeviceRequest();
+    }
+
+    /**
+     * Create an instance of {@link testDeviceId }
+     * 
+     */
+    public testDeviceId createtestDeviceId() {
+        return new testDeviceId();
+    }
+
+    /**
+     * Create an instance of {@link testCancelPendingRemoteWipeRequest }
+     * 
+     */
+    public testCancelPendingRemoteWipeRequest createtestCancelPendingRemoteWipeRequest() {
+        return new testCancelPendingRemoteWipeRequest();
+    }
+
+    /**
+     * Create an instance of {@link testRemoveDeviceResponse }
+     * 
+     */
+    public testRemoveDeviceResponse createtestRemoveDeviceResponse() {
+        return new testRemoveDeviceResponse();
     }
 
     /**

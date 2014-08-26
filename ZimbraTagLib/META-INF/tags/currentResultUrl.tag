@@ -1,15 +1,17 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2008, 2009, 2010, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2008, 2009, 2010, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
 --%>
 <%@ tag body-content="empty" dynamic-attributes="dynattrs" %>
@@ -29,7 +31,7 @@
     <c:when test="${empty context}">
         <c:url value="${value}" var="urlVar">
             <c:if test="${not refresh}">
-                <c:if test="${usecache && (empty dynattrs.su && dynattrs.su!='')}"><c:param name='su' value='1'/></c:if>
+                <c:if test="${zm:boolean(usecache) && (empty dynattrs.su && dynattrs.su!='')}"><c:param name='su' value='1'/></c:if>
                 <c:if test="${empty dynattrs.si && dynattrs.si!=''}"><c:param name='si' value='${empty index ? param.si : index}'/></c:if>
                 <c:if test="${!empty param.so && (empty dynattrs.so && dynattrs.so!='')}"><c:param name='so' value='${param.so}'/></c:if>
                 <c:if test="${!empty param.sc && (empty dynattrs.sc && dynattrs.sc!='')}"><c:param name='sc' value='${param.sc}'/></c:if>
@@ -49,7 +51,7 @@
     <c:otherwise>
         <c:url value="${value}" var="urlVar">
             <c:if test="${not refresh}">
-                <c:if test="${usecache && (empty dynattrs.su && dynattrs.su!='')}"><c:param name='su' value='1'/></c:if>
+                <c:if test="${zm:boolean(usecache) && (empty dynattrs.su && dynattrs.su!='')}"><c:param name='su' value='1'/></c:if>
                 <c:if test="${empty dynattrs.si && dynattrs.si!=''}"><c:param name='si' value='${empty index ? context.currentItemIndex : index}'/></c:if>
                 <c:if test="${empty dynattrs.so && dynattrs.so!=''}"><c:param name='so' value='${context.searchResult.offset}'/></c:if>
                 <c:if test="${!empty context && (empty dynattrs.sc && dynattrs.sc!='')}"><c:param name='sc' value='${context.id}'/></c:if>

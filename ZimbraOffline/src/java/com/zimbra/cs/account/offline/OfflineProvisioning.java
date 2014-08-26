@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.offline;
@@ -44,6 +46,7 @@ import com.zimbra.client.ZIdentity;
 import com.zimbra.client.ZMailbox;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.AlwaysOnClusterBy;
 import com.zimbra.common.account.Key.ShareLocatorBy;
 import com.zimbra.common.account.Key.UCServiceBy;
 import com.zimbra.common.account.ProvisioningConstants;
@@ -61,6 +64,7 @@ import com.zimbra.common.util.SystemUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AlwaysOnCluster;
 import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Config;
@@ -73,12 +77,12 @@ import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.NamedEntry;
-import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.ShareLocator;
 import com.zimbra.cs.account.Signature;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
 import com.zimbra.cs.account.auth.AuthContext;
@@ -218,7 +222,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     private final Map<String, Server> mSyncServerCache;
     private final Map<String, OfflineDomainGal> domainGals;
     private Account zimbraAdminAccount;
-    private List<String> cachedAccountIds = new CopyOnWriteArrayList<String>();
+    private final List<String> cachedAccountIds = new CopyOnWriteArrayList<String>();
     private volatile boolean mHasDirtyAccounts = true;
 
     public OfflineProvisioning() {
@@ -533,7 +537,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized Set<String> getDistributionLists(Account acct) throws ServiceException {
         return null;
     }
-    
+
     @Override
     public Set<String> getDirectDistributionLists(Account acct)
             throws ServiceException {
@@ -651,7 +655,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         throw OfflineServiceException.UNSUPPORTED("restoreAccount");
     }
 
-    private OfflineAccount.Version MIN_ZCS_VER = new OfflineAccount.Version("5.0");
+    private final OfflineAccount.Version MIN_ZCS_VER = new OfflineAccount.Version("5.0");
 
     private synchronized Account createSyncAccount(String emailAddress, String password, Map<String, Object> attrs) throws ServiceException {
         if (attrs == null || !(attrs.get(A_offlineRemoteServerUri) instanceof String))
@@ -1091,13 +1095,14 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                     Account account = get(AccountBy.id, LOCAL_ACCOUNT_ID);
                     if (account == null) {
                         account = createLocalAccount();
-                        String uri = "http://127.0.0.1:" + LC.zimbra_admin_service_port.value() + "/desktop/login.jsp?at=" + OfflineLC.zdesktop_installation_key.value();
-                        String webappUri = account.getAttr(A_offlineWebappUri, null);
-                        if (webappUri == null || !webappUri.equals(uri))
-                            setAccountAttribute(account, A_offlineWebappUri, uri);
-                        if (OfflineLC.zdesktop_relabel.value().equalsIgnoreCase(CHN_BETA) && !CHN_BETA.equalsIgnoreCase(account.getAttr(A_zimbraPrefOfflineUpdateChannel, null))) {
-                            setAccountAttribute(account, A_zimbraPrefOfflineUpdateChannel, CHN_BETA);
-                        }
+                    }
+                    String uri = "http://127.0.0.1:" + LC.zimbra_admin_service_port.value() + "/desktop/login.jsp?at=" + OfflineLC.zdesktop_installation_key.value();
+                    String webappUri = account.getAttr(A_offlineWebappUri, null);
+                    if (webappUri == null || !webappUri.equals(uri)) {
+                        setAccountAttribute(account, A_offlineWebappUri, uri);
+                    }
+                    if (OfflineLC.zdesktop_relabel.value().equalsIgnoreCase(CHN_BETA) && !CHN_BETA.equalsIgnoreCase(account.getAttr(A_zimbraPrefOfflineUpdateChannel, null))) {
+                        setAccountAttribute(account, A_zimbraPrefOfflineUpdateChannel, CHN_BETA);
                     }
                     localAccount = account;
                 }
@@ -1415,6 +1420,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         Map<String,Object> attrs = null;
         DbOfflineDirectory.GranterEntry granter = null;
         if (keyType == AccountBy.id) {
+            if (key.equals(LOCAL_ACCOUNT_ID) && localAccount != null) {
+                return getLocalAccount();
+            }
             if ((acct = mAccountCache.getById(key)) == null) {
                 if (zimbraAdminAccount != null && key.equals(zimbraAdminAccount.getId())) {
                     acct = zimbraAdminAccount;
@@ -1426,8 +1434,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                 }
             }
         } else if (keyType == AccountBy.name) {
-            if (key.equals(LOCAL_ACCOUNT_NAME))
+            if (key.equals(LOCAL_ACCOUNT_NAME)) {
                 return getLocalAccount();
+            }
             if ((acct = mAccountCache.getByName(key)) == null) {
                 attrs = DbOfflineDirectory.readDirectoryEntry(EntryType.ACCOUNT, A_offlineDn, key);
 
@@ -2230,7 +2239,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return new OfflineSignature(account, attrs, this);
     }
 
-    private Map<String, List<DataSource>> cachedDataSources = new HashMap<String, List<DataSource>>();
+    private final Map<String, List<DataSource>> cachedDataSources = new HashMap<String, List<DataSource>>();
 
     @Override
     public synchronized DataSource createDataSource(Account account, DataSourceType type, String name, Map<String, Object> attrs) throws ServiceException {
@@ -2806,5 +2815,34 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     @Override
     public void renameUCService(String zimbraId, String newName) throws ServiceException {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AlwaysOnCluster createAlwaysOnCluster(String name,
+            Map<String, Object> attrs) throws ServiceException {
+        throw OfflineServiceException.UNSUPPORTED("createAlwaysOnCluster");
+    }
+
+    @Override
+    public AlwaysOnCluster get(AlwaysOnClusterBy keyname, String key)
+            throws ServiceException {
+        throw OfflineServiceException.UNSUPPORTED("get");
+    }
+
+    @Override
+    public void deleteAlwaysOnCluster(String zimbraId) throws ServiceException {
+        throw OfflineServiceException.UNSUPPORTED("deleteAlwaysOnCluster");
+    }
+
+    @Override
+    public List<AlwaysOnCluster> getAllAlwaysOnClusters()
+            throws ServiceException {
+        throw OfflineServiceException.UNSUPPORTED("getAllAlwaysOnClusters");
+    }
+
+    @Override
+    public List<Server> getAllServers(String service, String clusterId)
+            throws ServiceException {
+        throw OfflineServiceException.UNSUPPORTED("getAllServersByClusterId");
     }
 }

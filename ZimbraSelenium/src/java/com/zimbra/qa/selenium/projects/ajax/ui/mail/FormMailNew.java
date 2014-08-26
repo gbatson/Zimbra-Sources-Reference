@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
@@ -58,12 +60,12 @@ public class FormMailNew extends AbsForm {
 		public static final String zSendIconBtn			= "css=div[id^='ztb__COMPOSE'] div[id*='SEND'] td[id$='_title']";
 		public static final String zCancelIconBtn		= "css=[id^=zb__COMPOSE][id$=__CANCEL_title]";
 		public static final String zSaveDraftIconBtn	= "css=[id^=zb__COMPOSE][id$=__SAVE_DRAFT_title]";
-		public static final String zSpellCheckIconBtn	= "css=[id^=zb__COMPOSE][id$=__SPELL_CHECK_title]";
+		public static final String zSpellCheckIconBtn	= "css=[id^=zb__COMPOSE][id$=__SPELL_CHECK_left_icon]>div.ImgSpellCheck";
 		
 		public static final String zOptionsButton	= "css=div[id^='ztb__COMPOSE'] td[id$='__COMPOSE_OPTIONS_title']";
 		public static final String zIncludeOriginalAsAttachmentMenu	= "css=div[id$='_CAL_REPLY']:contains('Include Original As Attachment')";		
 
-		public static final String zToField				= "css=div>input[id^=zv__COMPOSE][id$=_to_control]";
+		public static final String zToField				= "css=div>input[id^='zv__COMPOSE'][id$='_to_control']";
 		public static final String zCcField				= "css=[id^=zv__COMPOSE][id$=_cc_control]";
 		public static final String zBccField			= "css=[id^=zv__COMPOSE][id$=_bcc_control]";
 		public static final String zSubjectField		= "css=div[id^=zv__COMPOSE] input[id$=_subject_control]";
@@ -83,7 +85,7 @@ public class FormMailNew extends AbsForm {
 		public static final String zBubbleToField		= "css=[id^=zv__COMPOSE][id$=_to_cell]";
 		public static final String zBubbleCcField		= "css=[id^=zv__COMPOSE][id$=_cc_cell]";
 		public static final String zBubbleBccField		= "css=[id^=zv__COMPOSE][id$=_bcc_cell]";
-		
+		public static final String CcField              = "css= td[id='zv__COMPOSE-1_cc_cell']  div[class='addrBubbleContainer']";
 	}
 
 	public static class Field {
@@ -169,6 +171,7 @@ public class FormMailNew extends AbsForm {
 			Stafpostqueue sp = new Stafpostqueue();
 			sp.waitForPostqueue();
 		
+			SleepUtil.sleepSmall();
 			
 			return (page);
 		
@@ -237,7 +240,14 @@ public class FormMailNew extends AbsForm {
 		} else if ( button == Button.B_SHOWBCC) {
 
 			page = this;
-			locator = "xpath=//div[contains(@id,'zv__COMPOSE')]//a[contains(@id,'_toggle_bcc')]";
+			// locator = "xpath=//div[contains(@id,'zv__COMPOSE')]//a[contains(@id,'_toggle_bcc')]";
+			
+			//Show Bcc is under option drop-down menu			
+			 String optionLocator = "css=[id$=__COMPOSE_OPTIONS_title]";
+			 this.zClick(optionLocator);
+						
+			 locator =  "css=div[id=SHOW_BCC]";;
+			 //locator = "css=div[id^='zv__COMPOSE'] a[id$='_toggle_bcc']";
 
 			if ( zBccIsActive() )
 				return (this);
@@ -247,7 +257,7 @@ public class FormMailNew extends AbsForm {
 			////
 			
 			// Click it
-			this.sClick(locator);
+			this.zClick(locator);
 			
 			this.zWaitForBusyOverlay();
 
@@ -326,29 +336,28 @@ public class FormMailNew extends AbsForm {
 
 		} else if ( pulldown == Button.B_PRIORITY ) {
 			
+			pulldownLocator = "css=[id$=__COMPOSE_OPTIONS_title]";
+			
 			if ( option == Button.O_PRIORITY_HIGH ) {
 				
 				// TODO
-				pulldownLocator = Locators.zPriorityPulldown;
-
+		
             // Have to use xpath because there is no unique identifier to select the text "High" and by using xpath, it selects the text "high" through the sibling relationship.
             // When using the css to point to the icon, it clicks on the outside of the drop down menu
             // , therefore it ends up closing and selecting nothing
-            optionLocator = "//div[@class='ImgPriorityHigh_list']/../../td[@class='ZWidgetTitle']";
+				optionLocator = "css=div[id=PRIORITY_HIGH]";          
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
 				
 				// TODO
-				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "css=[class='ImgPriorityNormal_list']";
+				optionLocator = "css=div[id=PRIORITY_NORMAL]";			
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_LOW ) {
 				
 				// TODO
-				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "css=[class='ImgPriorityLow_list']";
+				optionLocator = "css=div[id=PRIORITY_LOW]";
 				page = this;
 
 			} else {
@@ -576,7 +585,7 @@ public class FormMailNew extends AbsForm {
 			return;
 						
 		} else if ( field == Field.Bcc ) {
-			
+		
 			locator = Locators.zBccField;
 			
 			// Make sure the BCC field is showing
@@ -619,6 +628,114 @@ public class FormMailNew extends AbsForm {
 			//
 			SleepUtil.sleepLong();
 
+			
+			locator = "css=div[id^='zv__COMPOSE'] iframe[id$='_body_ifr']";
+			if ( this.sIsElementPresent(locator) && this.zIsVisiblePerPosition(locator, 0, 0) ) {
+				
+				logger.info("FormMailNew.zFillField: Html Compose");
+			
+				/**
+
+	<div id="zv__COMPOSE-1" style="position: absolute; overflow: hidden; left: 0px; top: 100px; width: 996px; height: 533px; z-index: 300;"  class="ZmComposeView" parentid="z_shell">
+	   <table id="zv__COMPOSE-1_header" .../>
+	   <div id="DWT54" style="position: relative; overflow: visible; display: block;" class="ZmHtmlEditor" parentid="zv__COMPOSE-1" x-display="block">
+	     <textarea id="DWT54_content" name="DWT54_content" class="DwtHtmlEditorTextArea" style="height: 413px; display: none;" aria-hidden="true"></textarea>
+	     <span id="DWT54_content_parent" role="application" aria-labelledby="DWT54_content_voice" class="mceEditor defaultSkin">
+	      <table id="DWT54_content_tbl" cellspacing="0" cellpadding="0" role="presentation" class="mceLayout" style="width: 100%; height: auto;">
+	        <tbody>
+	          <tr role="presentation" class="mceFirst">...</tr>
+	          <tr class="mceLast">
+	            <td class="mceIframeContainer mceFirst mceLast">
+	             <iframe id="DWT54_content_ifr" frameborder="0" src="javascript:&quot;&quot;" allowtransparency="true"  title="Rich Text AreaPress ALT-F10 for toolbar. Press ALT-0 for help" style="width: 100%; height: 385px; display: block;">
+	              <html>
+	               <head xmlns="http://www.w3.org/1999/xhtml"><meta content="IE=7" http-equiv="X-UA-Compatible"><meta content="text/html; charset=UTF-8" http-equiv="Content-Type"></head>
+	               <body id="tinymce" contenteditable="true" onload="window.parent.tinyMCE.get('DWT54_content').onLoad.dispatch();" class="mceContentBody " style="font-family: times new roman,new york,times,serif; font-size: 12pt; color: rgb(0, 0, 0);" dir="LTR">
+	                <div>
+	                 <br data-mce-bogus="1">
+	                </div>
+	               </body>
+	              </html>
+	             </iframe>
+	            </td>
+	          </tr>
+	        </tbody>
+	      </table>
+	    </div>
+	  </div>
+				  
+				 **/
+				
+				try {
+
+					this.sSelectFrame("css=iframe[id$='_body_ifr']"); // iframe index is 0 based
+
+					locator = "css=html body";
+
+					if (!this.sIsElementPresent(locator))
+						throw new HarnessException("Unable to locate compose body");
+
+					this.sFocus(locator);
+					this.zClick(locator);
+					
+					/*
+					 * Oct 25, 2011: The new TinyMCE editor broke sType().  Use zKeyboard instead,
+					 * however, it is preferred to use sType() if possible, but I can't find a
+					 * solution right now. 
+					 */
+					// this.sType(locator, value);
+					this.zKeyboard.zTypeCharacters(value);
+
+				} finally {
+					// Make sure to go back to the original iframe
+					this.sSelectFrame("relative=top");
+
+				}
+
+				// Is this requried?
+				this.zWaitForBusyOverlay();
+
+				return;
+
+			}
+
+			locator = "css=div[id^='zv__COMPOSE'] textarea.ZmHtmlEditorTextArea";
+			if ( this.sIsElementPresent(locator) && this.zIsVisiblePerPosition(locator, 0, 0) ) {
+				
+				logger.info("FormMailNew.zFillField: Text Compose");
+
+				/**
+
+  <div id="zv__COMPOSE-1" style="position: absolute; overflow: hidden; left: 0px; top: 100px; width: 996px; height: 533px; z-index: 300;" class="ZmComposeView" parentid="z_shell">
+    <table id="zv__COMPOSE-1_header" width="100%" cellspacing="6" class="ZPropertySheet">
+	...
+    </table>
+    <div id="DWT52" style="position: relative; overflow: visible; display: block;" class="ZmHtmlEditor" parentid="zv__COMPOSE-1">
+      <textarea id="DWT52_content" name="DWT52_content" class="DwtHtmlEditorTextArea" style="height: 413px;">
+      </textarea>
+    </div>
+  </div>
+				  
+				 **/
+				
+				this.sFocus(locator);
+				this.zClick(locator);
+				this.zWaitForBusyOverlay();
+				this.sType(locator, value);
+
+				return;
+
+			}
+			
+			
+			/**
+			 * 7/2/2013: Matt
+			 * Below is the OLD code to handle compose.  It handled IE and other
+			 * browser implementations, which may not be required for webdriver.
+			 * 
+			 * Maybe remove if not being used? 
+			 **/
+			
+			
 			int frames = this.sGetCssCount("css=iframe");
 			logger.debug("Body: # of frames: " + frames);
 			String browser = SeleniumService.getInstance().getSeleniumBrowser();
@@ -686,23 +803,22 @@ public class FormMailNew extends AbsForm {
 
 					try {
 
-						this.sSelectFrame("index=0"); // iframe index is 0 based
-
-						locator = "css=body[id='tinymce']";
+						locator = "css=iframe[id$='_content_ifr']";
 
 						if (!this.sIsElementPresent(locator))
 							throw new HarnessException("Unable to locate compose body");
 
 						this.sFocus(locator);
-						this.zClick(locator);
-						
+						this.zClickAt(locator,"");
+
 						/*
 						 * Oct 25, 2011: The new TinyMCE editor broke sType().  Use zKeyboard instead,
 						 * however, it is preferred to use sType() if possible, but I can't find a
 						 * solution right now. 
 						 */
 						// this.sType(locator, value);
-						this.zKeyboard.zTypeCharacters(value);
+						//this.zKeyboard.zTypeCharacters(value);
+						zTypeFormattedText(locator, value);
 
 					} finally {
 						// Make sure to go back to the original iframe
@@ -715,14 +831,18 @@ public class FormMailNew extends AbsForm {
 
 					return;
 					
-				} else if (frames == 2) {
+				} else if (frames >= 2) {
 					// //
 					// HTML compose
 					// //
 
 					try {
 
-						this.sSelectFrame("css=iframe[id$='_content_ifr']"); // iframe index is 0 based
+						if (ZimbraSeleniumProperties.isWebDriver()) {
+							this.sSelectFrame("css=body[id=tinymce]");
+						} else {
+							this.sSelectFrame("css=iframe[id$='_content_ifr']");
+						}
 
 						locator = "css=html body";
 
@@ -756,6 +876,8 @@ public class FormMailNew extends AbsForm {
 					throw new HarnessException("Compose //iframe count was " + frames);
 				}
 			}
+			
+
 
 		} else {
 			throw new HarnessException("not implemented for field " + field);
@@ -826,24 +948,23 @@ public class FormMailNew extends AbsForm {
 		}
 		
 		if ( mail.dBodyText != null ) {
-		    if(ZimbraSeleniumProperties.isWebDriver()){
-			String textBody = "css=textarea[id*=content]";
-			sType(textBody, mail.dBodyText);
-			sFireEvent(textBody, "keyup");
-		    }else{
-			zFillField(Field.Body, mail.dBodyText);
-		    }
+			if(ZimbraSeleniumProperties.isWebDriver()){
+				String textBody = "css=textarea[id*=ZmHtmlEditor]";
+				sType(textBody, mail.dBodyText);
+				sFireEvent(textBody, "keyup");
+			}else{
+				zFillField(Field.Body, mail.dBodyText);
+			}
 		}
 		if ( mail.dBodyHtml != null ) {
-		    if(ZimbraSeleniumProperties.isWebDriver()){
-			//String bodyLocator = "css=body[id=tinymce]";
-			String bodyLocator = "css=iframe[id*=ifr]";
-			zWaitForElementPresent(bodyLocator, "10000");
-			sClickAt(bodyLocator,"");
-			zTypeFormattedText(bodyLocator, mail.dBodyHtml);
-		    }else{
-			zFillField(Field.Body, mail.dBodyHtml);
-		    }
+			if(ZimbraSeleniumProperties.isWebDriver()){
+				String bodyLocator = "css=iframe[id*='ifr']";
+				zWaitForElementPresent(bodyLocator, "10000");
+				sClickAt(bodyLocator,"");
+				zTypeFormattedText(bodyLocator, mail.dBodyHtml);
+			}else{
+				zFillField(Field.Body, mail.dBodyHtml);
+			}
 		}
 		
 		
@@ -934,7 +1055,7 @@ public class FormMailNew extends AbsForm {
 	
 	public boolean zHasAttachment() throws HarnessException {
 	
-		String locator = "css=span[id$='_attachments_div'] div.attBubbleContainer";
+		String locator = "css=div[id$='_attachments_div'] div.attBubbleContainer";
 		
 		boolean hasBubble = this.sIsElementPresent(locator);
 		
@@ -950,7 +1071,7 @@ public class FormMailNew extends AbsForm {
 		}
 		
 		// Find the attachment name
-		String locator = "css=span[id$='_attachments_div'] div.attBubbleContainer a.AttLink";
+		String locator = "css=div[id$='_attachments_div'] div.attBubbleContainer a.AttLink";
 		
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false);
@@ -1031,7 +1152,7 @@ public class FormMailNew extends AbsForm {
 		    clearField(locator);
 		    sType(locator, value);
 		}else{
-		    if(value.length() > 0){
+		    if(value.length() > 0){ 
 			sType(locator, value.substring(0, value.length()-1));
 			sFireEvent(locator, "keyup");
 		    }
@@ -1109,7 +1230,7 @@ public class FormMailNew extends AbsForm {
 		String locator = null;
 		
 		// Get the icon
-		locator = itemLocator + " td.Icon div@class";
+		locator = itemLocator + " td.AutocompleteMatchIcon div@class";
 		String image = this.sGetAttribute(locator);
 		
 		// Get the address
@@ -1177,6 +1298,35 @@ public class FormMailNew extends AbsForm {
 		this.sMouseOver(entry.getLocator() + " td + td");
 		this.zWaitForBusyOverlay();
 		
+	}
+
+	public String ZGetFieldValue(Field field) throws HarnessException {
+		String locator = null;
+		String fieldValue= null;
+
+		if ( field == Field.Cc ) {	
+			locator = Locators.CcField;
+			
+		} else {
+			
+			throw new HarnessException("no logic defined for field "+ field);
+			
+		}
+
+		// Make sure something was set
+		if ( locator == null )
+			throw new HarnessException("locator was null for field = "+ field);
+		
+		// Make sure the field is present
+		if ( !this.sIsElementPresent(locator) )
+			throw new HarnessException("Unable to find the field = "+ field +" using locator = "+ locator);
+		
+		// Get the field value
+		fieldValue = this.sGetText(locator);
+		logger.info("DisplayMail.ZGetFieldValue(" + field + ") = " + fieldValue);
+		return(fieldValue);
+
+
 	}
 
 	

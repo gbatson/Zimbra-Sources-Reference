@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 //ZaCertWizard
@@ -584,10 +590,10 @@ function (){
 	html[idx++] = "<colgroup><col width=100/><col width='*' /><col width=50 /></colgroup>";
 	
 	html[idx++] = "<tbody><tr><td>" + com_zimbra_cert_manager.CERT_upload_comm_cert + "</td>";
-	html[idx++] = "<td><input type=file  name='certFile' size='40'></input></td><td></td></tr>";
+	html[idx++] = "<td><input type=file  name='certFile' size='40' /></td><td></td></tr>";
 
 	html[idx++] = "<tr><td>" + com_zimbra_cert_manager.CERT_upload_root_CA + "</td>";
-	html[idx++] = "<td><input type=file  name='rootCA' size='40'></input></td><td></td></tr>";
+	html[idx++] = "<td><input type=file  name='rootCA' size='40' /></td><td></td></tr>";
 
 //	html[idx++] = "<tr>" + ZaCertWizard.getIntermediaCAUploadInput() + "</tr>";
 
@@ -617,7 +623,7 @@ ZaCertWizard.getIntermediaCAUploadInput = function () {
 	
 	html[idx++] = "<tbody><tr>" ;
 	html[idx++] = "<td>" + com_zimbra_cert_manager.CERT_upload_intermediate_ca + "</td>";
-	html[idx++] = "<td><input type=file  name='intermediateCA' size='40'></input></td>"; 
+	html[idx++] = "<td><input type=file  name='intermediateCA' size='40' /></td>";
 	html[idx++] = "<td><span style='padding-left:5px; color: blue; text-decoration: underline; cursor: default;' " +
 					" onmouseout='this.style.cursor=\"default\"' " +
 					" onmouseover='this.style.cursor=\"pointer\"'" +
@@ -871,7 +877,7 @@ ZaCertWizard.myXFormModifier = function(xFormObject) {
                     ],
                     label: com_zimbra_cert_manager.Use_Wildcard_Server_Name,
                     onChange: function (value, event, form) {
-                        if(window.console && window.console.log) {
+                        if (window.console && window.console.log) {
                             console.log("use wildcard: " + value);
                         }
                         this.setInstanceValue (value);
@@ -1176,12 +1182,34 @@ ZaCertWizard.myXFormModifier = function(xFormObject) {
     }
 
     xFormObject.items = [
-			{type:_OUTPUT_, colSpan:2, align:_CENTER_, valign:_TOP_, ref:ZaModel.currentStep,
-                choices:this.stepChoices, valueChangeEventSources:[ZaModel.currentStep]},
-			{type:_SEPARATOR_, align:_CENTER_, valign:_TOP_},
-			{type:_SPACER_,  align:_CENTER_, valign:_TOP_},
-			{type:_SWITCH_,  width:w, align:_LEFT_, valign:_TOP_, items:cases}
-		];
+        {
+            type: _OUTPUT_,
+            colSpan: 2,
+            valign: _TOP_,
+            cssStyle: "white-space: normal",
+            ref: ZaModel.currentStep,
+            choices: this.stepChoices,
+            valueChangeEventSources: [ZaModel.currentStep]
+        },
+        {
+            type: _SEPARATOR_,
+            align: _CENTER_,
+            valign: _TOP_
+        },
+        {
+            type: _SPACER_,
+            align: _CENTER_,
+            valign: _TOP_
+        },
+        {
+            type: _SWITCH_,
+            width: w,
+            align: _LEFT_,
+            valign: _TOP_,
+            cssStyle: "white-space: normal",
+            items: cases
+        }
+    ];
 };
 ZaXDialog.XFormModifiers["ZaCertWizard"].push(ZaCertWizard.myXFormModifier);
 

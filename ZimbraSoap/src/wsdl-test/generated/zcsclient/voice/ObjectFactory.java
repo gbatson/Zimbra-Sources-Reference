@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -75,11 +77,163 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testGetUCInfoResponse }
+     * Create an instance of {@link testVoiceMsgActionSpec }
      * 
      */
-    public testGetUCInfoResponse createtestGetUCInfoResponse() {
-        return new testGetUCInfoResponse();
+    public testVoiceMsgActionSpec createtestVoiceMsgActionSpec() {
+        return new testVoiceMsgActionSpec();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceFeaturesRequest }
+     * 
+     */
+    public testGetVoiceFeaturesRequest createtestGetVoiceFeaturesRequest() {
+        return new testGetVoiceFeaturesRequest();
+    }
+
+    /**
+     * Create an instance of {@link testResetVoiceFeaturesRequest }
+     * 
+     */
+    public testResetVoiceFeaturesRequest createtestResetVoiceFeaturesRequest() {
+        return new testResetVoiceFeaturesRequest();
+    }
+
+    /**
+     * Create an instance of {@link testCallFeature }
+     * 
+     */
+    public testCallFeature createtestCallFeature() {
+        return new testCallFeature();
+    }
+
+    /**
+     * Create an instance of {@link testAnonCallRejectionReq }
+     * 
+     */
+    public testAnonCallRejectionReq createtestAnonCallRejectionReq() {
+        return new testAnonCallRejectionReq();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceFeaturesSpec }
+     * 
+     */
+    public testModifyVoiceFeaturesSpec createtestModifyVoiceFeaturesSpec() {
+        return new testModifyVoiceFeaturesSpec();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceMailPrefsResponse }
+     * 
+     */
+    public testGetVoiceMailPrefsResponse createtestGetVoiceMailPrefsResponse() {
+        return new testGetVoiceMailPrefsResponse();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceFolder }
+     * 
+     */
+    public testVoiceFolder createtestVoiceFolder() {
+        return new testVoiceFolder();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceInfo.Callfeatures }
+     * 
+     */
+    public testVoiceInfo.Callfeatures createtestVoiceInfoCallfeatures() {
+        return new testVoiceInfo.Callfeatures();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceFeaturesResponse }
+     * 
+     */
+    public testGetVoiceFeaturesResponse createtestGetVoiceFeaturesResponse() {
+        return new testGetVoiceFeaturesResponse();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMailCallParty }
+     * 
+     */
+    public testVoiceMailCallParty createtestVoiceMailCallParty() {
+        return new testVoiceMailCallParty();
+    }
+
+    /**
+     * Create an instance of {@link testUploadVoiceMailResponse }
+     * 
+     */
+    public testUploadVoiceMailResponse createtestUploadVoiceMailResponse() {
+        return new testUploadVoiceMailResponse();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceMailPrefsResponse }
+     * 
+     */
+    public testModifyVoiceMailPrefsResponse createtestModifyVoiceMailPrefsResponse() {
+        return new testModifyVoiceMailPrefsResponse();
+    }
+
+    /**
+     * Create an instance of {@link testResetPhoneVoiceFeaturesSpec }
+     * 
+     */
+    public testResetPhoneVoiceFeaturesSpec createtestResetPhoneVoiceFeaturesSpec() {
+        return new testResetPhoneVoiceFeaturesSpec();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMailPrefsFeature }
+     * 
+     */
+    public testVoiceMailPrefsFeature createtestVoiceMailPrefsFeature() {
+        return new testVoiceMailPrefsFeature();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMailItem }
+     * 
+     */
+    public testVoiceMailItem createtestVoiceMailItem() {
+        return new testVoiceMailItem();
+    }
+
+    /**
+     * Create an instance of {@link testChangeUCPasswordRequest }
+     * 
+     */
+    public testChangeUCPasswordRequest createtestChangeUCPasswordRequest() {
+        return new testChangeUCPasswordRequest();
+    }
+
+    /**
+     * Create an instance of {@link testGetUCInfoRequest }
+     * 
+     */
+    public testGetUCInfoRequest createtestGetUCInfoRequest() {
+        return new testGetUCInfoRequest();
+    }
+
+    /**
+     * Create an instance of {@link testFeatureWithCallerList }
+     * 
+     */
+    public testFeatureWithCallerList createtestFeatureWithCallerList() {
+        return new testFeatureWithCallerList();
+    }
+
+    /**
+     * Create an instance of {@link testSearchVoiceRequest }
+     * 
+     */
+    public testSearchVoiceRequest createtestSearchVoiceRequest() {
+        return new testSearchVoiceRequest();
     }
 
     /**
@@ -91,19 +245,99 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testCallWaitingFeature }
+     * Create an instance of {@link testSelectiveCallAcceptanceFeature }
      * 
      */
-    public testCallWaitingFeature createtestCallWaitingFeature() {
-        return new testCallWaitingFeature();
+    public testSelectiveCallAcceptanceFeature createtestSelectiveCallAcceptanceFeature() {
+        return new testSelectiveCallAcceptanceFeature();
     }
 
     /**
-     * Create an instance of {@link testChangeUCPasswordRequest }
+     * Create an instance of {@link testCallForwardFeature }
      * 
      */
-    public testChangeUCPasswordRequest createtestChangeUCPasswordRequest() {
-        return new testChangeUCPasswordRequest();
+    public testCallForwardFeature createtestCallForwardFeature() {
+        return new testCallForwardFeature();
+    }
+
+    /**
+     * Create an instance of {@link testCallerIdBlockingReq }
+     * 
+     */
+    public testCallerIdBlockingReq createtestCallerIdBlockingReq() {
+        return new testCallerIdBlockingReq();
+    }
+
+    /**
+     * Create an instance of {@link testResetVoiceFeaturesResponse }
+     * 
+     */
+    public testResetVoiceFeaturesResponse createtestResetVoiceFeaturesResponse() {
+        return new testResetVoiceFeaturesResponse();
+    }
+
+    /**
+     * Create an instance of {@link testSelectiveCallForwardFeature }
+     * 
+     */
+    public testSelectiveCallForwardFeature createtestSelectiveCallForwardFeature() {
+        return new testSelectiveCallForwardFeature();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceFolderSummary }
+     * 
+     */
+    public testVoiceFolderSummary createtestVoiceFolderSummary() {
+        return new testVoiceFolderSummary();
+    }
+
+    /**
+     * Create an instance of {@link testPhoneSpec }
+     * 
+     */
+    public testPhoneSpec createtestPhoneSpec() {
+        return new testPhoneSpec();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceFeaturesRequest }
+     * 
+     */
+    public testModifyVoiceFeaturesRequest createtestModifyVoiceFeaturesRequest() {
+        return new testModifyVoiceFeaturesRequest();
+    }
+
+    /**
+     * Create an instance of {@link testCallerIdBlockingFeature }
+     * 
+     */
+    public testCallerIdBlockingFeature createtestCallerIdBlockingFeature() {
+        return new testCallerIdBlockingFeature();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceMailPinRequest }
+     * 
+     */
+    public testModifyVoiceMailPinRequest createtestModifyVoiceMailPinRequest() {
+        return new testModifyVoiceMailPinRequest();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceMailPrefsRequest }
+     * 
+     */
+    public testGetVoiceMailPrefsRequest createtestGetVoiceMailPrefsRequest() {
+        return new testGetVoiceMailPrefsRequest();
+    }
+
+    /**
+     * Create an instance of {@link testCallerListEntry }
+     * 
+     */
+    public testCallerListEntry createtestCallerListEntry() {
+        return new testCallerListEntry();
     }
 
     /**
@@ -123,35 +357,19 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testSelectiveCallRejectionFeature }
+     * Create an instance of {@link testModifyFromNumRequest }
      * 
      */
-    public testSelectiveCallRejectionFeature createtestSelectiveCallRejectionFeature() {
-        return new testSelectiveCallRejectionFeature();
+    public testModifyFromNumRequest createtestModifyFromNumRequest() {
+        return new testModifyFromNumRequest();
     }
 
     /**
-     * Create an instance of {@link testAnonCallRejectionReq }
+     * Create an instance of {@link testVoiceMsgActionRequest }
      * 
      */
-    public testAnonCallRejectionReq createtestAnonCallRejectionReq() {
-        return new testAnonCallRejectionReq();
-    }
-
-    /**
-     * Create an instance of {@link testUploadVoiceMailRequest }
-     * 
-     */
-    public testUploadVoiceMailRequest createtestUploadVoiceMailRequest() {
-        return new testUploadVoiceMailRequest();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceFolderInfo }
-     * 
-     */
-    public testVoiceFolderInfo createtestVoiceFolderInfo() {
-        return new testVoiceFolderInfo();
+    public testVoiceMsgActionRequest createtestVoiceMsgActionRequest() {
+        return new testVoiceMsgActionRequest();
     }
 
     /**
@@ -163,118 +381,6 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testCallForwardFeature }
-     * 
-     */
-    public testCallForwardFeature createtestCallForwardFeature() {
-        return new testCallForwardFeature();
-    }
-
-    /**
-     * Create an instance of {@link testUploadVoiceMailResponse }
-     * 
-     */
-    public testUploadVoiceMailResponse createtestUploadVoiceMailResponse() {
-        return new testUploadVoiceMailResponse();
-    }
-
-    /**
-     * Create an instance of {@link testCallerListEntry }
-     * 
-     */
-    public testCallerListEntry createtestCallerListEntry() {
-        return new testCallerListEntry();
-    }
-
-    /**
-     * Create an instance of {@link testSearchVoiceRequest }
-     * 
-     */
-    public testSearchVoiceRequest createtestSearchVoiceRequest() {
-        return new testSearchVoiceRequest();
-    }
-
-    /**
-     * Create an instance of {@link testPrefInfo }
-     * 
-     */
-    public testPrefInfo createtestPrefInfo() {
-        return new testPrefInfo();
-    }
-
-    /**
-     * Create an instance of {@link testCallerIdBlockingFeature }
-     * 
-     */
-    public testCallerIdBlockingFeature createtestCallerIdBlockingFeature() {
-        return new testCallerIdBlockingFeature();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceMailPrefsRequest }
-     * 
-     */
-    public testModifyVoiceMailPrefsRequest createtestModifyVoiceMailPrefsRequest() {
-        return new testModifyVoiceMailPrefsRequest();
-    }
-
-    /**
-     * Create an instance of {@link testPrefSpec }
-     * 
-     */
-    public testPrefSpec createtestPrefSpec() {
-        return new testPrefSpec();
-    }
-
-    /**
-     * Create an instance of {@link testPhoneSpec }
-     * 
-     */
-    public testPhoneSpec createtestPhoneSpec() {
-        return new testPhoneSpec();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceFolderSummary }
-     * 
-     */
-    public testVoiceFolderSummary createtestVoiceFolderSummary() {
-        return new testVoiceFolderSummary();
-    }
-
-    /**
-     * Create an instance of {@link testGetVoiceInfoRequest }
-     * 
-     */
-    public testGetVoiceInfoRequest createtestGetVoiceInfoRequest() {
-        return new testGetVoiceInfoRequest();
-    }
-
-    /**
-     * Create an instance of {@link testModifyFromNumSpec }
-     * 
-     */
-    public testModifyFromNumSpec createtestModifyFromNumSpec() {
-        return new testModifyFromNumSpec();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMsgActionInfo }
-     * 
-     */
-    public testVoiceMsgActionInfo createtestVoiceMsgActionInfo() {
-        return new testVoiceMsgActionInfo();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceFeaturesRequest }
-     * 
-     */
-    public testModifyVoiceFeaturesRequest createtestModifyVoiceFeaturesRequest() {
-        return new testModifyVoiceFeaturesRequest();
-    }
-
-    /**
      * Create an instance of {@link testCallForwardBusyLineReq }
      * 
      */
@@ -283,147 +389,19 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testGetVoiceMailPrefsResponse }
+     * Create an instance of {@link testVoiceCallItem }
      * 
      */
-    public testGetVoiceMailPrefsResponse createtestGetVoiceMailPrefsResponse() {
-        return new testGetVoiceMailPrefsResponse();
+    public testVoiceCallItem createtestVoiceCallItem() {
+        return new testVoiceCallItem();
     }
 
     /**
-     * Create an instance of {@link testGetVoiceFolderResponse }
+     * Create an instance of {@link testUploadVoiceMailRequest }
      * 
      */
-    public testGetVoiceFolderResponse createtestGetVoiceFolderResponse() {
-        return new testGetVoiceFolderResponse();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceInfo }
-     * 
-     */
-    public testVoiceInfo createtestVoiceInfo() {
-        return new testVoiceInfo();
-    }
-
-    /**
-     * Create an instance of {@link testSelectiveCallForwardReq }
-     * 
-     */
-    public testSelectiveCallForwardReq createtestSelectiveCallForwardReq() {
-        return new testSelectiveCallForwardReq();
-    }
-
-    /**
-     * Create an instance of {@link testCallForwardReq }
-     * 
-     */
-    public testCallForwardReq createtestCallForwardReq() {
-        return new testCallForwardReq();
-    }
-
-    /**
-     * Create an instance of {@link testGetUCInfoResponse.Attrs }
-     * 
-     */
-    public testGetUCInfoResponse.Attrs createtestGetUCInfoResponseAttrs() {
-        return new testGetUCInfoResponse.Attrs();
-    }
-
-    /**
-     * Create an instance of {@link testPhoneInfo }
-     * 
-     */
-    public testPhoneInfo createtestPhoneInfo() {
-        return new testPhoneInfo();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMailItem }
-     * 
-     */
-    public testVoiceMailItem createtestVoiceMailItem() {
-        return new testVoiceMailItem();
-    }
-
-    /**
-     * Create an instance of {@link testGetUCInfoRequest }
-     * 
-     */
-    public testGetUCInfoRequest createtestGetUCInfoRequest() {
-        return new testGetUCInfoRequest();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMsgUploadInfo }
-     * 
-     */
-    public testVoiceMsgUploadInfo createtestVoiceMsgUploadInfo() {
-        return new testVoiceMsgUploadInfo();
-    }
-
-    /**
-     * Create an instance of {@link testSelectiveCallForwardFeature }
-     * 
-     */
-    public testSelectiveCallForwardFeature createtestSelectiveCallForwardFeature() {
-        return new testSelectiveCallForwardFeature();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMailPrefsFeature }
-     * 
-     */
-    public testVoiceMailPrefsFeature createtestVoiceMailPrefsFeature() {
-        return new testVoiceMailPrefsFeature();
-    }
-
-    /**
-     * Create an instance of {@link testGetVoiceMailPrefsRequest }
-     * 
-     */
-    public testGetVoiceMailPrefsRequest createtestGetVoiceMailPrefsRequest() {
-        return new testGetVoiceMailPrefsRequest();
-    }
-
-    /**
-     * Create an instance of {@link testModifyFromNumRequest }
-     * 
-     */
-    public testModifyFromNumRequest createtestModifyFromNumRequest() {
-        return new testModifyFromNumRequest();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceFolder }
-     * 
-     */
-    public testVoiceFolder createtestVoiceFolder() {
-        return new testVoiceFolder();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceMailPrefsResponse }
-     * 
-     */
-    public testModifyVoiceMailPrefsResponse createtestModifyVoiceMailPrefsResponse() {
-        return new testModifyVoiceMailPrefsResponse();
-    }
-
-    /**
-     * Create an instance of {@link testCallForwardBusyLineFeature }
-     * 
-     */
-    public testCallForwardBusyLineFeature createtestCallForwardBusyLineFeature() {
-        return new testCallForwardBusyLineFeature();
-    }
-
-    /**
-     * Create an instance of {@link testPhoneVoiceFeaturesInfo }
-     * 
-     */
-    public testPhoneVoiceFeaturesInfo createtestPhoneVoiceFeaturesInfo() {
-        return new testPhoneVoiceFeaturesInfo();
+    public testUploadVoiceMailRequest createtestUploadVoiceMailRequest() {
+        return new testUploadVoiceMailRequest();
     }
 
     /**
@@ -435,59 +413,19 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testVoiceInfo.Callfeatures }
+     * Create an instance of {@link testGetUCInfoResponse.Attrs }
      * 
      */
-    public testVoiceInfo.Callfeatures createtestVoiceInfoCallfeatures() {
-        return new testVoiceInfo.Callfeatures();
+    public testGetUCInfoResponse.Attrs createtestGetUCInfoResponseAttrs() {
+        return new testGetUCInfoResponse.Attrs();
     }
 
     /**
-     * Create an instance of {@link testVoiceMsgActionSpec }
+     * Create an instance of {@link testPhoneVoiceFeaturesInfo }
      * 
      */
-    public testVoiceMsgActionSpec createtestVoiceMsgActionSpec() {
-        return new testVoiceMsgActionSpec();
-    }
-
-    /**
-     * Create an instance of {@link testPhoneVoiceFeaturesSpec }
-     * 
-     */
-    public testPhoneVoiceFeaturesSpec createtestPhoneVoiceFeaturesSpec() {
-        return new testPhoneVoiceFeaturesSpec();
-    }
-
-    /**
-     * Create an instance of {@link testCallForwardNoAnswerFeature }
-     * 
-     */
-    public testCallForwardNoAnswerFeature createtestCallForwardNoAnswerFeature() {
-        return new testCallForwardNoAnswerFeature();
-    }
-
-    /**
-     * Create an instance of {@link testSelectiveCallRejectionReq }
-     * 
-     */
-    public testSelectiveCallRejectionReq createtestSelectiveCallRejectionReq() {
-        return new testSelectiveCallRejectionReq();
-    }
-
-    /**
-     * Create an instance of {@link testGetVoiceInfoResponse }
-     * 
-     */
-    public testGetVoiceInfoResponse createtestGetVoiceInfoResponse() {
-        return new testGetVoiceInfoResponse();
-    }
-
-    /**
-     * Create an instance of {@link testSelectiveCallAcceptanceFeature }
-     * 
-     */
-    public testSelectiveCallAcceptanceFeature createtestSelectiveCallAcceptanceFeature() {
-        return new testSelectiveCallAcceptanceFeature();
+    public testPhoneVoiceFeaturesInfo createtestPhoneVoiceFeaturesInfo() {
+        return new testPhoneVoiceFeaturesInfo();
     }
 
     /**
@@ -499,27 +437,147 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testVoiceMailContent }
+     * Create an instance of {@link testGetUCInfoResponse }
      * 
      */
-    public testVoiceMailContent createtestVoiceMailContent() {
-        return new testVoiceMailContent();
+    public testGetUCInfoResponse createtestGetUCInfoResponse() {
+        return new testGetUCInfoResponse();
     }
 
     /**
-     * Create an instance of {@link testSearchVoiceResponse }
+     * Create an instance of {@link testVoiceInfo }
      * 
      */
-    public testSearchVoiceResponse createtestSearchVoiceResponse() {
-        return new testSearchVoiceResponse();
+    public testVoiceInfo createtestVoiceInfo() {
+        return new testVoiceInfo();
     }
 
     /**
-     * Create an instance of {@link testResetPhoneVoiceFeaturesSpec }
+     * Create an instance of {@link testCallForwardBusyLineFeature }
      * 
      */
-    public testResetPhoneVoiceFeaturesSpec createtestResetPhoneVoiceFeaturesSpec() {
-        return new testResetPhoneVoiceFeaturesSpec();
+    public testCallForwardBusyLineFeature createtestCallForwardBusyLineFeature() {
+        return new testCallForwardBusyLineFeature();
+    }
+
+    /**
+     * Create an instance of {@link testPrefSpec }
+     * 
+     */
+    public testPrefSpec createtestPrefSpec() {
+        return new testPrefSpec();
+    }
+
+    /**
+     * Create an instance of {@link testModifyFromNumResponse }
+     * 
+     */
+    public testModifyFromNumResponse createtestModifyFromNumResponse() {
+        return new testModifyFromNumResponse();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceMailPinSpec }
+     * 
+     */
+    public testModifyVoiceMailPinSpec createtestModifyVoiceMailPinSpec() {
+        return new testModifyVoiceMailPinSpec();
+    }
+
+    /**
+     * Create an instance of {@link testPhoneInfo }
+     * 
+     */
+    public testPhoneInfo createtestPhoneInfo() {
+        return new testPhoneInfo();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMailPrefsReq }
+     * 
+     */
+    public testVoiceMailPrefsReq createtestVoiceMailPrefsReq() {
+        return new testVoiceMailPrefsReq();
+    }
+
+    /**
+     * Create an instance of {@link testSelectiveCallForwardReq }
+     * 
+     */
+    public testSelectiveCallForwardReq createtestSelectiveCallForwardReq() {
+        return new testSelectiveCallForwardReq();
+    }
+
+    /**
+     * Create an instance of {@link testRootVoiceFolder }
+     * 
+     */
+    public testRootVoiceFolder createtestRootVoiceFolder() {
+        return new testRootVoiceFolder();
+    }
+
+    /**
+     * Create an instance of {@link testPrefInfo }
+     * 
+     */
+    public testPrefInfo createtestPrefInfo() {
+        return new testPrefInfo();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceInfoResponse }
+     * 
+     */
+    public testGetVoiceInfoResponse createtestGetVoiceInfoResponse() {
+        return new testGetVoiceInfoResponse();
+    }
+
+    /**
+     * Create an instance of {@link testCallWaitingFeature }
+     * 
+     */
+    public testCallWaitingFeature createtestCallWaitingFeature() {
+        return new testCallWaitingFeature();
+    }
+
+    /**
+     * Create an instance of {@link testSelectiveCallRejectionFeature }
+     * 
+     */
+    public testSelectiveCallRejectionFeature createtestSelectiveCallRejectionFeature() {
+        return new testSelectiveCallRejectionFeature();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceFolderResponse }
+     * 
+     */
+    public testGetVoiceFolderResponse createtestGetVoiceFolderResponse() {
+        return new testGetVoiceFolderResponse();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceMailPinResponse }
+     * 
+     */
+    public testModifyVoiceMailPinResponse createtestModifyVoiceMailPinResponse() {
+        return new testModifyVoiceMailPinResponse();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceInfoRequest }
+     * 
+     */
+    public testGetVoiceInfoRequest createtestGetVoiceInfoRequest() {
+        return new testGetVoiceInfoRequest();
+    }
+
+    /**
+     * Create an instance of {@link testPhoneName }
+     * 
+     */
+    public testPhoneName createtestPhoneName() {
+        return new testPhoneName();
     }
 
     /**
@@ -528,30 +586,6 @@ public class ObjectFactory {
      */
     public testVoiceMailPrefName createtestVoiceMailPrefName() {
         return new testVoiceMailPrefName();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceFeaturesResponse }
-     * 
-     */
-    public testModifyVoiceFeaturesResponse createtestModifyVoiceFeaturesResponse() {
-        return new testModifyVoiceFeaturesResponse();
-    }
-
-    /**
-     * Create an instance of {@link testGetVoiceFeaturesResponse }
-     * 
-     */
-    public testGetVoiceFeaturesResponse createtestGetVoiceFeaturesResponse() {
-        return new testGetVoiceFeaturesResponse();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMsgActionResponse }
-     * 
-     */
-    public testVoiceMsgActionResponse createtestVoiceMsgActionResponse() {
-        return new testVoiceMsgActionResponse();
     }
 
     /**
@@ -571,123 +605,11 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testResetVoiceFeaturesResponse }
+     * Create an instance of {@link testPhoneVoiceFeaturesSpec }
      * 
      */
-    public testResetVoiceFeaturesResponse createtestResetVoiceFeaturesResponse() {
-        return new testResetVoiceFeaturesResponse();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceMailPinResponse }
-     * 
-     */
-    public testModifyVoiceMailPinResponse createtestModifyVoiceMailPinResponse() {
-        return new testModifyVoiceMailPinResponse();
-    }
-
-    /**
-     * Create an instance of {@link testCallFeature }
-     * 
-     */
-    public testCallFeature createtestCallFeature() {
-        return new testCallFeature();
-    }
-
-    /**
-     * Create an instance of {@link testGetVoiceFeaturesRequest }
-     * 
-     */
-    public testGetVoiceFeaturesRequest createtestGetVoiceFeaturesRequest() {
-        return new testGetVoiceFeaturesRequest();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceMailPinSpec }
-     * 
-     */
-    public testModifyVoiceMailPinSpec createtestModifyVoiceMailPinSpec() {
-        return new testModifyVoiceMailPinSpec();
-    }
-
-    /**
-     * Create an instance of {@link testGetVoiceFolderRequest }
-     * 
-     */
-    public testGetVoiceFolderRequest createtestGetVoiceFolderRequest() {
-        return new testGetVoiceFolderRequest();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceCallItem }
-     * 
-     */
-    public testVoiceCallItem createtestVoiceCallItem() {
-        return new testVoiceCallItem();
-    }
-
-    /**
-     * Create an instance of {@link testRootVoiceFolder }
-     * 
-     */
-    public testRootVoiceFolder createtestRootVoiceFolder() {
-        return new testRootVoiceFolder();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceMailPinRequest }
-     * 
-     */
-    public testModifyVoiceMailPinRequest createtestModifyVoiceMailPinRequest() {
-        return new testModifyVoiceMailPinRequest();
-    }
-
-    /**
-     * Create an instance of {@link testModifyFromNumResponse }
-     * 
-     */
-    public testModifyFromNumResponse createtestModifyFromNumResponse() {
-        return new testModifyFromNumResponse();
-    }
-
-    /**
-     * Create an instance of {@link testCallerIdBlockingReq }
-     * 
-     */
-    public testCallerIdBlockingReq createtestCallerIdBlockingReq() {
-        return new testCallerIdBlockingReq();
-    }
-
-    /**
-     * Create an instance of {@link testResetVoiceFeaturesRequest }
-     * 
-     */
-    public testResetVoiceFeaturesRequest createtestResetVoiceFeaturesRequest() {
-        return new testResetVoiceFeaturesRequest();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMsgActionRequest }
-     * 
-     */
-    public testVoiceMsgActionRequest createtestVoiceMsgActionRequest() {
-        return new testVoiceMsgActionRequest();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMailCallParty }
-     * 
-     */
-    public testVoiceMailCallParty createtestVoiceMailCallParty() {
-        return new testVoiceMailCallParty();
-    }
-
-    /**
-     * Create an instance of {@link testPhoneName }
-     * 
-     */
-    public testPhoneName createtestPhoneName() {
-        return new testPhoneName();
+    public testPhoneVoiceFeaturesSpec createtestPhoneVoiceFeaturesSpec() {
+        return new testPhoneVoiceFeaturesSpec();
     }
 
     /**
@@ -699,35 +621,115 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testFeatureWithCallerList }
-     * 
-     */
-    public testFeatureWithCallerList createtestFeatureWithCallerList() {
-        return new testFeatureWithCallerList();
-    }
-
-    /**
-     * Create an instance of {@link testVoiceMailPrefsReq }
-     * 
-     */
-    public testVoiceMailPrefsReq createtestVoiceMailPrefsReq() {
-        return new testVoiceMailPrefsReq();
-    }
-
-    /**
-     * Create an instance of {@link testModifyVoiceFeaturesSpec }
-     * 
-     */
-    public testModifyVoiceFeaturesSpec createtestModifyVoiceFeaturesSpec() {
-        return new testModifyVoiceFeaturesSpec();
-    }
-
-    /**
      * Create an instance of {@link testCallLogCallParty }
      * 
      */
     public testCallLogCallParty createtestCallLogCallParty() {
         return new testCallLogCallParty();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMsgActionResponse }
+     * 
+     */
+    public testVoiceMsgActionResponse createtestVoiceMsgActionResponse() {
+        return new testVoiceMsgActionResponse();
+    }
+
+    /**
+     * Create an instance of {@link testGetVoiceFolderRequest }
+     * 
+     */
+    public testGetVoiceFolderRequest createtestGetVoiceFolderRequest() {
+        return new testGetVoiceFolderRequest();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMsgUploadInfo }
+     * 
+     */
+    public testVoiceMsgUploadInfo createtestVoiceMsgUploadInfo() {
+        return new testVoiceMsgUploadInfo();
+    }
+
+    /**
+     * Create an instance of {@link testSelectiveCallRejectionReq }
+     * 
+     */
+    public testSelectiveCallRejectionReq createtestSelectiveCallRejectionReq() {
+        return new testSelectiveCallRejectionReq();
+    }
+
+    /**
+     * Create an instance of {@link testCallForwardNoAnswerFeature }
+     * 
+     */
+    public testCallForwardNoAnswerFeature createtestCallForwardNoAnswerFeature() {
+        return new testCallForwardNoAnswerFeature();
+    }
+
+    /**
+     * Create an instance of {@link testSearchVoiceResponse }
+     * 
+     */
+    public testSearchVoiceResponse createtestSearchVoiceResponse() {
+        return new testSearchVoiceResponse();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceFolderInfo }
+     * 
+     */
+    public testVoiceFolderInfo createtestVoiceFolderInfo() {
+        return new testVoiceFolderInfo();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceFeaturesResponse }
+     * 
+     */
+    public testModifyVoiceFeaturesResponse createtestModifyVoiceFeaturesResponse() {
+        return new testModifyVoiceFeaturesResponse();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMailContent }
+     * 
+     */
+    public testVoiceMailContent createtestVoiceMailContent() {
+        return new testVoiceMailContent();
+    }
+
+    /**
+     * Create an instance of {@link testCallForwardReq }
+     * 
+     */
+    public testCallForwardReq createtestCallForwardReq() {
+        return new testCallForwardReq();
+    }
+
+    /**
+     * Create an instance of {@link testVoiceMsgActionInfo }
+     * 
+     */
+    public testVoiceMsgActionInfo createtestVoiceMsgActionInfo() {
+        return new testVoiceMsgActionInfo();
+    }
+
+    /**
+     * Create an instance of {@link testModifyVoiceMailPrefsRequest }
+     * 
+     */
+    public testModifyVoiceMailPrefsRequest createtestModifyVoiceMailPrefsRequest() {
+        return new testModifyVoiceMailPrefsRequest();
+    }
+
+    /**
+     * Create an instance of {@link testModifyFromNumSpec }
+     * 
+     */
+    public testModifyFromNumSpec createtestModifyFromNumSpec() {
+        return new testModifyFromNumSpec();
     }
 
     /**

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -128,12 +130,21 @@ public class WsdlDocGenerator {
         }
     }
 
+    private static String badCmdError(String cmdName, String subtype) {
+        String fmt = "No JAXB Class associated with %s for command %s.  Is JaxbUtil.MESSAGE_CLASSES up to date?\n" +
+                     "Does 'ant test wsdl-client-support' succeed?";
+        return String.format(fmt, subtype, cmdName);
+    }
+
     private static void populateWithJavadocInfo(Root root, Map<String,ApiClassDocumentation> javadocInfo) {
         for (Command cmd : root.getAllCommands()) {
-            Class<?> reqKlass = cmd.getRequest().getJaxbClass();
+            XmlElementDescription reqDesc = cmd.getRequest();
+            if (reqDesc  == null) {
+                throw new RuntimeException(badCmdError(cmd.getName(), "request"));
+            }
+            Class<?> reqKlass = reqDesc.getJaxbClass();
             if (reqKlass  == null) {
-                throw new RuntimeException("No JAXB Class associated with request for command " + cmd.getName() +
-                        " .  Is JaxbUtil.MESSAGE_CLASSES up to date?");
+                throw new RuntimeException(badCmdError(cmd.getName(), "request"));
             }
             String reqClass = reqKlass.getName();
             ApiClassDocumentation doc = javadocInfo.get(reqClass);
@@ -144,10 +155,13 @@ public class WsdlDocGenerator {
                 cmd.setAuthRequiredDescription(doc.getAuthRequiredDescription());
                 cmd.setAdminAuthRequiredDescription(doc.getAdminAuthRequiredDescription());
             } else {
-                Class<?> respKlass = cmd.getResponse().getJaxbClass();
+                XmlElementDescription respDesc = cmd.getResponse();
+                if (respDesc  == null) {
+                    throw new RuntimeException(badCmdError(cmd.getName(), "response"));
+                }
+                Class<?> respKlass = respDesc.getJaxbClass();
                 if (respKlass  == null) {
-                    throw new RuntimeException("No JAXB Class associated with response for command " + cmd.getName() +
-                            " .  Is JaxbUtil.MESSAGE_CLASSES up to date?");
+                    throw new RuntimeException(badCmdError(cmd.getName(), "response"));
                 }
                 String respClass = respKlass.getName();
                 doc = javadocInfo.get(respClass);
@@ -210,6 +224,9 @@ public class WsdlDocGenerator {
                 desc = XmlElementDescription.createTopLevel(jaxbInfo, namespace, jaxbInfo.getRootElementName());
                 markupDuplicateElements(desc);
                 cmd.setRootResponseElement(desc);
+            } else {
+                throw new RuntimeException(
+                        String.format("Cannot handle top level class %s.  Expecting Request or Response", className));
             }
         }
         populateWithJavadocInfo(root, javadocInfo);

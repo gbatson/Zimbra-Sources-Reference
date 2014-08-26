@@ -1,20 +1,22 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
-import java.util.*;
+import java.util.HashMap;
 import java.util.Map.Entry;
 
 import org.testng.annotations.Test;
@@ -22,9 +24,10 @@ import org.testng.annotations.Test;
 import com.zimbra.qa.selenium.framework.items.ContactItem;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.ZimbraCharsets.ZCharset;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.FormContactNew;
 import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.FormContactNew.Field;
 
 
@@ -331,5 +334,60 @@ public class CreateContact extends AjaxCommonTest  {
 		}
 
 	}
+
+
+	@Test(
+			description = "Create a contacts with non-ASCII special characters", 
+			groups = { "functional", "charsets" },
+			dataProvider = "DataProviderSupportedCharsets")
+	public void CreateContact_07(ZCharset charset, String charsetSample) throws HarnessException {
+		
+		//-- DATA
+		
+		String contactFirst = charsetSample;
+		String contactLast = charsetSample;
+		String contactEmail = charsetSample + "@domain.com";
+		
+		
+		
+		//-- GUI Action
+		
+		// app.zPageAddressbook.zRefresh();
+		
+		FormContactNew formContactNew = (FormContactNew)app.zPageAddressbook.zToolbarPressButton(Button.B_NEW);
+		
+        // Fill in the form
+		formContactNew.zFillField(Field.FirstName, contactFirst);
+		formContactNew.zFillField(Field.LastName, contactLast);
+		formContactNew.zFillField(Field.Email, contactEmail);
+		formContactNew.zSubmit();
+
+		
+		//-- Data Verification
+		
+		app.zGetActiveAccount().soapSend(
+					"<SearchRequest xmlns='urn:zimbraMail' types='contact'>"
+				+		"<query>#firstname:"+ contactFirst +"</query>"
+				+	"</SearchRequest>");
+		String contactId = app.zGetActiveAccount().soapSelectValue("//mail:cn", "id");
+		
+		ZAssert.assertNotNull(contactId, "Verify the contact is returned in the search");
+		
+		app.zGetActiveAccount().soapSend(
+				"<GetContactsRequest xmlns='urn:zimbraMail'>"
+			+		"<cn id='"+ contactId +"'/>"
+			+	"</GetContactsRequest>");
+	
+		String lastname = app.zGetActiveAccount().soapSelectValue("//mail:cn[@id='"+ contactId +"']//mail:a[@n='lastName']", null);
+		String firstname = app.zGetActiveAccount().soapSelectValue("//mail:cn[@id='"+ contactId +"']//mail:a[@n='firstName']", null);
+		String email = app.zGetActiveAccount().soapSelectValue("//mail:cn[@id='"+ contactId +"']//mail:a[@n='email']", null);
+		
+		ZAssert.assertEquals(lastname, contactLast, "Verify the last name was saved correctly");
+		ZAssert.assertEquals(firstname, contactFirst, "Verify the first name was saved correctly");
+		ZAssert.assertEquals(email, contactEmail, "Verify the email was saved correctly");
+		
+		
+	}
+	
 
 }

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.authenticator;
@@ -61,6 +63,7 @@ import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException.AuthFailedServiceException;
@@ -74,12 +77,12 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
     public ClientCertAuthenticator(HttpServletRequest req, HttpServletResponse resp) {
         super(req, resp);
     }
-    
+
     @Override
     public String getAuthType() {
         return "ClientCert";
     }
-    
+
     @Override
     public ZimbraPrincipal authenticate() throws ServiceException {
         X509Certificate cert = getCert();
@@ -90,7 +93,7 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
 
         ClientCertPrincipalMap principalMap = new ClientCertPrincipalMap(req);
         List<Rule> rules = principalMap.getRules();
-        
+
         for (Rule rule : rules) {
             try {
                 ZimbraLog.account.debug(LOG_PREFIX + "Attempting rule " + rule.getName());
@@ -99,53 +102,57 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
                     return zimbraPrincipal;
                 }
                 ZimbraLog.account.debug(LOG_PREFIX + "Rule " + rule.getName() + " not matched");
-                
+
             } catch (ServiceException e) {
                 ZimbraLog.account.debug(LOG_PREFIX + "Rule " + rule.getName() + " not matched", e);
             }
         }
-        
+
         throw AuthFailedServiceException.AUTH_FAILED(cert.toString(),
                 "ClientCertAuthenticator - no matching Zimbra principal from client certificate.", (Throwable)null);
     }
-    
+
     /*
      * Save the client cert to file for debugging.
      * To view: /opt/zimbra/openssl/bin/openssl x509 -in /opt/zimbra/data/tmp/clientcert.*** -text
      */
     private void captureClientCert(X509Certificate cert) {
-        
+
         SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd-HHmmss.S");
+        FileOutputStream os = null;
+        Writer wr = null;
         try {
             File file = new File(LC.zimbra_tmp_directory.value() + "/clientcert." + fmt.format(new Date()));
-            
+
             // Get the encoded form which is suitable for exporting
             byte[] buf = cert.getEncoded();
 
-            FileOutputStream os = new FileOutputStream(file);
+            os = new FileOutputStream(file);
             // Write in text form
-            Writer wr = new OutputStreamWriter(os, Charset.forName("UTF-8"));
+            wr = new OutputStreamWriter(os, Charset.forName("UTF-8"));
             wr.write("-----BEGIN CERTIFICATE-----\n");
             wr.write(new sun.misc.BASE64Encoder().encode(buf));
             wr.write("\n-----END CERTIFICATE-----\n");
             wr.flush();
-            os.close();
         } catch (CertificateEncodingException e) {
             ZimbraLog.account.debug(LOG_PREFIX +  "unable to capture cert", e);
         } catch (IOException e) {
             ZimbraLog.account.debug(LOG_PREFIX + "unable to capture cert", e);
+        } finally {
+            ByteUtil.closeWriter(wr);
+            ByteUtil.closeStream(os);
         }
     }
-    
+
     private X509Certificate getCert() throws ServiceException {
         X509Certificate[] certs = (X509Certificate[])req.getAttribute("javax.servlet.request.X509Certificate");
-        
+
         if (certs==null || certs.length==0 || certs[0]==null) {
             throw SSOAuthenticatorServiceException.NO_CLIENT_CERTIFICATE();
         }
-        
+
         validateClientCert(certs);
-        
+
         return certs[0];
     }
 
@@ -154,10 +161,10 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
         try {
             LdapName dn = new LdapName(x509SubjectDN);
             List<Rdn> rdns = dn.getRdns();
-            
+
             for (Rdn rdn : rdns) {
                 String type = rdn.getType();
-                
+
                 // recognize only email address for now
                 if ("EMAILADDRESS".equals(type)) {
                     Object value = rdn.getValue();
@@ -175,26 +182,27 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
         } catch (InvalidNameException e) {
             throw AuthFailedServiceException.AUTH_FAILED("ClientCertAuthenticator - invalid X509 subject: " + x509SubjectDN, e);
         }
-        
+
         return null;
     }
-    
+
     private String getSubjectDNForLogging(X509Certificate cert) {
         String subjectDn = null;
         Principal principal = cert.getSubjectDN();
         if (principal != null) {
             subjectDn = principal.getName();
         }
-        
+
         if (subjectDn == null) {
             subjectDn = "";
         }
-        
+
         return subjectDn;
     }
 
     private void validateClientCert(X509Certificate[] certs) throws ServiceException {
         for (X509Certificate cert : certs) {
+            FileInputStream fis = null;
             try {
                 cert.checkValidity();
 
@@ -209,12 +217,13 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
 
                     KeyStore ks = KeyStore.getInstance("JKS");
                     char[] pass = LC.client_ssl_truststore_password.value().toCharArray();
-                    ks.load(new FileInputStream(LC.client_ssl_truststore.value()), pass);
+                    fis = new FileInputStream(LC.client_ssl_truststore.value());
+                    ks.load(fis, pass);
 
                     Set<TrustAnchor> trustedCertsSet = new HashSet<TrustAnchor>();
                     Enumeration<String> aliases = ks.aliases();
                     while (aliases.hasMoreElements()) {
-                        String alias = (String) aliases.nextElement();
+                        String alias = aliases.nextElement();
 
                         X509Certificate rootCACert = (X509Certificate)ks.getCertificate(alias);
                         TrustAnchor ta = new TrustAnchor(rootCACert, null);
@@ -251,7 +260,10 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
             } catch (InvalidAlgorithmParameterException e) {
                 throw AuthFailedServiceException.AUTH_FAILED(getSubjectDNForLogging(cert), "received InvalidAlgorithmParameter while obtaining instance of certpath validator", e);
             } catch (CertPathValidatorException e) {
-                throw AuthFailedServiceException.AUTH_FAILED(getSubjectDNForLogging(cert), "received CertPathValidatorException" + e.getMessage(), e);}
+                throw AuthFailedServiceException.AUTH_FAILED(getSubjectDNForLogging(cert), "received CertPathValidatorException" + e.getMessage(), e);
+            } finally {
+                ByteUtil.closeStream(fis);
+            }
 
           }
     }
@@ -259,7 +271,7 @@ public class ClientCertAuthenticator extends SSOAuthenticator {
     // examine the certificate's AuthorityInfoAccess extension
     private boolean IsAIAInfoPresent(X509Certificate cert) {
         try {
-            AuthorityInfoAccessExtension aia = 
+            AuthorityInfoAccessExtension aia =
                             X509CertImpl.toImpl(cert).getAuthorityInfoAccessExtension();
             return  (aia != null);
         } catch (CertificateException ce) {

@@ -1,34 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.account;
-
-import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.SetUtil;
-import com.zimbra.common.util.Version;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.callback.CallbackContext;
-import com.zimbra.cs.account.callback.IDNCallback;
-import com.zimbra.cs.account.ldap.LdapProv;
-import com.zimbra.cs.extension.ExtensionUtil;
-import org.dom4j.Attribute;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.Element;
-import org.dom4j.io.SAXReader;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -39,6 +26,23 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.dom4j.Attribute;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.SetUtil;
+import com.zimbra.common.util.Version;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.callback.CallbackContext;
+import com.zimbra.cs.account.callback.IDNCallback;
+import com.zimbra.cs.account.ldap.LdapProv;
+import com.zimbra.cs.extension.ExtensionUtil;
 
 public class AttributeManager {
 
@@ -88,43 +92,43 @@ public class AttributeManager {
     // Extension attr names are in the class -> attrs maps:
     //     mClassToAttrsMap, mClassToLowerCaseAttrsMap, mClassToAllAttrsMap maps.
     //
-    private Map<String, AttributeInfo> mAttrs = new HashMap<String, AttributeInfo>();
+    private final Map<String, AttributeInfo> mAttrs = new HashMap<String, AttributeInfo>();
 
-    private Map<String, ObjectClassInfo> mOCs = new HashMap<String, ObjectClassInfo>();
+    private final Map<String, ObjectClassInfo> mOCs = new HashMap<String, ObjectClassInfo>();
 
     // only direct attrs
-    private Map<AttributeClass, Set<String>> mClassToAttrsMap = new HashMap<AttributeClass, Set<String>>();
-    private Map<AttributeClass, Set<String>> mClassToLowerCaseAttrsMap = new HashMap<AttributeClass, Set<String>>();
+    private final Map<AttributeClass, Set<String>> mClassToAttrsMap = new HashMap<AttributeClass, Set<String>>();
+    private final Map<AttributeClass, Set<String>> mClassToLowerCaseAttrsMap = new HashMap<AttributeClass, Set<String>>();
 
     // direct attrs and attrs from included objectClass's
-    private Map<AttributeClass, Set<String>> mClassToAllAttrsMap = new HashMap<AttributeClass, Set<String>>();
+    private final Map<AttributeClass, Set<String>> mClassToAllAttrsMap = new HashMap<AttributeClass, Set<String>>();
 
     private boolean mLdapSchemaExtensionInited = false;
 
-    private AttributeCallback mIDNCallback = new IDNCallback();
+    private final AttributeCallback mIDNCallback = new IDNCallback();
 
     private static Map<Integer,String> mGroupMap = new HashMap<Integer,String>();
 
     private static Map<Integer,String> mOCGroupMap = new HashMap<Integer,String>();
-    
-    // attrs declared as type="binary" in zimbra-attrs.xml 
+
+    // attrs declared as type="binary" in zimbra-attrs.xml
     private static Set<String> mBinaryAttrs = new HashSet<String>();
-    
+
     // attrs that require ";binary" appended explicitly when transferred.
     // The only such syntax we support for now is:
     // 1.3.6.1.4.1.1466.115.121.1.8 - Certificate syntax
     private static Set<String> mBinaryTransferAttrs = new HashSet<String>();
-    
+
     /*
      * Notes on certificate attributes
-     * 
-     * attribute                       origin               cardinality   has EQUALITY rule       SYNTAX                          require     require JNDI 
-     *                                                                    (i.e. can add/delete                                    ";binary"   "java.naming.ldap.attributes.binary" 
+     *
+     * attribute                       origin               cardinality   has EQUALITY rule       SYNTAX                          require     require JNDI
+     *                                                                    (i.e. can add/delete                                    ";binary"   "java.naming.ldap.attributes.binary"
      *                                                                     individual values)                                     transfer    environment property
      * ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
      * userCertificate                 RFC2256              multi         yes                     1.3.6.1.4.1.1466.115.121.1.8    yes         no
            # contains DER format certificate
-     * 
+     *
      * userSMIMECertificate            RFC2798              multi         no                      1.3.6.1.4.1.1466.115.121.1.5    no          yes
            # A PKCS#7 [RFC2315] SignedData, where the content that is signed is
            # ignored by consumers of userSMIMECertificate values.  It is
@@ -137,9 +141,9 @@ public class AttributeManager {
            # preferred over the userCertificate attribute for S/MIME applications.
            ## OpenLDAP note: ";binary" transfer should NOT be used as syntax is binary
      *
-     * 
+     *
      * zimbraPrefMailSMIMECertificate  Zimbra(deprecated)   multi         yes                     1.3.6.1.4.1.1466.115.121.1.40   no          yes
-     * 
+     *
      */
 
     // do not keep comments and descriptions when running in a server
@@ -153,7 +157,7 @@ public class AttributeManager {
             return null;
         }
     }
-    
+
     public static AttributeManager getInstance() throws ServiceException {
         synchronized(AttributeManager.class) {
             if (mInstance != null) {
@@ -184,6 +188,15 @@ public class AttributeManager {
 
             return mInstance;
         }
+    }
+
+    @VisibleForTesting
+    void addAttribute(AttributeInfo info) {
+        mAttrs.put(info.mName.toLowerCase(), info);
+    }
+
+    @VisibleForTesting
+    AttributeManager() {
     }
 
     public AttributeManager(String dir) throws ServiceException {
@@ -223,7 +236,7 @@ public class AttributeManager {
         }
     }
 
-    private List<String> mErrors = new LinkedList<String>();
+    private final List<String> mErrors = new LinkedList<String>();
 
     boolean hasErrors() {
         return mErrors.size() > 0;
@@ -241,22 +254,22 @@ public class AttributeManager {
     Map<String, AttributeInfo> getAttrs() {
         return mAttrs;
     }
-    
+
     // called only from AttributeManagerUtil
     Map<String, ObjectClassInfo> getOCs() {
         return mOCs;
     }
-    
+
     // called only from AttributeManagerUtil
     Map<Integer,String> getGroupMap() {
         return mGroupMap;
     }
-    
+
     // called only from AttributeManagerUtil
     Map<Integer,String> getOCGroupMap() {
         return mOCGroupMap;
     }
-    
+
     private void error(String attrName, File file, String error) {
         if (attrName != null) {
             mErrors.add("attr " + attrName + " in file " + file + ": " + error);
@@ -274,7 +287,7 @@ public class AttributeManager {
             error(null, file, "root tag is not " + E_ATTRS);
             return;
         }
-        
+
         Map<Integer, String> idsSeen = new HashMap<Integer, String>();
 
         String group = root.attributeValue(A_GROUP);
@@ -324,7 +337,7 @@ public class AttributeManager {
             Set<AttributeClass> requiredIn = null;
             Set<AttributeClass> optionalIn = null;
             Set<AttributeFlag> flags = null;
-            
+
             String canonicalName = null;
             String name = eattr.attributeValue(A_NAME);
             if (name == null) {
@@ -335,7 +348,7 @@ public class AttributeManager {
 
             List<AttributeServerType> requiresRestart = null;
             Version deprecatedSinceVer = null;
-            Version sinceVer = null;
+            List<Version> sinceVer = null;
 
             for (Iterator attrIter = eattr.attributeIterator(); attrIter.hasNext();) {
                 Attribute attr = (Attribute) attrIter.next();
@@ -406,7 +419,11 @@ public class AttributeManager {
                     String since = attr.getValue();
                     if (since != null) {
                         try {
-                            sinceVer = new Version(since);
+                            String[] versions = since.split(",");
+                            sinceVer = new ArrayList<Version>();
+                            for (String verStr : versions) {
+                                sinceVer.add(new Version(verStr.trim()));
+                            }
                         } catch (ServiceException e) {
                             error(name, file, aname + " is not valid: " + attr.getValue() + " (" + e.getMessage() + ")");
                         }
@@ -483,7 +500,7 @@ public class AttributeManager {
             if (id > 0 && (optionalIn != null && optionalIn.isEmpty()) && (requiredIn != null && requiredIn.isEmpty())) {
                 error(name, file, "atleast one of " + A_REQUIRED_IN + " or " + A_OPTIONAL_IN + " must be specified");
             }
-            
+
             // Check that if id is specified, it must be unique
             if (id > 0) {
                 String idForAttr = idsSeen.get(Integer.valueOf(id));
@@ -505,6 +522,9 @@ public class AttributeManager {
 
             // Check that if it is server inheritable it is in server and global config
             checkFlag(name, file, flags, AttributeFlag.serverInherited, AttributeClass.server, AttributeClass.globalConfig, null, requiredIn, optionalIn);
+
+            // Check that if it is serverPreferAlwaysOn it is in server and alwaysOnCluster
+            checkFlag(name, file, flags, AttributeFlag.serverPreferAlwaysOn, AttributeClass.server, AttributeClass.alwaysOnCluster, null, requiredIn, optionalIn);
 
             // Check that is cardinality is single, then not more than one
             // default value is specified
@@ -550,13 +570,13 @@ public class AttributeManager {
                     }
                 }
             }
-            
+
             if (isBinaryType(type)) {
                 mBinaryAttrs.add(canonicalName);
             } else if (isBinaryTransferType(type)) {
                 mBinaryTransferAttrs.add(canonicalName);
             }
-            
+
         }
     }
 
@@ -569,7 +589,7 @@ public class AttributeManager {
             List<String> globalConfigValues, List<String> defaultCOSValues,
             List<String> defaultExternalCOSValues, List<String> globalConfigValuesUpgrade,
             List<String> defaultCOSValuesUpgrade, String description, List<AttributeServerType> requiresRestart,
-            Version sinceVer, Version deprecatedSinceVer) {
+            List<Version> sinceVer, Version deprecatedSinceVer) {
         return new AttributeInfo(
                 name, id, parentOid, groupId, callback, type, order, value, immutable, min, max,
                 cardinality, requiredIn, optionalIn, flags, globalConfigValues, defaultCOSValues,
@@ -584,14 +604,14 @@ public class AttributeManager {
     }
 
     class ObjectClassInfo {
-        private AttributeClass mAttributeClass;
-        private String mName;
-        private int mId;
-        private int mGroupId;
-        private ObjectClassType mType;
-        private List<String> mSuperOCs;
-        private String mDescription;
-        private List<String> mComment;
+        private final AttributeClass mAttributeClass;
+        private final String mName;
+        private final int mId;
+        private final int mGroupId;
+        private final ObjectClassType mType;
+        private final List<String> mSuperOCs;
+        private final String mDescription;
+        private final List<String> mComment;
 
         // there must be a one-to-one mapping between enums in AttributeClass and ocs defined in the xml
 
@@ -924,7 +944,7 @@ public class AttributeManager {
     /*
      * Support for lookup by flag
      */
-    private Map<AttributeFlag, Set<String>> mFlagToAttrsMap = new HashMap<AttributeFlag, Set<String>>();
+    private final Map<AttributeFlag, Set<String>> mFlagToAttrsMap = new HashMap<AttributeFlag, Set<String>>();
 
     private void initFlagsToAttrsMap() {
         for (AttributeFlag flag : AttributeFlag.values()) {
@@ -998,56 +1018,80 @@ public class AttributeManager {
 
     /**
      * returns whether attr is in the specified version.
-     * 
-     * An attr is considered in a version if it is introduced prior to version 
+     *
+     * An attr is considered in a version if it is introduced prior to version
      * or on the same version.
-     * 
-     * e.g. 
+     *
+     * e.g.
      *   - if attr is introduced on 7.1.0, it is in 7.1.1
      *   - if attr is introduced on 7.1.1, it is in 7.1.1
      *   - if attr is introduced on 7.1.2, it is not in 7.1.1
-     * 
+     *
      * @param attr
      * @param version
      * @return
      * @throws ServiceException
      */
     public boolean inVersion(String attr, String version) throws ServiceException {
-        AttributeInfo ai = mAttrs.get(attr.toLowerCase());
-        if (ai != null) {
-            Version since = ai.getSince();
-            if (since == null)
-                return true;
-            else
-                return since.compare(version) <= 0;
-        } else
-            throw AccountServiceException.INVALID_ATTR_NAME("unknown attribute: " + attr, null);
+        return versionCheck(attr, version, true, true);
     }
-    
+
     /**
      * returns whether attr is introduced before the specified version.
-     * 
-     * e.g. 
+     *
+     * e.g.
      *   - if attr is introduced on 7.1.0, it is before 7.1.1
      *   - if attr is introduced on 7.1.1, it is *NOT* before 7.1.1
      *   - if attr is introduced on 7.1.2, it is not before 7.1.1
-     * 
+     *
      * @param attr
      * @param version
      * @return
      * @throws ServiceException
      */
     public boolean beforeVersion(String attr, String version) throws ServiceException {
+        return versionCheck(attr, version, false, true);
+    }
+
+    private boolean versionCheck(String attr, String version, boolean in, boolean before) throws ServiceException {
         AttributeInfo ai = mAttrs.get(attr.toLowerCase());
         if (ai != null) {
-            Version since = ai.getSince();
-            if (since == null)
+            List<Version> since = ai.getSince();
+            if (since == null) {
                 return true;
-            else
-                return since.compare(version) < 0;
-        } else
+            } else {
+                Version current = new Version(version);
+                boolean good = false;
+                for (Version sinceVer : since) {
+                    if (current.isSameMinorRelease(sinceVer)) {
+                        //ok same release; just compare
+                        return (before && sinceVer.compare(version) < 0) || (in && sinceVer.compare(version) == 0);
+                    } else if (!current.isLaterMajorMinorRelease(sinceVer)) {
+                        //current is lower series than one item in list
+                        //if it was OK from earlier series then it's OK
+                        return good;
+                    } else {
+                        //current is later major/minor, so check in/before and iterate further
+                        good = (before && sinceVer.compare(version) < 0) || (in && sinceVer.compare(version) == 0);
+                    }
+                }
+                return good;
+            }
+        } else {
             throw AccountServiceException.INVALID_ATTR_NAME("unknown attribute: " + attr, null);
+        }
     }
+
+    public boolean isFuture(String attr) {
+        AttributeInfo ai = mAttrs.get(attr.toLowerCase());
+        return (ai != null && ai.getSince() != null && ai.getSince().size() == 1 && ai.getSince().iterator().next().isFuture());
+    }
+
+    public boolean addedIn(String attr, String version) throws ServiceException {
+        return versionCheck(attr, version, true, false);
+    }
+
+
 
     public AttributeType getAttributeType(String attr) throws ServiceException {
         AttributeInfo ai = mAttrs.get(attr.toLowerCase());
@@ -1056,32 +1100,32 @@ public class AttributeManager {
         else
             throw AccountServiceException.INVALID_ATTR_NAME("unknown attribute: " + attr, null);
     }
-    
+
     // types need to be set in JNDI "java.naming.ldap.attributes.binary" environment property
     // when making a connection
     public static boolean isBinaryType(AttributeType type) {
         return type == AttributeType.TYPE_BINARY;
     }
-    
+
     // types need the ";binary" treatment to/from the LDAP server
     // for now the only supported binary transfer type is certificate
     public static boolean isBinaryTransferType(AttributeType type) {
         return type == AttributeType.TYPE_CERTIFICATE;
     }
-    
+
     public boolean containsBinaryData(String attr) {
         return mBinaryAttrs.contains(attr.toLowerCase()) ||
                mBinaryTransferAttrs.contains(attr.toLowerCase());
     }
-    
+
     public boolean isBinaryTransfer(String attr) {
         return mBinaryTransferAttrs.contains(attr.toLowerCase());
     }
-    
+
     public Set<String> getBinaryAttrs() {
         return mBinaryAttrs;
     }
-    
+
     public Set<String> getBinaryTransferAttrs() {
         return mBinaryTransferAttrs;
     }
@@ -1171,7 +1215,7 @@ public class AttributeManager {
                 if (info.isDeprecated()) {
                     ZimbraLog.misc.warn("Attempt to modify a deprecated attribute: " + name);
                 }
-                
+
                 // IDN unicode to ACE conversion needs to happen before checkValue or else
                 // regex attrs will be rejected by checkValue
                 if (idnType(name).isEmailOrIDN()) {
@@ -1247,7 +1291,7 @@ public class AttributeManager {
         getExtraObjectClassAttrs(prov, AttributeClass.server, Provisioning.A_zimbraServerExtraObjectClass);
     }
 
-    private void getExtraObjectClassAttrs(LdapProv prov, AttributeClass attrClass, String extraObjectClassAttr) 
+    private void getExtraObjectClassAttrs(LdapProv prov, AttributeClass attrClass, String extraObjectClassAttr)
     throws ServiceException {
         Config config = prov.getConfig();
 
@@ -1258,5 +1302,4 @@ public class AttributeManager {
             prov.getAttrsInOCs(extraObjectClasses, attrsInOCs);
         }
     }
-
 }

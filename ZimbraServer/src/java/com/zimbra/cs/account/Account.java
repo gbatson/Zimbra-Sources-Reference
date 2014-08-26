@@ -1,35 +1,36 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.account;
 
-import com.google.common.base.Strings;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.google.common.collect.Sets;
 import com.zimbra.common.account.Key;
-import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Provisioning.GroupMembership;
 import com.zimbra.cs.account.Provisioning.SetPasswordResult;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.account.names.NameUtil;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 /**
  * @author schemers
@@ -498,6 +499,20 @@ public class Account extends ZAttrAccount implements GroupedEntry, AliasedEntry 
     public static String encrypytUCPassword(String acctId, String plainPassword)
     throws ServiceException {
         return DataSource.encryptData(acctId, plainPassword);
+    }
+
+    public void cleanExpiredTokens() throws ServiceException {
+    	String[] tokens = getAuthTokens();
+    	for(String tk : tokens) {
+    	    String[] tokenParts = tk.split("\\|");
+    	    if(tokenParts.length > 0) {
+    	        String szExpire = tokenParts[1];
+    	        Long expires = Long.parseLong(szExpire);
+    	        if(System.currentTimeMillis() > expires) {
+    	            removeAuthTokens(tk);
+    	        }
+    	    }
+    	}
     }
 }
 

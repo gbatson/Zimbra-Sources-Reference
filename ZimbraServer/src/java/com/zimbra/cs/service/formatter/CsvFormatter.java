@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
@@ -28,10 +30,6 @@ import java.util.Set;
 import javax.mail.Part;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.io.EndPoint;
-import org.eclipse.jetty.io.nio.SelectChannelEndPoint;
-import org.eclipse.jetty.server.AbstractHttpConnection;
-
 import com.google.common.base.Charsets;
 import com.ibm.icu.text.CharsetDetector;
 import com.ibm.icu.text.CharsetMatch;
@@ -49,6 +47,7 @@ import com.zimbra.cs.service.UserServletException;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.service.mail.ImportContacts;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.servlet.util.JettyUtil;
 
 public class CsvFormatter extends Formatter {
 
@@ -70,7 +69,7 @@ public class CsvFormatter extends Formatter {
     @Override
     public void formatCallback(UserServletContext context) throws IOException, ServiceException {
         // Disable the jetty timeout
-        disableJettyTimeout();
+        disableJettyTimeout(context);
 
         Iterator<? extends MailItem> iterator = null;
         StringBuilder sb = new StringBuilder();
@@ -85,7 +84,7 @@ public class CsvFormatter extends Formatter {
             if (locale == null) {
                 locale = context.getLocale().toString();
             }
-            //Passing the mailbox and operation context 
+            //Passing the mailbox and operation context
             ContactCSV contactCSV = new ContactCSV(context.targetMailbox,context.opContext);
             contactCSV.toCSV(format, locale, sepChar, iterator, sb);
         } catch (ContactCSV.ParseException e) {
@@ -113,14 +112,14 @@ public class CsvFormatter extends Formatter {
     public boolean supportsSave() {
         return true;
     }
-    
+
     private static final int READ_AHEAD_BUFFER_SIZE = 8192;
 
     @Override
     public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename)
     throws UserServletException, ServiceException, IOException {
         // Disable the jetty timeout
-        disableJettyTimeout();
+        disableJettyTimeout(context);
         // Detect the charset of upload file.
         PushbackInputStream pis = new PushbackInputStream(context.getRequestInputStream(), READ_AHEAD_BUFFER_SIZE);
         byte[] buf = new byte[READ_AHEAD_BUFFER_SIZE];
@@ -181,13 +180,9 @@ public class CsvFormatter extends Formatter {
      * in this case.
      * @throws IOException
      */
-    private void disableJettyTimeout() throws IOException {
+    private void disableJettyTimeout(UserServletContext context) {
         if (LC.zimbra_csv_formatter_disable_timeout.booleanValue()) {
-            EndPoint endPoint = AbstractHttpConnection.getCurrentConnection().getEndPoint();
-            if (endPoint instanceof SelectChannelEndPoint) {
-                SelectChannelEndPoint scEndPoint = (SelectChannelEndPoint) endPoint;
-                scEndPoint.setMaxIdleTime(0);
-            }
+            JettyUtil.setIdleTimeout(0, context.req);
         }
     }
 }

@@ -1,23 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.soap.mail.type;
-
-import com.google.common.base.Objects;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +26,9 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElements;
 
+import com.google.common.base.Objects;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.zimbra.common.soap.MailConstants;
 
 @XmlAccessorType(XmlAccessType.NONE)
@@ -45,19 +46,19 @@ public class SyncDeletedInfo {
      * in the request)
      */
     @XmlElements({
-        @XmlElement(name=MailConstants.E_FOLDER /* folder */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_SEARCH /* search */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_MOUNT /* link */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_TAG /* tag */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_CONV /* c */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_CHAT /* chat */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_MSG /* m */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_CONTACT /* cn */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_APPOINTMENT /* appt */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_TASK /* task */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_NOTES /* notes */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_WIKIWORD /* w */, type=IdsAttr.class),
-        @XmlElement(name=MailConstants.E_DOC /* doc */, type=IdsAttr.class)
+        @XmlElement(name=MailConstants.E_FOLDER /* folder */, type=FolderIdsAttr.class),
+        @XmlElement(name=MailConstants.E_SEARCH /* search */, type=SearchFolderIdsAttr.class),
+        @XmlElement(name=MailConstants.E_MOUNT /* link */, type=MountIdsAttr.class),
+        @XmlElement(name=MailConstants.E_TAG /* tag */, type=TagIdsAttr.class),
+        @XmlElement(name=MailConstants.E_CONV /* c */, type=ConvIdsAttr.class),
+        @XmlElement(name=MailConstants.E_CHAT /* chat */, type=ChatIdsAttr.class),
+        @XmlElement(name=MailConstants.E_MSG /* m */, type=MsgIdsAttr.class),
+        @XmlElement(name=MailConstants.E_CONTACT /* cn */, type=ContactIdsAttr.class),
+        @XmlElement(name=MailConstants.E_APPOINTMENT /* appt */, type=ApptIdsAttr.class),
+        @XmlElement(name=MailConstants.E_TASK /* task */, type=TaskIdsAttr.class),
+        @XmlElement(name=MailConstants.E_NOTES /* notes */, type=NoteIdsAttr.class),
+        @XmlElement(name=MailConstants.E_WIKIWORD /* w */, type=WikiIdsAttr.class),
+        @XmlElement(name=MailConstants.E_DOC /* doc */, type=DocIdsAttr.class)
     })
     private List<IdsAttr> types = Lists.newArrayList();
 

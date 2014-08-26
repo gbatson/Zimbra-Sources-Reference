@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -48,6 +50,7 @@ import javax.xml.bind.annotation.XmlType;
  *       &lt;attribute name="id" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="uuid" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="name" type="{http://www.w3.org/2001/XMLSchema}string" />
+ *       &lt;attribute name="absFolderPath" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="l" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="luuid" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="f" type="{http://www.w3.org/2001/XMLSchema}string" />
@@ -66,6 +69,7 @@ import javax.xml.bind.annotation.XmlType;
  *       &lt;attribute name="i4next" type="{http://www.w3.org/2001/XMLSchema}int" />
  *       &lt;attribute name="url" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="activesyncdisabled" type="{http://www.w3.org/2001/XMLSchema}boolean" />
+ *       &lt;attribute name="webOfflineSyncDays" type="{http://www.w3.org/2001/XMLSchema}int" />
  *       &lt;attribute name="perm" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="recursive" type="{http://www.w3.org/2001/XMLSchema}boolean" />
  *       &lt;attribute name="rest" type="{http://www.w3.org/2001/XMLSchema}string" />
@@ -85,7 +89,8 @@ import javax.xml.bind.annotation.XmlType;
 })
 @XmlSeeAlso({
     testSearchFolder.class,
-    testMountpoint.class
+    testMountpoint.class,
+    testSyncFolder.class
 })
 public class testFolder {
 
@@ -93,9 +98,9 @@ public class testFolder {
     protected testAcl acl;
     protected testRetentionPolicy retentionPolicy;
     @XmlElements({
+        @XmlElement(name = "link", type = testMountpoint.class),
         @XmlElement(name = "folder"),
-        @XmlElement(name = "search", type = testSearchFolder.class),
-        @XmlElement(name = "link", type = testMountpoint.class)
+        @XmlElement(name = "search", type = testSearchFolder.class)
     })
     protected List<testFolder> folderOrLinkOrSearch;
     @XmlAttribute(name = "id", required = true)
@@ -104,6 +109,8 @@ public class testFolder {
     protected String uuid;
     @XmlAttribute(name = "name")
     protected String name;
+    @XmlAttribute(name = "absFolderPath")
+    protected String absFolderPath;
     @XmlAttribute(name = "l")
     protected String l;
     @XmlAttribute(name = "luuid")
@@ -140,6 +147,8 @@ public class testFolder {
     protected String url;
     @XmlAttribute(name = "activesyncdisabled")
     protected Boolean activesyncdisabled;
+    @XmlAttribute(name = "webOfflineSyncDays")
+    protected Integer webOfflineSyncDays;
     @XmlAttribute(name = "perm")
     protected String perm;
     @XmlAttribute(name = "recursive")
@@ -242,9 +251,9 @@ public class testFolder {
      * 
      * <p>
      * Objects of the following type(s) are allowed in the list
+     * {@link testMountpoint }
      * {@link testFolder }
      * {@link testSearchFolder }
-     * {@link testMountpoint }
      * 
      * 
      */
@@ -325,6 +334,30 @@ public class testFolder {
      */
     public void setName(String value) {
         this.name = value;
+    }
+
+    /**
+     * Gets the value of the absFolderPath property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link String }
+     *     
+     */
+    public String getAbsFolderPath() {
+        return absFolderPath;
+    }
+
+    /**
+     * Sets the value of the absFolderPath property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link String }
+     *     
+     */
+    public void setAbsFolderPath(String value) {
+        this.absFolderPath = value;
     }
 
     /**
@@ -757,6 +790,30 @@ public class testFolder {
      */
     public void setActivesyncdisabled(Boolean value) {
         this.activesyncdisabled = value;
+    }
+
+    /**
+     * Gets the value of the webOfflineSyncDays property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Integer }
+     *     
+     */
+    public Integer getWebOfflineSyncDays() {
+        return webOfflineSyncDays;
+    }
+
+    /**
+     * Sets the value of the webOfflineSyncDays property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Integer }
+     *     
+     */
+    public void setWebOfflineSyncDays(Integer value) {
+        this.webOfflineSyncDays = value;
     }
 
     /**

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /*
@@ -50,6 +52,20 @@
 
 package sample.oauth.provider;
 
+import java.io.IOException;
+import java.io.OutputStream;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import net.oauth.OAuth;
+import net.oauth.OAuthAccessor;
+import net.oauth.OAuthMessage;
+import net.oauth.OAuthProblemException;
+import net.oauth.server.OAuthServlet;
+import sample.oauth.provider.core.SampleZmOAuthProvider;
+
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -64,18 +80,6 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.servlet.ZimbraServlet;
-import net.oauth.OAuth;
-import net.oauth.OAuthAccessor;
-import net.oauth.OAuthMessage;
-import net.oauth.OAuthProblemException;
-import net.oauth.server.OAuthServlet;
-import sample.oauth.provider.core.SampleZmOAuthProvider;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.OutputStream;
 
 /**
  * Access Token request handler for zimbra extension
@@ -83,16 +87,19 @@ import java.io.OutputStream;
  * @author Yutaka Obuchi
  */
 public class AccessTokenHandler extends ExtensionHttpHandler {
-    
-    
+
+
+    @Override
     public void init(ZimbraExtension ext) throws ServiceException{
-        super.init(ext);    
+        super.init(ext);
     }
-    
+
+    @Override
     public String getPath() {
         return super.getPath() + "/access_token";
     }
-    
+
+    @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
     	ZimbraLog.extensions.debug("Access Token Handler doGet requested!");
@@ -104,7 +111,7 @@ public class AccessTokenHandler extends ExtensionHttpHandler {
     	ZimbraLog.extensions.debug("Access Token Handler doPost requested!");
         processRequest(request, response);
     }
-        
+
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         try{
@@ -112,10 +119,10 @@ public class AccessTokenHandler extends ExtensionHttpHandler {
             OAuthMessage oAuthMessage =
                     StringUtil.isNullOrEmpty(origUrl) ?
                             OAuthServlet.getMessage(request, null) : OAuthServlet.getMessage(request, origUrl);
-            
+
             OAuthAccessor accessor = SampleZmOAuthProvider.getAccessor(oAuthMessage);
             SampleZmOAuthProvider.VALIDATOR.validateAccTokenMessage(oAuthMessage, accessor);
-            
+
             // make sure token is authorized
             if (!Boolean.TRUE.equals(accessor.getProperty("authorized"))) {
                  OAuthProblemException problem = new OAuthProblemException("permission_denied");
@@ -142,7 +149,7 @@ public class AccessTokenHandler extends ExtensionHttpHandler {
                 ZimbraServlet.proxyServletRequest(request, response, accountId);
             }
         } catch (Exception e){
-            ZimbraLog.extensions.debug("AccessTokenHandler exception", e);            
+            ZimbraLog.extensions.debug("AccessTokenHandler exception", e);
             SampleZmOAuthProvider.handleException(e, request, response, true);
         }
     }
@@ -150,7 +157,7 @@ public class AccessTokenHandler extends ExtensionHttpHandler {
     private static void persistAccessTokenInMbox(OAuthAccessor accessor, String accountId)
             throws AuthTokenException, ServiceException {
         Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(accountId);
-        Metadata oAuthConfig = mbox.getConfig(null, "zwc:oauth");
+        Metadata oAuthConfig = mbox.getConfig(null, "zwc:sampleoauth");
         if (oAuthConfig == null)
             oAuthConfig = new Metadata();
         Metadata authzedConsumers = oAuthConfig.getMap("authorized_consumers", true);
@@ -158,6 +165,6 @@ public class AccessTokenHandler extends ExtensionHttpHandler {
             authzedConsumers = new Metadata();
         authzedConsumers.put(accessor.consumer.consumerKey, new OAuthAccessorSerializer().serialize(accessor));
         oAuthConfig.put("authorized_consumers", authzedConsumers);
-        mbox.setConfig(null, "zwc:oauth", oAuthConfig);
+        mbox.setConfig(null, "zwc:sampleoauth", oAuthConfig);
     }
 }

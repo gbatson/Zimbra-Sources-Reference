@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 // MapiAccessWrap.cpp : Implementation of CMapiAccessWrap
@@ -379,11 +381,14 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                 }
 				if (ret == NULL)	// FBS bug 71630 -- 3/22/12
 				{
+					pIt[L"assistantPhone"] = SysAllocString((cd.AssistantPhone).c_str());
 					pIt[L"birthday"] = SysAllocString((cd.Birthday).c_str());
 					pIt[L"anniversary"] = SysAllocString((cd.Anniversary).c_str());
 					pIt[L"callbackPhone"] = SysAllocString((cd.CallbackPhone).c_str());
 					pIt[L"carPhone"] = SysAllocString((cd.CarPhone).c_str());
 					pIt[L"company"] = SysAllocString((cd.Company).c_str());
+					pIt[L"companyPhone"] = SysAllocString((cd.CompanyPhone).c_str());
+					pIt[L"department"] = SysAllocString((cd.Department).c_str());
 					pIt[L"email"] = SysAllocString((cd.Email1).c_str());
 					pIt[L"email2"] = SysAllocString((cd.Email2).c_str());
 					pIt[L"email3"] = SysAllocString((cd.Email3).c_str());
@@ -405,9 +410,10 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					pIt[L"mobilePhone"] = SysAllocString((cd.MobilePhone).c_str());
 					pIt[L"namePrefix"] = SysAllocString((cd.NamePrefix).c_str());
 					pIt[L"nameSuffix"] = SysAllocString((cd.NameSuffix).c_str());
+					pIt[L"nickname"] = SysAllocString((cd.NickName).c_str());
 					pIt[L"notes"] = SysAllocString((cd.Notes).c_str());
 					pIt[L"otherCity"] = SysAllocString((cd.OtherCity).c_str());
-					pIt[L"outerCountry"] = SysAllocString((cd.OtherCountry).c_str());
+					pIt[L"otherCountry"] = SysAllocString((cd.OtherCountry).c_str());
 					pIt[L"otherFax"] = SysAllocString((cd.OtherFax).c_str());
 					pIt[L"otherPhone"] = SysAllocString((cd.OtherPhone).c_str());
 					pIt[L"otherPostalCode"] = SysAllocString((cd.OtherPostalCode).c_str());
@@ -419,6 +425,8 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					pIt[L"workCountry"] = SysAllocString((cd.WorkCountry).c_str());
 					pIt[L"workFax"] = SysAllocString((cd.WorkFax).c_str());
 					pIt[L"workPhone"] = SysAllocString((cd.WorkPhone).c_str());
+					pIt[L"workPhone2"] = SysAllocString((cd.WorkPhone2).c_str());
+					pIt[L"workPhone3"] = SysAllocString((cd.PrimaryPhone).c_str());
 					pIt[L"workPostalCode"] = SysAllocString((cd.WorkPostalCode).c_str());
 					pIt[L"workState"] = SysAllocString((cd.WorkState).c_str());
 					pIt[L"workStreet"] = SysAllocString((cd.WorkStreet).c_str());
@@ -494,11 +502,14 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 				if (ret == NULL)	// 71630
 				{
 					pIt[L"Subject"] = SysAllocString((msgdata.Subject).c_str());
+					dlog.info("subject:",msgdata.Subject.c_str());
 					pIt[L"Date"] = SysAllocString((msgdata.DateString).c_str());
 					pIt[L"filePath"] = SysAllocString((msgdata.MimeFile).c_str());
 					pIt[L"UrlName"] = SysAllocString((msgdata.Urlname).c_str());
+					dlog.info("urlname:",msgdata.Urlname.c_str());
 					pIt[L"rcvdDate"] = SysAllocString((msgdata.DeliveryUnixString.c_str()));
 					pIt[L"wstrmimeBuffer"] = SysAllocString((msgdata.wstrmimeBuffer.c_str()));
+					pIt[L"DateUnixString"]= SysAllocString(msgdata.DateUnixString.c_str());
 
 					bool bHasTags = false;
 					if (msgdata.vTags)
@@ -516,6 +527,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 								}
 							}
 							pIt[L"tags"] = SysAllocString(tagData.c_str());
+							dlog.info("tagData:",tagData.c_str());
 							delete msgdata.vTags;
 							bHasTags = true;
 						}
@@ -528,11 +540,11 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					CComBSTR flags = L"";
 
 					if (msgdata.HasAttachments)
-						wcscat(flags, L"a");
+						flags.Append(L"a");
 					if (msgdata.IsUnread)
-						wcscat(flags, L"u");
+						flags.Append(L"u");
 					if (msgdata.IsFlagged)
-						wcscat(flags, L"f");
+						flags.Append(L"f");
 
 					/*if(msgdata.HasText)
 					 * {
@@ -543,13 +555,13 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					 *      flags.AppendBSTR(L"H");
 					 * }*/
 					if (msgdata.IsDraft)
-						wcscat(flags, L"d");
+						flags.Append(L"d");
 					if (msgdata.IsForwared)
-						wcscat(flags, L"w");
+						flags.Append(L"w");
 					if ((msgdata.IsUnsent) || (msgdata.Urlname.substr(0, 11) == L"/Sent Items"))
-						wcscat(flags, L"s");
+						flags.Append(L"s");
 					if (msgdata.RepliedTo)
-						wcscat(flags, L"r");
+						flags.Append(L"r");
 
 					/*pIt[L"Has Attachments"] = (msgdata.HasAttachments)? L"True":L"False";
 					 * pIt[L"HasHTML"] = (msgdata.HasHtml)? L"True":L"False";
@@ -1169,6 +1181,29 @@ STDMETHODIMP CMapiAccessWrap::GetRuleList(VARIANT *rules)
     return hr;
 }
 
+
+STDMETHODIMP CMapiAccessWrap::InitializePublicFolders(BSTR * statusMsg)
+{
+	HRESULT hr = S_OK;
+	//init public folders
+	maapi->InitializePublicFolders();
+    
+	std::vector<std::string> pubFldrList;
+	
+	//enumerate public folder
+    maapi->EnumeratePublicFolders(pubFldrList); 
+	//print pblic folder
+	vector<std::string>::iterator pfenumItr;
+	printf("Enumerated Public folders:\n");
+	for (pfenumItr = pubFldrList.begin(); pfenumItr != pubFldrList.end(); pfenumItr++)
+    {
+		printf("- %s \n", (*pfenumItr).c_str());
+	}
+	
+	 *statusMsg =  SysAllocString(L"");
+
+return hr;
+}
 void CMapiAccessWrap::CreateAttachmentAttrs(BSTR attrs[], int num)
 {
 

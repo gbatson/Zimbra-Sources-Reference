@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.filter;
@@ -226,7 +228,7 @@ public final class FilterUtil {
         AuthToken authToken = null;
         OperationContext opCtxt = localMbox.getOperationContext();
         if (opCtxt != null) {
-            authToken = opCtxt.getAuthToken();
+            authToken = AuthToken.getCsrfUnsecuredAuthToken(opCtxt.getAuthToken());
         }
         if (authToken == null) {
             authToken = AuthProvider.getAuthToken(localMbox.getAccount());
@@ -242,6 +244,8 @@ public final class FilterUtil {
     }
 
     public static final String HEADER_FORWARDED = "X-Zimbra-Forwarded";
+    public static final String HEADER_CONTENT_TYPE = "Content-Type";
+    public static final String HEADER_CONTENT_DISPOSITION = "Content-Disposition";
 
     public static void redirect(OperationContext octxt, Mailbox sourceMbox, MimeMessage msg, String destinationAddress)
     throws ServiceException {
@@ -406,6 +410,12 @@ public final class FilterUtil {
                 while (enumeration.hasMoreElements()) {
                     Header header = (Header) enumeration.nextElement();
                     if (StringUtil.equal(header.getName(), HEADER_FORWARDED)) {
+                        continue;
+                    }
+
+                    if (StringUtil.equal(header.getName(), HEADER_CONTENT_TYPE)
+                        || StringUtil.equal(header.getName(), HEADER_CONTENT_DISPOSITION))  {
+                        // Zimbra Mime parser will add the correct Content Type if absent
                         continue;
                     }
                     notification.addHeader(header.getName(), header.getValue());

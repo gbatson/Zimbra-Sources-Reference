@@ -11,7 +11,7 @@ public class MigrationAccount
         migrationFolder = new MigrationFolder();
         tagDict = new Dictionary<string, string>();
     }
-
+    public string ProfileName;
     public string AccountID;
     public MigrationFolder migrationFolder;
     public Dictionary<string, string> tagDict;

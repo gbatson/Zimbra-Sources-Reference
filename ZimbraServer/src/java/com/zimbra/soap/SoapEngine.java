@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
+import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -54,6 +57,10 @@ import com.zimbra.cs.redolog.RedoLogProvider;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.admin.AdminAccessControl;
 import com.zimbra.cs.service.admin.AdminDocumentHandler;
+import com.zimbra.cs.servlet.CsrfFilter;
+import com.zimbra.cs.servlet.CsrfTokenException;
+import com.zimbra.cs.servlet.ZimbraInvalidLoginFilter;
+import com.zimbra.cs.servlet.util.CsrfUtil;
 import com.zimbra.cs.session.Session;
 import com.zimbra.cs.session.SessionCache;
 import com.zimbra.cs.session.SoapSession;
@@ -231,7 +238,7 @@ public class SoapEngine {
         return soapProto;
     }
 
-    public Element dispatch(String path, byte[] soapMessage, Map<String, Object> context) {
+    public Element dispatch(String path, byte[] soapMessage, Map<String, Object> context) throws CsrfTokenException {
         if (soapMessage == null || soapMessage.length == 0) {
             SoapProtocol soapProto = SoapProtocol.Soap12;
             return soapFaultEnv(soapProto, "SOAP exception",
@@ -282,7 +289,7 @@ public class SoapEngine {
      * @param envelope the top-level element of the message
      * @param context user context parameters
      * @return an XmlObject which is a SoapEnvelope containing the response
-     *
+     * @throws CsrfTokenException if CSRF token validation fails
      */
     private Element dispatch(String path, Element envelope, Map<String, Object> context) {
         SoapProtocol soapProto = SoapProtocol.determineProtocol(envelope);
@@ -293,10 +300,44 @@ public class SoapEngine {
                     ServiceException.INVALID_REQUEST("unable to determine SOAP version", null));
         }
 
+        Element doc = soapProto.getBodyElement(envelope);
+        if (doc == null) {
+            return soapFaultEnv(soapProto, "SOAP exception", ServiceException.INVALID_REQUEST("No SOAP body", null));
+        }
+        ServletRequest servReq = (ServletRequest) context.get(SoapServlet.SERVLET_REQUEST);
+        boolean doCsrfCheck = false;
+        if (servReq.getAttribute(CsrfFilter.CSRF_TOKEN_CHECK) != null) {
+            doCsrfCheck =  (Boolean) servReq.getAttribute(CsrfFilter.CSRF_TOKEN_CHECK);
+            if (doc.getName().equals("AuthRequest")) {
+                // this is a Auth request, no CSRF validation happens
+                doCsrfCheck = false;
+            }
+        }
+        if (doCsrfCheck) {
+            try {
+                Element contextElmt = soapProto.getHeader(envelope).getElement(HeaderConstants.E_CONTEXT);
+                String csrfToken = contextElmt.getAttribute(HeaderConstants.E_CSRFTOKEN);
+                HttpServletRequest httpReq = (HttpServletRequest) servReq;
+                AuthToken authToken = CsrfUtil.getAuthTokenFromReq(httpReq);
+                if (!CsrfUtil.isValidCsrfToken(csrfToken, authToken)) {
+                    LOG.debug("CSRF token validation failed for account. " + authToken
+                        + ", Auth token is CSRF enabled: " + authToken.isCsrfTokenEnabled()
+                        + "CSRF token is: " + csrfToken);
+                    return soapFaultEnv(soapProto, "cannot dispatch request",
+                        ServiceException.AUTH_REQUIRED());
+                }
+            } catch (ServiceException e) {
+                // we came here which implies clients supports CSRF authorization
+                // and CSRF token is generated
+                LOG.debug("Error during CSRF validation.", e);
+                return soapFaultEnv(soapProto, "cannot dispatch request", ServiceException.AUTH_REQUIRED());
+            }
+        }
+
         ZimbraSoapContext zsc = null;
         Element ectxt = soapProto.getHeader(envelope, HeaderConstants.CONTEXT);
         try {
-            zsc = new ZimbraSoapContext(ectxt, context, soapProto);
+            zsc = new ZimbraSoapContext(ectxt, doc.getQName(), context, soapProto);
         } catch (ServiceException e) {
             return soapFaultEnv(soapProto, "unable to construct SOAP context", e);
         }
@@ -339,13 +380,14 @@ public class SoapEngine {
         if (zsc.getVia() != null) {
             ZimbraLog.addViaToContext(zsc.getVia());
         }
+        if (zsc.getSoapRequestId() != null) {
+            ZimbraLog.addSoapIdToContext(zsc.getSoapRequestId());
+        }
 
         logRequest(context, envelope);
 
         context.put(ZIMBRA_CONTEXT, zsc);
         context.put(ZIMBRA_ENGINE, this);
-
-        Element doc = soapProto.getBodyElement(envelope);
 
         HttpServletRequest servletRequest = (HttpServletRequest) context.get(SoapServlet.SERVLET_REQUEST);
         boolean isResumed = !ContinuationSupport.getContinuation(servletRequest).isInitial();
@@ -534,6 +576,12 @@ public class SoapEngine {
                 LOG.debug("handler exception", e);
             }
         } catch (AuthFailedServiceException e) {
+            HttpServletRequest httpReq = (HttpServletRequest) context
+                .get(SoapServlet.SERVLET_REQUEST);
+            httpReq.setAttribute(ZimbraInvalidLoginFilter.AUTH_FAILED, Boolean.TRUE);
+            String clientIp = (String) context.get(SoapEngine.REQUEST_IP);
+            httpReq.setAttribute(SoapEngine.REQUEST_IP, clientIp);
+
             response = soapProto.soapFault(e);
 
             if (LOG.isDebugEnabled()) {

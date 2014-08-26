@@ -1,31 +1,34 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.pop3;
 
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
 import com.zimbra.common.io.TcpServerInputStream;
 import com.zimbra.common.util.NetUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.server.ProtocolHandler;
-
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import java.io.IOException;
-import java.io.BufferedOutputStream;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 
 final class TcpPop3Handler extends ProtocolHandler {
     private TcpServerInputStream input;
@@ -108,7 +111,7 @@ final class TcpPop3Handler extends ProtocolHandler {
             SSLSocketFactory fac = (SSLSocketFactory) SSLSocketFactory.getDefault();
             SSLSocket sock = (SSLSocket) fac.createSocket(connection,
                     connection.getInetAddress().getHostName(), connection.getPort(), true);
-            NetUtil.setSSLEnabledCipherSuites(sock, config.getSslExcludedCiphers());
+            NetUtil.setSSLEnabledCipherSuites(sock, config.getSslExcludedCiphers(), config.getSslIncludedCiphers());
             sock.setUseClientMode(false);
             startHandshake(sock);
             ZimbraLog.pop.debug("suite: %s", sock.getSession().getCipherSuite());

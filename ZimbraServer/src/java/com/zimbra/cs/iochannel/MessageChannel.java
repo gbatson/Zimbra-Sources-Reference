@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.iochannel;
@@ -83,17 +85,23 @@ public class MessageChannel {
                 return;
             }
             com.zimbra.cs.account.Server targetServer = targetAccount.getServer();
-            String peerHostname;
-            PeerServer peer;
-            if (targetServer == null ||
-                    (peerHostname = targetServer.getServiceHostname()) == null ||
+            sendMessage(targetServer, message);
+        } catch (ServiceException e) {
+            log.error("can't find server for account %s", accountId, e);
+        }
+    }
+
+    public void sendMessage(com.zimbra.cs.account.Server server, Message message) {
+        String peerHostname;
+        PeerServer peer;
+        try {
+            if (server == null || client == null ||
+                    (peerHostname = server.getServiceHostname()) == null ||
                     (peer = client.getPeer(peerHostname)) == null) {
-                log.error("can't find server for account %s", accountId);
+                log.error("no client available for server %s", server.getServiceHostname());
                 return;
             }
             peer.sendMessage(message.serialize());
-        } catch (ServiceException e) {
-            log.error("can't send notification", e);
         } catch (IOChannelException e) {
             log.warn("MessageChannel: " + e.getMessage());
         } catch (IOException e) {

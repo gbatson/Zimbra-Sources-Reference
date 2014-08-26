@@ -1,18 +1,25 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.filter;
+
+import java.util.Date;
+import java.util.List;
+
+import org.apache.jsieve.parser.generated.Node;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -22,11 +29,7 @@ import com.zimbra.soap.mail.type.FilterAction;
 import com.zimbra.soap.mail.type.FilterRule;
 import com.zimbra.soap.mail.type.FilterTest;
 import com.zimbra.soap.mail.type.FilterTests;
-
-import org.apache.jsieve.parser.generated.Node;
-
-import java.util.Date;
-import java.util.List;
+import com.zimbra.soap.mail.type.NestedRule;
 
 /**
  * Converts a Sieve node tree to the SOAP representation of
@@ -38,6 +41,9 @@ public final class SieveToSoap extends SieveVisitor {
     private final List<String> ruleNames;
     private FilterRule currentRule;
     private int currentRuleIndex = 0;
+    private int nunOfIfProcessingStarted = 0; // For counting num of started If processings
+    private int numOfIfProcessingDone = 0; // For counting num of finished If processings
+    private NestedRule currentNestedRule; // keep the pointer to nested rule being processed
 
     public SieveToSoap(List<String> ruleNames) {
         this.ruleNames = ruleNames;
@@ -59,14 +65,52 @@ public final class SieveToSoap extends SieveVisitor {
         if (phase == VisitPhase.end) {
             return;
         }
-        currentRule = new FilterRule(getCurrentRuleName(), props.isEnabled);
-        currentRule.setFilterTests(new FilterTests(props.condition.toString()));
-        rules.add(currentRule);
-        currentRuleIndex++;
+
+        if (!isNestedRule()){
+            currentRule = new FilterRule(getCurrentRuleName(), props.isEnabled);
+            currentRule.setFilterTests(new FilterTests(props.condition.toString()));
+            rules.add(currentRule);
+            currentRuleIndex++;
+            // When start working on the root rule, initialise the pointer to nested rule
+            currentNestedRule = null;
+        } else {
+            // set new Nested Rule instance as child of current one.
+            NestedRule nestedRule = new NestedRule(new FilterTests(props.condition.toString()));
+            if(currentNestedRule != null){  // some nested rule has been already processed
+                // set it as child of previous one
+                currentNestedRule.setChild(nestedRule);
+            } else {               // first nested rule
+                // set it as child of root rule
+                currentRule.setChild(nestedRule);
+            }
+            currentNestedRule = nestedRule;
+        }
+    }
+
+    @Override
+    protected void visitIfControl(Node ruleNode, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.end) {
+            numOfIfProcessingDone++; // number of if for which process is done
+            return;
+        }
+        nunOfIfProcessingStarted++;   // number of if for which process is started.
+    }
+
+    private boolean isNestedRule(){
+        // in non nested case, only one process is started but not done.
+        if(nunOfIfProcessingStarted == numOfIfProcessingDone+1){
+            return false;
+        }
+        return true;
     }
 
     private <T extends FilterTest> T addTest(T test, RuleProperties props) {
-        FilterTests tests = currentRule.getFilterTests();
+        FilterTests tests;
+        if(currentNestedRule != null){ // Nested Rule is being processed
+            tests = currentNestedRule.getFilterTests();
+        } else {                     // Root Rule is being processed
+            tests = currentRule.getFilterTests();
+        }
         test.setIndex(tests.size());
         tests.addTest(test);
         if (props.isNegativeTest) {
@@ -76,8 +120,13 @@ public final class SieveToSoap extends SieveVisitor {
     }
 
     private <T extends FilterAction> T addAction(T action) {
-        action.setIndex(currentRule.getActionCount());
-        currentRule.addFilterAction(action);
+        if(currentNestedRule != null){ // Nested Rule is being processed
+            action.setIndex(currentNestedRule.getActionCount());
+            currentNestedRule.addFilterAction(action);
+        } else {                     // Root Rule is being processed
+            action.setIndex(currentRule.getActionCount());
+            currentRule.addFilterAction(action);
+        }
         return action;
     }
 
@@ -257,6 +306,25 @@ public final class SieveToSoap extends SieveVisitor {
     protected void visitTwitterTest(Node node, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.begin) {
             addTest(new FilterTest.TwitterTest(), props);
+        }
+    }
+
+    @Override
+    protected void visitCommunityRequestsTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.CommunityRequestsTest(), props);
+        }
+    }
+    @Override
+    protected void visitCommunityContentTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.CommunityContentTest(), props);
+        }
+    }
+    @Override
+    protected void visitCommunityConnectionsTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.CommunityConnectionsTest(), props);
         }
     }
 

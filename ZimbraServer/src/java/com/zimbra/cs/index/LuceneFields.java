@@ -1,21 +1,28 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.index;
 
 import com.zimbra.cs.mailbox.Flag;
+import java.util.Map;
+
+import org.apache.lucene.document.Field;
+
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Standard Lucene fields.
@@ -29,6 +36,32 @@ import com.zimbra.cs.mailbox.Flag;
  * @author schemers
  */
 public final class LuceneFields {
+    /* Map to find Compact key to associate with indexed/tokenized terms */
+    public static final Map<String, Character> FIELD2PREFIX = ImmutableMap.<String, Character>builder()
+        .put(LuceneFields.L_CONTENT, 'A')
+        .put(LuceneFields.L_CONTACT_DATA, 'B')
+        .put(LuceneFields.L_MIMETYPE, 'C')
+        .put(LuceneFields.L_ATTACHMENTS, 'D')
+        .put(LuceneFields.L_FILENAME, 'E')
+        .put(LuceneFields.L_OBJECTS, 'F')
+        .put(LuceneFields.L_H_FROM, 'G')
+        .put(LuceneFields.L_H_TO, 'H')
+        .put(LuceneFields.L_H_CC, 'I')
+        .put(LuceneFields.L_H_X_ENV_FROM, 'J')
+        .put(LuceneFields.L_H_X_ENV_TO, 'K')
+        .put(LuceneFields.L_H_MESSAGE_ID, 'L')
+        .put(LuceneFields.L_H_SUBJECT, 'M')
+        .put(LuceneFields.L_FIELD, 'N')
+        .put(LuceneFields.L_SORT_DATE, 'O')
+        .put(LuceneFields.L_PARTNAME, 'P')
+        .put(LuceneFields.L_MAILBOX_BLOB_ID, 'Q')
+        .put(LuceneFields.L_SORT_ATTACH, 'R')
+        .put(LuceneFields.L_SORT_FLAG, 'S')
+        .put(LuceneFields.L_SORT_PRIORITY, 'T')
+        .put(LuceneFields.L_SORT_SIZE, 'U')
+        .build();
+
+    public static final String ITEM_ID_PREFIX = "x"; // term prefix for ItemID
 
     private LuceneFields() {
     }
@@ -162,6 +195,59 @@ public final class LuceneFields {
      * field operator: structured data storage
      */
     public static final String L_FIELD = "l.field";
+
+    public enum IndexField {
+        MIMETYPE(L_MIMETYPE, Field.Store.YES, Field.Index.ANALYZED),
+        PARTNAME(L_PARTNAME, Field.Store.YES, Field.Index.NOT_ANALYZED),
+        FILENAME(L_FILENAME, Field.Store.YES, Field.Index.ANALYZED),
+        SORT_SIZE(L_SORT_SIZE, Field.Store.YES, Field.Index.NOT_ANALYZED),
+        SORT_ATTACH(L_SORT_ATTACH, Field.Store.YES, Field.Index.NOT_ANALYZED_NO_NORMS),
+        SORT_FLAG(L_SORT_FLAG, Field.Store.YES, Field.Index.NOT_ANALYZED_NO_NORMS),
+        SORT_PRIORITY(L_SORT_PRIORITY, Field.Store.YES, Field.Index.NOT_ANALYZED_NO_NORMS),
+        H_FROM(L_H_FROM, Field.Store.YES, Field.Index.ANALYZED),
+        H_TO(L_H_TO, Field.Store.YES, Field.Index.ANALYZED),
+        H_CC(L_H_CC, Field.Store.YES, Field.Index.ANALYZED),
+        H_X_ENV_FROM(L_H_X_ENV_FROM, Field.Store.YES, Field.Index.ANALYZED),
+        H_X_ENV_TO(L_H_X_ENV_TO, Field.Store.YES, Field.Index.ANALYZED),
+        H_MESSAGE_ID(L_H_MESSAGE_ID, Field.Store.NO, Field.Index.NOT_ANALYZED),
+        FIELD(L_FIELD, Field.Store.YES, Field.Index.ANALYZED),
+        SORT_NAME(L_SORT_NAME, Field.Store.NO, Field.Index.NOT_ANALYZED),
+        H_SUBJECT(L_H_SUBJECT, Field.Store.NO, Field.Index.ANALYZED),
+        SORT_SUBJECT(L_SORT_SUBJECT, Field.Store.NO, Field.Index.NOT_ANALYZED),
+        CONTENT(L_CONTENT, Field.Store.NO, Field.Index.ANALYZED),
+        ATTACHMENTS(L_ATTACHMENTS, Field.Store.YES, Field.Index.ANALYZED),
+        MAILBOX_BLOB_ID(L_MAILBOX_BLOB_ID, Field.Store.YES, Field.Index.NOT_ANALYZED),
+        SORT_DATE(L_SORT_DATE, Field.Store.YES, Field.Index.NOT_ANALYZED),
+        CONTACT_DATA(L_CONTACT_DATA, Field.Store.NO, Field.Index.ANALYZED),
+        OBJECTS(L_OBJECTS, Field.Store.NO, Field.Index.ANALYZED),
+        VERSION(L_VERSION, Field.Store.YES, Field.Index.NOT_ANALYZED);
+
+        private String fieldName;
+        private Field.Store storeSetting;
+        private Field.Index indexSetting;
+        IndexField(String fieldName, Field.Store storeSetting, Field.Index indexSetting) {
+            this.fieldName = fieldName;
+            this.storeSetting = storeSetting;
+            this.indexSetting = indexSetting;
+        }
+        public String getFieldName() {
+            return fieldName;
+        }
+        public Field.Store getStoreSetting() {
+            return storeSetting;
+        }
+        public Field.Index getIndexSetting() {
+            return indexSetting;
+        }
+        public static IndexField fromFieldName(String name) {
+            for (IndexField ifield: IndexField.values()) {
+                if (ifield.getFieldName().equals(name)) {
+                    return ifield;
+                }
+            }
+            throw new IllegalArgumentException("Unrecognised Index field name " + name);
+        }
+    }
 
     public static String valueForBooleanField(boolean value) {
         return value ? "1" : "0";

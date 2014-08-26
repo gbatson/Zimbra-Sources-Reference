@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -27,6 +29,7 @@ import java.util.List;
 import com.google.common.collect.Lists;
 import com.zimbra.common.io.TcpServerInputStream;
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.CharsetUtil;
 
 public class LmtpClient {
 
@@ -147,7 +150,7 @@ public class LmtpClient {
     throws IOException, LmtpProtocolException {
         return sendMessage(msgStream, Lists.newArrayList(recipients), sender, logLabel, size);
     }
-    
+
     /**
      * Sends a MIME message.
      * @param msgStream the message body
@@ -211,15 +214,16 @@ public class LmtpClient {
         // But we want to treat it as String for a little while because we want to
         // apply transparency and BufferedReader.getLine() is handy.  This conversion
         // here has a reverse with getBytes(charset) elsewhere in sendLine().
-        BufferedReader br = new BufferedReader(new InputStreamReader(msgStream, "iso-8859-1"));
+        BufferedReader br = new BufferedReader(new InputStreamReader(msgStream, CharsetUtil.ISO_8859_1));
         String line;
         while ((line = br.readLine()) != null) {
+            /**
+             *  http://tools.ietf.org/html/rfc2821#section-4.5.2 Transparency:
+             *      Before sending a line of mail text, the SMTP client checks the first character of the line.  If it
+             *      is a period, one additional period is inserted at the beginning of the line.
+             */
             if (line.length() > 0 && line.charAt(0) == '.') {
-                if (line.length() > 1 && line.charAt(1) == '.') {
-                    // don't have to apply transparency
-                } else {
-                    line = "." + line;
-                }
+                line = "." + line;
             }
             sendLine(line, false);
         }

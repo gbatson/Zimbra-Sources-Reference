@@ -1,20 +1,27 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.ui;
 
+import java.util.*;
+
 import org.apache.log4j.*;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.*;
+import org.openqa.selenium.interactions.Action;
 
 import com.thoughtworks.selenium.SeleniumException;
 import com.zimbra.qa.selenium.framework.util.*;
@@ -380,6 +387,7 @@ public abstract class AbsSeparateWindow extends AbsPage {
 		
 		try {
 			super.sSelectWindow(this.DialogWindowID);
+			DoChangeWindowFocus= true;
 			changeFocus();
 
 			super.sFocus(locator);
@@ -430,6 +438,84 @@ public abstract class AbsSeparateWindow extends AbsPage {
 	}
 
 	/* (non-Javadoc)
+	 * @see com.zimbra.qa.selenium.framework.ui.AbsSeleniumObject#sMouseDown(java.lang.String)
+	 */
+	public void sMouseDownAt(String locator, String coord) throws HarnessException {
+		logger.info(myPageName() + " sMouseDownAt("+ locator +", "+ coord +")");
+		
+		try {
+			super.sSelectWindow(this.DialogWindowID);
+			changeFocus();
+
+			super.sMouseDownAt(locator, coord);
+			
+		} finally {
+			super.sSelectWindow(MainWindowID);
+			super.sWindowFocus();
+		}
+
+	}
+
+	/* (non-Javadoc)
+	 * @see com.zimbra.qa.selenium.framework.ui.AbsSeleniumObject#sMouseUp(java.lang.String)
+	 */
+	public void sMouseUpAt(String locator, String coord) throws HarnessException {
+		logger.info(myPageName() + " sMouseUpAt("+ locator +", "+ coord +")");
+		
+		try {
+			super.sSelectWindow(this.DialogWindowID);
+			changeFocus();
+
+			super.sMouseUpAt(locator, coord);
+			
+		} finally {
+			super.sSelectWindow(MainWindowID);
+			super.sWindowFocus();
+		}
+
+	}
+
+	/**
+	 * Click on a series of locators in sequence.
+	 * Because menus may be collapsed when switching windows, this method
+	 * allows a series of clicks to be executed.  Such as "pulldown actions", 
+	 * then "click spam".
+	 * 
+	 * NOTE: WebDriver specific
+	 */
+	public void sClick(List<String> locators) throws HarnessException {
+		logger.info(myPageName() + " sClick("+ Arrays.toString(locators.toArray()) +")");
+
+		/**
+		 * *** This method is WebDriver specific ***
+		 */
+
+		try {
+			super.sSelectWindow(this.DialogWindowID);
+			changeFocus();
+
+			for(String locator: locators) {
+				
+				super.sClick(locator);
+				super.zWaitForBusyOverlay();
+
+			}
+
+			// Wait for the SOAP request to finish
+			// zWaitForBusyOverlay();
+			SleepUtil.sleepVeryLong();
+
+		} finally {
+			super.sSelectWindow(MainWindowID);
+			super.sWindowFocus();
+		}
+
+
+	}
+
+
+	
+	/* (non-Javadoc)
 	 * @see com.zimbra.qa.selenium.framework.ui.AbsSeleniumObject#zClickAt(java.lang.String, java.lang.String)
 	 */
 	public void zClickAt(String locator, String coord) throws HarnessException {
@@ -438,13 +524,25 @@ public abstract class AbsSeparateWindow extends AbsPage {
 
 		try {
 			super.sSelectWindow(this.DialogWindowID);
-			changeFocus();
+			//changeFocus();
 
 			if ( !super.sIsElementPresent(locator) )
 				throw new HarnessException("locator not present: "+ locator);
 			
-			super.sMouseDownAt(locator, coord);
-			super.sMouseUpAt(locator, coord);
+			try {
+				if (ZimbraSeleniumProperties.isWebDriver()){
+					logger.info("...WebDriver...moveToElement:click()");
+					final WebElement we = getElement(locator);
+					final Actions builder = new Actions(webDriver());
+					Action action = builder.moveToElement(we).click(we).build();
+					action.perform();
+				} else {
+					this.sMouseDownAt(locator, coord);
+					this.sMouseUpAt(locator, coord);
+				}
+			}catch(Exception ex){
+				throw new HarnessException("Unable to clickAt on locator " + locator, ex);
+			}
 
 		} finally {
 			super.sSelectWindow(MainWindowID);

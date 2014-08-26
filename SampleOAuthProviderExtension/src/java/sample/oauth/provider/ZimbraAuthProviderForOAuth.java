@@ -20,19 +20,31 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package sample.oauth.provider;
+
+import java.io.IOException;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import net.oauth.OAuthAccessor;
+import net.oauth.OAuthMessage;
+import net.oauth.server.OAuthServlet;
+import sample.oauth.provider.core.SampleZmOAuthProvider;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
@@ -50,34 +62,27 @@ import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.AuthProviderException;
 import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.soap.SoapServlet;
-import net.oauth.OAuthAccessor;
-import net.oauth.OAuthMessage;
-import net.oauth.server.OAuthServlet;
-import sample.oauth.provider.core.SampleZmOAuthProvider;
-
-import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
-import java.util.Map;
 
 public class ZimbraAuthProviderForOAuth extends AuthProvider{
 
     ZimbraAuthProviderForOAuth() {
-        super("oauth");
+        super("sampleoauth");
     }
-    
+
     // AP-TODO-6: dup in ZAuthToken, move to common?
     //public static String cookieName(boolean isAdminReq) {
     //    return isAdminReq? ZimbraServlet.COOKIE_ZM_ADMIN_AUTH_TOKEN : ZimbraServlet.COOKIE_ZM_AUTH_TOKEN;
     //}
-    
+
+    @Override
     protected AuthToken authToken(HttpServletRequest req, boolean isAdminReq) throws AuthProviderException, AuthTokenException {
-        
+
     	ZimbraLog.extensions.debug("authToken(HttpServletRequest req, boolean isAdminReq) is requested.");
     	if(isAdminReq){
     		ZimbraLog.extensions.debug("isAdminReq"+isAdminReq);
         	return null;
     	}
-    	
+
         String origUrl = req.getHeader("X-Zimbra-Orig-Url");
         OAuthMessage oAuthMessage =
                 StringUtil.isNullOrEmpty(origUrl) ?
@@ -134,7 +139,7 @@ public class ZimbraAuthProviderForOAuth extends AuthProvider{
             throws AuthProviderException, AuthTokenException {
         try {
             Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(account);
-            Metadata oAuthConfig = mbox.getConfig(null, "zwc:oauth");
+            Metadata oAuthConfig = mbox.getConfig(null, "zwc:sampleoauth");
             if (oAuthConfig != null) {
                 Metadata authzedConsumers = oAuthConfig.getMap("authorized_consumers", true);
                 if (authzedConsumers != null) {
@@ -158,44 +163,46 @@ public class ZimbraAuthProviderForOAuth extends AuthProvider{
         return null;
     }
 
+    @Override
     protected AuthToken authToken(Element soapCtxt, Map engineCtxt) throws AuthProviderException, AuthTokenException  {
     	HttpServletRequest hsr = (HttpServletRequest)engineCtxt.get(SoapServlet.SERVLET_REQUEST);
-    	
+
     	//String encodedAuthToken = (soapCtxt == null ? null : soapCtxt.getAttribute(HeaderConstants.E_AUTH_TOKEN, null));
-        
-        // check for auth token in engine context if not in header  
+
+        // check for auth token in engine context if not in header
         //if (encodedAuthToken == null)
         //    encodedAuthToken = (String) engineCtxt.get(SoapServlet.ZIMBRA_AUTH_TOKEN);
-        
+
         //return genAuthToken(encodedAuthToken);
     	return authToken(hsr,false);
     }
-    
+
+    @Override
     protected AuthToken authToken(String encoded) throws AuthProviderException, AuthTokenException {
         return genAuthToken(encoded);
     }
-    
+
     private AuthToken genAuthToken(String encodedAuthToken) throws AuthProviderException, AuthTokenException {
         if (StringUtil.isNullOrEmpty(encodedAuthToken))
             throw AuthProviderException.NO_AUTH_DATA();
-        
+
         return ZimbraAuthToken.getAuthToken(encodedAuthToken);
     }
-    
+
     //protected AuthToken authToken(Account acct) {
     //    return new ZimbraAuthToken(acct);
     //}
-    
+
     //protected AuthToken authToken(Account acct, boolean isAdmin) {
     //    return new ZimbraAuthToken(acct, isAdmin);
     //}
-    
+
     //protected AuthToken authToken(Account acct, long expires) {
     //    return new ZimbraAuthToken(acct, expires);
     //}
-    
+
     //protected AuthToken authToken(Account acct, long expires, boolean isAdmin, Account adminAcct) {
     //    return new ZimbraAuthToken(acct, expires, isAdmin, adminAcct);
     //}
-    
+
 }

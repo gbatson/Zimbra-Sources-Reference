@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.tasks;
@@ -43,17 +45,16 @@ public class DialogCreateTaskFolder  extends AbsDialog{
 
 	@Override
 	public String myPageName() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public String zGetDisplayedText(String locator) throws HarnessException {
 		logger.info(myPageName() + " zGetDisplayedText("+ locator +")");
-		
+
 		if ( locator == null )
 			throw new HarnessException("locator was null");
-		
+
 		return (this.sGetText(locator));
 	}
 
@@ -62,19 +63,19 @@ public class DialogCreateTaskFolder  extends AbsDialog{
 		logger.info(myPageName() + " zIsActive()");
 
 		String locator = Locators.zNameField;
-		
+
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false); // Not even present
 		}
-		
+
 		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
 			return (false);	// Not visible per position
 		}
-	
+
 		// Yes, visible
 		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
-		
+
 	}
 
 	@Override
@@ -138,7 +139,7 @@ public class DialogCreateTaskFolder  extends AbsDialog{
 
 		tracer.trace("Enter folder name in text box "+ folder);
 
-		if ( folder == null ) 
+		if ( folder == null )
 			throw new HarnessException("folder must not be null");
 
 		String locator = Locators.zNameField;
@@ -146,7 +147,7 @@ public class DialogCreateTaskFolder  extends AbsDialog{
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("unable to find folder name field "+ locator);
 		sClickAt(locator, "0,0");
-		sType(locator, folder);      
+		sType(locator, folder);
 	}
 
 	public enum FolderColor {
@@ -162,24 +163,24 @@ public class DialogCreateTaskFolder  extends AbsDialog{
 		Orange,
 		MoreColors
 	}
-	
+
 	/**
 	 * Set the color pulldown
 	 * @param folder
 	 */
 	public void zEnterFolderColor(FolderColor color) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderColor("+ color +")");
-		
+
 		tracer.trace("Enter color "+ color);
 
-		if ( color == null ) 
+		if ( color == null )
 			throw new HarnessException("folder must not be null");
-		
+
 		if ( color == FolderColor.MoreColors )
 			throw new HarnessException("'more colors' - implement me!");
-		
+
 		throw new HarnessException("implement me!");
-		
+
 	}
 
 }

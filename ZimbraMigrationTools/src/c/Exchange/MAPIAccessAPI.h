@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #pragma once
@@ -21,6 +23,8 @@ namespace Zimbra
 {
 namespace MAPI
 {
+
+#define ERR_OUTLOOK_RUNNING			L"Outlook must not be running while migrating accounts.\nClose Outlook in order to proceed."
 typedef struct _Folder_Data
 {
     wstring name;
@@ -62,9 +66,12 @@ enum
 // contact item data
 typedef struct _ContactItemData: BaseItemData
 {
+    wstring AssistantPhone;
     wstring CallbackPhone;
     wstring CarPhone;
     wstring Company;
+    wstring CompanyPhone;
+    wstring Department;
     wstring Email1;
     wstring Email2;
     wstring Email3;
@@ -95,10 +102,12 @@ typedef struct _ContactItemData: BaseItemData
     wstring OtherStreet;
     wstring OtherURL;
     wstring Pager;
+    wstring PrimaryPhone;
     wstring WorkCity;
     wstring WorkCountry;
     wstring WorkFax;
     wstring WorkPhone;
+    wstring WorkPhone2;
     wstring WorkPostalCode;
     wstring WorkState;
     wstring WorkStreet;
@@ -145,6 +154,7 @@ typedef struct _MessageItemData: BaseItemData
     wstring DeliveryDateString;
     wstring DeliveryUnixString;
     __int64 Date;
+	wstring DateUnixString;
     wstring DateString;
     vector<LPWSTR>* vTags;
     data_buffer textbody;
@@ -229,6 +239,10 @@ typedef struct _TaskItemData: BaseItemData
     wstring recurMonthOfYear;
 } TaskItemData;
 
+#define FL_NONE				0
+#define FL_PUBLIC_FOLDER	1
+typedef enum MIG_TYPE {MAILBOX_MIG, PST_MIG, PROFILE_MIG} MIG_TYPE;
+
 class MAPIAccessAPI
 {
 private:
@@ -241,24 +255,30 @@ private:
 	std::wstring m_strUserName;
         std::wstring m_strUserAccount;
     Zimbra::MAPI::MAPIStore *m_userStore;
+	Zimbra::MAPI::MAPIStore *m_publicStore;
     Zimbra::MAPI::MAPIFolder *m_rootFolder;
     ExchangeSpecialFolderId FolderToSkip[TS_FOLDERS_MAX];
 
     void InitFoldersToSkip();
     bool SkipFolder(ExchangeSpecialFolderId exfid);
     LPCWSTR OpenUserStore();
+	LPCWSTR OpenPublicStore();
     HRESULT Iterate_folders(Zimbra::MAPI::MAPIFolder &folder, vector<Folder_Data> &fd);
     void traverse_folder(Zimbra::MAPI::MAPIFolder &folder);
     HRESULT GetInternalFolder(SBinary sbFolderEID, MAPIFolder &folder);
 	static LONG WINAPI UnhandledExceptionFilter(LPEXCEPTION_POINTERS pExPtrs);
 	static void internalInit();
+
+	static void SetOOMRegistry();
+	static void ResetOOMRegistry();
+	static MIG_TYPE m_MigType;
 public:
 	// static methods to be used by all mailboxes/profile/PST
     // lpcwstrMigTarget -> Exchange Admin Profile for Exchange mailboxes migration
     // lpcwstrMigTarget -> Local Exchange profile migration
     // lpcwstrMigTarget -> PST file path for PST migration
-    static LPCWSTR InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget);
-	static LPCWSTR _InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget);	
+    static LPCWSTR InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget, LPCWSTR userAccount=L"", ULONG flag=FL_NONE);
+	static LPCWSTR _InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget, ULONG flag);	
     static void UnInitGlobalSessionAndStore();
 
     // Per mailbox methods.
@@ -275,6 +295,9 @@ public:
 	LPCWSTR _GetItem(SBinary sbItemEID, BaseItemData &itemData);
     LPWSTR  GetOOOStateAndMsg();
     LPCWSTR GetExchangeRules(vector<CRule> &vRuleList);
+	HRESULT EnumeratePublicFolders(std::vector<std::string> &pubFldrList);
+	LPCWSTR InitializePublicFolders();
+	static MIG_TYPE GetMigrationType(){return m_MigType;}
 };
 }
 }

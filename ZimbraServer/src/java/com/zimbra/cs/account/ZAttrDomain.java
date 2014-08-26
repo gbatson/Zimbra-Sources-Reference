@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -937,6 +939,150 @@ public abstract class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetAggregateQuotaLastUsage(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraAggregateQuotaLastUsage, "");
+        return attrs;
+    }
+
+    /**
+     * domain mandatory mail html signature
+     *
+     * @return zimbraAmavisDomainDisclaimerHTML, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1459)
+    public String getAmavisDomainDisclaimerHTML() {
+        return getAttr(Provisioning.A_zimbraAmavisDomainDisclaimerHTML, null);
+    }
+
+    /**
+     * domain mandatory mail html signature
+     *
+     * @param zimbraAmavisDomainDisclaimerHTML new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1459)
+    public void setAmavisDomainDisclaimerHTML(String zimbraAmavisDomainDisclaimerHTML) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerHTML, zimbraAmavisDomainDisclaimerHTML);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * domain mandatory mail html signature
+     *
+     * @param zimbraAmavisDomainDisclaimerHTML new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1459)
+    public Map<String,Object> setAmavisDomainDisclaimerHTML(String zimbraAmavisDomainDisclaimerHTML, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerHTML, zimbraAmavisDomainDisclaimerHTML);
+        return attrs;
+    }
+
+    /**
+     * domain mandatory mail html signature
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1459)
+    public void unsetAmavisDomainDisclaimerHTML() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerHTML, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * domain mandatory mail html signature
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1459)
+    public Map<String,Object> unsetAmavisDomainDisclaimerHTML(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerHTML, "");
+        return attrs;
+    }
+
+    /**
+     * domain mandatory mail plain text signature
+     *
+     * @return zimbraAmavisDomainDisclaimerText, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1458)
+    public String getAmavisDomainDisclaimerText() {
+        return getAttr(Provisioning.A_zimbraAmavisDomainDisclaimerText, null);
+    }
+
+    /**
+     * domain mandatory mail plain text signature
+     *
+     * @param zimbraAmavisDomainDisclaimerText new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1458)
+    public void setAmavisDomainDisclaimerText(String zimbraAmavisDomainDisclaimerText) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerText, zimbraAmavisDomainDisclaimerText);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * domain mandatory mail plain text signature
+     *
+     * @param zimbraAmavisDomainDisclaimerText new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1458)
+    public Map<String,Object> setAmavisDomainDisclaimerText(String zimbraAmavisDomainDisclaimerText, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerText, zimbraAmavisDomainDisclaimerText);
+        return attrs;
+    }
+
+    /**
+     * domain mandatory mail plain text signature
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1458)
+    public void unsetAmavisDomainDisclaimerText() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerText, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * domain mandatory mail plain text signature
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1458)
+    public Map<String,Object> unsetAmavisDomainDisclaimerText(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAmavisDomainDisclaimerText, "");
         return attrs;
     }
 
@@ -3036,7 +3182,25 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory.
+     * external LDAP directory. At each eager provision interval, ZCS does an
+     * LDAP search based on the value configured in
+     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
+     * candidates to be auto provisioned in this batch. The
+     * zimbraAutoProvLdapSearchFilter should include an assertion that will
+     * only hit entries in the external directory that have not yet been
+     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
+     * be repeated pulled in to ZCS. After an account is auto provisioned in
+     * ZCS,
+     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
+     * domain, Account acct, String externalDN) will be called by the auto
+     * provisioning framework. Customer can implement the
+     * AutoProvisionListener interface in a ZCS server extension and get
+     * their AutoProvisionListener.postCreate() get called. The
+     * implementation of customer&#039;s postCreate method can be, for
+     * example, setting an attribute in the external directory on the account
+     * just provisioned in ZCS. The attribute can be included as a condition
+     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
+     * returned again by the LDAP search in the next interval.
      *
      * @return zimbraAutoProvListenerClass, or null if unset
      *
@@ -3054,7 +3218,25 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory.
+     * external LDAP directory. At each eager provision interval, ZCS does an
+     * LDAP search based on the value configured in
+     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
+     * candidates to be auto provisioned in this batch. The
+     * zimbraAutoProvLdapSearchFilter should include an assertion that will
+     * only hit entries in the external directory that have not yet been
+     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
+     * be repeated pulled in to ZCS. After an account is auto provisioned in
+     * ZCS,
+     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
+     * domain, Account acct, String externalDN) will be called by the auto
+     * provisioning framework. Customer can implement the
+     * AutoProvisionListener interface in a ZCS server extension and get
+     * their AutoProvisionListener.postCreate() get called. The
+     * implementation of customer&#039;s postCreate method can be, for
+     * example, setting an attribute in the external directory on the account
+     * just provisioned in ZCS. The attribute can be included as a condition
+     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
+     * returned again by the LDAP search in the next interval.
      *
      * @param zimbraAutoProvListenerClass new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -3075,7 +3257,25 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory.
+     * external LDAP directory. At each eager provision interval, ZCS does an
+     * LDAP search based on the value configured in
+     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
+     * candidates to be auto provisioned in this batch. The
+     * zimbraAutoProvLdapSearchFilter should include an assertion that will
+     * only hit entries in the external directory that have not yet been
+     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
+     * be repeated pulled in to ZCS. After an account is auto provisioned in
+     * ZCS,
+     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
+     * domain, Account acct, String externalDN) will be called by the auto
+     * provisioning framework. Customer can implement the
+     * AutoProvisionListener interface in a ZCS server extension and get
+     * their AutoProvisionListener.postCreate() get called. The
+     * implementation of customer&#039;s postCreate method can be, for
+     * example, setting an attribute in the external directory on the account
+     * just provisioned in ZCS. The attribute can be included as a condition
+     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
+     * returned again by the LDAP search in the next interval.
      *
      * @param zimbraAutoProvListenerClass new value
      * @param attrs existing map to populate, or null to create a new map
@@ -3097,7 +3297,25 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory.
+     * external LDAP directory. At each eager provision interval, ZCS does an
+     * LDAP search based on the value configured in
+     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
+     * candidates to be auto provisioned in this batch. The
+     * zimbraAutoProvLdapSearchFilter should include an assertion that will
+     * only hit entries in the external directory that have not yet been
+     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
+     * be repeated pulled in to ZCS. After an account is auto provisioned in
+     * ZCS,
+     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
+     * domain, Account acct, String externalDN) will be called by the auto
+     * provisioning framework. Customer can implement the
+     * AutoProvisionListener interface in a ZCS server extension and get
+     * their AutoProvisionListener.postCreate() get called. The
+     * implementation of customer&#039;s postCreate method can be, for
+     * example, setting an attribute in the external directory on the account
+     * just provisioned in ZCS. The attribute can be included as a condition
+     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
+     * returned again by the LDAP search in the next interval.
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -3117,7 +3335,25 @@ public abstract class ZAttrDomain extends NamedEntry {
      * singleton listener instance is invoked after each account is auto
      * created in Zimbra. Listener can be plugged in as a server extension to
      * handle tasks like updating the account auto provision status in the
-     * external LDAP directory.
+     * external LDAP directory. At each eager provision interval, ZCS does an
+     * LDAP search based on the value configured in
+     * zimbraAutoProvLdapSearchFilter. Returned entries from this search are
+     * candidates to be auto provisioned in this batch. The
+     * zimbraAutoProvLdapSearchFilter should include an assertion that will
+     * only hit entries in the external directory that have not yet been
+     * provisioned in ZCS, otherwise it&#039;s likely the same entries will
+     * be repeated pulled in to ZCS. After an account is auto provisioned in
+     * ZCS,
+     * com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain
+     * domain, Account acct, String externalDN) will be called by the auto
+     * provisioning framework. Customer can implement the
+     * AutoProvisionListener interface in a ZCS server extension and get
+     * their AutoProvisionListener.postCreate() get called. The
+     * implementation of customer&#039;s postCreate method can be, for
+     * example, setting an attribute in the external directory on the account
+     * just provisioned in ZCS. The attribute can be included as a condition
+     * in the zimbraAutoProvLdapSearchFilter, so the entry won&#039;t be
+     * returned again by the LDAP search in the next interval.
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -4045,6 +4281,376 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * API Client ID for accessing with Zimbra Community API
+     *
+     * @return zimbraCommunityAPIClientID, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1637)
+    public String getCommunityAPIClientID() {
+        return getAttr(Provisioning.A_zimbraCommunityAPIClientID, null);
+    }
+
+    /**
+     * API Client ID for accessing with Zimbra Community API
+     *
+     * @param zimbraCommunityAPIClientID new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1637)
+    public void setCommunityAPIClientID(String zimbraCommunityAPIClientID) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientID, zimbraCommunityAPIClientID);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * API Client ID for accessing with Zimbra Community API
+     *
+     * @param zimbraCommunityAPIClientID new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1637)
+    public Map<String,Object> setCommunityAPIClientID(String zimbraCommunityAPIClientID, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientID, zimbraCommunityAPIClientID);
+        return attrs;
+    }
+
+    /**
+     * API Client ID for accessing with Zimbra Community API
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1637)
+    public void unsetCommunityAPIClientID() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientID, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * API Client ID for accessing with Zimbra Community API
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1637)
+    public Map<String,Object> unsetCommunityAPIClientID(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientID, "");
+        return attrs;
+    }
+
+    /**
+     * API Client Secret for accessing with Zimbra Community API
+     *
+     * @return zimbraCommunityAPIClientSecret, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1638)
+    public String getCommunityAPIClientSecret() {
+        return getAttr(Provisioning.A_zimbraCommunityAPIClientSecret, null);
+    }
+
+    /**
+     * API Client Secret for accessing with Zimbra Community API
+     *
+     * @param zimbraCommunityAPIClientSecret new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1638)
+    public void setCommunityAPIClientSecret(String zimbraCommunityAPIClientSecret) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientSecret, zimbraCommunityAPIClientSecret);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * API Client Secret for accessing with Zimbra Community API
+     *
+     * @param zimbraCommunityAPIClientSecret new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1638)
+    public Map<String,Object> setCommunityAPIClientSecret(String zimbraCommunityAPIClientSecret, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientSecret, zimbraCommunityAPIClientSecret);
+        return attrs;
+    }
+
+    /**
+     * API Client Secret for accessing with Zimbra Community API
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1638)
+    public void unsetCommunityAPIClientSecret() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientSecret, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * API Client Secret for accessing with Zimbra Community API
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1638)
+    public Map<String,Object> unsetCommunityAPIClientSecret(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityAPIClientSecret, "");
+        return attrs;
+    }
+
+    /**
+     * Base URL where Zimbra Community is deployed. Do not include / symbol
+     * at the end
+     *
+     * @return zimbraCommunityBaseURL, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1640)
+    public String getCommunityBaseURL() {
+        return getAttr(Provisioning.A_zimbraCommunityBaseURL, null);
+    }
+
+    /**
+     * Base URL where Zimbra Community is deployed. Do not include / symbol
+     * at the end
+     *
+     * @param zimbraCommunityBaseURL new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1640)
+    public void setCommunityBaseURL(String zimbraCommunityBaseURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityBaseURL, zimbraCommunityBaseURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Base URL where Zimbra Community is deployed. Do not include / symbol
+     * at the end
+     *
+     * @param zimbraCommunityBaseURL new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1640)
+    public Map<String,Object> setCommunityBaseURL(String zimbraCommunityBaseURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityBaseURL, zimbraCommunityBaseURL);
+        return attrs;
+    }
+
+    /**
+     * Base URL where Zimbra Community is deployed. Do not include / symbol
+     * at the end
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1640)
+    public void unsetCommunityBaseURL() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityBaseURL, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Base URL where Zimbra Community is deployed. Do not include / symbol
+     * at the end
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1640)
+    public Map<String,Object> unsetCommunityBaseURL(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityBaseURL, "");
+        return attrs;
+    }
+
+    /**
+     * URL to be loaded in Zimbra Community tab relative to
+     * zimbraCommunityBaseURL
+     *
+     * @return zimbraCommunityHomeURL, or "/integration/zimbracollaboration" if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1641)
+    public String getCommunityHomeURL() {
+        return getAttr(Provisioning.A_zimbraCommunityHomeURL, "/integration/zimbracollaboration");
+    }
+
+    /**
+     * URL to be loaded in Zimbra Community tab relative to
+     * zimbraCommunityBaseURL
+     *
+     * @param zimbraCommunityHomeURL new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1641)
+    public void setCommunityHomeURL(String zimbraCommunityHomeURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityHomeURL, zimbraCommunityHomeURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * URL to be loaded in Zimbra Community tab relative to
+     * zimbraCommunityBaseURL
+     *
+     * @param zimbraCommunityHomeURL new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1641)
+    public Map<String,Object> setCommunityHomeURL(String zimbraCommunityHomeURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityHomeURL, zimbraCommunityHomeURL);
+        return attrs;
+    }
+
+    /**
+     * URL to be loaded in Zimbra Community tab relative to
+     * zimbraCommunityBaseURL
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1641)
+    public void unsetCommunityHomeURL() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityHomeURL, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * URL to be loaded in Zimbra Community tab relative to
+     * zimbraCommunityBaseURL
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1641)
+    public Map<String,Object> unsetCommunityHomeURL(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityHomeURL, "");
+        return attrs;
+    }
+
+    /**
+     * Account attribute to be used as a username for Zimbra Community
+     *
+     * @return zimbraCommunityUsernameMapping, or "uid" if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1639)
+    public String getCommunityUsernameMapping() {
+        return getAttr(Provisioning.A_zimbraCommunityUsernameMapping, "uid");
+    }
+
+    /**
+     * Account attribute to be used as a username for Zimbra Community
+     *
+     * @param zimbraCommunityUsernameMapping new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1639)
+    public void setCommunityUsernameMapping(String zimbraCommunityUsernameMapping) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityUsernameMapping, zimbraCommunityUsernameMapping);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Account attribute to be used as a username for Zimbra Community
+     *
+     * @param zimbraCommunityUsernameMapping new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1639)
+    public Map<String,Object> setCommunityUsernameMapping(String zimbraCommunityUsernameMapping, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityUsernameMapping, zimbraCommunityUsernameMapping);
+        return attrs;
+    }
+
+    /**
+     * Account attribute to be used as a username for Zimbra Community
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1639)
+    public void unsetCommunityUsernameMapping() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityUsernameMapping, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Account attribute to be used as a username for Zimbra Community
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1639)
+    public Map<String,Object> unsetCommunityUsernameMapping(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCommunityUsernameMapping, "");
+        return attrs;
+    }
+
+    /**
      * time object was created
      *
      * <p>Use getCreateTimestampAsString to access value as a string.
@@ -4160,6 +4766,149 @@ public abstract class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetCreateTimestamp(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraCreateTimestamp, "");
+        return attrs;
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @return zimbraCsrfAllowedRefererHosts, or empty array if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public String[] getCsrfAllowedRefererHosts() {
+        return getMultiAttr(Provisioning.A_zimbraCsrfAllowedRefererHosts);
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param zimbraCsrfAllowedRefererHosts new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public void setCsrfAllowedRefererHosts(String[] zimbraCsrfAllowedRefererHosts) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCsrfAllowedRefererHosts, zimbraCsrfAllowedRefererHosts);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param zimbraCsrfAllowedRefererHosts new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public Map<String,Object> setCsrfAllowedRefererHosts(String[] zimbraCsrfAllowedRefererHosts, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCsrfAllowedRefererHosts, zimbraCsrfAllowedRefererHosts);
+        return attrs;
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param zimbraCsrfAllowedRefererHosts new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public void addCsrfAllowedRefererHosts(String zimbraCsrfAllowedRefererHosts) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraCsrfAllowedRefererHosts, zimbraCsrfAllowedRefererHosts);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param zimbraCsrfAllowedRefererHosts new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public Map<String,Object> addCsrfAllowedRefererHosts(String zimbraCsrfAllowedRefererHosts, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraCsrfAllowedRefererHosts, zimbraCsrfAllowedRefererHosts);
+        return attrs;
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param zimbraCsrfAllowedRefererHosts existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public void removeCsrfAllowedRefererHosts(String zimbraCsrfAllowedRefererHosts) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraCsrfAllowedRefererHosts, zimbraCsrfAllowedRefererHosts);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param zimbraCsrfAllowedRefererHosts existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public Map<String,Object> removeCsrfAllowedRefererHosts(String zimbraCsrfAllowedRefererHosts, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraCsrfAllowedRefererHosts, zimbraCsrfAllowedRefererHosts);
+        return attrs;
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public void unsetCsrfAllowedRefererHosts() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCsrfAllowedRefererHosts, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * A list of hosts like www.abc.com, www.xyz.com. These are used while
+     * doing CSRF referer check.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1630)
+    public Map<String,Object> unsetCsrfAllowedRefererHosts(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCsrfAllowedRefererHosts, "");
         return attrs;
     }
 
@@ -5249,7 +5998,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail html signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerHTML. Orig desc: domain mandatory mail
+     * html signature
      *
      * @return zimbraDomainMandatoryMailSignatureHTML, or null if unset
      *
@@ -5261,7 +6012,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail html signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerHTML. Orig desc: domain mandatory mail
+     * html signature
      *
      * @param zimbraDomainMandatoryMailSignatureHTML new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -5276,7 +6029,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail html signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerHTML. Orig desc: domain mandatory mail
+     * html signature
      *
      * @param zimbraDomainMandatoryMailSignatureHTML new value
      * @param attrs existing map to populate, or null to create a new map
@@ -5292,7 +6047,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail html signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerHTML. Orig desc: domain mandatory mail
+     * html signature
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -5306,7 +6063,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail html signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerHTML. Orig desc: domain mandatory mail
+     * html signature
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -5321,7 +6080,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail plain text signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerText. Orig desc: domain mandatory mail
+     * plain text signature
      *
      * @return zimbraDomainMandatoryMailSignatureText, or null if unset
      *
@@ -5333,7 +6094,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail plain text signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerText. Orig desc: domain mandatory mail
+     * plain text signature
      *
      * @param zimbraDomainMandatoryMailSignatureText new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -5348,7 +6111,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail plain text signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerText. Orig desc: domain mandatory mail
+     * plain text signature
      *
      * @param zimbraDomainMandatoryMailSignatureText new value
      * @param attrs existing map to populate, or null to create a new map
@@ -5364,7 +6129,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail plain text signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerText. Orig desc: domain mandatory mail
+     * plain text signature
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -5378,7 +6145,9 @@ public abstract class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * domain mandatory mail plain text signature
+     * Deprecated since: 8.5.0. deprecated in favor of
+     * zimbraAmavisDomainDisclaimerText. Orig desc: domain mandatory mail
+     * plain text signature
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -7590,6 +8359,294 @@ public abstract class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetFeatureDistributionListFolderEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFeatureDistributionListFolderEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * internal social features
+     *
+     * @return zimbraFeatureSocialEnabled, or false if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1490)
+    public boolean isFeatureSocialEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureSocialEnabled, false);
+    }
+
+    /**
+     * internal social features
+     *
+     * @param zimbraFeatureSocialEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1490)
+    public void setFeatureSocialEnabled(boolean zimbraFeatureSocialEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialEnabled, zimbraFeatureSocialEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * internal social features
+     *
+     * @param zimbraFeatureSocialEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1490)
+    public Map<String,Object> setFeatureSocialEnabled(boolean zimbraFeatureSocialEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialEnabled, zimbraFeatureSocialEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * internal social features
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1490)
+    public void unsetFeatureSocialEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * internal social features
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1490)
+    public Map<String,Object> unsetFeatureSocialEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * external social features
+     *
+     * @return zimbraFeatureSocialExternalEnabled, or false if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1491)
+    public boolean isFeatureSocialExternalEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureSocialExternalEnabled, false);
+    }
+
+    /**
+     * external social features
+     *
+     * @param zimbraFeatureSocialExternalEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1491)
+    public void setFeatureSocialExternalEnabled(boolean zimbraFeatureSocialExternalEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalEnabled, zimbraFeatureSocialExternalEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * external social features
+     *
+     * @param zimbraFeatureSocialExternalEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1491)
+    public Map<String,Object> setFeatureSocialExternalEnabled(boolean zimbraFeatureSocialExternalEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalEnabled, zimbraFeatureSocialExternalEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * external social features
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1491)
+    public void unsetFeatureSocialExternalEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * external social features
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1491)
+    public Map<String,Object> unsetFeatureSocialExternalEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * external social URL
+     *
+     * @return zimbraFeatureSocialExternalURL, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1492)
+    public String getFeatureSocialExternalURL() {
+        return getAttr(Provisioning.A_zimbraFeatureSocialExternalURL, null);
+    }
+
+    /**
+     * external social URL
+     *
+     * @param zimbraFeatureSocialExternalURL new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1492)
+    public void setFeatureSocialExternalURL(String zimbraFeatureSocialExternalURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalURL, zimbraFeatureSocialExternalURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * external social URL
+     *
+     * @param zimbraFeatureSocialExternalURL new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1492)
+    public Map<String,Object> setFeatureSocialExternalURL(String zimbraFeatureSocialExternalURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalURL, zimbraFeatureSocialExternalURL);
+        return attrs;
+    }
+
+    /**
+     * external social URL
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1492)
+    public void unsetFeatureSocialExternalURL() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalURL, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * external social URL
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1492)
+    public Map<String,Object> unsetFeatureSocialExternalURL(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialExternalURL, "");
+        return attrs;
+    }
+
+    /**
+     * social tab name
+     *
+     * @return zimbraFeatureSocialName, or null if unset
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1625)
+    public String getFeatureSocialName() {
+        return getAttr(Provisioning.A_zimbraFeatureSocialName, null);
+    }
+
+    /**
+     * social tab name
+     *
+     * @param zimbraFeatureSocialName new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1625)
+    public void setFeatureSocialName(String zimbraFeatureSocialName) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialName, zimbraFeatureSocialName);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * social tab name
+     *
+     * @param zimbraFeatureSocialName new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1625)
+    public Map<String,Object> setFeatureSocialName(String zimbraFeatureSocialName, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialName, zimbraFeatureSocialName);
+        return attrs;
+    }
+
+    /**
+     * social tab name
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1625)
+    public void unsetFeatureSocialName() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialName, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * social tab name
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.5.0
+     */
+    @ZAttr(id=1625)
+    public Map<String,Object> unsetFeatureSocialName(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSocialName, "");
         return attrs;
     }
 

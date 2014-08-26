@@ -1,31 +1,40 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package sample.oauth.provider;
 
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.util.memcached.MemcachedSerializer;
+import java.net.URLEncoder;
+
 import net.oauth.OAuth;
 import net.oauth.OAuthAccessor;
 import net.oauth.OAuthConsumer;
 import sample.oauth.provider.core.SampleZmOAuthProvider;
 
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.common.util.memcached.MemcachedSerializer;
+import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.ZimbraAuthToken;
+
 /**
  */
 public class OAuthAccessorSerializer implements MemcachedSerializer<OAuthAccessor> {
 
+    @Override
     public Object serialize(OAuthAccessor value) {
 
         String consumer_key = (String) value.consumer.getProperty("name");
@@ -51,6 +60,7 @@ public class OAuthAccessorSerializer implements MemcachedSerializer<OAuthAccesso
         return result;
     }
 
+    @Override
     public OAuthAccessor deserialize(Object obj) throws ServiceException {
 
         String value = (String) obj;
@@ -88,6 +98,13 @@ public class OAuthAccessorSerializer implements MemcachedSerializer<OAuthAccesso
 
             if (!zauthtoken.equals("null")) {
                 accessor.setProperty("ZM_AUTH_TOKEN", zauthtoken);
+                AuthToken zimbraAuthToken = ZimbraAuthToken.getAuthToken(zauthtoken);
+                accessor.setProperty("ZM_ACC_DISPLAYNAME", zimbraAuthToken.getAccount().getAttr(Provisioning.A_displayName) == null ? "" : URLEncoder.encode(zimbraAuthToken.getAccount().getAttr(Provisioning.A_displayName),"UTF-8"));
+                accessor.setProperty("ZM_ACC_CN", zimbraAuthToken.getAccount().getName()==null ? "" : URLEncoder.encode(zimbraAuthToken.getAccount().getName(),"UTF-8"));
+                accessor.setProperty("ZM_ACC_GIVENNAME", zimbraAuthToken.getAccount().getAttr(Provisioning.A_givenName) == null ? "" : URLEncoder.encode(zimbraAuthToken.getAccount().getAttr(Provisioning.A_givenName),"UTF-8"));
+                accessor.setProperty("ZM_ACC_SN",zimbraAuthToken.getAccount().getAttr(Provisioning.A_sn) == null ? "" : URLEncoder.encode(zimbraAuthToken.getAccount().getAttr(Provisioning.A_sn),"UTF-8"));
+                accessor.setProperty("ZM_ACC_EMAIL",zimbraAuthToken.getAccount().getMail() == null ? "" :  URLEncoder.encode(zimbraAuthToken.getAccount().getMail(),"UTF-8"));
+
             }
 
             if (!verifier.equals("null")) {

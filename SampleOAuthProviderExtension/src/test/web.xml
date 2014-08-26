@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * ***** BEGIN LICENSE BLOCK *****
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2014 Zimbra, Inc.
+ * 
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
+ * 
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2014 Zimbra, Inc. All Rights Reserved. 
+ * ***** END LICENSE BLOCK *****
+-->
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                      http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+version="3.1"
+  metadata-complete="true">
+      <description>
+      oauth consumer test
+    </description>
+  <servlet>
+    <servlet-name>OAuthConsumerTestServlet</servlet-name>
+    <servlet-class>com.zimbra.test.OAuthConsumerTestServlet</servlet-class>
+        <init-param>
+       <param-name>CONSUMER_KEY</param-name>
+       <param-value>consumer2</param-value>
+    </init-param>
+    <init-param>
+       <param-name>CONSUMER_SECRET</param-name>
+       <param-value>secret2</param-value>
+    </init-param>
+    <init-param>
+       <param-name>REQUEST_TOKEN_ENDPOINT_URL</param-name>
+       <param-value>http://ubuntu.local:7070/service/extension/sampleoauth/req_token</param-value>
+    </init-param>
+    <init-param>
+       <param-name>ACCESS_TOKEN_ENDPOINT_URL</param-name>
+       <param-value>http://ubuntu.local:7070/service/extension/sampleoauth/access_token</param-value>
+    </init-param>
+    <init-param>
+       <param-name>AUTHORIZE_WEBSITE_URL</param-name>
+       <param-value>http://ubuntu.local:7070/service/extension/sampleoauth/authorization</param-value>
+    </init-param>
+    <init-param>
+       <param-name>CALLBACK_URL</param-name>
+       <param-value>http://gregs-mbp.local:8090/oauthConsumer/oauthtest</param-value>
+    </init-param>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>OAuthConsumerTestServlet</servlet-name>
+    <url-pattern>/oauthtest</url-pattern>
+  </servlet-mapping>
+  <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+        <welcome-file>index.xhtml</welcome-file>
+        <welcome-file>index.htm</welcome-file>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>

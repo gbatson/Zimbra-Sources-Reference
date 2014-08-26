@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Closeables;
@@ -35,8 +38,10 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.index.MessageHit;
 import com.zimbra.cs.index.QueryInfo;
 import com.zimbra.cs.index.ResultsPager;
 import com.zimbra.cs.index.SearchParams;
@@ -58,7 +63,9 @@ import com.zimbra.cs.mailbox.calendar.cache.CalendarItemData;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.soap.JaxbUtil;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.mail.message.SearchRequest;
 
 /**
  * @since May 26, 2004
@@ -71,13 +78,14 @@ public class Search extends MailDocumentHandler  {
         Mailbox mbox = getRequestedMailbox(zsc);
         Account account = getRequestedAccount(zsc);
         OperationContext octxt = getOperationContext(zsc, context);
-
-        if (request.getAttributeBool(MailConstants.A_WARMUP, false)) {
+        fixBooleanRecipients(request);
+        SearchRequest req = JaxbUtil.elementToJaxb(request);
+        if (Objects.firstNonNull(req.getWarmup(), false)) {
             mbox.index.getIndexStore().warmup();
             return zsc.createElement(MailConstants.SEARCH_RESPONSE);
         }
 
-        SearchParams params = SearchParams.parse(request, zsc, account.getPrefMailInitialSearch());
+        SearchParams params = SearchParams.parse(req, zsc, account.getPrefMailInitialSearch());
         if (params.getLocale() == null) {
             params.setLocale(mbox.getAccount().getLocale());
         }
@@ -122,8 +130,14 @@ public class Search extends MailDocumentHandler  {
     private void putHits(ZimbraSoapContext zsc, OperationContext octxt, Element el, ZimbraQueryResults results,
             SearchParams params) throws ServiceException {
 
-        if (params.getInlineRule() == ExpandResults.HITS) {
-            // "hits" is not a valid value for Search...
+        if (params.getInlineRule() == ExpandResults.HITS ||
+            params.getInlineRule() == ExpandResults.FIRST_MSG ||
+            params.getInlineRule() == ExpandResults.HITS_OR_FIRST_MSG ||
+            params.getInlineRule() == ExpandResults.UNREAD ||
+            params.getInlineRule() == ExpandResults.UNREAD_FIRST ||
+            params.getInlineRule() == ExpandResults.U_OR_FIRST_MSG ||
+            params.getInlineRule() == ExpandResults.U1_OR_FIRST_MSG) {
+            // these are not valid values for Search (according to soap.txt)
             params.setInlineRule(ExpandResults.NONE);
         }
 
@@ -142,16 +156,37 @@ public class Search extends MailDocumentHandler  {
         SearchResponse resp = new SearchResponse(zsc, octxt, el, params);
         resp.setIncludeMailbox(false);
         resp.setSortOrder(pager.getSortOrder());
-
+        boolean expand;
+        ExpandResults expandValue = params.getInlineRule();
+        int hitNum = 0;
         while (pager.hasNext() && resp.size() < params.getLimit()) {
+            hitNum ++;
             ZimbraHit hit = pager.getNextHit();
-            resp.add(hit);
+            if (hit instanceof MessageHit) {
+                /*
+                 * Determine whether or not to expand MessageHits.
+                 * This logic used to be in SearchResponse.isInlineExpand, but was moved
+                 * to the handler classes because in some cases
+                 * the decision to expand any particular hit is dependent on
+                 * other hits (see SearchConv)
+                 */
+                if (expandValue == ExpandResults.NONE) {
+                    expand = false;
+                } else if (expandValue == ExpandResults.ALL) {
+                    expand = true;
+                } else if (expandValue == ExpandResults.FIRST) {
+                    expand = params.getOffset() > 0 ? false : hitNum == 1;
+                } else {
+                    expand = expandValue.matches(hit.getParsedItemID());
+                }
+                resp.add(hit, expand);
+            } else {
+                resp.add(hit);
+            }
         }
-
         resp.addHasMore(pager.hasNext());
         resp.add(results.getResultInfo());
     }
-
     // Calendar summary cache stuff
 
     /**
@@ -266,7 +301,9 @@ public class Search extends MailDocumentHandler  {
                     Map.Entry<String, List<Integer>> acctEntry = acctIter.next();
                     String acctId = acctEntry.getKey();
                     List<Integer> folderIds = acctEntry.getValue();
-                    ItemIdFormatter ifmt = new ItemIdFormatter(authAcct.getId(), acctId, false);
+                    // Setup ItemIdFormatter appropriate for this folder which might not be in the authed account
+                    // but also take note of presense of <noqualify/> in SOAP context
+                    ItemIdFormatter ifmt = new ItemIdFormatter(authAcct.getId(), acctId, zsc.wantsUnqualifiedIds());
                     // for each folder
                     for (Iterator<Integer> iterFolderId = folderIds.iterator(); iterFolderId.hasNext(); ) {
                         int folderId = iterFolderId.next();
@@ -282,12 +319,12 @@ public class Search extends MailDocumentHandler  {
                             String ecode = e.getCode();
                             if (ecode.equals(ServiceException.PERM_DENIED)) {
                                 // share permission was revoked
-                                ZimbraLog.calendar.warn(
-                                        "Ignoring permission error during calendar search of folder " + ifmt.formatItemId(folderId), e);
+                                ZimbraLog.calendar.warn("Ignoring permission error during calendar search of folder %s",
+                                        ifmt.formatItemId(folderId), e);
                             } else if (ecode.equals(MailServiceException.NO_SUCH_FOLDER)) {
                                 // shared calendar folder was deleted by the owner
-                                ZimbraLog.calendar.warn(
-                                        "Ignoring deleted calendar folder " + ifmt.formatItemId(folderId));
+                                ZimbraLog.calendar.warn("Ignoring deleted calendar folder %s",
+                                        ifmt.formatItemId(folderId));
                             } else {
                                 throw e;
                             }
@@ -401,8 +438,9 @@ public class Search extends MailDocumentHandler  {
         req.addAttribute(MailConstants.E_QUERY, queryStr.toString(), Element.Disposition.CONTENT);
 
         Account target = Provisioning.getInstance().get(Key.AccountBy.id, nominalTargetAcctId);
-        String pxyAuthToken = zsc.getAuthToken().getProxyAuthToken();
-        ZAuthToken zat = pxyAuthToken == null ? zsc.getRawAuthToken() : new ZAuthToken(pxyAuthToken);
+        AuthToken authToken = AuthToken.getCsrfUnsecuredAuthToken(zsc.getAuthToken());
+        String pxyAuthToken = authToken.getProxyAuthToken();
+        ZAuthToken zat = pxyAuthToken == null ? authToken.toZAuthToken() : new ZAuthToken(pxyAuthToken);
         ZMailbox.Options zoptions = new ZMailbox.Options(zat, AccountUtil.getSoapUri(target));
         zoptions.setTargetAccount(nominalTargetAcctId);
         zoptions.setTargetAccountBy(AccountBy.id);
@@ -444,4 +482,21 @@ public class Search extends MailDocumentHandler  {
         }
         return groupedByServer;
     }
+
+    private static void fixBooleanRecipients(Element request) {
+        String recipField = MailConstants.A_RECIPIENTS;
+        String recip;
+        try {
+            recip = request.getAttribute(recipField);
+        }  catch (ServiceException e) {
+            // request doesn't have a "recip" field
+            return;
+        }
+        if (recip.equals("true")) {
+            request.addAttribute(recipField, "1");
+        } else if (recip.equals("false")) {
+            request.addAttribute(recipField, "0");
+        }
+    }
 }
+

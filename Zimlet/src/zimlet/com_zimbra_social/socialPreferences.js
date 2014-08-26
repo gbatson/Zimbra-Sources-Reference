@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2009, 2010, 2011, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
@@ -18,7 +24,6 @@ function com_zimbra_socialPreferences(zimlet) {
 	this.shell = this.zimlet.getShell();
 	this._fbNeedPermCount = 0;
 	this.social_pref_trendsPopularIsOn = this.zimlet.getUserProperty("social_pref_trendsPopularIsOn") == "true";
-	this.social_pref_diggPopularIsOn = this.zimlet.getUserProperty("social_pref_diggPopularIsOn") == "true";
 	this.social_pref_SocialMailUpdateOn = this.zimlet.getUserProperty("social_pref_SocialMailUpdateOn") == "true";
 	this.social_pref_dontShowWelcomeScreenOn = this.zimlet.getUserProperty("social_pref_dontShowWelcomeScreenOn") == "true";
 	this.social_pref_showTweetAlertsOn = this.zimlet.getUserProperty("social_pref_showTweetAlertsOn") == "true";
@@ -27,12 +32,6 @@ function com_zimbra_socialPreferences(zimlet) {
 	this.social_pref_numberofTweetsSearchesToReturn = parseInt(this.zimlet.getUserProperty("social_pref_numberofTweetsSearchesToReturn"));
 	this.social_pref_autoShortenURLOn = this.zimlet.getUserProperty("social_pref_autoShortenURLOn") == "true";
 	this.social_pref_socializeBtnOn = this.zimlet.getUserProperty("social_pref_socializeBtnOn") == "true";
-	var socialcastAccounts = this.zimlet.getUserProperty("socialcastAccounts");
-	if(!socialcastAccounts) {
-		this.zimlet.socialcastAccounts = this.socialcastAccounts = [];
-	} else {
-		this.zimlet.socialcastAccounts = this.socialcastAccounts = JSON.parse(socialcastAccounts);
-	}
 }
 
 com_zimbra_socialPreferences.prototype._showManageAccntsDlg = function() {
@@ -49,7 +48,6 @@ com_zimbra_socialPreferences.prototype._showManageAccntsDlg = function() {
 	this._manageAccntsView.getHtmlElement().innerHTML = this._createManageeAccntsView();
 	this._manageAccntsDlg = this.zimlet._createDialog({title:this.zimlet.getMessage("addRemoveAccounts"), view:this._manageAccntsView, standardButtons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON]});
 	this._manageAccntsDlg.setButtonListener(DwtDialog.OK_BUTTON, new AjxListener(this, this._manageAccntsOKBtnListener));
-	this.socialcastAddAccountDlg = new SocialcastAddAccountDlg(this, this.zimlet);
 	this._addPrefButtons();
 	this._updateAccountsTable();
 	this._updateAllFBPermissions();
@@ -88,9 +86,6 @@ function() {
 	var mi = menu.createMenuItem(id, {image:"social_facebookIcon", text:this.zimlet.getMessage("addFacebookAcc")});
 	mi.addSelectionListener(new AjxListener(this, this._addFacebookBtnListener));
 
-	var id = "social_pref_add_sc_account";
-	var mi = menu.createMenuItem(id, {image:"social_socialcastIcon", text:this.zimlet.getMessage("addSocialcastAcc")});
-	mi.addSelectionListener(new AjxListener(this.socialcastAddAccountDlg, this.socialcastAddAccountDlg.popup));
 
 	var deleteAccountBtn = new DwtButton({parent:this.zimlet.getShell()});
 	deleteAccountBtn.setText(this.zimlet.getMessage("deleteAcc"));
@@ -115,11 +110,6 @@ function() {
 	this.zimlet.twitter.performOAuth();
 };
 
-com_zimbra_socialPreferences.prototype.addSocialCastAccount =
-function(email, pwd, server) {
-	this.zimlet.socialcast.addAccount(email, pwd, server);
-};
-
 com_zimbra_socialPreferences.prototype._addFacebookBtnListener =
 function() {
 	this.showAddFBInfoDlg();
@@ -129,10 +119,8 @@ function() {
 com_zimbra_socialPreferences.prototype._deleteAccountBtnListener =
 function() {
 	var needToUpdateAllAccounts = false;
-	var needToUpdateSocialcastAccounts = false;
 
 	var hasAllAccounts = false;
-	var hasSCAccounts = false;
 	var newAllAccounts = new Array();
 	for (var id in this.zimlet.allAccounts) {
 		hasAllAccounts = true;
@@ -143,26 +131,12 @@ function() {
 		}
 	}
 	var newSAAccount = [];
-	for(var i=0; i< this.zimlet.socialcastAccounts.length; i++) {
-		hasSCAccounts = true;
-		var account = this.zimlet.socialcastAccounts[i];
-		 if (document.getElementById("social_pref_accnts_checkbox" + account.un).checked) {
-			  needToUpdateSocialcastAccounts = true;
-		 } else {
-			 newSAAccount.push(account);
-		 }
-	}
 	if (needToUpdateAllAccounts && hasAllAccounts) {
 		this.zimlet.allAccounts = newAllAccounts;
 		this.zimlet.setUserProperty("social_AllTwitterAccounts", this.zimlet.getAllAccountsAsString());
 	}
 
-	if (needToUpdateSocialcastAccounts && hasSCAccounts) {
-		this.zimlet.socialcastAccounts =  this.socialcastAccounts = newSAAccount;
-		this.zimlet.setUserProperty("socialcastAccounts", JSON.stringify(this.zimlet.socialcastAccounts));
-	}
-
-	if(needToUpdateSocialcastAccounts || needToUpdateAllAccounts) {
+	if (needToUpdateAllAccounts) {
 		this.zimlet.saveUserProperties();
 		this._updateAccountsTable();
 		this.zimlet._updateAllWidgetItems({updateSearchTree:false, updateSystemTree:true, updateAccntCheckboxes:true, searchCards:false});
@@ -295,12 +269,6 @@ function() {
 		html[i++] = this._getAccountPrefRowHtml(params);
 		noAccountsFound = false;
 	}
-	for(var j=0; j< this.socialcastAccounts.length; j++) {
-		var sa = this.socialcastAccounts[j];
-		var params = {id:sa.un, type: "socialcast", accIcon: "social_socialcastIcon", statIcon:"social_checkIcon", name:sa.e};
-		html[i++] = this._getAccountPrefRowHtml(params);
-		noAccountsFound = false;
-	}
 	if (noAccountsFound) {
 		html[i++] = "<TR>";
 		html[i++] = "<TD colspan=6 align='center' style='font-weight:bold;font-size:12px;color:blue'>";
@@ -346,6 +314,10 @@ function() {
 	this.zimlet._updateAllWidgetItems({updateSearchTree:false, updateSystemTree:true, updateAccntCheckboxes:true, searchCards:false});
 	this._manageAccntsDlg.popdown();
 
+};
+
+com_zimbra_socialPreferences.prototype.getAddFBInfoDlg = function() {
+	return this._getFbInfoDialog;
 };
 
 com_zimbra_socialPreferences.prototype.hideAddFBInfoDlg = function(obj) {
@@ -429,11 +401,6 @@ function() {
 		this.zimlet.setUserProperty("social_pref_trendsPopularIsOn", currentVal);
 		save = true;
 	}
-	currentVal = document.getElementById("social_pref_diggPopularIsOn").checked;
-	if (this.social_pref_diggPopularIsOn != currentVal) {
-		this.zimlet.setUserProperty("social_pref_diggPopularIsOn", currentVal);
-		save = true;
-	}
 	currentVal = document.getElementById("social_pref_socializeBtnOn").checked;
 	if (this.social_pref_socializeBtnOn != currentVal) {
 		this.zimlet.setUserProperty("social_pref_socializeBtnOn", currentVal);
@@ -506,9 +473,6 @@ com_zimbra_socialPreferences.prototype._setPrefCheckboxes = function() {
 	if (this.social_pref_trendsPopularIsOn) {
 		document.getElementById("social_pref_trendsPopularIsOn").checked = true;
 	}
-	if (this.social_pref_diggPopularIsOn) {
-		document.getElementById("social_pref_diggPopularIsOn").checked = true;
-	}
 	if (this.social_pref_socializeBtnOn) {
 		document.getElementById("social_pref_socializeBtnOn").checked = true;
 	}
@@ -550,7 +514,6 @@ function() {
 	html[i++] = "<BR/>";
 	html[i++] = "<table>";
 	html[i++] = "<tr><td><input type='checkbox' id='social_pref_trendsPopularIsOn' /></td><td width=100%>"+this.zimlet.getMessage("showTopTwitterTrendsByDefault")+"</td></tr>";
-	html[i++] = "<tr><td><input type='checkbox' id='social_pref_diggPopularIsOn' /></td><td width=100%> "+this.zimlet.getMessage("showDiggsPopularByDefault")+"</td></tr>";
 
 	html[i++] = "</table>";
 	html[i++] = "<table>";
@@ -715,11 +678,9 @@ function() {
 	html[i++] = "</ul><b>"+this.zimlet.getMessage("thingsToDo")+"</b>";
 	html[i++] = "<ul>";
 	html[i++] = "<li>"+this.zimlet.getMessage("thingsToDo1")+"</li>";
-	html[i++] = "<li>"+this.zimlet.getMessage("thingsToDo2")+"</li>";
 	html[i++] = "<li>"+this.zimlet.getMessage("thingsToDo3")+"</li>";
 	html[i++] = "<li>"+this.zimlet.getMessage("thingsToDo4")+"</li>";
 
-	html[i++] = "<li>"+this.zimlet.getMessage("thingsToDo5")+"</li>";
 	html[i++] = "</ul>";
 	html[i++] = this.zimlet.getMessage("takeA")+" <label id='SocialZimlet_takeATourLnk' style=\"color:blue;text-decoration: underline;font-weight:bold\"><a href='http://wiki.zimbra.com/index.php?title=Social' target=\"_blank\">"+
 		this.zimlet.getMessage("quickTour")+"</a></label> "+this.zimlet.getMessage("forExtraHelp");

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
@@ -45,10 +47,6 @@ import javax.mail.Part;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimePart;
 import javax.servlet.http.HttpServletResponse;
-
-import org.eclipse.jetty.io.EndPoint;
-import org.eclipse.jetty.io.nio.SelectChannelEndPoint;
-import org.eclipse.jetty.server.AbstractHttpConnection;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -107,6 +105,7 @@ import com.zimbra.cs.service.UserServletException;
 import com.zimbra.cs.service.mail.ImportContacts;
 import com.zimbra.cs.service.util.ItemData;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.servlet.util.JettyUtil;
 
 public abstract class ArchiveFormatter extends Formatter {
     private final Pattern ILLEGAL_FILE_CHARS = Pattern.compile("[\\/\\:\\*\\?\\\"\\<\\>\\|\\\0]");
@@ -187,7 +186,7 @@ public abstract class ArchiveFormatter extends Formatter {
     public void formatCallback(UserServletContext context)
     throws IOException, ServiceException, UserServletException {
         // Disable the jetty timeout
-        disableJettyTimeout();
+        disableJettyTimeout(context);
 
         HashMap<Integer, Integer> cnts = new HashMap<Integer, Integer>();
         int dot;
@@ -387,13 +386,9 @@ public abstract class ArchiveFormatter extends Formatter {
      * in this case.
      * @throws IOException
      */
-    private void disableJettyTimeout() throws IOException {
+    private void disableJettyTimeout(UserServletContext context) {
         if (LC.zimbra_archive_formatter_disable_timeout.booleanValue()) {
-            EndPoint endPoint = AbstractHttpConnection.getCurrentConnection().getEndPoint();
-            if (endPoint instanceof SelectChannelEndPoint) {
-                SelectChannelEndPoint scEndPoint = (SelectChannelEndPoint) endPoint;
-                scEndPoint.setMaxIdleTime(0);
-            }
+            JettyUtil.setIdleTimeout(0, context.req);
         }
     }
 
@@ -603,7 +598,7 @@ public abstract class ArchiveFormatter extends Formatter {
                 data = writer.toString().getBytes(charsetEncoder.charset());
             } else if (mi instanceof Contact) {
                 VCard vcf = VCard.formatContact((Contact) mi);
-                data = vcf.formatted.getBytes(charsetEncoder.charset());
+                data = vcf.getFormatted().getBytes(charsetEncoder.charset());
             } else if (mi instanceof Message) {
                 if (context.hasPart()) {
                     MimeMessage mm = ((Message)mi).getMimeMessage();
@@ -772,7 +767,7 @@ public abstract class ArchiveFormatter extends Formatter {
     throws IOException, ServiceException {
 
         // Disable the jetty timeout
-        disableJettyTimeout();
+        disableJettyTimeout(context);
 
         Exception ex = null;
         ItemData id = null;

@@ -1,21 +1,24 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #include "common.h"
 #include "Exchange.h"
 #include "MAPIAccessAPI.h"
 #include "Logger.h"
+#include "edk/edkmapi.h"
 #include "Util.h"
 
 Zimbra::MAPI::MAPISession *MAPIAccessAPI::m_zmmapisession = NULL;
@@ -24,10 +27,13 @@ std::wstring MAPIAccessAPI::m_strTargetProfileName = L"";
 std::wstring MAPIAccessAPI::m_strExchangeHostName = L"";
 bool MAPIAccessAPI::m_bSingleMailBoxMigration = false;
 bool MAPIAccessAPI::m_bHasJoinedDomain = false;
+MIG_TYPE MAPIAccessAPI::m_MigType = MAILBOX_MIG;
 
 // Initialize with Exchange Sever hostname, Outlook Admin profile name, Exchange mailbox name to be migrated
-MAPIAccessAPI::MAPIAccessAPI(wstring strUserName, wstring strUserAccount): m_userStore(NULL), m_rootFolder(NULL)
+MAPIAccessAPI::MAPIAccessAPI(wstring strUserName, wstring strUserAccount): m_userStore(NULL), m_rootFolder(NULL),
+	m_publicStore(NULL)
 {
+	m_bSingleMailBoxMigration=false;
     if (strUserName.empty())
         m_bSingleMailBoxMigration = true;
 
@@ -43,14 +49,20 @@ MAPIAccessAPI::MAPIAccessAPI(wstring strUserName, wstring strUserAccount): m_use
 
 MAPIAccessAPI::~MAPIAccessAPI()
 {
-	if ((m_userStore) && (!m_bSingleMailBoxMigration))
-        delete m_userStore;
-    m_userStore = NULL;
-    if (m_rootFolder != NULL)
+	if (m_rootFolder != NULL)
     {
         delete m_rootFolder;
         m_rootFolder = NULL;
     }
+	if ((m_userStore) && (!m_bSingleMailBoxMigration))
+        delete m_userStore;
+	if(m_publicStore)
+	{
+		delete m_publicStore;
+		m_publicStore=NULL;
+		MAPIUninitialize();
+	}
+	m_userStore = NULL;    
     m_bSingleMailBoxMigration = false;
 }
 
@@ -91,6 +103,141 @@ LONG WINAPI MAPIAccessAPI::UnhandledExceptionFilter(LPEXCEPTION_POINTERS pExPtrs
     return lRetVal;
 }
 
+void MAPIAccessAPI::SetOOMRegistry()
+{
+	dlogi("SetOOMRegistry.");
+	// If outlook is one of the mail clients installed on machine,
+	// make an entry in HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Messaging Subsystem\MSMapiApps
+	// corresponding to this application. This will cause the MAPI Stub library to route all
+	// MAPI calls made by this application to Microsoft Outlook, and not the default mail client.
+	HKEY hKey = NULL;
+	HRESULT lRetCode = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+		L"Software\\Clients\\Mail\\Microsoft Outlook", 0, KEY_READ, &hKey);
+
+	// If outlook is one of the mail clients,
+	if (ERROR_SUCCESS == lRetCode)
+	{
+		HKEY hKeyMSMapiApps = NULL;
+		LONG lRet = 0;
+
+		// Open the registry key HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Messaging Subsystem\MSMapiApps
+		lRetCode = RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T(
+			"SOFTWARE\\Microsoft\\Windows Messaging Subsystem\\MSMapiApps"), 0,
+			KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeyMSMapiApps);
+		if (ERROR_SUCCESS == lRetCode)
+		{
+			TCHAR exepath[MAX_PATH+1];
+			CString strAppName = L"ZimbraMigration.exe";
+			if(0 != GetModuleFileName(0, exepath, MAX_PATH+1))
+			{
+				strAppName = exepath;
+				int npos=strAppName.ReverseFind('\\');
+				strAppName= strAppName.Right(strAppName.GetLength()-npos-1);
+			}
+
+			lRet = RegSetValueEx(hKeyMSMapiApps, strAppName, 0, REG_SZ, (LPBYTE)_T(
+				"Microsoft Outlook"), 18 * (sizeof (TCHAR)));
+			RegCloseKey(hKeyMSMapiApps);
+		}
+		else
+		{
+			dloge("MAPISession::RegisterReminderEventHandler() Registry-SOFTWARE\\Microsoft\\Windows Messaging Subsystem\\MSMapiApps) error code:", lRet);
+		}
+		RegCloseKey(hKey);
+	}
+	else
+	{
+		dloge("MAPISession::RegisterReminderEventHandler() Registry-Software\\Clients\\Mail\\Microsoft Outlook) error code:", lRetCode);
+	}
+	/*************Work around for bug 17687****************/
+	hKey = NULL;
+	DWORD dwDisposition = 0;
+	LONG lRet = RegCreateKeyEx(HKEY_CURRENT_USER, _T(
+		"Software\\Microsoft\\Exchange\\Client\\Options"), 0, NULL,
+		REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, &dwDisposition);
+
+	if (hKey)
+	{
+		TCHAR szOrgOpt[2] = { 0 };
+		DWORD dwSize = DWORD(sizeof (szOrgOpt));
+
+		// Modify the key only if it hasnt been modified previously
+		if (RegQueryValueEx(hKey, _T("OrgPickLogonProfile"), NULL, NULL, NULL, NULL))
+		{
+			if (!RegQueryValueEx(hKey, _T("PickLogonProfile"), NULL, NULL,
+				(LPBYTE)szOrgOpt, &dwSize))
+			{
+				RegSetValueEx(hKey, _T("OrgPickLogonProfile"), 0, REG_SZ,
+					(LPBYTE)szOrgOpt, DWORD(sizeof (szOrgOpt)));
+			}
+
+			lRet = RegSetValueEx(hKey, _T("PickLogonProfile"), 0, REG_SZ,
+				(LPBYTE)_T("0"), DWORD(_tcslen(_T("0")) + 1) * sizeof (TCHAR));
+		}
+		RegCloseKey(hKey);
+	}
+	else
+	{
+		dloge("MAPISession::RegisterReminderEventHandler() registry-Software\\Microsoft\\Exchange\\Client\\Options error code:", lRet);
+	}
+
+	/*****************************************************/
+}
+
+void MAPIAccessAPI::ResetOOMRegistry()
+{
+	dlogi("ResetOOMRegistry.");
+	/******************Bug 17687*********************/
+	HKEY hKey = NULL;
+	DWORD dwDisposition = 0;
+	LONG lRet = RegCreateKeyEx(HKEY_CURRENT_USER, _T(
+		"Software\\Microsoft\\Exchange\\Client\\Options"), 0, NULL, REG_OPTION_NON_VOLATILE,
+		KEY_ALL_ACCESS, NULL, &hKey, &dwDisposition);
+
+	if (hKey)
+	{
+		TCHAR szOrgOpt[2] = { 0 };
+		DWORD dwSize = DWORD(sizeof (szOrgOpt));
+
+		if (!RegQueryValueEx(hKey, _T("OrgPickLogonProfile"), NULL, NULL, (LPBYTE)szOrgOpt,
+			&dwSize))
+		{
+			RegSetValueEx(hKey, _T("PickLogonProfile"), 0, REG_SZ, (LPBYTE)szOrgOpt,
+				DWORD(sizeof (szOrgOpt)));
+			RegDeleteValue(hKey, _T("OrgPickLogonProfile"));
+		}
+		RegCloseKey(hKey);
+	}
+	else
+	{
+		dloge("Registry key cannot be set while UnRegisterReminderHandler for OOM. Error: ", lRet);
+	}
+	/**************************************************/
+
+	HKEY hKeyMSMapiApps = NULL;
+    lRet = 0;
+
+    // Open the registry key HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Messaging Subsystem\MSMapiApps
+    lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T(
+        "SOFTWARE\\Microsoft\\Windows Messaging Subsystem\\MSMapiApps"), 0, KEY_READ |
+        KEY_SET_VALUE, &hKeyMSMapiApps);
+    // Delete the entry in the key corresponding to the application
+    if (ERROR_SUCCESS == lRet)
+    {
+        TCHAR exepath[MAX_PATH+1];
+		CString strAppName = L"ZimbraMigration.exe";
+		if(0 != GetModuleFileName(0, exepath, MAX_PATH+1))
+		{
+			strAppName = exepath;
+			int npos=strAppName.ReverseFind('\\');
+			strAppName= strAppName.Right(strAppName.GetLength()-npos-1);
+		}
+
+        lRet = RegDeleteValue(hKeyMSMapiApps, strAppName);
+        RegCloseKey(hKeyMSMapiApps);
+    }
+}
+
 void MAPIAccessAPI::internalInit()
 {
 	//Get App dir
@@ -105,13 +252,15 @@ void MAPIAccessAPI::internalInit()
 	delete []pwszTempPath;
 }
 
-LPCWSTR MAPIAccessAPI::InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget)
+LPCWSTR MAPIAccessAPI::InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget, LPCWSTR userAccount, ULONG flag)
 {
 	internalInit();
 	LPWSTR exceptionmsg=NULL;
+	if(wcscmp(userAccount,L"")==0)
+		m_bSingleMailBoxMigration = true;
 	__try
 	{
-		return _InitGlobalSessionAndStore(lpcwstrMigTarget);
+		return _InitGlobalSessionAndStore(lpcwstrMigTarget,flag);
 	}
 	__except(Zimbra::Util::MiniDumpGenerator::GenerateCoreDump(GetExceptionInformation(),exceptionmsg))
 	{
@@ -121,10 +270,35 @@ LPCWSTR MAPIAccessAPI::InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget)
 	return NULL;
 }
 
-LPCWSTR MAPIAccessAPI::_InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget)
+LPCWSTR MAPIAccessAPI::_InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget, ULONG flag)
 {
     LPWSTR lpwstrStatus = NULL;
 	LPWSTR lpwstrRetVal= NULL;
+	bool bPublicFolder= false;
+
+	if(m_bSingleMailBoxMigration)
+	{
+		m_MigType = PROFILE_MIG;
+	}
+	else
+	{
+		m_MigType = MAILBOX_MIG;
+	}
+
+	//check if Outlook running
+	//OOM does not work when Outlook is running
+	if(Zimbra::MAPI::Util::IsOutlookRunning())
+	{
+		if(m_MigType != MAILBOX_MIG)
+			MessageBox(NULL,_T("Outlook must not be running while migrating accounts.") _T(
+				"\nClose Outlook in order to proceed."), _T("Outlook Running"), MB_ICONERROR);
+
+		Zimbra::Util::CopyString(lpwstrRetVal,ERR_OUTLOOK_RUNNING);//(LPWSTR)L"Outlook must not be running while migrating accounts.\nClose Outlook in order to proceed.");
+		Zimbra::Util::CopyString(lpwstrStatus,ERR_OUTLOOK_RUNNING);//L"Outlook must not be running while migrating accounts.");
+		dloge(lpwstrStatus);
+		goto CLEAN_UP;
+	}
+
 	// If part of domain, get domain name
     m_bHasJoinedDomain = Zimbra::MAPI::Util::GetDomainName(m_strExchangeHostName);
 	try
@@ -144,6 +318,7 @@ LPCWSTR MAPIAccessAPI::_InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget)
 
             WtoA((LPWSTR)lpcwstrMigTarget, lpstrMigTarget);
 
+			m_MigType = PST_MIG;
             // delete any left over profiles from previous migration
             Zimbra::MAPI::Util::DeleteAlikeProfiles(
                 Zimbra::MAPI::Util::PSTMIG_PROFILE_PREFIX.c_str());
@@ -176,17 +351,25 @@ LPCWSTR MAPIAccessAPI::_InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget)
             AtoW((LPSTR)strPSTProfileName.c_str(), wstrProfileName);
             m_strTargetProfileName = wstrProfileName;
             SafeDelete(wstrProfileName);
+			//set registry for PST migration
+			SetOOMRegistry();
         }
-        else
-        {
-            m_strTargetProfileName = lpcwstrMigTarget;
-        }
-
-        HRESULT hr = m_zmmapisession->Logon((LPWSTR)m_strTargetProfileName.c_str());
+		else if ((flag & FL_PUBLIC_FOLDER) == FL_PUBLIC_FOLDER)//(strMigTarget.find(L".PUBLIC") != std::wstring::npos)
+		{
+			bPublicFolder = true;
+			m_strTargetProfileName = lpcwstrMigTarget;
+		}
+		else
+		{
+			m_strTargetProfileName = lpcwstrMigTarget;
+		}
+		
+		dlogi("Migration Type: ",m_MigType);
+		HRESULT hr = m_zmmapisession->Logon((LPWSTR)m_strTargetProfileName.c_str());
 
         if (hr != S_OK)
             goto CLEAN_UP;
-        m_defaultStore = new Zimbra::MAPI::MAPIStore();
+        m_defaultStore = new Zimbra::MAPI::MAPIStore(m_MigType);
 
         // Open target default store
         hr = m_zmmapisession->OpenDefaultStore(*m_defaultStore);
@@ -243,6 +426,9 @@ void MAPIAccessAPI::UnInitGlobalSessionAndStore()
     if (m_zmmapisession)
         delete m_zmmapisession;
     m_zmmapisession = NULL;
+
+	if(GetMigrationType() == PST_MIG)
+		ResetOOMRegistry();
 }
 
 wstring GetCNName(LPWSTR pstrUserDN)
@@ -263,6 +449,139 @@ wstring GetCNName(LPWSTR pstrUserDN)
 	return strUserDN;
 }
 
+LPCWSTR MAPIAccessAPI::OpenPublicStore()
+{
+	LPWSTR lpwstrRetVal=NULL;
+	LPWSTR lpwstrStatus = NULL;
+	HRESULT hr = S_OK;
+	try
+	{
+		// user store
+		m_publicStore = new Zimbra::MAPI::MAPIStore(MAILBOX_MIG);
+		hr=m_zmmapisession->OpenPublicStore(*m_publicStore);
+		if (hr != S_OK)
+		{
+			lpwstrStatus = FormatExceptionInfo(hr, L"MAPIAccessAPI::OpenPublicStore() Failed",
+				__FILE__, __LINE__);
+			dloge(lpwstrStatus);
+			Zimbra::Util::CopyString(lpwstrRetVal, lpwstrStatus);
+		}
+		else
+		{
+			m_userStore = m_publicStore;
+		}
+	}
+	catch (MAPISessionException &msse)
+    {
+        lpwstrStatus = FormatExceptionInfo(msse.ErrCode(), (LPWSTR)msse.Description().c_str(),
+            (LPSTR)msse.SrcFile().c_str(), msse.SrcLine());
+		dloge(lpwstrStatus);
+		Zimbra::Util::CopyString(lpwstrRetVal, msse.ShortDescription().c_str());
+    }
+    catch (MAPIStoreException &mste)
+    {
+        lpwstrStatus = FormatExceptionInfo(mste.ErrCode(), (LPWSTR)mste.Description().c_str(),
+            (LPSTR)mste.SrcFile().c_str(), mste.SrcLine());
+		dloge(lpwstrStatus);
+		Zimbra::Util::CopyString(lpwstrRetVal, mste.ShortDescription().c_str());
+    }
+	if(lpwstrStatus)
+		Zimbra::Util::FreeString(lpwstrStatus);
+    return lpwstrRetVal;
+}
+
+HRESULT MAPIAccessAPI::EnumeratePublicFolders(std::vector<std::string> &pubFldrList)
+{
+    HRESULT hr = S_OK;
+    LPMAPITABLE pTable = NULL;
+    LPSRowSet pRowSet = NULL;
+    ULONG ulRows = 0;
+
+	hr=m_publicStore->GetPublicFolderTable(&pTable);
+    if (FAILED(hr))
+        return E_FAIL;
+
+    hr = pTable->GetRowCount(0, &ulRows);
+    if (FAILED(hr))
+    {
+        pTable->Release();
+        return E_FAIL;
+    }
+    if (ulRows > 0)
+    {
+        SPropTagArray columns;
+
+        columns.cValues = 1;
+        columns.aulPropTag[0] = PR_DISPLAY_NAME;
+        hr = pTable->SetColumns(&columns, 0);
+        if (FAILED(hr))
+            pTable->Release();
+        hr = pTable->QueryRows(ulRows, 0, &pRowSet);
+        if (FAILED(hr))
+            pTable->Release();
+
+        for (unsigned int i = 0; i < pRowSet->cRows; i++)
+        {
+            std::string strPubFldr;
+            bool bwstrConv = false;
+            LPWSTR lpwstrPubFldrName = pRowSet->aRow[i].lpProps[0].Value.lpszW;
+            int bsz = WideCharToMultiByte(CP_ACP, 0, lpwstrPubFldrName, -1, 0, 0, 0, 0);
+
+            if (bsz > 0)
+            {
+                char *p = new char[bsz];
+                int rc = WideCharToMultiByte(CP_ACP, 0, lpwstrPubFldrName, -1, p, bsz, 0, 0);
+
+                if (rc != 0)
+                {
+                    p[bsz - 1] = 0;
+                    strPubFldr = p;
+                    bwstrConv = true;
+                }
+                delete[] p;
+            }
+            if (bwstrConv)
+                pubFldrList.push_back(strPubFldr);
+        }
+    }
+    
+    pTable->Release();
+    return hr;
+}
+
+
+LPCWSTR MAPIAccessAPI::InitializePublicFolders()
+{
+	LPWSTR lpwstrRetVal=NULL;
+	LPWSTR lpwstrStatus = NULL;
+    HRESULT hr = S_OK;
+
+	try
+	{
+		lpwstrStatus=(LPWSTR)OpenPublicStore();
+		// Get root folder from user store
+		m_rootFolder = new Zimbra::MAPI::MAPIFolder(*m_zmmapisession, *m_publicStore);
+		if (FAILED(hr = m_publicStore->GetRootFolder(*m_rootFolder)))
+		{
+			lpwstrStatus = FormatExceptionInfo(hr, L"MAPIAccessAPI::InitializePublicFolders() Failed",
+				__FILE__, __LINE__);
+			Zimbra::Util::CopyString(lpwstrRetVal, L"MAPIAccessAPI::InitializePublicFolders() Failed");
+		}
+		Zimbra::Mapi::NamedPropsManager::SetNamedProps(m_publicStore->GetInternalMAPIStore());
+	}
+	catch (GenericException &ge)
+    {
+        lpwstrStatus = FormatExceptionInfo(ge.ErrCode(), (LPWSTR)ge.Description().c_str(),
+            (LPSTR)ge.SrcFile().c_str(), ge.SrcLine());
+		dloge(lpwstrStatus);
+		Zimbra::Util::CopyString(lpwstrRetVal,ge.ShortDescription().c_str());
+    }
+	if(lpwstrStatus)
+		Zimbra::Util::FreeString(lpwstrStatus);
+	return lpwstrRetVal;
+}
+
+
 // Open MAPI sessiona and Open Stores
 LPCWSTR MAPIAccessAPI::OpenUserStore()
 {
@@ -281,7 +600,7 @@ LPCWSTR MAPIAccessAPI::OpenUserStore()
     try
     {
         // user store
-        m_userStore = new Zimbra::MAPI::MAPIStore();
+        m_userStore = new Zimbra::MAPI::MAPIStore(m_MigType);
         // Get Exchange Server DN
         hr = Zimbra::MAPI::Util::GetUserDnAndServerDnFromProfile(
             m_zmmapisession->GetMAPISessionObject(), ExchangeServerDN, ExchangeUserDN, ExchangeHostName);
@@ -695,7 +1014,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
     ULONG objtype;
 	
 	LPTSTR pszBin = SBinToStr(sbItemEID);
-	dlogd("Item EntryID: %s",pszBin);
+	dlogd("Item EntryID: ",pszBin);
 
     if (FAILED(hr = m_userStore->OpenEntry(sbItemEID.cb, (LPENTRYID)sbItemEID.lpb, NULL,
             MAPI_BEST_ACCESS, &objtype, (LPUNKNOWN *)&pMessage)))
@@ -778,6 +1097,12 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             AtoW(msg.DateString(), wstrDateString);
             msgdata->DateString = wstrDateString;
             SafeDelete(wstrDateString);
+
+			LPWSTR wstrDateUnixString;
+			AtoW(msg.DateUnixString(), wstrDateUnixString);
+            msgdata->DateUnixString = wstrDateUnixString;
+            SafeDelete(wstrDateUnixString);
+
 
             msgdata->deliveryDate = msg.DeliveryDate();
 
@@ -901,10 +1226,13 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
 			MAPIContact mapicontact(*m_zmmapisession, msg);
 			ContactItemData *cd = (ContactItemData *)&itemData;
 
+			cd->AssistantPhone = mapicontact.AssistantPhone();
 			cd->Birthday = mapicontact.Birthday();
 			cd->CallbackPhone = mapicontact.CallbackPhone();
 			cd->CarPhone = mapicontact.CarPhone();
 			cd->Company = mapicontact.Company();
+			cd->CompanyPhone = mapicontact.CompanyPhone();
+			cd->Department = mapicontact.Department();
 			cd->Email1 = mapicontact.Email();
 			cd->Email2 = mapicontact.Email2();
 			cd->Email3 = mapicontact.Email3();
@@ -937,7 +1265,8 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
 			cd->OtherStreet = mapicontact.OtherStreet();
 			cd->OtherURL = mapicontact.OtherURL();
 			cd->Pager = mapicontact.Pager();
-			cd->pDList = mapicontact.DList();   
+			cd->PrimaryPhone = mapicontact.PrimaryPhone();
+			cd->pDList = mapicontact.DList();
 			cd->PictureID = mapicontact.Picture();
 			cd->Type = mapicontact.Type();
 			cd->UserField1 = mapicontact.UserField1();
@@ -948,6 +1277,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
 			cd->WorkCountry = mapicontact.WorkCountry();
 			cd->WorkFax = mapicontact.WorkFax();
 			cd->WorkPhone = mapicontact.WorkPhone();
+			cd->WorkPhone2 = mapicontact.WorkPhone2();
 			cd->WorkPostalCode = mapicontact.WorkPostalCode();
 			cd->WorkState = mapicontact.WorkState();
 			cd->WorkStreet = mapicontact.WorkStreet();
@@ -999,6 +1329,8 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
 
             ad->Transparency = mapiappointment.GetTransparency();
             ad->ApptClass = mapiappointment.GetPrivate();
+			if(mapiappointment.GetPrivate().empty())
+				dlogw("Appointemt's status (public/private) cannot be fetched. Default status (Public) will be used.");
             ad->AlarmTrigger = mapiappointment.GetReminderMinutes();
             ad->organizer.nam = mapiappointment.GetOrganizerName();
             ad->organizer.addr = mapiappointment.GetOrganizerAddr();

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.tests.accounts;
@@ -61,8 +63,93 @@ public class GetAccount extends AdminCommonTest {
 
 		
 		// Refresh the account list
-		SleepUtil.sleepMedium();
 		app.zPageManageAccounts.sClickAt(PageMain.Locators.REFRESH_BUTTON, "");
+		SleepUtil.sleepMedium();
+
+		
+		// Get the list of displayed accounts
+		List<AccountItem> accounts = app.zPageManageAccounts.zListGetAccounts();
+		ZAssert.assertNotNull(accounts, "Verify the account list is returned");
+		
+		AccountItem found = null;
+		for (AccountItem a : accounts) {
+			logger.info("Looking for account "+ account.getEmailAddress() + " found: "+ a.getGEmailAddress());
+			if ( account.getEmailAddress().equals(a.getGEmailAddress()) ) {
+				found = a;
+				break;
+			}
+		}
+		ZAssert.assertNotNull(found, "Verify the account is found");
+
+	}
+	
+	/**
+	 * Testcase : Verify created delegated admin account is displayed in UI -- Manage Account View.
+	 * Steps :
+	 * 1. Create a delegated admin account using SOAP.
+	 * 2. Verify account is present in the list.
+	 * @throws HarnessException
+	 */
+	@Test(	description = "Verify created delegated admin account is displayed in UI -- Manage Account View.",
+			groups = { "functional" })
+	public void GetAccount_02() throws HarnessException {
+
+		// Create a new account in the Admin Console using SOAP
+		AccountItem account = new AccountItem("delegated_admin" + ZimbraSeleniumProperties.getUniqueString(),ZimbraSeleniumProperties.getStringProperty("testdomain"));
+		ZimbraAdminAccount.AdminConsoleAdmin().soapSend(
+				"<CreateAccountRequest xmlns='urn:zimbraAdmin'>"
+				+			"<name>" + account.getEmailAddress() + "</name>"
+				+			"<password>test123</password>"
+				+			"<a xmlns='' n='zimbraIsDelegatedAdminAccount'>TRUE</a>"
+				+		"</CreateAccountRequest>");
+
+		
+		// Refresh the account list
+		app.zPageManageAccounts.sClickAt(PageMain.Locators.REFRESH_BUTTON, "");
+		SleepUtil.sleepMedium();
+
+		
+		// Get the list of displayed accounts
+		List<AccountItem> accounts = app.zPageManageAccounts.zListGetAccounts();
+		ZAssert.assertNotNull(accounts, "Verify the account list is returned");
+		
+		AccountItem found = null;
+		for (AccountItem a : accounts) {
+			logger.info("Looking for account "+ account.getEmailAddress() + " found: "+ a.getGEmailAddress());
+			if ( account.getEmailAddress().equals(a.getGEmailAddress()) ) {
+				found = a;
+				break;
+			}
+		}
+		ZAssert.assertNotNull(found, "Verify the account is found");
+
+	}
+
+	
+	/**
+	 * Testcase : Verify created global admin account is displayed in UI -- Manage Account View.
+	 * Steps :
+	 * 1. Create a global admin account using SOAP.
+	 * 2. Verify account is present in the list.
+	 * @throws HarnessException
+	 */
+	@Test(	description = "Verify created global admin account is displayed in UI -- Manage Account View.",
+			groups = { "functional" })
+	public void GetAccount_03() throws HarnessException {
+
+		// Create a new account in the Admin Console using SOAP
+		AccountItem account = new AccountItem("global_admin" + ZimbraSeleniumProperties.getUniqueString(),ZimbraSeleniumProperties.getStringProperty("testdomain"));
+		ZimbraAdminAccount.AdminConsoleAdmin().soapSend(
+				"<CreateAccountRequest xmlns='urn:zimbraAdmin'>"
+				+			"<name>" + account.getEmailAddress() + "</name>"
+				+			"<password>test123</password>"
+				+			"<a xmlns='' n='zimbraIsAdminAccount'>TRUE</a>"
+				+		"</CreateAccountRequest>");
+
+		
+		// Refresh the account list
+		app.zPageManageAccounts.sClickAt(PageMain.Locators.REFRESH_BUTTON, "");
+		SleepUtil.sleepMedium();
 
 		
 		// Get the list of displayed accounts
@@ -83,6 +170,7 @@ public class GetAccount extends AdminCommonTest {
 
 
 
+
 	/**
 	 * Testcase : Verify created account is displayed in UI -- Search list view.
 	 * Steps :
@@ -93,7 +181,7 @@ public class GetAccount extends AdminCommonTest {
 	 */
 	@Test(	description = "Verify created account is displayed in UI -- Search list view",
 			groups = { "functional" })
-	public void GetAccount_02() throws HarnessException {
+	public void GetAccount_04() throws HarnessException {
 
 		// Create a new account in the Admin Console using SOAP
 		AccountItem account = new AccountItem("email" + ZimbraSeleniumProperties.getUniqueString(),ZimbraSeleniumProperties.getStringProperty("testdomain"));

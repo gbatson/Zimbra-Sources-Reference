@@ -1,22 +1,23 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.taglib;
 
 import java.io.IOException;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspTagException;
 import javax.servlet.jsp.JspWriter;
@@ -30,7 +31,6 @@ import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.service.AuthProvider;
-import com.zimbra.cs.servlet.ZimbraServlet;
 
 public class ZimbraTag extends BodyTagSupport {
 
@@ -47,7 +47,7 @@ public class ZimbraTag extends BodyTagSupport {
 
     private AuthToken getAuthToken() throws ZimbraTagException, ServiceException {
         HttpServletRequest req = (HttpServletRequest)pageContext.getRequest();
-        
+
         AuthToken token = null;
         try {
             token = AuthProvider.getAuthToken(req, false);
@@ -60,10 +60,13 @@ public class ZimbraTag extends BodyTagSupport {
         if (token.isExpired()) {
             throw ZimbraTagException.AUTH_FAILURE("authtoken expired");
         }
-        
+
+        if(!token.isRegistered()) {
+            throw ZimbraTagException.AUTH_FAILURE("authtoken is invalid");
+        }
         return token;
     }
-    
+
     private Account getRequestAccount(AuthToken token) throws ZimbraTagException, ServiceException {
     	Provisioning prov = Provisioning.getInstance();
         Account acct = prov.get(Key.AccountBy.id, token.getAccountId(), token);
@@ -73,6 +76,7 @@ public class ZimbraTag extends BodyTagSupport {
         return acct;
     }
 
+    @Override
     public int doStartTag() throws JspTagException {
         try {
             AuthToken authToken = getAuthToken();
@@ -92,6 +96,7 @@ public class ZimbraTag extends BodyTagSupport {
         return SKIP_BODY;
     }
 
+    @Override
     public int doEndTag() throws JspTagException {
         try {
             AuthToken authToken = getAuthToken();

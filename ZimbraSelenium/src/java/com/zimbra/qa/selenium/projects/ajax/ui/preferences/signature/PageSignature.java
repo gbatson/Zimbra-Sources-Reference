@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature;
@@ -28,8 +30,8 @@ public class PageSignature extends AbsTab{
 
 	public PageSignature(AbsApplication application) {
 		super(application);
-		// TODO Auto-generated constructor stub
 	}
+
 	public static class Locators {
 
 		// Preferences Toolbar: Save, Cancel
@@ -38,18 +40,17 @@ public class PageSignature extends AbsTab{
 		public static final String zSignatureListView = "//div[@class='ZmSignatureListView']";
 		//public static final String zNewSignature ="//td[contains(@id,'_title') and contains (text(),'"+I18N.NEW_SIGNATURE+"')]";
 		public static final String zNewSignature ="css=td[class='ZOptionsField'] td[id$='_title']:contains('"+I18N.NEW_SIGNATURE+"')";
-		
-		
+
+
 		//public static final String zDeleteSignature ="//td[contains(@id,'DWT') and contains (text(),'"+I18N.DELETE+"')]";
 		public static final String zDeleteSignature ="css=td[class='ZOptionsField'] td[id$='_title']:contains('"+I18N.DELETE+"')";
-		
+
 	}
 
 
 	@Override
 	public AbsPage zListItem(Action action, String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -61,7 +62,7 @@ public class PageSignature extends AbsTab{
 
 	}
 	public String zGetSignatureBodyText() throws HarnessException{
-		
+
 		//bug 59078
 		String locator = null;
 		locator="selenium.browserbot.getCurrentWindow().document.getElementById('TEXTAREA_SIGNATURE').value";
@@ -79,25 +80,21 @@ public class PageSignature extends AbsTab{
 		}
 
 	}
-	
+
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption,
 			String item) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public void zNavigateTo() throws HarnessException {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -125,9 +122,9 @@ public class PageSignature extends AbsTab{
 		}else if(button== Button.B_DELETE){
 			locator = Locators.zDeleteSignature;
 			page = null;
-			
+
 		}else {
-		
+
 			throw new HarnessException("no logic defined for button " + button);
 		}
 
@@ -136,31 +133,28 @@ public class PageSignature extends AbsTab{
 		}
 
 		// Default behavior, process the locator by clicking on it
-	
+
 		this.zClickAt(locator,"");
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
-		
+
 		return (page);
 	}
 
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
 	throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public String myPageName() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		// TODO Auto-generated method stub
 		return false;
 	}
 

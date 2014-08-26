@@ -1,25 +1,25 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.util.staf;
 
 import java.util.*;
 import java.util.regex.*;
-import com.ibm.staf.STAFException;
-import com.ibm.staf.STAFHandle;
+
 import com.ibm.staf.STAFMarshallingContext;
-import com.ibm.staf.STAFResult;
 import com.zimbra.qa.selenium.framework.core.*;
 import com.zimbra.qa.selenium.framework.util.*;
 
@@ -27,30 +27,15 @@ public class Stafpostqueue extends StafServicePROCESS {
 
 	private static final String MailQueueIsEmpty = "Mail queue is empty";
 	private static final String MailQueueIsUnavailable = "mail system is down"; // 	postqueue: fatal: Queue report unavailable - mail system is down
-	private static List<String> zimbraMtaServers =  new ArrayList<String>();
-	private String StafAdminServer = null;
 
-	public String getStafAdminServer() {
-		return StafAdminServer;
-	}
-
-	public void setStafAdminServer(String stafAdminServer) {
-		StafAdminServer = stafAdminServer;
-	}
-
+	
+	
 	/**
 	 * Wait for messages for the current test account to be delivered
 	 * @throws HarnessException
 	 */
 	@SuppressWarnings("unchecked")
 	public void waitForPostqueue() throws HarnessException {
-		List<String> servers = null;
-				
-		if(zimbraMtaServers == null || zimbraMtaServers.isEmpty()){
-			servers = getMtaServers(StafAdminServer);
-		}else{
-			servers = zimbraMtaServers;
-		}
 		
 		// Start: Dev env hack
 		if ( "false".equalsIgnoreCase(ZimbraSeleniumProperties.getStringProperty("postqueue.use.staf", "true")) ) {
@@ -76,36 +61,26 @@ public class Stafpostqueue extends StafServicePROCESS {
 		for (int i = 0; i < max; i += interval) {
 			
 			// Check the server queue if it is empty
-			for(int y = 0; y < servers.size(); y++){
-				if (execute(command, servers.get(y))) {
+			if (execute(command)) {
 				
-					logger.debug("looking for "+ emailaddress +" in "+ this.StafResponse);
+				logger.debug("looking for "+ emailaddress +" in "+ this.StafResponse);
 
-					if (this.StafResponse.contains(MailQueueIsEmpty) ) {
-						// Queue is empty
-						if(y == servers.size()-1){
-							return;
-						}else{
-							continue;
-						}
-					} 
+				if ( this.StafResponse.contains(MailQueueIsEmpty)) {
+					// Queue is empty
+					return;
+				}
 				
-					if (!this.StafResponse.contains(emailaddress)) {						
-						if(y == servers.size()-1){
-							return;		
-						}
-					}else{
-						// Queue contains messages for the test account
-						break;
-					}
+				if (!this.StafResponse.contains(emailaddress)) {
+					// Queue does not contain any messages for the test account
+					return;
+				}
 				
-					if ( this.StafResponse.contains(MailQueueIsUnavailable)) {
-						throw new HarnessException("Unable to check message queue.  MTA is down.  "+ this.StafResponse);
-					}
+				if ( this.StafResponse.contains(MailQueueIsUnavailable)) {
+					throw new HarnessException("Unable to check message queue.  MTA is down.  "+ this.StafResponse);
+				}
 				
-				}	
-			}		
-			
+			}
+
 			// Wait a bit for the message to be delivered
 			SleepUtil.sleep(interval);			
 
@@ -224,168 +199,11 @@ public class Stafpostqueue extends StafServicePROCESS {
 		super();
 		logger.info("new Stafpostqueue");
 		StafService = "PROCESS";
-		String server = ZimbraSeleniumProperties.getStringProperty("adminName", "local");
-		if(!server.equals("local")){
-			setStafAdminServer(server.split("@")[1]);
-		}
 	}
 
-	public boolean execute(String command, String server) throws HarnessException {
+	public boolean execute(String command) throws HarnessException {
 		setCommand(command);
-				
-		STAFHandle handle = null;
-		
-		try
-		{
-			
-			handle = new STAFHandle(Stafpostqueue.class.getName());
-			
-	        try
-	        {
-	        	
-	        	logger.info("STAF Command example: " + getStafCommand());
-	        	
-	        	logger.info("executing on: " + server);
-	        		
-	        	StafResult = handle.submit2(server, StafService, StafParms);
-	            
-	        	if (StafResult == null){
-	        		throw new HarnessException("StafResult was null");
-	        	}
-	        	
-	        	logger.info("STAF Response Code: "+ StafResult.rc);
-
-	        	if ( StafResult.rc == STAFResult.AccessDenied ) {
-	        		// Common error in WDC.  Log a helper message.
-	        		logger.error("On the server, use: staf local trust set machine *.eng.server.com level 5");
-	        	}
-
-	        	if ( StafResult.rc != STAFResult.Ok ) {
-	        		throw new HarnessException("Invalid STAF response code ("+ StafResult.rc +"): "+ StafResult.result);
-	        	}
-
-	            if ( (StafResult.result != null) && (!StafResult.result.trim().equals("")) ) {
-	            	
-	            	//logger.info(StafResult.result);
-	            		        	
-	            	if ( STAFMarshallingContext.isMarshalledData(StafResult.result) ){
-	            		STAFMarshallingContext mc = STAFMarshallingContext.unmarshall(StafResult.result);
-	            		
-	            		// Get the entire response
-	            		StafResponse = STAFMarshallingContext.formatObject(mc);	            				
-	            	}else{
-	            		StafResponse = StafResult.result;
-	            	}
-	            
-	            	logger.debug(StafResponse);	            		
-	            }
-	            	        	
-	            return (StafResult.rc == STAFResult.Ok);
- 
-			} finally {
-	        	
-				logger.info("STAF Response: " + StafResponse);
-				
-				if (handle != null )
-					handle.unRegister();
-				
-			}
-        
-		}
-		catch (STAFException e)
-		{
-        	throw new HarnessException("Error registering or unregistering with STAF, RC: " + e.rc, e);
-		}
-	        	
-	}
-	
-	private List<String> getMtaServers(String mailboxServer) {	
-		final String STAF_ZIMBRA_SERVICE = "PROCESS";
-		final String STAF_ZIMBRA_COMMAND = "/bin/su ";
-		final String ZIMBRA_COMMAND = "zmprov gs "+ mailboxServer +" zimbraSmtpHostname | grep zimbraSmtpHostname";
-		final String STAF_ZIMBRA_PARMS = "\"- zimbra -c \\\""+ ZIMBRA_COMMAND +"\\\"\"";
-		
-		STAFHandle handle = null;
-       	
-       	try
-        {
-       		
-            handle = new STAFHandle(Stafpostqueue.class.getName());
-            logger.debug("My handle is: " + handle.getHandle());
-             
-	        try
-	        {
-	        	// Build the STAF PROCESS command
-	        	StringBuffer stafCommand = new StringBuffer();
-	        	stafCommand.append(" START COMMAND ");
-	        	stafCommand.append(STAF_ZIMBRA_COMMAND);
-	        	stafCommand.append(" PARMS " + STAF_ZIMBRA_PARMS);
-	        	stafCommand.append(" RETURNSTDOUT RETURNSTDERR WAIT ");
-
-	        	logger.info("Execute STAF " + mailboxServer + " " + STAF_ZIMBRA_SERVICE + " " + stafCommand);
-	            
-	            STAFResult stafResult = handle.submit2(mailboxServer, STAF_ZIMBRA_SERVICE, stafCommand.toString());
-
-            	// First, check for STAF errors, like unable to contact host
-            	if ( stafResult.rc != STAFResult.Ok ) {
-            		
-            		logger.warn("STAF return code: " + stafResult.rc);
-	            	
-	            	// Fall back to the mailbox host
-            		if(!zimbraMtaServers.contains(mailboxServer)){
-            			zimbraMtaServers.add(mailboxServer);
-            		}
-            	   	return (zimbraMtaServers);	            	
-
-	            }	            
-
-            	// Unwind the result object.
-            	// zmlmtpinject returns 0 on success and >0 on failure
-	            //
-             	STAFMarshallingContext mc = STAFMarshallingContext.unmarshall(stafResult.result);
-             	logger.info("zmprov results:\n" + mc.toString());
-            	
-             	Map resultMap = (Map)mc.getRootObject();
-            	List returnedFileList = (List)resultMap.get("fileList");
-            	Map stdoutMap = (Map)returnedFileList.get(0);
-            	String processOut = (String)stdoutMap.get("data");
-            	
-            	if ( processOut != null ) {
-            		
-	            	// Log the postqueue status:
-            		logger.info("zmprov:\n" + processOut);
-            		
-            		String[] servers = processOut.trim().split("zimbraSmtpHostname:");
-            		String server = null;
-            		for(String str:servers){
-            			server = str.trim();
-            			if(!server.isEmpty() && !zimbraMtaServers.contains(server))
-            			zimbraMtaServers.add(server);
-            		}
-            		         		
-            		return (zimbraMtaServers);
-            		
-            	}
-	        } finally {
-	        	
-	            try {
-					handle.unRegister();
-				} catch (STAFException e) {
-					logger.warn("Error unregistering with STAF, RC:" + e.rc, e);
-				}
-	        
-	        }
-			
-        } catch (STAFException e) {
-        	
-        	logger.warn("Error registering or unregistering with STAF, RC:" + e.rc, e);
-        	logger.warn("Example:  RC: 21 is STAFNotRunning");
-        	logger.warn("See Return Codes here:  http://staf.sourceforge.net/current/STAFJava.htm#Header_STAFResult");
-                   
-        } 
-
-       return (zimbraMtaServers);	
-		
+		return (super.execute());
 	}
 
 	protected String setCommand(String command) {

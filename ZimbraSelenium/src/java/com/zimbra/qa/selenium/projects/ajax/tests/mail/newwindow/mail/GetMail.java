@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.newwindow.mail;
@@ -38,7 +40,6 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.DisplayMail.Field;
 public class GetMail extends PrefGroupMailByMessageTest {
 	protected static Logger logger = LogManager.getLogger(GetMail.class);
 
-	boolean injected = false;
 	final String mimeFolder = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/mime/email00";
 
 	public GetMail() throws HarnessException {
@@ -138,11 +139,11 @@ public class GetMail extends PrefGroupMailByMessageTest {
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
 			ZAssert.assertEquals(	window.zGetMailProperty(Field.Subject), subject, "Verify the subject matches");
-			ZAssert.assertNotNull(	window.zGetMailProperty(Field.ReceivedDate), "Verify the date is displayed");
+			//ZAssert.assertNotNull(	window.zGetMailProperty(Field.ReceivedDate), "Verify the date is displayed"); as per bug 75743 all date are  consistent
 			ZAssert.assertNotNull(	window.zGetMailProperty(Field.ReceivedTime), "Verify the time is displayed");
 			ZAssert.assertEquals(	window.zGetMailProperty(Field.From), ZimbraAccount.AccountA().EmailAddress, "Verify the From matches");
-			ZAssert.assertEquals(	window.zGetMailProperty(Field.Cc), ZimbraAccount.AccountB().EmailAddress, "Verify the Cc matches");
-			ZAssert.assertEquals(	window.zGetMailProperty(Field.To), app.zGetActiveAccount().EmailAddress, "Verify the To matches");
+			ZAssert.assertEquals(	window.zGetMailProperty(Field.Cc),"Cc:"+ ZimbraAccount.AccountB().EmailAddress, "Verify the Cc matches");
+			ZAssert.assertEquals(	window.zGetMailProperty(Field.To), "To:"+app.zGetActiveAccount().EmailAddress, "Verify the To matches");
 			
 			// The body could contain HTML, even though it is only displaying text (e.g. <br> may be present)
 			// do a contains, rather than equals.
@@ -170,7 +171,7 @@ public class GetMail extends PrefGroupMailByMessageTest {
 		// Create the message data to be sent
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 		String bodyText = "text" + ZimbraSeleniumProperties.getUniqueString();
-		String bodyHTML = "text <strong>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong> text";
+		String bodyHTML = "text <strong style=\"\">bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong> text";
 		String contentHTML = XmlStringUtil.escapeXml(
 			"<html>" +
 				"<head></head>" +
@@ -216,12 +217,12 @@ public class GetMail extends PrefGroupMailByMessageTest {
 			
 			// Verify the To, From, Subject, Body		
 			ZAssert.assertEquals(	window.zGetMailProperty(Field.Subject), mail.dSubject, "Verify the subject matches");
-			ZAssert.assertNotNull(	window.zGetMailProperty(Field.ReceivedDate), "Verify the date is displayed");
+		//	ZAssert.assertNotNull(	window.zGetMailProperty(Field.ReceivedDate), "Verify the date is displayed");
 			ZAssert.assertNotNull(	window.zGetMailProperty(Field.ReceivedTime), "Verify the time is displayed");
 			ZAssert.assertEquals(	window.zGetMailProperty(Field.From), ZimbraAccount.AccountA().EmailAddress, "Verify the From matches");
-			ZAssert.assertEquals(	window.zGetMailProperty(Field.Cc), ZimbraAccount.AccountB().EmailAddress, "Verify the Cc matches");
-			ZAssert.assertEquals(	window.zGetMailProperty(Field.To), app.zGetActiveAccount().EmailAddress, "Verify the To matches");
-			ZAssert.assertEquals(	window.zGetMailProperty(Field.Body), bodyHTML, "Verify the body matches");
+			ZAssert.assertEquals(	window.zGetMailProperty(Field.Cc), "Cc:"+ZimbraAccount.AccountB().EmailAddress, "Verify the Cc matches");
+			ZAssert.assertEquals(	window.zGetMailProperty(Field.To), "To:"+app.zGetActiveAccount().EmailAddress, "Verify the To matches");
+			ZAssert.assertStringContains(	window.zGetMailProperty(Field.Body), bodyHTML, "Verify the body matches");
 			
 
 		} finally {
@@ -247,10 +248,8 @@ public class GetMail extends PrefGroupMailByMessageTest {
 		final String from = "from12996131112962@example.com";
 		final String sender = "sender12996131112962@example.com";
 
-		if ( !injected ) {
-			LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFolder));
-			injected = true;
-		}
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFolder + "/mime_wSender.txt"));
+
 
 		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), subject);
 		ZAssert.assertNotNull(mail, "Verify message is received");
@@ -278,15 +277,11 @@ public class GetMail extends PrefGroupMailByMessageTest {
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
 			// Verify the To, From, Subject, Body
-			//ZAssert.assertEquals(	window.zGetMailProperty(Field.OnBehalfOf), from, "Verify the On-Behalf-Of matches the 'From:' header");
-			/* TODO: ... debugging to be removed */
-			String fromLocator = "css=div[id='zv__TV-main__MSG'] td[id$='_from'] span[id$='_com_zimbra_email'] span:contains(from)";
-			ZAssert.assertEquals(app.zPageMail.sGetText(fromLocator).trim(), from, "Verify the On-Behalf-Of matches the 'From:' header");
-
-			//ZAssert.assertEquals(	window.zGetMailProperty(Field.From), sender, "Verify the From matches the 'Sender:' header");
-			/* TODO: ... debugging to be removed */
-			String senderLocator = "css=div[id='zv__TV-main__MSG'] td[id$='_from'] span[id$='_com_zimbra_email'] span:contains(sender)";
-			ZAssert.assertEquals(app.zPageMail.sGetText(senderLocator).trim(), sender, "Verify the From matches the 'Sender:' header");
+			String actualOBO = window.zGetMailProperty(Field.OnBehalfOf);
+			ZAssert.assertEquals(actualOBO, from, "Verify the On-Behalf-Of matches the 'From:' header");
+			
+			String actualSender = window.zGetMailProperty(Field.From);
+			ZAssert.assertEquals(actualSender, sender, "Verify the From matches the 'Sender:' header");
 
 		} finally {
 			
@@ -302,7 +297,8 @@ public class GetMail extends PrefGroupMailByMessageTest {
 
 		
 	}
-
+	
+	@Bugs(	ids = "86168")
 	@Test(	description = "Receive a mail with Reply-To: specified",
 			groups = { "functional" })
 	public void ViewMail_02() throws HarnessException {
@@ -311,10 +307,7 @@ public class GetMail extends PrefGroupMailByMessageTest {
 		final String from = "from13016959916873@example.com";
 		final String replyto = "replyto13016959916873@example.com";
 
-		if ( !injected ) {
-			LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFolder));
-			injected = true;
-		}
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFolder + "/mime_wReplyTo.txt"));
 
 
 		
@@ -343,15 +336,11 @@ public class GetMail extends PrefGroupMailByMessageTest {
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
 			// Verify the To, From, Subject, Body
-			//ZAssert.assertEquals(	window.zGetMailProperty(Field.ReplyTo), replyto, "Verify the Reply-To matches the 'Reply-To:' header");
-			/* TODO: ... debugging to be removed */
-			String replytoLocator = "css=div[id='zv__TV-main__MSG'] tr[id$='_reply to'] td.LabelColValue span[id$='_com_zimbra_email'] span:contains(replyto)";
-			ZAssert.assertEquals(app.zPageMail.sGetText(replytoLocator).trim(), replyto, "Verify the Reply-To matches the 'Reply-To:' header");
+			String actualReplyto = window.zGetMailProperty(Field.ReplyTo);
+			ZAssert.assertEquals(actualReplyto, replyto, "Verify the Reply-To matches the 'Reply-To:' header");
 
-			//ZAssert.assertEquals(	window.zGetMailProperty(Field.From), from, "Verify the From matches the 'From:' header");
-			/* TODO: ... debugging to be removed */
-			String fromLocator = "css=div[id='zv__TV-main__MSG'] td[id$='_from'] span[id$='_com_zimbra_email'] span:contains(from)";
-			ZAssert.assertEquals(app.zPageMail.sGetText(fromLocator).trim(), from, "Verify the From matches the 'From:' header");
+			String actualFrom = window.zGetMailProperty(Field.From);
+			ZAssert.assertEquals(actualFrom, from, "Verify the From matches the 'From:' header");
 
 		} finally {
 			
@@ -375,10 +364,7 @@ public class GetMail extends PrefGroupMailByMessageTest {
 		final String from = "from13011239916873@example.com";
 		final String resentfrom = "resentfrom13016943216873@example.com";
 
-		if ( !injected ) {
-			LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFolder));
-			injected = true;
-		}
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFolder + "/mime_wResentFrom.txt"));
 
 
 		
@@ -406,15 +392,11 @@ public class GetMail extends PrefGroupMailByMessageTest {
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
 			// Verify the To, From, Subject, Body
-			//ZAssert.assertEquals(	window.zGetMailProperty(Field.ResentFrom), resentfrom, "Verify the Resent-From matches the 'Resent-From:' header");
-			/* TODO: ... debugging to be removed */
-			String resentfromLocator = "css=div[id='zv__TV-main__MSG'] td[id$='_from'] span[id$='_com_zimbra_email'] span:contains(resentfrom)";
-			ZAssert.assertEquals(app.zPageMail.sGetText(resentfromLocator).trim(), resentfrom, "Verify the From matches the 'From:' header");
+			String actualResentFrom = window.zGetMailProperty(Field.ResentFrom);
+			ZAssert.assertEquals(actualResentFrom, resentfrom, "Verify the Resent-From matches the 'Resent-From:' header");
 
-			//ZAssert.assertEquals(	window.zGetMailProperty(Field.From), from, "Verify the From matches the 'From:' header");
-			/* TODO: ... debugging to be removed */
-			String fromLocator = "css=div[id='zv__TV-main__MSG'] td[id$='_from'] span[id$='_com_zimbra_email'] span:contains(from)";
-			ZAssert.assertEquals(app.zPageMail.sGetText(fromLocator).trim(), from, "Verify the From matches the 'From:' header");
+			String actualFrom = window.zGetMailProperty(Field.From);
+			ZAssert.assertEquals(actualFrom, from, "Verify the From matches the 'From:' header");
 
 		} finally {
 			

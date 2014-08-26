@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.framework.items;
 
@@ -24,22 +26,22 @@ import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 
 /**
  * This class represents a new document item
- * 
- * 
+ *
+ *
  */
 public class FileItem implements IItem, IOctListViewItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
-	
+
 	/**
 	 * Create a file item
 	 */
-	public FileItem() {	
+	public FileItem() {
 	}
-	
+
 	/**
 	 * Create a file item
 	 */
-	public FileItem(String path) {		
+	public FileItem(String path) {
 		filePath = path;
 		if(filePath.contains("/")){
 		    fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
@@ -47,9 +49,9 @@ public class FileItem implements IItem, IOctListViewItem {
 		    fileName = filePath.substring(filePath.lastIndexOf("\\") + 1);
 		}else{
 		    fileName = filePath;
-		}	
+		}
 	}
-	
+
 	/**
 	 * The file name
 	 */
@@ -59,12 +61,12 @@ public class FileItem implements IItem, IOctListViewItem {
 	 * The file path
 	 */
 	private String filePath;
-	
+
 	/**
 	 * The file if
 	 */
 	//private String fileId;
-	
+
 	/**
 	 * The status of this file
 	 */
@@ -78,7 +80,7 @@ public class FileItem implements IItem, IOctListViewItem {
 	public String getFilePath() {
 		return filePath;
 	}
-	
+
 	public void setFilePath(String path) {
 		filePath = path;;
 	}
@@ -87,11 +89,11 @@ public class FileItem implements IItem, IOctListViewItem {
 	public String getName() {
 		return fileName;
 	}
-	
+
 	public void setFileName(String name) {
 		fileName = name;;
 	}
-	
+
 	@Override
 	public String prettyPrint() {
 		StringBuilder sb = new StringBuilder();
@@ -103,14 +105,12 @@ public class FileItem implements IItem, IOctListViewItem {
 
 	@Override
 	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
-		// TODO Auto-generated method stub
-		
 	}
 
 	/////////
 	// IListViewItem: Start
 	/////////
-	
+
 	private String ListViewIcon = null;
 	private String ListViewName = null;
 
@@ -124,7 +124,7 @@ public class FileItem implements IItem, IOctListViewItem {
 		return (ListViewName);
 	}
 
-	
+
 	@Override
 	public void setListViewIcon(String icon) throws HarnessException {
 		ListViewIcon = icon;
@@ -134,10 +134,10 @@ public class FileItem implements IItem, IOctListViewItem {
 	public void setListViewName(String name) throws HarnessException {
 		ListViewName = name;
 	}
-	
+
 	/////////
 	// IListViewItem: End
 	/////////
-	
+
 
 }

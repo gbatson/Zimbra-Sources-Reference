@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.db;
@@ -42,13 +44,13 @@ import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailItem.PendingDelete;
+import com.zimbra.cs.mailbox.MailItem.UnderlyingData;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.mailbox.RetentionPolicyManager;
 import com.zimbra.cs.mailbox.Tag;
-import com.zimbra.cs.mailbox.MailItem.PendingDelete;
-import com.zimbra.cs.mailbox.MailItem.UnderlyingData;
 import com.zimbra.soap.mail.type.RetentionPolicy;
 
 public final class DbTag {
@@ -665,7 +667,7 @@ public final class DbTag {
                 String mailboxesMatchAnd = DebugConfig.disableMailboxGroups ? "" : "mi.mailbox_id = ti.mailbox_id AND ";
                 stmt = conn.prepareStatement("UPDATE " + DbMailItem.getMailItemTableName(mbox, "mi") +
                         " INNER JOIN " + getTaggedItemTableName(mbox, "ti") + " ON " + mailboxesMatchAnd + "mi.id = ti.item_id" +
-                        " SET mi.tag_names = CASE mi.tag_names WHEN ? THEN NULL ELSE REPLACE(mi.tag_names, ?, '\\0') END, mod_metadata = ?, change_date = ?" +
+                        " SET mi.tag_names = CASE mi.tag_names WHEN ? THEN NULL ELSE REPLACE(mi.tag_names, ?, '" + Db.getEscapeSequence() + "0') END, mod_metadata = ?, change_date = ?" +
                         " WHERE " + inThisMailboxAnd("ti") + "ti.tag_id = ?");
                 stmt.setString(pos++, delimited);
                 stmt.setString(pos++, delimited);
@@ -675,7 +677,7 @@ public final class DbTag {
                 stmt.setInt(pos++, tag.getId());
             } else {
                 stmt = conn.prepareStatement("UPDATE " + DbMailItem.getMailItemTableName(mbox) +
-                        " SET tag_names = CASE tag_names WHEN ? THEN NULL ELSE REPLACE(tag_names, ?, '\\0') END, mod_metadata = ?, change_date = ?" +
+                        " SET tag_names = CASE tag_names WHEN ? THEN NULL ELSE REPLACE(tag_names, ?, '" + Db.getEscapeSequence() + "0') END, mod_metadata = ?, change_date = ?" +
                         " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND + "id IN" +
                         " (SELECT ti.item_id FROM " + getTaggedItemTableName(mbox, "ti") + " WHERE " + inThisMailboxAnd("ti") + "ti.tag_id = ?)");
                 stmt.setString(pos++, delimited);
@@ -760,7 +762,7 @@ public final class DbTag {
         try {
             stmt = conn.prepareStatement("UPDATE " + DbMailItem.getMailItemTableName(mbox) +
                     " SET tag_names = " +
-                        "(SELECT (CONCAT('\\0', GROUP_CONCAT(t.name SEPARATOR '\\0'), '\\0')" +
+                        "(SELECT (CONCAT('" + Db.getEscapeSequence() + "0', GROUP_CONCAT(t.name SEPARATOR '" + Db.getEscapeSequence() + "0'), '" + Db.getEscapeSequence() + "0')" +
                         " FROM tag t INNER JOIN tagged_item ti ON t.mailbox_id = ti.mailbox_id AND t.id = ti.tag_id" +
                         " WHERE ti.item_id = mi.id AND ti.tag_id > 0)" +
                     (DebugConfig.disableMailboxGroups ? "" : " WHERE mi.mailbox_id = ?"));
@@ -820,7 +822,7 @@ public final class DbTag {
 
     @VisibleForTesting
     public static void debugConsistencyCheck(Mailbox mbox) throws ServiceException {
-        DbConnection conn = mbox.lock.isLocked() ? mbox.getOperationConnection() : DbPool.getConnection(mbox);
+        DbConnection conn = mbox.lock.isWriteLockedByCurrentThread() ? mbox.getOperationConnection() : DbPool.getConnection(mbox);
 
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -852,7 +854,7 @@ public final class DbTag {
         } finally {
             DbPool.closeResults(rs);
             DbPool.closeStatement(stmt);
-            if (!mbox.lock.isLocked()) {
+            if (!mbox.lock.isWriteLockedByCurrentThread()) {
                 conn.close();
             }
         }

@@ -24,8 +24,10 @@ public class ConfigViewModelU: BaseViewModel
         this.SaveCommand = new ActionCommand(this.Save, () => true);
         this.BackCommand = new ActionCommand(this.Back, () => true);
         this.NextCommand = new ActionCommand(this.Next, () => true);
-        Isprofile = true;
-        IspST = false;
+        
+            Isprofile = true;
+            IspST = false;
+       
         CSEnableNext = false;
     }
     public ICommand GetPSTCommand {
@@ -182,7 +184,10 @@ public class ConfigViewModelU: BaseViewModel
             if (ovm != null)
             {
                 ovm.OEnableRulesAndOOO = !IsPST;
+                if (isDesktop)
+                    ovm.IsZDesktop = true;
             }
+
             OnPropertyChanged(new PropertyChangedEventArgs("IspST"));
         }
     }
@@ -202,6 +207,14 @@ public class ConfigViewModelU: BaseViewModel
                 MessageBox.Show(temp, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+            if (isDesktop)
+            {
+
+                ((ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST]).DesktopLoad();
+
+                ///
+
+            }
         }
         else
         if (CurrentProfileSelection == -1)
@@ -209,8 +222,13 @@ public class ConfigViewModelU: BaseViewModel
             MessageBox.Show("Please select a valid profile", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
-
-        lb.SelectedIndex = 2;
+        if (isDesktop)
+        {
+            lb.SelectedIndex = 3;
+        }
+        else
+            lb.SelectedIndex = 2;
+        
     }
     public string OutlookProfile {
         get { return m_config.SourceServer.Profile; }

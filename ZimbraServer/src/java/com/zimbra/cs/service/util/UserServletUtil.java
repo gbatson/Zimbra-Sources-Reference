@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.util;
@@ -40,6 +42,7 @@ import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
+import com.zimbra.cs.service.formatter.FormatterFactory;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.servlet.util.AuthUtil;
@@ -175,8 +178,16 @@ public class UserServletUtil {
                      *      path   -> /foo/bar/baz  */
                     String unsuffixedPath = context.itemPath.substring(0, dot);
                     try {
-                        context.target = mbox.getItemByPath(context.opContext, unsuffixedPath);
                         context.format = FormatType.fromString(context.itemPath.substring(dot + 1));
+                        if (context.format != null) {
+                            context.formatter = FormatterFactory.mFormatters.get(context.format);
+                        }
+                        if (context.formatter != null && !context.formatter.requiresAuth()) {
+                            // Do the get as mailbox owner to circumvent ACL system.
+                            context.target = mbox.getItemByPath(null, unsuffixedPath);
+                        } else {
+                            context.target = mbox.getItemByPath(context.opContext, unsuffixedPath);        
+                        }
                         context.itemPath = unsuffixedPath;
                     } catch (ServiceException e) { }
                 }
@@ -234,6 +245,10 @@ public class UserServletUtil {
                     if (at != null) {
 
                         if (at.isZimbraUser()) {
+                        	if(!at.isRegistered()) {
+                        		throw new UserServletException(HttpServletResponse.SC_UNAUTHORIZED,
+                                        L10nUtil.getMessage(MsgKey.errMustAuthenticate, context.req));
+                        	}
                             try {
                                 context.setAuthAccount(AuthProvider.validateAuthToken(Provisioning.getInstance(), at, false));
                             } catch (ServiceException e) {

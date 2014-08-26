@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -1358,8 +1360,10 @@ public class Mime {
     private static Set<MPartInfo> getReportBodySubpart(List<MPartInfo> children, boolean preferHtml) {
         //get all text subparts which match the preferHtml argument
         //if none match, return all alternative text subparts
+        //in either case, text/rfc822-headers part is included in returned bodies if present
         Set<MPartInfo> subparts = new HashSet<MPartInfo>();
         Set<MPartInfo> alternatives = new HashSet<MPartInfo>();
+        Set<MPartInfo> headers = new HashSet<MPartInfo>();
         for (MPartInfo mpi : children) {
             boolean isAttachment = mpi.getDisposition().equals(Part.ATTACHMENT);
             // the Content-Type we want and the one we'd settle for...
@@ -1371,16 +1375,19 @@ public class Mime {
                 subparts.add(mpi);
             } else if (!isAttachment && altTypes.contains(ctype)) {
                 alternatives.add(mpi);
+            } else if (!isAttachment && ctype.equals(MimeConstants.CT_TEXT_RFC822_HEADERS)) {
+                headers.add(mpi);
             } else if (mpi.isMultipart()) {
                 Set<MPartInfo> body;
                 if ((body = getBodySubparts(mpi, preferHtml)) != null)
                     subparts.addAll(body);
             }
         }
-
         if (subparts.size() == 0) {
+            alternatives.addAll(headers);
             return (alternatives.size() == 0 ? null : alternatives);
         } else {
+            subparts.addAll(headers);
             return subparts;
         }
     }

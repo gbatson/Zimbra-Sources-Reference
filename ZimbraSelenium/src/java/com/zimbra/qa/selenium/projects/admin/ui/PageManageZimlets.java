@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
@@ -28,7 +30,7 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
  *
  */
 public class PageManageZimlets extends AbsTab {
-	
+
 	public static class Locators {
 		public static final String CONFIGURE_ICON="css=div.ImgAdministration";
 		public static final String ZIMLET="zti__AppAdmin__CONFIGURATION__ZIMLETS_textCell";
@@ -54,21 +56,18 @@ public class PageManageZimlets extends AbsTab {
 	@Override
 	public AbsPage zListItem(Action action, String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption,
 			String item) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -90,14 +89,12 @@ public class PageManageZimlets extends AbsTab {
 
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

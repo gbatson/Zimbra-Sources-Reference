@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.admin;
@@ -42,8 +44,16 @@ public class CountObjects extends AdminDocumentHandler {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Provisioning prov = Provisioning.getInstance();
         String type = request.getAttribute(AdminConstants.A_TYPE);
-        CountObjectsTypeWrapper typeWrapper = CountObjectsTypeWrapper
-                .valueOf(type);
+        CountObjectsTypeWrapper typeWrapper;
+        try {
+            typeWrapper = CountObjectsTypeWrapper.valueOf(type);
+        } catch (IllegalArgumentException ex) {
+            throw ServiceException.INVALID_REQUEST("Invalid object type " + type,null);
+        }
+
+        if(typeWrapper == null) {
+            throw ServiceException.INVALID_REQUEST("Invalid object type " + type,null);
+        }
 
         UCService ucService = null;
         Element eUCService = request
@@ -65,7 +75,15 @@ public class CountObjects extends AdminDocumentHandler {
         }
 
         List<Pair<String, String>> domainList = new LinkedList<Pair<String, String>>();
-        for (Element elem : request.listElements(AdminConstants.E_DOMAIN)) {
+        List<Element> domainElements = request.listElements(AdminConstants.E_DOMAIN);
+
+        if(!typeWrapper.allowsDomain() && !domainElements.isEmpty()) {
+            throw ServiceException.INVALID_REQUEST(
+                    "domain cannot be specified for type: "
+                            + typeWrapper.name(), null);
+        }
+
+        for (Element elem : domainElements) {
             domainList.add(new Pair<String, String>(elem
                     .getAttribute(AdminConstants.A_BY), elem.getText()));
         }
@@ -88,12 +106,6 @@ public class CountObjects extends AdminDocumentHandler {
         } else if (!domainList.isEmpty() && typeWrapper.allowsDomain()) {
             // count objects within specified domains
             for (Pair<String, String> domainDef : domainList) {
-                if (!typeWrapper.allowsDomain()) {
-                    throw ServiceException.INVALID_REQUEST(
-                            "domain cannot be specified for type: "
-                                    + typeWrapper.name(), null);
-                }
-
                 Domain domain = prov.get(
                         Key.DomainBy.fromString(domainDef.getFirst()),
                         domainDef.getSecond());

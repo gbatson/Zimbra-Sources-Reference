@@ -3,15 +3,21 @@
 <!--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2008, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
 -->
 
@@ -22,6 +28,13 @@
 
 <Configure id="Server" class="org.eclipse.jetty.server.Server">
     
+        <Get name="ThreadPool" id="pool">
+        </Get>
+<!--  
+        <Call class="com.zimbra.common.jetty.JettyMonitor" name="setThreadPool">
+                <Arg><Ref id="pool"/></Arg>
+        </Call>
+-->
     <!-- =========================================================== -->
     <!-- Set handler Collection Structure                            --> 
     <!-- =========================================================== -->
@@ -40,6 +53,22 @@
 		</New>
 	    </Arg>
         </Call>
+        <Call name="addRule">
+            <Arg>
+                <New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+                    <Set name="pattern">/ews/Exchange.asmx/*</Set>
+                    <Set name="replacement">/service/extension/zimbraews</Set>
+                </New>
+            </Arg>
+        </Call>
+        <Call name="addRule">
+            <Arg>
+                <New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
+                    <Set name="pattern">/EWS/Exchange.asmx/*</Set>
+                    <Set name="replacement">/service/extension/zimbraews</Set>
+                </New>
+            </Arg>
+        </Call>        
         <Call name="addRule">
 	    <Arg>
 		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
@@ -111,7 +140,7 @@
 	    <Arg>        
 		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
 		    <Set name="pattern">/zimbra/*</Set>
-		    <Set name="replacement">/zimbra</Set>
+		    <Set name="replacement">/</Set>
 		    <Set name="terminating">true</Set>
 		</New>
 	    </Arg>
@@ -121,7 +150,7 @@
 	    <Arg>        
 		<New class="org.eclipse.jetty.rewrite.handler.RewritePatternRule">
 		    <Set name="pattern">/*</Set>
-		    <Set name="replacement">/zimbra</Set>
+		    <Set name="replacement">/</Set>
 		</New>
 	    </Arg>
         </Call>       
@@ -194,21 +223,127 @@
         </Arg>
     </Call>
 
-    <Ref id="RequestLog">
-      <Set name="requestLog">
-        <New id="RequestLogImpl" class="org.eclipse.jetty.server.NCSARequestLog">
-          <Arg><SystemProperty name="jetty.home" default="/opt/zimbra/jetty"/>/logs/access_log.yyyy_mm_dd</Arg>
-          <Set name="logDateFormat">dd/MMM/yyyy:HH:mm:ss Z</Set>
-          <Set name="retainDays">30</Set>
-          <Set name="append">true</Set>
-          <Set name="extended">true</Set>
-          <Set name="filenameDateFormat">yyyy-MM-dd</Set>
-        </New>
-      </Set>
-    </Ref>
+	<New id="zimbraSslContextFactory" class="org.eclipse.jetty.util.ssl.SslContextFactory">
+		<Set name="KeyStorePath">/opt/zimbra/jetty/etc/keystore</Set>
+		<Set name="KeyStorePassword">zimbra</Set>
+		<Set name="KeyManagerPassword">zimbra</Set>
+		<Set name="EndpointIdentificationAlgorithm"></Set>
+		<Set name="ExcludeCipherSuites">
+			<Array type="String">
+				<Item>SSL_RSA_WITH_DES_CBC_SHA</Item>
+				<Item>SSL_DHE_RSA_WITH_DES_CBC_SHA</Item>
+				<Item>SSL_DHE_DSS_WITH_DES_CBC_SHA</Item>
+				<Item>SSL_RSA_EXPORT_WITH_RC4_40_MD5</Item>
+				<Item>SSL_RSA_EXPORT_WITH_DES40_CBC_SHA</Item>
+				<Item>SSL_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA</Item>
+				<Item>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</Item>
+			</Array>
+		</Set>
+	</New>
+	
+	<New id="httpConfig" class="org.eclipse.jetty.server.HttpConfiguration">
+		<Set name="outputBufferSize">32768</Set>
+		<Set name="requestHeaderSize">8192</Set>
+		<Set name="responseHeaderSize">8192</Set>
+		<Set name="sendServerVersion">false</Set>
+		<Set name="sendDateHeader">false</Set>
+		<Set name="headerCacheSize">512</Set>
+
+		<!-- Uncomment to enable handling of X-Forwarded- style headers <Call name="addCustomizer"> 
+			<Arg><New class="org.eclipse.jetty.server.ForwardedRequestCustomizer"/></Arg> 
+			</Call> -->
+	</New>
+	
+	
+	<New id="sslHttpConfig" class="org.eclipse.jetty.server.HttpConfiguration">
+		<Arg>
+			<Ref refid="httpConfig" />
+		</Arg>
+		<Call name="addCustomizer">
+			<Arg>
+				<New class="org.eclipse.jetty.server.SecureRequestCustomizer" />
+			</Arg>
+		</Call>
+	</New>
+	
+	<Call id="httpsConnector" name="addConnector">
+		<Arg>
+			<New id="ssl" class="org.eclipse.jetty.server.ServerConnector">
+				<Arg name="server">
+					<Ref refid="Server" />
+				</Arg>
+				<Arg name="factories">
+					<Array type="org.eclipse.jetty.server.ConnectionFactory">
+						<Item>
+							<New class="org.eclipse.jetty.server.SslConnectionFactory">
+								<Arg name="next">http/1.1</Arg>
+								<Arg name="sslContextFactory">
+									<Ref refid="zimbraSslContextFactory" />
+								</Arg>
+							</New>
+						</Item>
+						<Item>
+							<New class="org.eclipse.jetty.server.HttpConnectionFactory">
+								<Arg name="config">
+									<Ref refid="sslHttpConfig" />
+								</Arg>
+							</New>
+						</Item>
+					</Array>
+				</Arg>
+				<Set name="port">7443</Set>
+				<Set name="idleTimeout">60000</Set>
+			</New>
+		</Arg>
+	</Call>
+	
+	
+	<Call id="adminHttpsConnector" name="addConnector">
+		<Arg>
+			<New id="admin" class="org.eclipse.jetty.server.ServerConnector">
+				<Arg name="server">
+					<Ref refid="Server" />
+				</Arg>
+				<Arg name="factories">
+					<Array type="org.eclipse.jetty.server.ConnectionFactory">
+						<Item>
+							<New class="org.eclipse.jetty.server.SslConnectionFactory">
+								<Arg name="next">http/1.1</Arg>
+								<Arg name="sslContextFactory">
+									<Ref refid="zimbraSslContextFactory" />
+								</Arg>
+							</New>
+						</Item>
+						<Item>
+							<New class="org.eclipse.jetty.server.HttpConnectionFactory">
+								<Arg name="config">
+									<Ref refid="sslHttpConfig" />
+								</Arg>
+							</New>
+						</Item>
+					</Array>
+				</Arg>
+				<Set name="port">7071</Set>
+				<Set name="idleTimeout">60000</Set>
+			</New>
+		</Arg>
+	</Call>
+	
+	<Ref id="RequestLog">
+		<Set name="requestLog">
+			<New id="RequestLogImpl" class="org.eclipse.jetty.server.NCSARequestLog">
+				<Arg><SystemProperty name="jetty.home" default="/opt/zimbra" />/log/access_log.yyyy_mm_dd</Arg>
+				<Set name="logDateFormat">dd/MMM/yyyy:HH:mm:ss Z</Set>
+				<Set name="retainDays">30</Set>
+				<Set name="append">true</Set>
+				<Set name="extended">true</Set>
+				<Set name="filenameDateFormat">yyyy-MM-dd</Set>
+				<Set name="preferProxiedForAddress">true</Set>
+				<Set name="logLatency">true</Set>
+			</New>
+		</Set>
+	</Ref>
+	
 
     <Set name="stopAtShutdown">true</Set>
-    <Set name="sendServerVersion">false</Set>
-    <Set name="sendDateHeader">true</Set>
-
 </Configure>

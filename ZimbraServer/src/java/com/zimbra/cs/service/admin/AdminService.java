@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.admin;
@@ -80,6 +82,12 @@ public class AdminService implements DocumentService {
         dispatcher.registerHandler(AdminConstants.GET_ALL_SERVERS_REQUEST, new GetAllServers());
         dispatcher.registerHandler(AdminConstants.MODIFY_SERVER_REQUEST, new ModifyServer());
         dispatcher.registerHandler(AdminConstants.DELETE_SERVER_REQUEST, new DeleteServer());
+
+        dispatcher.registerHandler(AdminConstants.CREATE_ALWAYSONCLUSTER_REQUEST, new CreateAlwaysOnCluster());
+        dispatcher.registerHandler(AdminConstants.GET_ALWAYSONCLUSTER_REQUEST, new GetAlwaysOnCluster());
+        dispatcher.registerHandler(AdminConstants.GET_ALL_ALWAYSONCLUSTERS_REQUEST, new GetAllAlwaysOnClusters());
+        dispatcher.registerHandler(AdminConstants.MODIFY_ALWAYSONCLUSTER_REQUEST, new ModifyAlwaysOnCluster());
+        dispatcher.registerHandler(AdminConstants.DELETE_ALWAYSONCLUSTER_REQUEST, new DeleteAlwaysOnCluster());
 
         dispatcher.registerHandler(AdminConstants.CREATE_UC_SERVICE_REQUEST, new CreateUCService());
         dispatcher.registerHandler(AdminConstants.GET_UC_SERVICE_REQUEST, new GetUCService());
@@ -270,9 +278,10 @@ public class AdminService implements DocumentService {
         // noop
         dispatcher.registerHandler(AdminConstants.NO_OP_REQUEST, new NoOp());
 
-        // clear cookie
+        // cookie and authtoken maintenance
         dispatcher.registerHandler(AdminConstants.CLEAR_COOKIE_REQUEST, new ClearCookie());
         dispatcher.registerHandler(AdminConstants.LOCKOUT_MAILBOX_REQUEST, new LockoutMailbox());
+        dispatcher.registerHandler(AdminConstants.REFRESH_REGISTERED_AUTHTOKENS_REQUEST, new RefreshRegisteredAuthTokens());
 
         // Retention policy
         dispatcher.registerHandler(AdminConstants.GET_SYSTEM_RETENTION_POLICY_REQUEST, new GetSystemRetentionPolicy());
@@ -286,6 +295,9 @@ public class AdminService implements DocumentService {
         // Skins
         dispatcher.registerHandler(AdminConstants.GET_ALL_SKINS_REQUEST, new GetAllSkins());
 
+        dispatcher.registerHandler(AdminConstants.GET_ALL_ACTIVE_SERVERS_REQUEST, new GetAllActiveServers());
+        dispatcher.registerHandler(AdminConstants.SET_SERVER_OFFLINE_REQUEST, new SetServerOffline());
+        dispatcher.registerHandler(AdminConstants.SET_LOCAL_SERVER_ONLINE_REQUEST, new SetLocalServerOnline());
     }
 
     /**

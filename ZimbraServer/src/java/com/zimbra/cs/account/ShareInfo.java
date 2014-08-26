@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
@@ -57,6 +59,7 @@ import com.zimbra.common.util.BlobMetaData;
 import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.L10nUtil.MsgKey;
 import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.zmime.ZMimeBodyPart;
 import com.zimbra.common.zmime.ZMimeMultipart;
@@ -316,7 +319,7 @@ public class ShareInfo {
 
             Map<String, Integer> mountpoints = new HashMap<String, Integer>();
 
-            mbox.lock.lock();
+            mbox.lock.lock(false);
             try {
                 // get the root node...
                 int folderId = Mailbox.ID_FOLDER_USER_ROOT;
@@ -562,6 +565,7 @@ public class ShareInfo {
                                                   ACL.RIGHT_INSERT |
                                                   ACL.RIGHT_DELETE |
                                                   ACL.RIGHT_ACTION;
+
         private static final String HTML_LINE_BREAK = "<br>";
         private static final String NEWLINE = "\n";
 
@@ -648,7 +652,7 @@ public class ShareInfo {
                 }
             }
             String data = new String(Hex.encodeHex(encodedBuff.toString().getBytes()));
-            AuthTokenKey key = AuthTokenKey.getCurrentKey();
+            ExtAuthTokenKey key = ExtAuthTokenKey.getCurrentKey();
             String hmac = ZimbraAuthToken.getHmac(data, key.getKey());
             String encoded = key.getVersion() + "_" + hmac + "_" + data;
             String path = "/service/extuserprov/?p=" + encoded;
@@ -756,15 +760,18 @@ public class ShareInfo {
         }
 
         private static String getRoleFromRights(ShareInfoData sid, Locale locale) {
-            switch (sid.getRightsCode()) {
-                case ROLE_VIEW:
-                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleViewer, locale);
-                case ROLE_ADMIN:
-                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleAdmin, locale);
-                case ROLE_MANAGER:
-                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleManager, locale);
-                default:
-                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleNone, locale);
+            String rights = sid.getRights();
+            rights = rights.replace(ACL.rightsToString(ACL.RIGHT_PRIVATE), "");
+            if (rights.equals(ACL.rightsToString(ROLE_ADMIN))) {
+                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleAdmin, locale);
+            }  else if (rights.equals(ACL.rightsToString(ROLE_MANAGER))) {
+                 return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleManager, locale);
+            }  else if (rights.equals(ACL.rightsToString(ROLE_VIEW))) {
+                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleViewer, locale);
+            } else if (StringUtil.isNullOrEmpty(sid.getRights())){
+                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleNone, locale);
+            } else {
+                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleCustom, locale);
             }
         }
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -25,13 +27,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.Map.Entry;
 
 import com.google.common.collect.Lists;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.AlwaysOnClusterBy;
 import com.zimbra.common.account.Key.CalendarResourceBy;
 import com.zimbra.common.account.Key.CosBy;
 import com.zimbra.common.account.Key.DataSourceBy;
@@ -49,20 +52,21 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapHttpTransport;
-import com.zimbra.common.soap.SoapTransport;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.SoapHttpTransport.HttpDebugListener;
+import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.soap.SoapTransport.DebugListener;
 import com.zimbra.common.util.AccountLogger;
-import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.Log.Level;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zclient.ZClientException;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AlwaysOnCluster;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Cos;
@@ -74,8 +78,10 @@ import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.NamedEntry;
+import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.SearchDirectoryOptions;
+import com.zimbra.cs.account.SearchDirectoryOptions.SortOpt;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.ShareInfoData;
 import com.zimbra.cs.account.ShareLocator;
@@ -83,8 +89,6 @@ import com.zimbra.cs.account.Signature;
 import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
-import com.zimbra.cs.account.NamedEntry.Visitor;
-import com.zimbra.cs.account.SearchDirectoryOptions.SortOpt;
 import com.zimbra.cs.account.accesscontrol.Right;
 import com.zimbra.cs.account.accesscontrol.RightCommand;
 import com.zimbra.cs.account.accesscontrol.RightModifier;
@@ -108,6 +112,8 @@ import com.zimbra.soap.admin.type.AccountLoggerInfo;
 import com.zimbra.soap.admin.type.AccountQuotaInfo;
 import com.zimbra.soap.admin.type.AdminObjectInterface;
 import com.zimbra.soap.admin.type.AliasInfo;
+import com.zimbra.soap.admin.type.AlwaysOnClusterInfo;
+import com.zimbra.soap.admin.type.AlwaysOnClusterSelector;
 import com.zimbra.soap.admin.type.Attr;
 import com.zimbra.soap.admin.type.CacheEntrySelector;
 import com.zimbra.soap.admin.type.CacheEntryType;
@@ -695,6 +701,13 @@ public class SoapProvisioning extends Provisioning {
         return new SoapServer(resp.getServer(), this);
     }
 
+    @Override
+    public AlwaysOnCluster createAlwaysOnCluster(String name, Map<String, Object> attrs)
+            throws ServiceException {
+        CreateAlwaysOnClusterResponse resp = invokeJaxb(new CreateAlwaysOnClusterRequest(name, attrs));
+        return new SoapAlwaysOnCluster(resp.getAlwaysOnCluster(), this);
+    }
+
     /**
      * Unsupported
      */
@@ -739,6 +752,11 @@ public class SoapProvisioning extends Provisioning {
         invokeJaxb( new DeleteServerRequest(zimbraId));
     }
 
+    @Override
+    public void deleteAlwaysOnCluster(String zimbraId) throws ServiceException {
+        invokeJaxb( new DeleteAlwaysOnClusterRequest(zimbraId));
+    }
+
     /**
      * Unsupported
      */
@@ -748,9 +766,9 @@ public class SoapProvisioning extends Provisioning {
     }
 
     public static class DelegateAuthResponse {
-        private ZAuthToken mAuthToken;
-        private long mExpires;
-        private long mLifetime;
+        private final ZAuthToken mAuthToken;
+        private final long mExpires;
+        private final long mLifetime;
 
         DelegateAuthResponse(Element e) throws ServiceException {
             // mAuthToken = e.getElement(AccountConstants.E_AUTH_TOKEN).getText();
@@ -879,6 +897,37 @@ public class SoapProvisioning extends Provisioning {
     @Override
     public List<Server> getAllServers() throws ServiceException {
         return getAllServers(null, true);
+    }
+
+    @Override
+    public List<AlwaysOnCluster> getAllAlwaysOnClusters() throws ServiceException {
+        ArrayList<AlwaysOnCluster> result = new ArrayList<AlwaysOnCluster>();
+        GetAllAlwaysOnClustersResponse resp =
+                invokeJaxb(new GetAllAlwaysOnClustersRequest());
+        for (AlwaysOnClusterInfo clusterInfo : resp.getAlwaysOnClusterList()) {
+            result.add(new SoapAlwaysOnCluster(clusterInfo, this));
+        }
+        return result;
+    }
+
+    public List<Server> getAllActiveServers() throws ServiceException {
+        List<Server> result = new ArrayList<Server>();
+        GetAllActiveServersResponse resp =
+                invokeJaxb(new GetAllActiveServersRequest());
+        for (ServerInfo serverInfo : resp.getServerList()) {
+            result.add(new SoapServer(serverInfo, this));
+        }
+        return result;
+    }
+
+    public void setServerOffline(ServerBy keyType, String key) throws ServiceException {
+        ServerSelector sel =
+                new ServerSelector(SoapProvisioning.toJaxb(keyType), key);
+        invokeJaxb(new SetServerOfflineRequest(sel));
+    }
+
+    public void setLocalServerOnline() throws ServiceException {
+        invokeJaxb(new SetLocalServerOnlineRequest());
     }
 
     public static class QuotaUsage {
@@ -1014,8 +1063,8 @@ public class SoapProvisioning extends Provisioning {
     }
 
     public static class MailboxInfo {
-        private long mUsed;
-        private String mMboxId;
+        private final long mUsed;
+        private final String mMboxId;
 
         public long getUsed() { return mUsed; }
         public String getMailboxId() { return mMboxId; }
@@ -1046,8 +1095,8 @@ public class SoapProvisioning extends Provisioning {
     }
 
     public static final class ReIndexInfo {
-        private String status;
-        private Progress progress;
+        private final String status;
+        private final Progress progress;
 
         public String getStatus() {
             return status;
@@ -1126,8 +1175,8 @@ public class SoapProvisioning extends Provisioning {
     }
 
     public static final class IndexStatsInfo {
-        private int maxDocs;
-        private int numDeletedDocs;
+        private final int maxDocs;
+        private final int numDeletedDocs;
 
         public IndexStatsInfo(int maxDocs, int numDeletedDocs) {
             this.maxDocs = maxDocs;
@@ -1357,6 +1406,22 @@ public class SoapProvisioning extends Provisioning {
             return new SoapServer(resp.getServer(), this);
         } catch (ServiceException e) {
             if (e.getCode().equals(AccountServiceException.NO_SUCH_SERVER))
+                return null;
+            else
+                throw e;
+        }
+    }
+
+    @Override
+    public AlwaysOnCluster get(AlwaysOnClusterBy keyType, String key) throws ServiceException {
+        AlwaysOnClusterSelector sel =
+                new AlwaysOnClusterSelector(SoapProvisioning.toJaxb(keyType), key);
+        try {
+            GetAlwaysOnClusterResponse resp =
+                invokeJaxb(new GetAlwaysOnClusterRequest(sel));
+            return new SoapAlwaysOnCluster(resp.getAlwaysOnCluster(), this);
+        } catch (ServiceException e) {
+            if (e.getCode().equals(AccountServiceException.NO_SUCH_ALWAYSONCLUSTER))
                 return null;
             else
                 throw e;
@@ -2713,6 +2778,12 @@ public class SoapProvisioning extends Provisioning {
     }
 
     /* Convert to equivalent JAXB object */
+    private static AlwaysOnClusterSelector.AlwaysOnClusterBy toJaxb(Key.AlwaysOnClusterBy provAlwaysOnClusterBy)
+    throws ServiceException {
+        return AlwaysOnClusterSelector.AlwaysOnClusterBy.fromString(provAlwaysOnClusterBy.toString());
+    }
+
+    /* Convert to equivalent JAXB object */
     private static UCServiceSelector.UCServiceBy toJaxb(Key.UCServiceBy provUCServiceBy)
     throws ServiceException {
         return UCServiceSelector.UCServiceBy.fromString(provUCServiceBy.toString());
@@ -2734,6 +2805,18 @@ public class SoapProvisioning extends Provisioning {
     throws ServiceException {
         return DistributionListSelector.DistributionListBy.fromString(
                 d.toString());
+    }
+
+    @Override
+    public List<Server> getAllServers(String service, String clusterId)
+            throws ServiceException {
+        List<Server> result = new ArrayList<Server>();
+        GetAllServersResponse resp =
+                invokeJaxb(new GetAllServersRequest(service, true, clusterId));
+        for (ServerInfo serverInfo : resp.getServerList()) {
+            result.add(new SoapServer(serverInfo, this));
+        }
+        return result;
     }
 
 }

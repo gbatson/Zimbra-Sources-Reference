@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -18,7 +20,7 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
 import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogShare;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogShareRevoke;
@@ -49,6 +51,12 @@ public class DialogEditFolder extends AbsDialog {
 		public static final String zYellowColorId = "//td[contains(@id,'_title') and contains(text(),'Yellow')]";
 		public static final String zPinkColorId = "//td[contains(@id,'_title') and contains(text(),'Pink')]";
 		public static final String zOrangeColorId = "//td[contains(@id,'_title') and contains(text(),'Orange')]";
+		public static final String zMoreColors = "css= div[id$='SHOW_MORE_ITEMS'] td[id$='SHOW_MORE_ITEMS_title']:contains('More Colors...')";
+		public static final String zCustomColors = "css=div[class='DwtMenu'] div[class$='DwtColorPicker'] div[class='Colors'] div:nth-child(4)";
+		public static final String zSetCustom = "css=table[class='ZWidgetTable ZButtonTable ZButtonBorder'] td[class='ZWidgetTitle']:contains('Custom')";
+		public static final String zEditColor = "css=td[class='Field'] td[class='ZDropDown'] div[class='ImgSelectPullDownArrow']";
+		public static final String zExcludeFB = "css=input[id='_excludeFbCheckbox']";
+		public static final String ConflictAttendeeNote = "css= div[id$='_attendee_status']:contains('One or more attendees are not available at the selected time.')";
 
 	}
 
@@ -222,9 +230,18 @@ public class DialogEditFolder extends AbsDialog {
 		if (color == null)
 			throw new HarnessException("folder must not be null");
 
-		if (color == FolderColor.MoreColors)
-			throw new HarnessException("'more colors' - implement me!");
-		if (color == FolderColor.Gray) {
+		if (color == FolderColor.MoreColors){
+			actionLocator = Locators.zEditColor;
+			optionLocator = Locators.zMoreColors;
+			
+			zClickAt(actionLocator,"");
+			zClick(optionLocator);
+			
+			optionLocator = Locators.zCustomColors;
+			zClick(optionLocator);
+			
+
+		}else if (color == FolderColor.Gray) {
 
 			actionLocator = Locators.zEditPropertiesDialogDropDown;
 			optionLocator = Locators.zGrayColorId;
@@ -270,5 +287,323 @@ public class DialogEditFolder extends AbsDialog {
 		}
 
 	}
+
+	public enum DialogTab {
+		Properties, Retention, Disposal, Other
+	}
+
+	public void zNavigateToTab(DialogTab tab) throws HarnessException {
+		logger.info(myPageName() + " zNavigateToTab(" + tab + ")");
+
+		tracer.trace("Click on dialog tab " + tab);
+
+		String locator = null;
+		
+		if ( tab == DialogTab.Properties ) {
+			
+			// See: https://bugzilla.zimbra.com/show_bug.cgi?id=78459
+			locator = "css=div[id='FolderProperties'] td[id$='_title']:contains('Properties')"; // TODO: I18N
+			
+		} else if ( tab == DialogTab.Retention || tab == DialogTab.Disposal ) {
+			
+			// See: https://bugzilla.zimbra.com/show_bug.cgi?id=78459
+			locator = "css=div[id='FolderProperties'] td[id$='_title']:contains('Retention')"; // TODO: I18N
+
+		} else {
+			
+			throw new HarnessException("No logic defined for tab = "+ tab);
+			
+		}
+
+
+		if ( !this.sIsElementPresent(locator) ) {
+			throw new HarnessException("Locator not found: "+ locator);
+		}
+		
+		// Click on the tab
+		this.zClickAt(locator, "");
+		this.zWaitForBusyOverlay();
+		
+		// Done!
+
+	}
+	
+	public enum RetentionRangeUnits {
+		Years, Months, Weeks, Days, Other
+	};
+	
+	public enum RetentionRangeType {
+		Custom, Other
+	};
+
+	public void zRetentionSetRange(RetentionRangeType type, RetentionRangeUnits units, int value) throws HarnessException {
+		logger.info(myPageName() + " zRetentionSetRange(" + type + ", "+ units + ", "+ value +")");
+
+		tracer.trace("Set retention range " + type +" "+ value + " " + units);
+
+		
+		// Make sure we are on the retention tab
+		zNavigateToTab(DialogTab.Retention);
+
+		// Set the values
+		zRetentionSetRangeType(type);
+		zRetentionSetRangeUnits(units);
+		zRetentionSetRangeValue(value);
+		
+	}
+	
+	public void zRetentionSetRangeType(RetentionRangeType type) throws HarnessException {
+		logger.info(myPageName() + " zRetentionSetRangeType(" + type + ")");
+
+		tracer.trace("Set retention range type " + type);
+
+		// 11/7/2012: only "Custom" is supported/allowed
+		if ( type != RetentionRangeType.Custom ) {
+			throw new HarnessException("implement me: retention range type: "+ type);
+		}
+		
+	}
+	
+	public void zRetentionSetRangeValue(int value) throws HarnessException {
+		logger.info(myPageName() + " zRetentionSetRangeValue(" + value +")");
+
+		tracer.trace("Set retention range value " + value);
+
+		// Set the range
+		String locator = "css=div[id='FolderProperties'] input[id$='_keepValue']";
+		
+		if ( ZimbraSeleniumProperties.isWebDriver() ) {
+			this.clearField(locator);
+		}
+		
+		this.sType(locator, "" + value);
+		this.zWaitForBusyOverlay();
+		
+	}
+	
+	public void zRetentionSetRangeUnits(RetentionRangeUnits units) throws HarnessException {
+		logger.info(myPageName() + " zRetentionSetRangeUnits(" + units +")");
+
+		tracer.trace("Set retention range units " + units);
+
+		String locator = "css=div[id='FolderProperties'] select[id$='_keepUnit']";
+		String option = "value=day";
+		
+		switch (units) {
+		case Days:
+			option = "value=day";
+			break;
+		case Weeks:
+			option = "value=week";
+			break;
+		case Months:
+			option = "value=month";
+			break;
+		case Years:
+			option = "value=year";
+			break;
+		default:
+			throw new HarnessException("Unknown units: "+ units);
+
+		}
+
+		// Pulldown
+		this.sSelectDropDown(locator, option);
+		this.zWaitForBusyOverlay();
+		
+	}
+	
+	public void zRetentionEnable() throws HarnessException {
+		logger.info(myPageName() + " zRetentionEnable()");
+
+		tracer.trace("Enable retention");
+		
+		
+		// Make sure we are on the retention tab
+		zNavigateToTab(DialogTab.Retention);
+
+
+		// Check the checkbox
+		String locator = "css=div[id='FolderProperties'] input[id$='_keepCheckbox']";
+
+		if ( this.sIsChecked(locator) ) {
+			logger.info("Checkbox already checked");
+		} else {
+			this.sCheck(locator);
+			this.zWaitForBusyOverlay();
+		}
+
+	}
+	
+	public void zRetentionDisable() throws HarnessException {
+		logger.info(myPageName() + " zRetentionDisable()");
+
+		tracer.trace("Disable retention");
+		
+		
+		// Make sure we are on the retention tab
+		zNavigateToTab(DialogTab.Retention);
+
+
+		// Uncheck the checkbox
+		String locator = "css=div[id='FolderProperties'] input[id$='_keepCheckbox']";
+
+		if ( !this.sIsChecked(locator) ) {
+			logger.info("Checkbox already unchecked");
+		} else {
+			this.sUncheck(locator);
+			this.zWaitForBusyOverlay();
+		}
+
+	}
+
+	public void zDisposalSetRange(RetentionRangeType type, RetentionRangeUnits units, int value) throws HarnessException {
+		logger.info(myPageName() + " zDisposalSetRange(" + type + ", "+ units + ", "+ value +")");
+
+		tracer.trace("Set disposal range " + type +" "+ value + " " + units);
+
+		
+		// Make sure we are on the retention tab
+		zNavigateToTab(DialogTab.Disposal);
+
+		// Set the values
+		zDisposalSetRangeType(type);
+		zDisposalSetRangeUnits(units);
+		zDisposalSetRangeValue(value);
+		
+	}
+	
+	public void zDisposalSetRangeType(RetentionRangeType type) throws HarnessException {
+		logger.info(myPageName() + " zDisposalSetRangeType(" + type + ")");
+
+		tracer.trace("Set disposal range type " + type);
+
+		// 11/7/2012: only "Custom" is supported/allowed
+		if ( type != RetentionRangeType.Custom ) {
+			throw new HarnessException("implement me: retention range type: "+ type);
+		}
+		
+	}
+	
+	public void zDisposalSetRangeValue(int value) throws HarnessException {
+		logger.info(myPageName() + " zDisposalSetRangeValue(" + value +")");
+
+		tracer.trace("Set disposal range value " + value);
+
+		// Set the range
+		String locator = "css=div[id='FolderProperties'] input[id$='_purgeValue']";
+		
+		if ( ZimbraSeleniumProperties.isWebDriver() ) {
+			this.clearField(locator);
+		}
+		
+		this.sType(locator, "" + value);
+		this.zWaitForBusyOverlay();
+		
+	}
+	
+	public void zDisposalSetRangeUnits(RetentionRangeUnits units) throws HarnessException {
+		logger.info(myPageName() + " zDisposalSetRangeUnits(" + units +")");
+
+		tracer.trace("Set disposal range units " + units);
+
+		String locator = "css=div[id='FolderProperties'] select[id$='_purgeUnit']";
+		String option = "value=day";
+		
+		switch (units) {
+		case Days:
+			option = "value=day";
+			break;
+		case Weeks:
+			option = "value=week";
+			break;
+		case Months:
+			option = "value=month";
+			break;
+		case Years:
+			option = "value=year";
+			break;
+		default:
+			throw new HarnessException("Unknown units: "+ units);
+
+		}
+
+		// Pulldown
+		this.sSelectDropDown(locator, option);
+		this.zWaitForBusyOverlay();
+		
+	}
+		
+	public void zDisposalEnable() throws HarnessException {
+		logger.info(myPageName() + " zDisposalEnable()");
+
+		tracer.trace("Enable disposal");
+		
+		
+		// Make sure we are on the retention tab
+		zNavigateToTab(DialogTab.Disposal);
+
+
+		// Check the checkbox
+		String locator = "css=div[id='FolderProperties'] input[id$='_purgeCheckbox']";
+
+		if ( this.sIsChecked(locator) ) {
+			logger.info("Checkbox already checked");
+		} else {
+			this.sCheck(locator);
+			this.zWaitForBusyOverlay();
+		}
+
+	}
+	
+	public void zDisposalDisable() throws HarnessException {
+		logger.info(myPageName() + " zDisposalDisable()");
+
+		tracer.trace("Disable disposal");
+		
+		
+		// Make sure we are on the retention tab
+		zNavigateToTab(DialogTab.Disposal);
+
+
+		// Uncheck the checkbox
+		String locator = "css=div[id='FolderProperties'] input[id$='_purgeCheckbox']";
+
+		if ( !this.sIsChecked(locator) ) {
+			logger.info("Checkbox already unchecked");
+		} else {
+			this.sUncheck(locator);
+			this.zWaitForBusyOverlay();
+		}
+
+	}
+	public void zExcludeFBEnable() throws HarnessException {
+		logger.info(myPageName() + " zDisposalEnable()");
+		tracer.trace("Enable Exclude this calendar when reporting free/busy times");
+		
+		// Check the checkbox
+		if ( this.sIsChecked(Locators.zExcludeFB) ) {
+			logger.info("Checkbox already checked");
+		} else {
+			this.sCheck(Locators.zExcludeFB);
+			this.zWaitForBusyOverlay();
+		}
+
+	}
+	
+	public void zExcludeFBDisable() throws HarnessException {
+		logger.info(myPageName() + " zDisposalDisable()");
+		tracer.trace("Disable Exclude this calendar when reporting free/busy times");
+
+		// Uncheck the checkbox
+		if ( !this.sIsChecked(Locators.zExcludeFB) ) {
+			logger.info("Checkbox already unchecked");
+		} else {
+			this.sUncheck(Locators.zExcludeFB);
+			this.zWaitForBusyOverlay();
+		}
+
+	}
+
 
 }

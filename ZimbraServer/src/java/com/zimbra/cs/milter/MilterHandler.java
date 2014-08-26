@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.milter;
@@ -125,7 +127,8 @@ public final class MilterHandler implements NioHandler {
 
     @Override
     public void connectionIdle() throws IOException {
-        ZimbraLog.milter.debug("Dropping connection for inactivity");
+        ZimbraLog.milter.info("Dropping connection because inactive for more than %s seconds (milter_max_idle_time)",
+                connection.getServer().getConfig().getMaxIdleTime());
         dropConnection();
     }
 
@@ -141,7 +144,7 @@ public final class MilterHandler implements NioHandler {
         try {
             processCommand(command);
         } catch (ServiceException e) {
-            ZimbraLog.milter.error("Server error: %s", e.getMessage(), e);
+            ZimbraLog.milter.error("Dropping connection due to Server error: %s", e.getMessage(), e);
             dropConnection(); // aborting the session
         }
     }
@@ -160,6 +163,7 @@ public final class MilterHandler implements NioHandler {
 
     @Override
     public void exceptionCaught(Throwable e) {
+        ZimbraLog.milter.info("exception caught - dropping connection", e);
         dropConnection();
     }
 
@@ -193,6 +197,7 @@ public final class MilterHandler implements NioHandler {
                 SMFIC_Quit();
                 break;
             default: // for unimplemented commands that require responses, always return "Continue" for now
+                ZimbraLog.milter.debug("Unimplemended command, sending SMFIR_CONTINUE: %s", command.toString());
                 connection.send(new MilterPacket(SMFIR_CONTINUE));
                 break;
         }
@@ -223,7 +228,7 @@ public final class MilterHandler implements NioHandler {
         if (addr != null) {
             String value = normalizeAddr(addr);
             context.put(attr, value);
-            ZimbraLog.milter.debug("%s=%s", attr, value);
+            ZimbraLog.milter.debug("For macro '%s' %s=%s", macro, attr, value);
         }
     }
 
@@ -381,7 +386,7 @@ public final class MilterHandler implements NioHandler {
     }
 
     private void SMFIC_Quit() {
-        ZimbraLog.milter.debug("SMFIC_Quit");
+        ZimbraLog.milter.info("SMFIC_Quit");
         dropConnection();
     }
 

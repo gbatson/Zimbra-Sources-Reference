@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
@@ -18,9 +24,7 @@
  *
  * @author Raja Rao DV
  */
-function com_zimbra_attachcontacts_HandlerObject() {
-}
-;
+function com_zimbra_attachcontacts_HandlerObject() {};
 
 com_zimbra_attachcontacts_HandlerObject.prototype = new ZmZimletBase();
 com_zimbra_attachcontacts_HandlerObject.prototype.constructor = com_zimbra_attachcontacts_HandlerObject;
@@ -37,8 +41,6 @@ AttachContactsZimlet.prototype.init = function() {
 	this._op = ZmOperation.registerOp(AttachContactsZimlet.SEND_CONTACTS, {image:"MsgStatusSent", text:this.getMessage("ACZ_Send"), tooltip:this.getMessage("ACZ_SendContactsAsAttachments")});
 	this._contactSendListener = new AjxListener(this, this._contactListSendListener);
 	this.overrideAPI(ZmListController.prototype, "_setContactText", this._setContactText);
-
-	this.setEmailActionMenu();
 };
 
 /**
@@ -47,8 +49,7 @@ AttachContactsZimlet.prototype.init = function() {
 
 AttachContactsZimlet.prototype.initializeAttachPopup =
 function(menu, controller) {
-    var mi = controller._createAttachMenuItem(menu, ZmMsg.contacts,
-                    new AjxListener(this, this.showAttachmentDialog ));
+	controller._createAttachMenuItem(menu, ZmMsg.contacts, this.showAttachmentDialog.bind(this), "ATTACH_MENU_CONTACT");
 };
 
 AttachContactsZimlet.prototype.removePrevAttDialogContent =
@@ -64,26 +65,23 @@ function() {
 
 	var attachDialog = this._attachDialog = appCtxt.getAttachDialog();
 	attachDialog.setTitle(ZmMsg.attachContact);
+	attachDialog.setButtonEnabled(DwtDialog.OK_BUTTON, false);
     this.removePrevAttDialogContent(attachDialog._getContentDiv().firstChild);
 
     if (!this.AttachContactsView || !this.AttachContactsView.attachDialog){
 	    this.AttachContactsView = new AttachContactsTabView(this._attachDialog, this);
 
+	    var selectionListener = this._selectionListener.bind(this);
+	    this.AttachContactsView.addListener(DwtEvent.SELECTION,
+	                                        selectionListener);
     }
+
     this.AttachContactsView.reparentHtmlElement(attachDialog._getContentDiv().childNodes[0], 0);
     this.AttachContactsView.attachDialog = attachDialog;
 	attachDialog.setOkListener(new AjxCallback(this, this._okListener));
     this.AttachContactsView.attachDialog.popup();
-    this.AttachContactsView.attachDialog.enableInlineOption(this._composeMode == DwtHtmlEditor.HTML);
+    this.AttachContactsView.attachDialog.enableInlineOption(this._composeMode == Dwt.HTML);
     this._addedToMainWindow = true;
-};
-
-AttachContactsZimlet.prototype.onShowView =
-function(viewId)  {
-	var viewType = appCtxt.getViewTypeFromId(viewId);
-	if (viewType == ZmId.VIEW_CONTACT_SIMPLE) {
-		this._addContactActionMenuItem();
-	}
 };
 
 AttachContactsZimlet.prototype._okListener =
@@ -91,6 +89,12 @@ function() {
 	this.AttachContactsView.uploadFiles();
 	this.AttachContactsView.setClosed(true);
     this.AttachContactsView.attachDialog.popdown();
+};
+
+AttachContactsZimlet.prototype._selectionListener =
+function() {
+	var hasselection = this.AttachContactsView.getSelectionCount() > 0;
+	this._attachDialog.setButtonEnabled(DwtDialog.OK_BUTTON, hasselection);
 }
 
 /**
@@ -146,14 +150,19 @@ AttachContactsZimlet.prototype._initContactsReminderToolbar = function(toolbar, 
 /**
  * Reset the toolbar
  *
- * @param	{ZmButtonToolBar}	toolbar			the toolbar
+ * @param	{ZmActionMenu}	 	parent			the action menu (or something else we don't care about)
  * @param	{int}			    num		        number of items selected
  */
-AttachContactsZimlet.prototype.resetToolbarOperations =
+AttachContactsZimlet.prototype.resetContactListToolbarOperations =
 function(parent, num){
-  if (parent.getOp(AttachContactsZimlet.SEND_CONTACTS)){
-      parent.enable(AttachContactsZimlet.SEND_CONTACTS, num > 0 && this._isOkayToAttach());
-  }
+	var menu = parent;
+	var after = null;
+	if (parent.isZmButtonToolBar) {
+		menu = menu.getActionsMenu();
+		after = ZmOperation.NEW_MESSAGE;
+	}
+	this._addContactActionMenuItem(menu, after);
+	menu.enable(AttachContactsZimlet.SEND_CONTACTS, num > 0 && this._isOkayToAttach());
 };
 
 
@@ -169,15 +178,18 @@ AttachContactsZimlet.prototype._contactListSendListener = function() {
 };
 
 AttachContactsZimlet.prototype._getContactListIds = function() {
-	var controller = appCtxt.getApp(ZmApp.CONTACTS).getContactListController();
+	var controller = AjxDispatcher.run("GetContactListController");
+
 	this.contactIdsToAttach = [];
-	var listView = controller.getListView();
+	var listView = controller.getListView && controller.getListView();
 	if (listView) {
 		var items = listView.getSelection();
-		for (var i=0; i<items.length; i++) {
-			if (!items[i].isGroup()) {
-				this.contactIdsToAttach.push(items[i].id);
+		for (var i = 0; i < items.length; i++) {
+			var contact = items[i];
+			if (contact.isGal || contact.isGroup()) {
+				continue;
 			}
+			this.contactIdsToAttach.push(contact.id);
 		}
 	}
 	return this.contactIdsToAttach;
@@ -185,8 +197,7 @@ AttachContactsZimlet.prototype._getContactListIds = function() {
 
 AttachContactsZimlet.prototype._openCompose = function() {
 	var action = ZmOperation.NEW_MESSAGE;
-	var msg = new ZmMailMsg();
-	AjxDispatcher.run("Compose", {action: action, inNewWindow: false, msg: msg});
+	AjxDispatcher.run("Compose", {action: action, inNewWindow: false});
 	var controller = appCtxt.getApp(ZmApp.MAIL).getComposeController(appCtxt.getApp(ZmApp.MAIL).getCurrentSessionId(ZmId.VIEW_COMPOSE));
 	this._isDraftInitiatedByThisZimlet = true;
 	controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO);
@@ -196,9 +207,9 @@ AttachContactsZimlet.prototype._openCompose = function() {
  * Overrides method in ZmListController
  */
 AttachContactsZimlet.prototype._setContactText =
-function(isContact) {
+function(contact) {
 	if (this._participantActionMenu) {
-		this._participantActionMenu.enable(AttachContactsZimlet.SEND_CONTACTS, isContact); // Set enabled/disabled depending on whether we have a contact for the participant
+		this._participantActionMenu.enable(AttachContactsZimlet.SEND_CONTACTS, contact && !contact.isGal); // Set enabled/disabled depending on whether we have a contact for the participant
 	}
 	arguments.callee.func.apply(this, arguments); // Call overridden function
 };
@@ -219,28 +230,42 @@ function(controller, menu) {
  */
 AttachContactsZimlet.prototype.onActionMenuInitialized =
 function(controller, menu) {
-	this.addMenuButton(new AjxCallback(this, this._getContactFromController, [controller]), menu, ZmOperation.CONTACT);
+	this.addMenuButton(this._getContact.bind(this), menu, ZmOperation.CONTACT);
 };
 
 AttachContactsZimlet.prototype._addContactActionMenuItem =
-function() {
-	var controller = appCtxt.getApp(ZmApp.CONTACTS).getContactListController();
-	this.addMenuButton(new AjxCallback(this, this._getContactFromController, [controller]), controller.getActionMenu(), ZmOperation.CONTACT);
+function(actionMenu, after) {
+	this.addMenuButton(this._getContact.bind(this), actionMenu, after || ZmOperation.CONTACT);
 };
 
-AttachContactsZimlet.prototype._getContactFromController =
-function(controller) {
-	if (controller) {
-		if (controller instanceof ZmContactListController) {
-			var view = controller.getListView();
-			if (view) {
-				var selection = view.getSelection();
-				if (selection && selection.length>1)
+AttachContactsZimlet.prototype._getContact =
+function() {
+	var controller = appCtxt.getCurrentController();
+	if (!controller) {
+		return;
+	}
+
+	var actionedContact = controller._actionEv && controller._actionEv.contact;
+
+	if (controller instanceof ZmContactListController) {
+		var view = controller.getListView();
+		if (view) {
+			var selection = view.getSelection();
+			if (selection && selection.length > 0) {
+				if (!actionedContact) {
 					return selection;
+				}
+				//If there's an actioned contact, and it's part of the selection - return the entire selection.
+				//otherwise only the actioned contact should be returned. That's consistent with the mail app etc.
+				for (var i = 0; i < selection.length; i++) {
+					if (selection[i] === actionedContact) {
+						return selection;
+					}
+				}
 			}
 		}
-		return (controller && controller._actionEv && controller._actionEv.contact) || null;
 	}
+	return actionedContact;
 };
 
 /**
@@ -302,32 +327,3 @@ AttachContactsZimlet.prototype.overrideAPI = function(object, funcname, newfunc)
         object[funcname].func = oldfunc;
     }
 };
-
-//---------------------------------------------------
-
-/**
- * Try to add to add to the actionmenu provided by com_zimbra_email
- */
-AttachContactsZimlet.prototype.setEmailActionMenu = function() {
-	if (window.com_zimbra_email_handlerObject) { // Other zimlet exists
-		this.overrideAPI(com_zimbra_email_handlerObject.prototype, "getActionMenu", AjxCallback.simpleClosure(AttachContactsZimlet._getEmailActionMenu, null, this));
-	}
-};
-
-/**
- * Will override EmailTooltipZimlet.prototype.getActionMenu in com_zimbra_email
- */
-AttachContactsZimlet._getEmailActionMenu = function(attachContactsZimlet) {
-	var args = Array.prototype.slice.call(arguments, 1); // Cut off our own argument
-	var menu = this.getActionMenu.func.apply(this, args); // Call overridden function
-	var contactCallback = new AjxCallback(this, this._getActionedContact, [false]); // Callback to method in com_zimbra_email
-	var contact = contactCallback.run();
-	if (contact && !contact.isGal && contact.id) {
-		attachContactsZimlet.addMenuButton(contactCallback, menu, "NEWCONTACT");
-	} else {
-		if (menu.getOp(AttachContactsZimlet.SEND_CONTACTS))
-			menu.enable(AttachContactsZimlet.SEND_CONTACTS, false);
-	}
-	return menu;
-};
-

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox.util;
@@ -30,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Scanner;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -39,6 +42,7 @@ import org.apache.commons.cli.ParseException;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.CliUtil;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.db.DbPool.DbConnection;
@@ -53,6 +57,7 @@ public final class MetadataDump {
     private static final String OPT_DUMPSTER = "dumpster";
     private static final String OPT_FILE = "file";
     private static final String OPT_HELP = "h";
+    private static final String OPT_STR = "String";
 
     private static Options sOptions = new Options();
 
@@ -61,6 +66,7 @@ public final class MetadataDump {
         sOptions.addOption("i", OPT_ITEM_ID, true, "item id (required when --" + OPT_MAILBOX_ID + " is used)");
         sOptions.addOption(null, OPT_DUMPSTER, false, "Get data from the dumpster");
         sOptions.addOption("f", OPT_FILE, true, "Decode metadata value in a file (other options are ignored)");
+        sOptions.addOption("s", OPT_STR, true, "Decode metadata value from a string (other options are ignored)");
         sOptions.addOption(OPT_HELP, "help", false, "Show help (this output)");
     }
 
@@ -70,6 +76,7 @@ public final class MetadataDump {
         }
         System.err.println("Usage: zmmetadump -m <mailbox id/email> -i <item id> [--dumpster]");
         System.err.println("   or: zmmetadump -f <file containing encoded metadata>");
+        System.err.println("   or: zmmetadump -s <encoded string>");
     }
 
     private static CommandLine parseArgs(String args[]) {
@@ -255,17 +262,15 @@ public final class MetadataDump {
 
     private static String loadFromFile(File file) throws ServiceException {
         try {
-            long length = file.length();
-            byte[] buf = new byte[(int) length];
             FileInputStream fis = null;
             try {
                 fis = new FileInputStream(file);
-                int bytesRead = fis.read(buf);
-                if (bytesRead < length)
-                    throw ServiceException.FAILURE(
-                            "Read " + bytesRead + " bytes when expecting " + length +
-                            " bytes, from file " + file.getAbsolutePath(), null);
-                return DbMailItem.decodeMetadata(new String(buf, "utf-8"));
+                Scanner scan = new Scanner(fis);
+                StringBuilder builder = new StringBuilder();
+                while (scan.hasNextLine()) {
+                    builder.append(scan.nextLine());
+                }
+                return builder.toString();
             } finally {
                 if (fis != null)
                     fis.close();
@@ -343,6 +348,15 @@ public final class MetadataDump {
                     System.err.println("File " + infileName + " does not exist");
                     System.exit(1);
                 }
+            }
+
+            // Get data from input String.
+            String encoded = cl.getOptionValue(OPT_STR);
+            if (!StringUtil.isNullOrEmpty(encoded)) {
+                Metadata md = new Metadata(encoded);
+                String pretty = md.prettyPrint();
+                out.println(pretty);
+                return;
             }
 
             // Get data from db.

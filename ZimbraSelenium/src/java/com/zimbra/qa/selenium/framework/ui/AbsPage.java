@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.ui;
@@ -102,24 +104,14 @@ public abstract class AbsPage extends AbsSeleniumObject {
 	 */
 	public void zWaitForActive(long millis) throws HarnessException {
 		
-		if ( zIsActive() ) {
-			return; // Page became active
-		}
-		
-		do {
-			SleepUtil.sleep(SleepUtil.SleepGranularity);
-			millis = millis - SleepUtil.SleepGranularity;
+		for (int time = 0; time <= millis; time += SleepUtil.SleepGranularity) {
 			if ( zIsActive() ) {
 				return; // Page became active
 			}
-		} while (millis > SleepUtil.SleepGranularity);
-		
-		SleepUtil.sleep(millis);
-		if ( zIsActive() ) {
-			return;	// Page became active
+			SleepUtil.sleep(SleepUtil.SleepGranularity);
 		}
 
-		throw new HarnessException("Page never became active");
+		throw new HarnessException("Page never became active: msec="+ millis);
 	}
 	
 	/**
@@ -273,6 +265,20 @@ public abstract class AbsPage extends AbsSeleniumObject {
 			// So events don't run into each other (i.e. "n" followed by "m" doesn't become "nm")
 			// Sleep after typing the event
 			SleepUtil.sleepMedium();
+
+		}
+		
+		public void zSelectAll() throws HarnessException {
+			logger.info("zTypeKeyEvent(CTRL A)");
+			
+			RobotKeyboard keyboard = new RobotKeyboard();
+			
+			keyboard.robot.keyPress(KeyEvent.VK_CONTROL);
+			keyboard.robot.keyPress(KeyEvent.VK_A);
+			keyboard.robot.keyRelease(KeyEvent.VK_CONTROL);
+			keyboard.robot.keyRelease(KeyEvent.VK_A);
+			
+			SleepUtil.sleepSmall();
 
 		}
 		

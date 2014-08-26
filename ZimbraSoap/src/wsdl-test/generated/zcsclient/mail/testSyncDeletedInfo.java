@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -17,12 +19,11 @@ package generated.zcsclient.mail;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.xml.bind.JAXBElement;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElementRef;
-import javax.xml.bind.annotation.XmlElementRefs;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlElements;
 import javax.xml.bind.annotation.XmlType;
 
 
@@ -37,19 +38,19 @@ import javax.xml.bind.annotation.XmlType;
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
  *       &lt;sequence>
  *         &lt;choice maxOccurs="unbounded" minOccurs="0">
- *           &lt;element name="folder" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="search" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="link" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="tag" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="c" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="chat" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="m" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="cn" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="appt" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="task" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="notes" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="w" type="{urn:zimbraMail}idsAttr"/>
- *           &lt;element name="doc" type="{urn:zimbraMail}idsAttr"/>
+ *           &lt;element name="folder" type="{urn:zimbraMail}folderIdsAttr"/>
+ *           &lt;element name="search" type="{urn:zimbraMail}searchFolderIdsAttr"/>
+ *           &lt;element name="link" type="{urn:zimbraMail}mountIdsAttr"/>
+ *           &lt;element name="tag" type="{urn:zimbraMail}tagIdsAttr"/>
+ *           &lt;element name="c" type="{urn:zimbraMail}convIdsAttr"/>
+ *           &lt;element name="chat" type="{urn:zimbraMail}chatIdsAttr"/>
+ *           &lt;element name="m" type="{urn:zimbraMail}msgIdsAttr"/>
+ *           &lt;element name="cn" type="{urn:zimbraMail}contactIdsAttr"/>
+ *           &lt;element name="appt" type="{urn:zimbraMail}apptIdsAttr"/>
+ *           &lt;element name="task" type="{urn:zimbraMail}taskIdsAttr"/>
+ *           &lt;element name="notes" type="{urn:zimbraMail}noteIdsAttr"/>
+ *           &lt;element name="w" type="{urn:zimbraMail}wikiIdsAttr"/>
+ *           &lt;element name="doc" type="{urn:zimbraMail}docIdsAttr"/>
  *         &lt;/choice>
  *       &lt;/sequence>
  *       &lt;attribute name="ids" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
@@ -66,22 +67,22 @@ import javax.xml.bind.annotation.XmlType;
 })
 public class testSyncDeletedInfo {
 
-    @XmlElementRefs({
-        @XmlElementRef(name = "c", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "folder", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "cn", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "w", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "chat", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "task", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "m", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "notes", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "link", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "appt", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "search", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "doc", namespace = "urn:zimbraMail", type = JAXBElement.class),
-        @XmlElementRef(name = "tag", namespace = "urn:zimbraMail", type = JAXBElement.class)
+    @XmlElements({
+        @XmlElement(name = "appt", type = testApptIdsAttr.class),
+        @XmlElement(name = "cn", type = testContactIdsAttr.class),
+        @XmlElement(name = "m", type = testMsgIdsAttr.class),
+        @XmlElement(name = "notes", type = testNoteIdsAttr.class),
+        @XmlElement(name = "w", type = testWikiIdsAttr.class),
+        @XmlElement(name = "search", type = testSearchFolderIdsAttr.class),
+        @XmlElement(name = "c", type = testConvIdsAttr.class),
+        @XmlElement(name = "chat", type = testChatIdsAttr.class),
+        @XmlElement(name = "folder", type = testFolderIdsAttr.class),
+        @XmlElement(name = "task", type = testTaskIdsAttr.class),
+        @XmlElement(name = "tag", type = testTagIdsAttr.class),
+        @XmlElement(name = "link", type = testMountIdsAttr.class),
+        @XmlElement(name = "doc", type = testDocIdsAttr.class)
     })
-    protected List<JAXBElement<testIdsAttr>> folderOrSearchOrLink;
+    protected List<testIdsAttr> folderOrSearchOrLink;
     @XmlAttribute(name = "ids", required = true)
     protected String ids;
 
@@ -103,25 +104,25 @@ public class testSyncDeletedInfo {
      * 
      * <p>
      * Objects of the following type(s) are allowed in the list
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
-     * {@link JAXBElement }{@code <}{@link testIdsAttr }{@code >}
+     * {@link testApptIdsAttr }
+     * {@link testContactIdsAttr }
+     * {@link testMsgIdsAttr }
+     * {@link testNoteIdsAttr }
+     * {@link testWikiIdsAttr }
+     * {@link testSearchFolderIdsAttr }
+     * {@link testConvIdsAttr }
+     * {@link testChatIdsAttr }
+     * {@link testFolderIdsAttr }
+     * {@link testTaskIdsAttr }
+     * {@link testTagIdsAttr }
+     * {@link testMountIdsAttr }
+     * {@link testDocIdsAttr }
      * 
      * 
      */
-    public List<JAXBElement<testIdsAttr>> getFolderOrSearchOrLink() {
+    public List<testIdsAttr> getFolderOrSearchOrLink() {
         if (folderOrSearchOrLink == null) {
-            folderOrSearchOrLink = new ArrayList<JAXBElement<testIdsAttr>>();
+            folderOrSearchOrLink = new ArrayList<testIdsAttr>();
         }
         return this.folderOrSearchOrLink;
     }

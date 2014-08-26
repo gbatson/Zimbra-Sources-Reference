@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -18,6 +20,7 @@
  */
 package com.zimbra.cs.session;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -91,6 +94,19 @@ public final class SessionCache {
         if (sShutdown)
             return null;
         return getSessionMap(Session.Type.SOAP).get(accountId);
+    }
+
+    public static Collection<Session> getAllSessions(String accountId) {
+        if (sShutdown)
+            return null;
+        Collection<Session> ret = new ArrayList<Session>();
+        for (Session.Type type : Session.Type.values()) {
+            Collection<Session> sessions = getSessionMap(type).get(accountId);
+            if (sessions != null) {
+                ret.addAll(sessions);
+            }
+        }
+        return ret;
     }
 
     /** Immediately removes the {@link Session} from the session cache and
@@ -274,6 +290,7 @@ public final class SessionCache {
         StatsCallback()  { }
 
         /* @see com.zimbra.common.stats.RealtimeStatsCallback#getStatData() */
+        @Override
         public Map<String, Object> getStatData() {
             Map<String, Object> data = new HashMap<String, Object>();
             SessionMap soapMap = getSessionMap(Session.Type.SOAP);
@@ -301,13 +318,19 @@ public final class SessionCache {
                     removedByType[sessionMap.getType().getIndex()]+=toReap.size();
 
                     for (Session s : toReap) {
-                        if (ZimbraLog.session.isDebugEnabled())
-                            ZimbraLog.session.debug("Removing cached session: " + s);
+                        if (ZimbraLog.session.isDebugEnabled()) {
+                            ZimbraLog.session.debug("Removing cached session: %s", s);
+                        }
                         assert(!Thread.holdsLock(sessionMap));
                         // IMPORTANT: Clean up sessions *after* releasing lock on Session Map
                         // If Session.doCleanup() is called with sMap locked, it can lead
                         // to deadlock. (bug 7866)
-                        s.doCleanup();
+                        try {
+                            s.doCleanup();
+                        } catch (Exception e) {
+                            //continue to cleanup other sessions that have already been pruned
+                            ZimbraLog.session.warn("cleanup failed for session %s", s);
+                        }
                     }
                 }
 

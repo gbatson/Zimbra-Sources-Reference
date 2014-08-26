@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.taglib.tag.i18n;
@@ -39,9 +41,11 @@ public class GetValidLocaleTag extends ZimbraSimpleTag {
 
 	private String mVar;
     private String mLocale;
+    private String mCsrfToken;
 	
     public void setVar(String var) { this.mVar = var; }
 	public void setLocale(String locale) { this.mLocale = locale; }
+    public void setCsrftoken(String csrfToken) { this.mCsrfToken = csrfToken; }
 
 
     // simple tag methods
@@ -53,11 +57,12 @@ public class GetValidLocaleTag extends ZimbraSimpleTag {
             return;
         }
         ZAuthToken authToken = ZJspSession.getAuthToken((PageContext)ctxt);
-        String soapUri = ZJspSession.getSoapURL((PageContext)ctxt);
         SoapHttpTransport transport = null;
         try {
+            String soapUri = ZJspSession.getSoapURL((PageContext)ctxt);
         	transport = new SoapHttpTransport(soapUri);
      		transport.setAuthToken(authToken);
+     		transport.setCsrfToken(mCsrfToken);
         	XMLElement req = new XMLElement(AccountConstants.GET_AVAILABLE_LOCALES_REQUEST);
             Element resp = transport.invokeWithoutSession(req);
             List<String> locales = new ArrayList<String>();

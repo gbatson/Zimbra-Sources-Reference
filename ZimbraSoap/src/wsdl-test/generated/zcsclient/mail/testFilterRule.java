@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -57,6 +59,7 @@ import javax.xml.bind.annotation.XmlType;
  *             &lt;/complexContent>
  *           &lt;/complexType>
  *         &lt;/element>
+ *         &lt;element name="nestedRule" type="{urn:zimbraMail}nestedRule" minOccurs="0"/>
  *       &lt;/sequence>
  *       &lt;attribute name="name" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="active" use="required" type="{http://www.w3.org/2001/XMLSchema}boolean" />
@@ -70,13 +73,15 @@ import javax.xml.bind.annotation.XmlType;
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "filterRule", propOrder = {
     "filterTests",
-    "filterActions"
+    "filterActions",
+    "nestedRule"
 })
 public class testFilterRule {
 
     @XmlElement(required = true)
     protected testFilterTests filterTests;
     protected testFilterRule.FilterActions filterActions;
+    protected testNestedRule nestedRule;
     @XmlAttribute(name = "name", required = true)
     protected String name;
     @XmlAttribute(name = "active", required = true)
@@ -128,6 +133,30 @@ public class testFilterRule {
      */
     public void setFilterActions(testFilterRule.FilterActions value) {
         this.filterActions = value;
+    }
+
+    /**
+     * Gets the value of the nestedRule property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link testNestedRule }
+     *     
+     */
+    public testNestedRule getNestedRule() {
+        return nestedRule;
+    }
+
+    /**
+     * Sets the value of the nestedRule property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link testNestedRule }
+     *     
+     */
+    public void setNestedRule(testNestedRule value) {
+        this.nestedRule = value;
     }
 
     /**
@@ -207,14 +236,14 @@ public class testFilterRule {
     public static class FilterActions {
 
         @XmlElements({
-            @XmlElement(name = "actionStop", type = testStopAction.class),
             @XmlElement(name = "actionNotify", type = testNotifyAction.class),
+            @XmlElement(name = "actionStop", type = testStopAction.class),
             @XmlElement(name = "actionReply", type = testReplyAction.class),
             @XmlElement(name = "actionTag", type = testTagAction.class),
-            @XmlElement(name = "actionFileInto", type = testFileIntoAction.class),
-            @XmlElement(name = "actionDiscard", type = testDiscardAction.class),
-            @XmlElement(name = "actionRedirect", type = testRedirectAction.class),
             @XmlElement(name = "actionFlag", type = testFlagAction.class),
+            @XmlElement(name = "actionFileInto", type = testFileIntoAction.class),
+            @XmlElement(name = "actionRedirect", type = testRedirectAction.class),
+            @XmlElement(name = "actionDiscard", type = testDiscardAction.class),
             @XmlElement(name = "actionKeep", type = testKeepAction.class)
         })
         protected List<testFilterAction> actionKeepOrActionDiscardOrActionFileInto;
@@ -237,14 +266,14 @@ public class testFilterRule {
          * 
          * <p>
          * Objects of the following type(s) are allowed in the list
-         * {@link testStopAction }
          * {@link testNotifyAction }
+         * {@link testStopAction }
          * {@link testReplyAction }
          * {@link testTagAction }
-         * {@link testFileIntoAction }
-         * {@link testDiscardAction }
-         * {@link testRedirectAction }
          * {@link testFlagAction }
+         * {@link testFileIntoAction }
+         * {@link testRedirectAction }
+         * {@link testDiscardAction }
          * {@link testKeepAction }
          * 
          * 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.folders;
@@ -22,7 +24,6 @@ import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraCharsets.*;
 import com.zimbra.qa.selenium.projects.ajax.core.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.*;
 
 public class CreateFolder extends PrefGroupMailByMessageTest {
@@ -72,9 +73,7 @@ public class CreateFolder extends PrefGroupMailByMessageTest {
 		// Set the new folder name
 		String name = "folder" + ZimbraSeleniumProperties.getUniqueString();
 
-		//DialogCreateFolder dialog = (DialogCreateFolder) app.zPageMail.zKeyboardShortcut(shortcut);
-		DialogCreateFolder dialog = new DialogCreateFolder(app,app.zPageMail);
-		app.zPageMail.zKeyDown("78,70");
+		DialogCreateFolder dialog = (DialogCreateFolder) app.zPageMail.zKeyboardShortcut(shortcut);
 		ZAssert.assertNotNull(dialog, "Verify the new dialog opened");
 
 		// Fill out the form with the basic details
@@ -144,23 +143,16 @@ public class CreateFolder extends PrefGroupMailByMessageTest {
 
 	}
 
-	@DataProvider(name = "DataProviderFilenames")
-	public Object[][] DataProviderDeleteKeys() throws HarnessException {
-		return (ZimbraCharsets.getInstance().getSampleTable());
-	}
-
 	@Test(
 			description = "Create a folder with non-ASCII special characters", 
 			groups = { "functional" },
-			dataProvider = "DataProviderFilenames")
+			dataProvider = "DataProviderSupportedCharsets")
 	public void CreateFolder_05(ZCharset charset, String foldername) 
 	throws HarnessException 
 	{
 
 
-		//DialogCreateFolder dialog = (DialogCreateFolder) app.zPageMail.zKeyboardShortcut(Shortcut.S_NEWFOLDER);
-		DialogCreateFolder dialog = new DialogCreateFolder(app,app.zPageMail);
-			app.zPageMail.zKeyDown("78,70");
+		DialogCreateFolder dialog = (DialogCreateFolder) app.zPageMail.zKeyboardShortcut(Shortcut.S_NEWFOLDER);
 		ZAssert.assertNotNull(dialog, "Verify the new dialog opened");
 
 		// Fill out the form with the basic details

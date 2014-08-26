@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.zimlets;
@@ -53,12 +55,45 @@ public class GetZimlets extends AjaxCommonTest {
 		// Get how many rows there are
 		int count = app.zPagePreferences.sGetCssCount(locator + ">div[id^='zli__']");
 		
-		// IronMaiden: 5 zimlets - LinkedIn, Phone, Search Highlighter, Webex, Zimbra Social
-		// IronMaiden: Bug 50123: 3 zimlets - Phone, Search Highlighter, Webex, Y-Emoticons
+		// IronMaiden: 8 zimlets in NETWORK
+		//	Cisco Click2Call
+		//	Mitel Click2Call
+		//	Phone
+		//	SearchHighlighter
+		//	Secure Email
+		//	Voice Preferences
+		//	WebEx
+		//	Yahoo! Emoticons
+		// IronMaiden: 4 zimlets in FOSS
+		//	Phone
+		//	SearchHighlighter
+		//	WebEx
+		//	Yahoo! Emoticons
+		//
+		// JudasPriest: 9 zimlets in NETWORK
+		//	Archive
+		//	Cisco Click2Call
+		//  LinkedIn Image - http://bugzilla.zimbra.com/show_bug.cgi?id=81078
+		//	Mitel Click2Call
+		//	Phone
+		//	SearchHighlighter
+		//	Secure Email
+		//	Voice Preferences
+		//	WebEx
+		//	Yahoo! Emoticons
+		//
+		// JudasPriest: 5 zimlets in FOSS
+		//	Archive
+		//  LinkedIn Image - http://bugzilla.zimbra.com/show_bug.cgi?id=81078
+		//	Phone
+		//	SearchHighlighter
+		//	WebEx
+		//	Yahoo! Emoticons
+		//
 		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
-		    ZAssert.assertEquals(count, 4, "Verify 4 zimlets are shown in the preferences page");
+		    ZAssert.assertEquals(count, 6, "Verify 6 zimlets are shown in the preferences page");
 		}else{
-		    ZAssert.assertEquals(count, 8, "Verify 8 zimlets are shown in the preferences page");
+		    ZAssert.assertEquals(count, 10, "Verify 10 zimlets are shown in the preferences page");
 		}
 	}
 	
@@ -144,7 +179,7 @@ public class GetZimlets extends AjaxCommonTest {
 		String description = app.zPagePreferences.sGetText(locator + " td[id$='__com_zimbra_webex__ds']");
 		
 		ZAssert.assertEquals(name, "WebEx", "Verify the WebEx entry exists");
-		ZAssert.assertEquals(description, "Easily schedule, start or join WebEx meetings.", "Verify the WebEx description");
+		ZAssert.assertEquals(description, "Easily schedule, start or join WebEx meetings", "Verify the WebEx description");
 		
 		
 	}

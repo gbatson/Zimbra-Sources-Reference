@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -17,7 +19,7 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
-import java.util.List;
+import java.util.*;
 
 import com.zimbra.qa.selenium.framework.core.SeleniumService;
 import com.zimbra.qa.selenium.framework.items.MailItem;
@@ -254,7 +256,7 @@ public class SeparateWindowFormMailNew extends AbsSeparateWindow {
 					// Text compose
 					// //
 
-					sType("css=textarea[class='DwtHtmlEditorTextArea']", value);
+					sType("css=textarea[class='ZmHtmlEditorTextArea']", value);
 
 					return;
 
@@ -443,21 +445,23 @@ public class SeparateWindowFormMailNew extends AbsSeparateWindow {
 
 		if ( pulldown == Button.B_PRIORITY ) {
 			
-			pulldownLocator = "css=td[id$='___priority_dropdown']>div";
-
+			
+			pulldownLocator = "css=[id$=__COMPOSE_OPTIONS_title]";
+			
 			if ( option == Button.O_PRIORITY_HIGH ) {
 				
-				optionLocator = "css=td[id$='_left_icon']>div[class='ImgPriorityHigh_list']";
+				optionLocator = "css=div[id=PRIORITY_HIGH]";
+				
 				page = null;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
 				
-				optionLocator = "css=td[id$='_left_icon']>div[class='ImgPriorityNormal_list']";
+				optionLocator = "css=div[id=PRIORITY_NORMAL]";
 				page = null;
 
 			} else if ( option == Button.O_PRIORITY_LOW ) {
 				
-				optionLocator = "css=td[id$='_left_icon']>div[class='ImgPriorityLow_list']";
+				optionLocator = "css=div[id=PRIORITY_LOW]";
 				page = null;
 
 			} else {
@@ -469,16 +473,35 @@ public class SeparateWindowFormMailNew extends AbsSeparateWindow {
 		}
 
 		// Default behavior
-		if ( pulldownLocator != null ) {
-						
-			zClickAt(pulldownLocator, "");
 
-			if ( optionLocator != null ) {
+		if ( ZimbraSeleniumProperties.isWebDriver() ) {
 
-				zClickAt(optionLocator, "");
-
-			}
+			// Webdriver
+			List<String> locators = new ArrayList<String>();
+			locators.add(pulldownLocator);
+			locators.add(optionLocator);
 			
+			// Click on:
+			// 1. pulldownLocator
+			// 2. optionLocator
+			//
+			this.sClick(locators);
+			
+		} else {
+			
+			// Selenium
+			if ( pulldownLocator != null ) {
+							
+				zClickAt(pulldownLocator, "");
+
+				if ( optionLocator != null ) {
+
+					zClickAt(optionLocator, "");
+
+				}
+				
+			}
+
 		}
 		
 		// Return the specified page, or null if not set

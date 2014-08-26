@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2008, 2009, 2010, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.admin;
@@ -20,23 +22,26 @@ import java.util.Map;
 
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
-import com.zimbra.common.util.L10nUtil;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
+import com.zimbra.cs.util.WebClientL10nUtil;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class GetAllLocales extends AdminDocumentHandler {
-    
-    public boolean domainAuthSufficient(Map context) {
+
+    @Override
+    public boolean domainAuthSufficient(Map<String, Object> context) {
         return true;
     }
-    
+
+    @Override
     public Element handle(Element request, Map<String, Object> context) {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
 
-        Locale locales[] = L10nUtil.getAllLocalesSorted();
+        Locale locales[] = WebClientL10nUtil.getAllLocalesSorted();
         Element response = zsc.createElement(AdminConstants.GET_ALL_LOCALES_RESPONSE);
-        for (Locale locale : locales)
+        for (Locale locale : locales) {
             com.zimbra.cs.service.account.ToXML.encodeLocale(response, locale, Locale.US);
+        }
         return response;
     }
 

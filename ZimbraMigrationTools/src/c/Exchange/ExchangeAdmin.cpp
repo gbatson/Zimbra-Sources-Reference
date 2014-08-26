@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #include "common.h"
@@ -48,7 +50,7 @@ ExchangeAdmin::ExchangeAdmin(wstring strExchangeServer)
     }
     catch (ExchangeAdminException &exc)
     {
-        dloge("ExchangeAdmin::ExchangeAdmin exception: %S", exc.Description().c_str());
+        dloge("ExchangeAdmin::ExchangeAdmin exception: ", exc.Description().c_str());
     }
 }
 
@@ -63,8 +65,11 @@ HRESULT ExchangeAdmin::Init()
     HRESULT hr = S_OK;
     Zimbra::Mapi::Memory::SetMemAllocRoutines(NULL, MAPIAllocateBuffer, MAPIAllocateMore,
         MAPIFreeBuffer);
-
-    if (FAILED(hr = MAPIInitialize(NULL)))
+	MAPIINIT_0 MAPIInit;
+	MAPIInit.ulFlags = MAPI_NO_COINIT | 0;
+	MAPIInit.ulVersion = MAPI_INIT_VERSION;
+	hr= MAPIInitialize(&MAPIInit);
+    if (FAILED(hr))
         throw ExchangeAdminException(hr, L"Init(): MAPIInitialize Failed.", 
 		ERR_GEN_EXCHANGEADMIN, __LINE__, __FILE__);
 
@@ -306,7 +311,7 @@ HRESULT ExchangeAdmin::SetDefaultProfile(wstring strProfile)
 
 void ThrowSetInfoException(HRESULT hr, LPWSTR wstrmsg)
 {
-    dloge("SetInfoException : %S",wstrmsg);
+    dloge("SetInfoException : ",wstrmsg);
     throw ExchangeAdminException(hr,wstrmsg, ERR_CREATE_EXCHMBX, __LINE__, __FILE__);
 }
 BOOL PutBinaryIntoVariant(CComVariant * ovData, BYTE * pBuf,unsigned long cBufLen)
@@ -359,7 +364,8 @@ HRESULT ExchangeAdmin::CreateExchangeMailBox(LPCWSTR lpwstrNewUser, LPCWSTR lpws
 
     strContainer += LogonUserDN.c_str();
 
-    dloge("strContainer %S  msExchHomeSvrName: %S", strContainer.c_str(), msExchHomeSvrName.c_str());
+    dlogi("CreateExchangeMailBox strContainer: ", strContainer.c_str());
+	dlogi("CreateExchangeMailBox msExchHomeSvrName: ",  msExchHomeSvrName.c_str());
     // Get loggedin user container
     hr = ADsOpenObject(strContainer.c_str(), NULL, NULL, ADS_SECURE_AUTHENTICATION,
         IID_IDirectoryObject, (void **)pLogonContainer.getptr());
@@ -408,9 +414,9 @@ HRESULT ExchangeAdmin::CreateExchangeMailBox(LPCWSTR lpwstrNewUser, LPCWSTR lpws
     FreeADsMem(pAttrInfo);
 
     wstring twtsrlogonuserDN = LogonUserDN;
-    size_t nPos = twtsrlogonuserDN.find(_T("DC="), 0);
+    size_t nPos = twtsrlogonuserDN.find(_T("DC="), 0);//twtsrlogonuserDN.find(_T(","), 0)+1;//
     wstring wstrServerDN = twtsrlogonuserDN.substr(nPos);
-    wstring wstrADSPath = _T("LDAP://CN=Users,") + wstrServerDN;
+    wstring wstrADSPath = _T("LDAP://CN=Users,") + wstrServerDN;//wstrServerDN;//
     ADSVALUE cnValue;
     ADSVALUE classValue;
     ADSVALUE sAMValue;
@@ -467,9 +473,11 @@ HRESULT ExchangeAdmin::CreateExchangeMailBox(LPCWSTR lpwstrNewUser, LPCWSTR lpws
         if ((enPos = wstrLoggedUserName.find(L",", snPos)) != wstring::npos)
             wstrLoggedUserName = wstrLoggedUserName.substr(snPos + 3, (enPos - (snPos + 3)));
     }
+
+	dlogi("CreateExchangeMailBox: ADSPath: ",wstrADSPath.c_str(), "Logon User:", wstrLoggedUserName.c_str());
     // get dir container
-    if (FAILED(hr = ADsOpenObject(wstrADSPath.c_str(), wstrLoggedUserName.c_str(),
-            lpwstrLogonUsrPwd, ADS_SECURE_AUTHENTICATION, IID_IDirectoryObject,
+    if (FAILED(hr = ADsOpenObject(wstrADSPath.c_str(), NULL,NULL,//wstrLoggedUserName.c_str(), lpwstrLogonUsrPwd,
+		ADS_SECURE_AUTHENTICATION, IID_IDirectoryObject,
             (void **)pDirContainer.getptr())))
         throw ExchangeAdminException(hr, L"CreateExchangeMailBox(): ADsOpenObject Failed.",
             ERR_CREATE_EXCHMBX, __LINE__, __FILE__);
@@ -477,7 +485,7 @@ HRESULT ExchangeAdmin::CreateExchangeMailBox(LPCWSTR lpwstrNewUser, LPCWSTR lpws
     wstring wstrUserCN = L"CN=";
 
     wstrUserCN += lpwstrNewUser;
-    dloge("CreateDSObject: %S",wstrUserCN.c_str());
+    dlogi("CreateDSObject: ",wstrUserCN.c_str());
     if (FAILED(hr = pDirContainer->CreateDSObject((LPWSTR)wstrUserCN.c_str(), attrInfo, dwAttrs,
             pDisp.getptr())))
         throw ExchangeAdminException(hr, L"CreateExchangeMailBox(): CreateDSObject Failed.",
@@ -649,14 +657,25 @@ HRESULT ExchangeAdmin::CreateExchangeMailBox(LPCWSTR lpwstrNewUser, LPCWSTR lpws
         throw ExchangeAdminException(hr, L"CreateExchangeMailBox(): get_ADsPath Failed.",
             ERR_CREATE_EXCHMBX, __LINE__, __FILE__);
 
-    wstring wstrGroup = _T("LDAP://CN=Domain Admins,CN=Users,") + wstrServerDN;
+    wstring wstrGroup = _T("LDAP://CN=Domain Admins,CN=Users,") + wstrServerDN; 
+	dlogi("DomainAdmin Group Path: ",wstrGroup);
     Zimbra::Util::ScopedInterface<IADsGroup> pGroup;
 
     if (FAILED(hr = ADsGetObject(wstrGroup.c_str(), IID_IADsGroup, (void **)pGroup.getptr())))
-        throw ExchangeAdminException(hr, L"CreateExchangeMailBox(): ADsGetObject Failed.",
-            ERR_CREATE_EXCHMBX, __LINE__, __FILE__);
-    if (FAILED(hr = ADsOpenObject(wstrGroup.c_str(), wstrLoggedUserName.c_str(),
-            lpwstrLogonUsrPwd, ADS_SECURE_AUTHENTICATION, IID_IADsGroup,
+	{
+		//try in builin container
+		wstrGroup = _T("LDAP://CN=Domain Admins,CN=Builtin,") + wstrServerDN; 
+		dlogi("Failed CN=Users container. Trying with DomainAdmin Group Path: ",wstrGroup);
+		if (FAILED(hr = ADsGetObject(wstrGroup.c_str(), IID_IADsGroup, (void **)pGroup.getptr())))
+		{
+			dlogi("Failed with Builtin container too. Exiting.");
+			throw ExchangeAdminException(hr, L"CreateExchangeMailBox(): ADsGetObject Failed.",
+				ERR_CREATE_EXCHMBX, __LINE__, __FILE__);
+		}
+	}
+
+    if (FAILED(hr = ADsOpenObject(wstrGroup.c_str(), NULL,NULL,//wstrLoggedUserName.c_str(), lpwstrLogonUsrPwd, 
+		ADS_SECURE_AUTHENTICATION, IID_IADsGroup,
             (void **)pGroup.getptr())))
         throw ExchangeAdminException(hr, L"CreateExchangeMailBox(): ADsOpenObject Failed.",
             ERR_CREATE_EXCHMBX, __LINE__, __FILE__);
@@ -784,12 +803,12 @@ HRESULT ExchangeAdmin::DeleteExchangeMailBox(LPCWSTR lpwstrMailBox, LPCWSTR lpws
     }
     catch (Zimbra::MAPI::ExchangeAdminException &ex)
     {
-        dloge("ExchangeAdmin::DeleteExchangeMailBox ExchangeAdminException exception: %S", ex.Description().c_str());
+        dloge("ExchangeAdmin::DeleteExchangeMailBox GetUserDNAndLegacyName(ExchangeAdminException) exception: ", ex.Description().c_str());
         throw;
     }
     catch (Zimbra::MAPI::Util::MapiUtilsException &ex)
     {
-        dloge("ExchangeAdmin::DeleteExchangeMailBox MapiUtilsException exception: %S", ex.Description().c_str());
+        dloge("ExchangeAdmin::DeleteExchangeMailBox GetUserDNAndLegacyName(MapiUtilsException) exception: ", ex.Description().c_str());
         throw;
     }
     wstring twtsrlogonuserDN = UserDN;
@@ -798,7 +817,7 @@ HRESULT ExchangeAdmin::DeleteExchangeMailBox(LPCWSTR lpwstrMailBox, LPCWSTR lpws
     wstring wstrADSPath = _T("LDAP://CN=Users,") + wstrServerDN;
 
     // get dir container
-    if (FAILED(hr = ADsOpenObject(wstrADSPath.c_str(), lpwstrlogonuser, lpwstrLogonUsrPwd,
+    if (FAILED(hr = ADsOpenObject(wstrADSPath.c_str(), NULL,NULL,//lpwstrlogonuser, lpwstrLogonUsrPwd,
             ADS_SECURE_AUTHENTICATION, IID_IDirectoryObject, (void **)pDirContainer.getptr())))
         throw ExchangeAdminException(hr, L"DeleteExchangeMailBox(): ADsOpenObject Failed.",
             ERR_DELETE_MBOX, __LINE__, __FILE__);
@@ -832,43 +851,47 @@ HRESULT ExchangeMigrationSetup::Setup()
 {
 	try
 	{
+		dlogi("ExchangeMigrationSetup: Clean...");
 		Clean();
+		dlogi("ExchangeMigrationSetup: Clean(up) Done.");
 	}
 	catch (Zimbra::MAPI::ExchangeAdminException &ex)
     {
-		dloge("Setup: Clean exception: %S",ex.Description().c_str());
+		dloge("ExchangeMigrationSetup: Clean exception: ",ex.Description().c_str());
 	}
 	catch(...)
 	{
-		dloge("Setup: Unknown Clean exception");
+		dloge("ExchangeMigrationSetup: Unknown Clean exception");
 	}
 
     try
     {
-        dloge("Going for CreateExchangeMailbox...");
+        dlogi("ExchangeMigrationSetup: Going for CreateExchangeMailbox...");
         m_exchAdmin->CreateExchangeMailBox(DEFAULT_ADMIN_MAILBOX_NAME, m_ExchangeAdminPwd.c_str(),
             m_ExchangeAdminName.c_str(), m_ExchangeAdminPwd.c_str());
-		dloge("CreateExchangeMailbox success.");
+		dlogi("ExchangeMigrationSetup: CreateExchangeMailbox success.");
     }
     catch (Zimbra::MAPI::ExchangeAdminException &ex)
     {
-        dloge("ExchangeMigrationSetup::Setup::CreateExchangeMailBox ExchangeAdminException exception: %S", ex.Description().c_str());
+        dloge("ExchangeMigrationSetup::Setup::CreateExchangeMailBox ExchangeAdminException exception: ", ex.Description().c_str());
         throw;
     }
     catch (Zimbra::MAPI::Util::MapiUtilsException &ex)
     {
-        dloge("ExchangeMigrationSetup::Setup::CreateExchangeMailBox MapiUtilsException exception: %S", ex.Description().c_str());
+        dloge("ExchangeMigrationSetup::Setup::CreateExchangeMailBox MapiUtilsException exception: ", ex.Description().c_str());
         throw;
     }
 	
     try
     {
+		dlogi("ExchangeMigrationSetup: CreateProfile...");
         m_exchAdmin->CreateProfile(DEFAULT_ADMIN_PROFILE_NAME, DEFAULT_ADMIN_MAILBOX_NAME,
             m_ExchangeAdminPwd.c_str());
+		dlogi("ExchangeMigrationSetup: CreateProfile completed.");
     }
     catch (Zimbra::MAPI::ExchangeAdminException &ex)
     {
-        dloge("ExchangeMigrationSetup::Setup::CreateProfile ExchangeAdminException exception: %S", ex.Description().c_str());
+        dloge("ExchangeMigrationSetup::Setup::CreateProfile ExchangeAdminException exception: ", ex.Description().c_str());
         throw;
     }
 	catch(...)
@@ -888,7 +911,7 @@ HRESULT ExchangeMigrationSetup::Clean()
     }
     catch (Zimbra::MAPI::ExchangeAdminException &ex)
     {
-		dloge("DeleteProfile exception: %S", ex.Description().c_str());
+		dloge("DeleteProfile exception: ", ex.Description().c_str());
         throw;
     }
     try
@@ -898,12 +921,12 @@ HRESULT ExchangeMigrationSetup::Clean()
     }
     catch (Zimbra::MAPI::ExchangeAdminException &ex)
     {
-        dloge("DeleteExchangeMailBox exception: %S", ex.Description().c_str());
+        dloge("DeleteExchangeMailBox exception: ", ex.Description().c_str());
         throw;
     }
     catch (Zimbra::MAPI::Util::MapiUtilsException &ex)
     {
-        dloge("DeleteExchangeMailBox(MAPIUtils) exception: %S", ex.Description().c_str());
+        dloge("DeleteExchangeMailBox(MAPIUtils) exception: ", ex.Description().c_str());
         throw;
     }
     return S_OK;
@@ -956,22 +979,24 @@ LPCWSTR ExchangeOps::_GlobalInit(LPCWSTR lpMAPITarget, LPCWSTR lpAdminUsername, 
 
     // if lpAdminUsername is NULL then we assume that Outlook admin profile exists and we should use it
     // else create a Admin mailbox and create corresponding profile on local machine
-    dloge("Check AdminUserName");
+    dlogi("Check AdminUserName");
     if (lstrlen(lpAdminUsername) > 0)
     {
-        dloge("Check Initialized:%d",Initialized);
+        dlogi("Check Initialized: ",Initialized);
         if (Initialized == EXCH_UNINITIALIZED)
         {
-            dloge("Do ExchangeMigrationSetup");
+            dlogi("Initialize ExchangeMigrationSetup...");
             m_exchmigsetup = new ExchangeMigrationSetup(lpMAPITarget, lpAdminUsername,
                 lpAdminPassword);
-            Initialized = EXCH_INITIALIZED_PROFCREATE;			
+            Initialized = EXCH_INITIALIZED_PROFCREATE;	
+			dlogi("ExchangeMigrationSetup Initialized.");
         }
         try
         {
-            dloge("Going for Exchange mig setup");
+            dlogi("Going for Exchange mig setup...");
             m_exchmigsetup->Setup();
 			lpMAPITarget = DEFAULT_ADMIN_PROFILE_NAME;
+			dlogi("Exchange mig setup complete.");
         }
         catch (Zimbra::MAPI::ExchangeAdminException &ex)
         {
@@ -996,7 +1021,7 @@ LPCWSTR ExchangeOps::_GlobalInit(LPCWSTR lpMAPITarget, LPCWSTR lpAdminUsername, 
 	}
 
     // Create Session and Open admin store with profile
-	lpwstrStatus = (LPWSTR)MAPIAccessAPI::InitGlobalSessionAndStore(lpMAPITarget);
+	lpwstrStatus = (LPWSTR)MAPIAccessAPI::InitGlobalSessionAndStore(lpMAPITarget, L"EXCH_ADMIN", FL_NONE);
 
 	if (!lpwstrStatus)
         Initialized = EXCH_INITIALIZED_PROFEXIST;

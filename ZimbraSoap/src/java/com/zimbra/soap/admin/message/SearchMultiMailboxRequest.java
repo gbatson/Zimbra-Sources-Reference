@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -34,6 +36,7 @@ import com.zimbra.soap.base.CalTZInfoInterface;
 import com.zimbra.soap.base.SearchParameters;
 import com.zimbra.soap.type.AttributeName;
 import com.zimbra.soap.type.CursorInfo;
+import com.zimbra.soap.type.WantRecipsSetting;
 import com.zimbra.soap.type.ZmBoolean;
 
 /**
@@ -227,16 +230,20 @@ public class SearchMultiMailboxRequest implements SearchParameters {
     /**
      * @zm-api-field-tag want-recipients
      * @zm-api-field-description Want recipients setting.
-     * <br />
-     * If set to <b>1 (true)</b>:
-     * <ul>
-     * <li> returned sent messages will contain the set of "To:" recipients instead of the sender
-     * <li> returned conversations whose first hit was sent by the user will contain that hit's "To:" recipients
-     *      instead of the conversation's sender list
-     * </ul>
+     * <table border="1">
+     * <tr> <td> <b>unset [default]</b> </td> <td> return "From:" Senders only </td> </tr>
+     * <tr> <td> <b>1</b> </td> <td>
+     *     <ul>
+     *         <li>returned sent messages will contain the set of "To:" recipients instead of the sender
+     *         <li>returned conversations whose first hit was sent by the user will contain that hit's "To:" recipients
+     *             instead of the conversation's sender list
+     *     </ul>
+     * </td> </tr>
+     * <tr> <td> <b>2</b> </td> <td> return both "From:" Senders and "To:" recipients </td> </tr>
+     * </table>
      */
     @XmlAttribute(name=MailConstants.A_RECIPIENTS /* recip */, required=false)
-    private ZmBoolean wantRecipients;
+    private WantRecipsSetting wantRecipients;
 
     /**
      * @zm-api-field-description Prefetch
@@ -372,7 +379,9 @@ public class SearchMultiMailboxRequest implements SearchParameters {
     @Override
     public void setNeuterImages(Boolean neuterImages) { this.neuterImages = ZmBoolean.fromBool(neuterImages); }
     @Override
-    public void setWantRecipients(Boolean wantRecipients) { this.wantRecipients = ZmBoolean.fromBool(wantRecipients); }
+    public void setWantRecipients(WantRecipsSetting wantRecipients) {
+        this.wantRecipients = WantRecipsSetting.usefulValue(wantRecipients);
+    }
     @Override
     public void setPrefetch(Boolean prefetch) { this.prefetch = ZmBoolean.fromBool(prefetch); }
     @Override
@@ -410,8 +419,8 @@ public class SearchMultiMailboxRequest implements SearchParameters {
         }
     }
 
-    public void addMailboxe(NameOrId mailboxe) {
-        this.mailboxes.add(mailboxe);
+    public void addMailbox(NameOrId mailbox) {
+        this.mailboxes.add(mailbox);
     }
 
     @Override
@@ -449,7 +458,7 @@ public class SearchMultiMailboxRequest implements SearchParameters {
     @Override
     public Boolean getNeuterImages() { return ZmBoolean.toBool(neuterImages); }
     @Override
-    public Boolean getWantRecipients() { return ZmBoolean.toBool(wantRecipients); }
+    public WantRecipsSetting getWantRecipients() { return WantRecipsSetting.usefulValue(wantRecipients); }
     @Override
     public Boolean getPrefetch() { return ZmBoolean.toBool(prefetch); }
     @Override

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.servlet;
@@ -62,6 +64,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
         this.cacheDirName = cacheDirName;
     }
 
+    @Override
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
         String contextName = getServletContext().getServletContextName();
@@ -74,10 +77,12 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
         createCacheDir();
     }
 
+    @Override
     public void service(ServletRequest req, ServletResponse resp) throws
         IOException, ServletException {
-        if (flushCache(req))
+        if (flushCache(req)) {
             return;
+        }
         super.service(req, resp);
     }
 
@@ -123,16 +128,16 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
     protected String getCacheKey(String cacheId) {
         return cacheKeyPrefix+'-'+ByteUtil.getMD5Digest(cacheId.getBytes(), false);
     }
-    
+
     // cache management
 
     protected File createCacheFile(String cacheId) throws IOException {
         return createCacheFile(cacheId, null);
     }
-    
+
     protected File createCacheFile(String cacheId, String ext) throws IOException {
         String cacheKey = getCacheKey(cacheId);
-        
+
         return new File(cacheDir.getAbsolutePath() + '/' + cacheKey + '-' +
             Thread.currentThread().getId() + '.' + (ext == null ? "tmp" : ext));
     }
@@ -145,14 +150,16 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
         String cacheKey = getCacheKey(cacheId);
         File oldFile = cache.get(cacheKey);
 
-        if (oldFile != null)
+        if (oldFile != null) {
             oldFile.delete();
+        }
         cache.put(cacheKey, file);
     }
 
     protected synchronized void clearCache(boolean deleteFiles) {
         if (deleteFiles) {
             for (File file : cache.values()) {
+                ZimbraLog.misc.debug("deleting file %s", file.getAbsolutePath());
                 file.delete();
                 // attempt to delete compressed version of file
                 File gzfile = new File(file.getParentFile(), file.getName()+EXT_COMPRESSED);
@@ -183,6 +190,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
             }
         }
         cache = new LruMap<String, File>(cacheSize) {
+            @Override
             protected void willRemove(String cacheId, File file) {
                 processRemovedFile(cacheId, file);
             }
@@ -204,16 +212,16 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
                     String timestamp = new SimpleDateFormat("yyyy-MM-dd-HHmmss").format(date);
                     File parentDir = cacheDir.getParentFile();
                     File backupDir = new File(parentDir, timestamp);
-                    
+
                     cacheDir.renameTo(backupDir);
                     cacheDir = new File(getTempDir(), subDirName);
                 } else {
                     for (String file : cacheDir.list()) {
                         int idx = file.lastIndexOf("-");
-                        
+
                         if (idx != -1) {
                             String cacheKey = file.substring(0, idx);
-                            
+
                             cache.put(cacheKey, new File(cacheDir.getAbsolutePath() +
                                 File.separatorChar + file));
                         }
@@ -227,10 +235,11 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
 
     protected void cleanupOldCacheDirs() {
         Thread thread = new Thread() {
+            @Override
             public void run() {
                 File dir = getCacheDir().getParentFile();
                 File[] files = dir.listFiles(new CacheDirFilter());
-                
+
                 for (File file : files) {
                     if (file.isDirectory()) {
                         delete(file);
@@ -288,7 +297,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
      */
     protected File compress(File src, File dest) throws IOException {
         GZIPOutputStream out = new GZIPOutputStream(new FileOutputStream(dest));
-        
+
         copy(src, out);
         out.finish();
         out.close();
@@ -358,7 +367,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
         byte[] buffer = new byte[4096];
         int count;
         InputStream in = new FileInputStream(src);
-        
+
         while ((count = in.read(buffer)) != -1) {
             dest.write(buffer, 0, count);
         }
@@ -400,8 +409,9 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
     }
 
     static class CacheDirFilter implements FilenameFilter {
+        @Override
         public boolean accept(File dir, String name) {
-            return !name.equals("latest"); 
+            return !name.equals("latest");
         }
     }
 

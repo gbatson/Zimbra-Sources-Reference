@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.db;
@@ -39,11 +41,11 @@ import com.zimbra.cs.imap.ImapMessage;
 import com.zimbra.cs.index.DbSearchConstraints;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.mailbox.Flag;
+import com.zimbra.cs.mailbox.Flag.FlagInfo;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Tag;
-import com.zimbra.cs.mailbox.Flag.FlagInfo;
 
 /**
  * Search related DAO.
@@ -140,8 +142,8 @@ public final class DbSearch {
                         db.lpad("mi.id", 10, "0"));
             case DATE:
             default:
-                return "mi.date";
-        }
+               return "mi.date";
+          }
     }
 
     private static String toStringSortField(String col) {
@@ -176,6 +178,11 @@ public final class DbSearch {
     }
 
     public int countResults(DbConnection conn, DbSearchConstraints node) throws ServiceException {
+        return countResults(conn, node, false);
+    }
+
+    public int countResults(DbConnection conn, DbSearchConstraints node, boolean ignoreNoRecipients) throws ServiceException {
+        node = node.optimize();
         sql.append("SELECT COUNT(*) FROM ").append(DbMailItem.getMailItemTableName(mailbox, "mi", dumpster));
         sql.append(" WHERE ");
         if (!DebugConfig.disableMailboxGroups) {
@@ -183,7 +190,9 @@ public final class DbSearch {
             params.add(mailbox.getId());
         }
         encodeConstraint(node, null, false, false);
-
+        if (ignoreNoRecipients) {
+            sql.append(" AND mi.recipients IS NOT NULL");
+        }
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
@@ -237,6 +246,11 @@ public final class DbSearch {
 
     private void encodeSelect(SortBy sort, FetchMode fetch, boolean joinAppt, boolean joinTaggedItem,
             DbSearchConstraints node, boolean validLIMIT) {
+        encodeSelect(sort, fetch, joinAppt, joinTaggedItem, node, validLIMIT, false);
+    }
+
+    private void encodeSelect(SortBy sort, FetchMode fetch, boolean joinAppt, boolean joinTaggedItem,
+            DbSearchConstraints node, boolean validLIMIT, boolean maybeExcludeHasRecipients) {
         // If you change the first for parameters, you must change the COLUMN_* constants.
         sql.append("SELECT ");
         switch (fetch) {
@@ -262,6 +276,7 @@ public final class DbSearch {
         addSortColumn(sort);
         sql.append(" FROM ").append(DbMailItem.getMailItemTableName(mailbox, "mi", dumpster));
         sql.append(getForceIndexClause(node, sort, validLIMIT));
+
         if (joinAppt) {
             sql.append(", ").append(DbMailItem.getCalendarItemTableName(mailbox, "ap", dumpster));
         }
@@ -274,8 +289,10 @@ public final class DbSearch {
             params.add(mailbox.getId());
         }
         //Bug: 74521
-        //for rcptAsc order make sure that the RECIPIENTS col is NOT null
-        if (sort != null && sort.equals(SortBy.RCPT_ASC)) {
+        //for rcptAsc order make sure that the RECIPIENTS col is NOT null.
+        //Bug: 82703
+        //also doing this for sort=rcptDesc
+        if (sort != null && (sort.equals(SortBy.RCPT_ASC) || sort.equals(SortBy.RCPT_DESC)) && maybeExcludeHasRecipients) {
             sql.append("(mi.recipients is NOT NULL) AND ");
         }
         if (joinAppt) {
@@ -286,24 +303,45 @@ public final class DbSearch {
         }
     }
 
-    private void encodeConstraint(DbSearchConstraints node, byte[] calTypes, boolean inCalTable, boolean joinTaggedItem) {
+    private static boolean searchingInDrafts(DbSearchConstraints node) {
+        if (node instanceof DbSearchConstraints.Leaf) {
+            for (Folder folder: ((DbSearchConstraints.Leaf) node).folders) {
+                if(folder.getId() == Mailbox.ID_FOLDER_DRAFTS) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            boolean success = false;
+            for (DbSearchConstraints child: node.getChildren()) {
+                if(searchingInDrafts(child)) {
+                    success = true;
+                }
+            }
+            return success;
+        }
+    }
 
+    private void encodeConstraint(DbSearchConstraints node, byte[] calTypes, boolean inCalTable, boolean joinTaggedItem) {
         if (node instanceof DbSearchConstraints.Intersection || node instanceof DbSearchConstraints.Union) {
             boolean first = true;
             boolean and = node instanceof DbSearchConstraints.Intersection;
             sql.append('(');
             for (DbSearchConstraints child : node.getChildren()) {
-                if (!first) {
-                    sql.append(and ? " AND " : " OR ");
+                if (!child.isEmpty()) {
+                    if (!first) {
+                        sql.append(and ? " AND " : " OR ");
+                    }
+                    encodeConstraint(child, calTypes, inCalTable, joinTaggedItem);
+                    first = false;
                 }
-                encodeConstraint(child, calTypes, inCalTable, joinTaggedItem);
-                first = false;
             }
             sql.append(") ");
             return;
         }
 
         // we're here, so we must be in a DbSearchConstraints leaf node
+        if (node.isEmpty()) {return; }
         DbSearchConstraints.Leaf constraint = node.toLeaf();
         assert(node instanceof DbSearchConstraints.Leaf && constraint != null);
 
@@ -312,67 +350,72 @@ public final class DbSearch {
             sql.append(Db.supports(Db.Capability.BOOLEAN_DATATYPE) ? "FALSE" : "0=1");
             return;
         }
-
         sql.append('(');
-
+        boolean needAnd = false;
         // special-case this one, since there can't be a leading AND here...
         if (ListUtil.isEmpty(constraint.types)) {
-            sql.append("mi.type NOT IN ").append(DbMailItem.NON_SEARCHABLE_TYPES);
+            if (!constraint.typesFactoredOut) {
+                //don't include the negative types clause if types already encoded in
+                sql.append("mi.type NOT IN ").append(DbMailItem.NON_SEARCHABLE_TYPES);
+                needAnd = true;
+            }
         } else {
             sql.append(DbUtil.whereIn("mi.type", constraint.types.size()));
             for (MailItem.Type type : constraint.types) {
                 params.add(type.toByte());
             }
+            needAnd = true;
         }
 
-        encodeType(constraint.excludeTypes, false);
-        encode("mi.type", inCalTable, calTypes);
-        encodeTag(constraint.tags, true, joinTaggedItem);
-        encodeTag(constraint.excludeTags, false, false);
-        encodeFolder(constraint.folders, true);
-        encodeFolder(constraint.excludeFolders, false);
+        needAnd = needAnd | encodeNoRecipients(constraint.excludeHasRecipients, needAnd);
+        needAnd = needAnd | encodeType(constraint.excludeTypes, false, needAnd);
+        needAnd = needAnd | encode("mi.type", inCalTable, calTypes, needAnd);
+        needAnd = needAnd | encodeTag(constraint.tags, true, joinTaggedItem, needAnd);
+        needAnd = needAnd | encodeTag(constraint.excludeTags, false, false, needAnd);
+        needAnd = needAnd | encodeFolder(constraint.folders, true,  needAnd);
+        needAnd = needAnd | encodeFolder(constraint.excludeFolders, false, needAnd);
 
         if (constraint.convId > 0) {
-            encode("mi.parent_id", true, constraint.convId);
+            needAnd = needAnd | encode("mi.parent_id", true, constraint.convId, needAnd);
         } else {
-            encode("mi.parent_id", false, constraint.prohibitedConvIds);
+            needAnd = needAnd | encode("mi.parent_id", false, constraint.prohibitedConvIds, needAnd);
         }
-        encode("mi.id", true, constraint.itemIds);
-        encode("mi.id", false, constraint.prohibitedItemIds);
-        encode("mi.index_id", true, constraint.indexIds);
+        needAnd = needAnd | encode("mi.id", true, constraint.itemIds, needAnd);
+        needAnd = needAnd | encode("mi.id", false, constraint.prohibitedItemIds, needAnd);
+        needAnd = needAnd | encode("mi.index_id", true, constraint.indexIds, needAnd);
         if (constraint.cursorRange != null) {
-            encodeCursorRange(constraint.cursorRange);
+            needAnd = needAnd | encodeCursorRange(constraint.cursorRange, needAnd);
         }
 
         for (Map.Entry<DbSearchConstraints.RangeType, DbSearchConstraints.Range> entry : constraint.ranges.entries()) {
             switch (entry.getKey()) {
                 case DATE:
-                    encodeDateRange("mi.date", (DbSearchConstraints.NumericRange) entry.getValue());
+                    needAnd = needAnd | encodeDateRange("mi.date", (DbSearchConstraints.NumericRange) entry.getValue(), needAnd);
                     break;
                 case MDATE:
-                    encodeDateRange("mi.change_date", (DbSearchConstraints.NumericRange) entry.getValue());
+                    needAnd = needAnd | encodeDateRange("mi.change_date", (DbSearchConstraints.NumericRange) entry.getValue(), needAnd);
                     break;
                 case MODSEQ:
-                    encodeLongRange("mi.mod_metadata", (DbSearchConstraints.NumericRange) entry.getValue(), 1L);
+                    needAnd = needAnd | encodeLongRange("mi.mod_metadata", (DbSearchConstraints.NumericRange) entry.getValue(), 1L, needAnd);
                     break;
                 case SIZE:
-                    encodeIntRange("mi.size", (DbSearchConstraints.NumericRange) entry.getValue(), 0);
+                    needAnd = needAnd | encodeLongRange("mi.size", (DbSearchConstraints.NumericRange) entry.getValue(), 0, needAnd);
                     break;
                 case CAL_START_DATE:
                     if (inCalTable) {
-                        encodeTimestampRange("ap.start_time", (DbSearchConstraints.NumericRange) entry.getValue(), 1L);
+                        needAnd = needAnd | encodeTimestampRange("ap.start_time", (DbSearchConstraints.NumericRange) entry.getValue(), 1L, needAnd);
                     }
                     break;
                 case CAL_END_DATE:
                     if (inCalTable) {
-                        encodeTimestampRange("ap.end_time", (DbSearchConstraints.NumericRange) entry.getValue(), 1L);
+                        needAnd = needAnd | encodeTimestampRange("ap.end_time", (DbSearchConstraints.NumericRange) entry.getValue(), 1L, needAnd);
                     }
                     break;
                 case SENDER:
-                    encodeStringRange("mi.sender", (DbSearchConstraints.StringRange) entry.getValue());
+                    needAnd = needAnd | encodeStringRange("mi.sender", (DbSearchConstraints.StringRange) entry.getValue(), needAnd);
                     break;
                 case SUBJECT:
-                    encodeStringRange("mi.subject", (DbSearchConstraints.StringRange) entry.getValue());
+                    needAnd = needAnd | encodeStringRange("mi.subject", (DbSearchConstraints.StringRange) entry.getValue(), needAnd);
                     break;
                 case CONV_COUNT:
                 default:
@@ -382,23 +425,27 @@ public final class DbSearch {
 
         Boolean isSoloPart = node.toLeaf().getIsSoloPart();
         if (isSoloPart != null) {
+            if (needAnd) {sql.append(" AND ");}
+            needAnd = true;
             if (isSoloPart.booleanValue()) {
-                sql.append(" AND mi.parent_id is NULL ");
+                sql.append("mi.parent_id is NULL ");
             } else {
-                sql.append(" AND mi.parent_id is NOT NULL ");
+                sql.append("mi.parent_id is NOT NULL ");
             }
         }
 
         if (constraint.hasIndexId != null) {
+            if (needAnd) {sql.append(" AND ");}
+            needAnd = true;
             if (constraint.hasIndexId.booleanValue()) {
-                sql.append(" AND mi.index_id is NOT NULL ");
+                sql.append("mi.index_id is NOT NULL ");
             } else {
-                sql.append(" AND mi.index_id is NULL ");
+                sql.append("mi.index_id is NULL ");
             }
         }
-
         sql.append(')');
     }
+
 
     /**
      * @return TRUE if some part of this query has a non-appointment select (ie 'type not in (11,15)' non-null
@@ -459,9 +506,15 @@ public final class DbSearch {
 
     public List<Result> search(DbConnection conn, DbSearchConstraints node, SortBy sort, int offset, int limit,
             FetchMode fetch) throws ServiceException {
+        return search(conn, node, sort, offset, limit, fetch, true);
+    }
+
+    private List<Result> search(DbConnection conn, DbSearchConstraints node, SortBy sort, int offset, int limit,
+            FetchMode fetch, boolean searchDraftsSeparately) throws ServiceException {
         if (!Db.supports(Db.Capability.AVOID_OR_IN_WHERE_CLAUSE) || !(node instanceof DbSearchConstraints.Union)) {
             try {
-                return searchInternal(conn, node, sort, offset, limit, fetch);
+                node = node.optimize();
+                return searchInternal(conn, node, sort, offset, limit, fetch, searchDraftsSeparately);
             } catch (SQLException e) {
                 if (Db.errorMatches(e, Db.Error.TOO_MANY_SQL_PARAMS)) {
                     ZimbraLog.sqltrace.debug("Too many SQL params: %s", node, e); // fall back to splitting OR clauses
@@ -536,7 +589,33 @@ public final class DbSearch {
     }
 
     private List<Result> searchInternal(DbConnection conn, DbSearchConstraints node, SortBy sort, int offset, int limit,
-            FetchMode fetch) throws SQLException, ServiceException {
+            FetchMode fetch, boolean searchDraftsSeparately) throws SQLException, ServiceException {
+        //check if we need to run this as two queries: one with "mi.recipients is not NULL" and one in drafts with "mi.recipients is NULL"
+        if (searchingInDrafts(node) && searchDraftsSeparately && sort != null && (sort.equals(SortBy.RCPT_ASC) || sort.equals(SortBy.RCPT_DESC))) {
+            DbSearchConstraints.Leaf draftsConstraint = findDraftsConstraint(node).clone(); //clone the existing node containing the Drafts constraint
+            for (Folder folder: draftsConstraint.folders) {
+                if (folder.getId() == Mailbox.ID_FOLDER_DRAFTS) {
+                    draftsConstraint.folders.clear();
+                    draftsConstraint.folders.add(folder); //constrain the node to only drafts
+                    break;
+                }
+            }
+            draftsConstraint.excludeHasRecipients = true;
+            DbSearchConstraints node1;
+            DbSearchConstraints node2;
+            if (sort.equals(SortBy.RCPT_ASC)) {
+                node1 = node;
+                node2 = draftsConstraint;
+            } else {
+                node1 = draftsConstraint;
+                node2 = node;
+            }
+
+            List<Result> result = searchTwoConstraints(conn, node1, node2, sort, offset, limit, fetch);
+            return result;
+
+        }
+
         boolean hasValidLIMIT = offset >= 0 && limit >= 0;
         boolean hasMailItemOnlyConstraints = true;
         boolean hasAppointmentTableConstraints = hasAppointmentTableConstraints(node);
@@ -576,9 +655,13 @@ public final class DbSearch {
             if (requiresUnion) {
                 sql.append('(');
             }
+            boolean maybeExcludeNoRecipients = true;
+            if (node.toLeaf() != null) {
+                maybeExcludeNoRecipients = !node.toLeaf().excludeHasRecipients;
+            }
 
             // SELECT mi.id,... FROM mail_item AS mi [FORCE INDEX (...)] WHERE mi.mailboxid = ? AND
-            encodeSelect(sort, fetch, false, joinTaggedItem, node, hasValidLIMIT);
+            encodeSelect(sort, fetch, false, joinTaggedItem, node, hasValidLIMIT, maybeExcludeNoRecipients);
 
             /*
              *( SUB-NODE AND/OR (SUB-NODE...) ) AND/OR ( SUB-NODE ) AND
@@ -677,13 +760,78 @@ public final class DbSearch {
                         assert false : fetch;
                 }
             }
-
             return result;
         } finally {
             conn.closeQuietly(rs);
             conn.closeQuietly(stmt);
         }
     }
+
+    /** This method can be used to search two constraint trees as if it were one.
+     *
+     * @param conn
+     * @param node1
+     * @param node2
+     * @param sort
+     * @param offset
+     * @param limit
+     * @param fetch
+     * @return
+     * @throws SQLException
+     * @throws ServiceException
+     */
+    private List<Result> searchTwoConstraints(DbConnection conn, DbSearchConstraints node1, DbSearchConstraints node2, SortBy sort, int offset, int limit,
+            FetchMode fetch) throws SQLException, ServiceException {
+        //                 node1 results                     node2 results
+        // |---------------------------------------|--------------------------------------|
+        List<Result> result1 = new DbSearch(mailbox, dumpster).search(conn, node1, sort, offset, limit, fetch, false);
+        if (result1.size() == 0) {
+            //                                              |--- somewhere here----|
+            // |---------------------------------------|--------------------------------------|
+            // If there are no results in the first search, we need to run the second search with some possibly non-zero offset.
+            // To find this offset, we need to find out how many total results there were in the first query and subtract that from the given offset.
+            // To accurately calculate the number of results, we need to know whether to exclude mi.recipients=null or not,
+            // which happens when node1 is NOT our custom draft constraint that has excludeHasRecipients=true.
+            boolean ignoreNoRecipients = true;
+            if (node1.toLeaf() != null) {
+                ignoreNoRecipients = !node1.toLeaf().excludeHasRecipients;
+            }
+            int offset2 = offset - new DbSearch(mailbox, dumpster).countResults(conn, node1, ignoreNoRecipients);
+            int limit2 = limit;
+            List<Result> result2 = new DbSearch(mailbox, dumpster).search(conn, node2, sort, offset2, limit2, fetch, false);
+            result1.addAll(result2);
+        }
+        else if (result1.size() < limit) {
+            //                      |------ somewhere here------|
+            // |---------------------------------------|--------------------------------------|
+            // If the size of the result set is less than the given limit but is nonzero, then we are "straddling" the two operations.
+            // This means we need to run the second query with offset=0, and limit={remainder from 1st query}
+            int offset2 = 0;
+            int limit2 = limit - result1.size();
+            List<Result> result2 = new DbSearch(mailbox, dumpster).search(conn, node2, sort, offset2, limit2, fetch, false);
+            result1.addAll(result2);
+            }
+        return result1;
+        }
+
+
+    private static DbSearchConstraints.Leaf findDraftsConstraint(DbSearchConstraints node) {
+            if (node instanceof DbSearchConstraints.Leaf) {
+                for (Folder folder: ((DbSearchConstraints.Leaf) node).folders) {
+                    if(folder.getId() == Mailbox.ID_FOLDER_DRAFTS) {
+                        return node.toLeaf();
+                    }
+                }
+            } else {
+                for (DbSearchConstraints child: node.getChildren()) {
+                    DbSearchConstraints.Leaf drafts = findDraftsConstraint(child);
+                    if(drafts != null) {
+                        return drafts;
+                    }
+                }
+            }
+            return null;
+        }
 
     private static Object getSortKey(ResultSet rs, SortBy sort) throws SQLException {
         switch (sort.getKey()) {
@@ -706,52 +854,99 @@ public final class DbSearch {
         }
     }
 
-    private void encode(String column, boolean bool, Object o) {
-        sql.append(" AND ").append(column).append(bool ? " = ?" : " != ?");
-        params.add(o);
+    private boolean encode(String column, boolean bool, Object o) {
+        return encode( column, bool, o, true);
     }
 
-    private void encodeFolder(Set<Folder> folders, boolean bool) {
+    private boolean encode(String column, boolean bool, Object o, boolean and) {
+        if (and) {sql.append(" AND "); }
+        sql.append(column).append(bool ? " = ?" : " != ?");
+        params.add(o);
+        return true;
+    }
+
+    private boolean encodeFolder(Set<Folder> folders, boolean bool) {
+        return encodeFolder(folders, bool, true);
+    }
+
+    private boolean encodeFolder(Set<Folder> folders, boolean bool, boolean and) {
         if (folders.isEmpty()) {
-            return;
+            return false;
         }
-        sql.append(" AND ").append(DbUtil.whereIn("mi.folder_id", bool, folders.size()));
+        if (and) { sql.append(" AND ");}
+        sql.append(DbUtil.whereIn("mi.folder_id", bool, folders.size()));
         for (Folder folder : folders) {
             params.add(folder.getId());
         }
+        return true;
     }
 
-    private void encodeType(Set<MailItem.Type> types, boolean bool) {
+    private boolean encodeType(Set<MailItem.Type> types, boolean bool) {
+        return encodeType(types, bool, true);
+    }
+    private boolean encodeType(Set<MailItem.Type> types, boolean bool, boolean and) {
         if (types.isEmpty()) {
-            return;
+            return false;
         }
-        sql.append(" AND ").append(DbUtil.whereIn("type", bool, types.size()));
+        if (and) {sql.append(" AND "); }
+        sql.append(DbUtil.whereIn("type", bool, types.size()));
         for (MailItem.Type type : types) {
             params.add(type.toByte());
         }
+        return true;
     }
 
-    private void encode(String column, boolean bool, Collection<?> c) {
+    private boolean encode(String column, boolean bool, Collection<?> c) {
+        return encode(column, bool, c, true);
+    }
+
+    private boolean encode(String column, boolean bool, Collection<?> c, boolean and) {
         if (ListUtil.isEmpty(c)) {
-            return;
+            return false;
         }
-        sql.append(" AND ").append(DbUtil.whereIn(column, bool, c.size()));
+        if (and) {sql.append(" AND "); }
+        sql.append(DbUtil.whereIn(column, bool, c.size()));
         params.addAll(c);
+        return true;
     }
 
-    private void encode(String column, boolean bool, byte[] array) {
+    private boolean encode(String column, boolean bool, byte[] array) {
+        return encode(column, bool, array, true);
+    }
+
+    private boolean encode(String column, boolean bool, byte[] array, boolean and) {
         if (array == null || array.length == 0) {
-            return;
+            return false;
         }
-        sql.append(" AND ").append(DbUtil.whereIn(column, bool, array.length));
+        if (and) {sql.append(" AND "); }
+        sql.append(DbUtil.whereIn(column, bool, array.length));
         for (byte b : array) {
             params.add(b);
         }
+        return true;
     }
 
-    private void encodeTag(Set<Tag> tags, boolean bool, boolean useJoin) {
+    private boolean encodeNoRecipients(boolean excludeHasRecipients) {
+        return encodeNoRecipients(excludeHasRecipients, true);
+    }
+
+    private boolean encodeNoRecipients(boolean excludeHasRecipients, boolean and) {
+        if (excludeHasRecipients) {
+            if (and) {sql.append(" AND "); }
+            sql.append("mi.recipients is NULL");
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean encodeTag(Set<Tag> tags, boolean bool, boolean useJoin) {
+        return encodeTag(tags, bool, useJoin, true);
+
+    }
+    private boolean encodeTag(Set<Tag> tags, boolean bool, boolean useJoin, boolean and) {
         if (tags.isEmpty()) {
-            return;
+            return false;
         }
 
         if (useJoin) {
@@ -765,13 +960,17 @@ public final class DbSearch {
                 if (tag instanceof Flag) {
                     Flag flag = (Flag) tag;
                     if (flag.getId() == Flag.ID_UNREAD) {
-                        sql.append(" AND mi.unread = ?");
+                        if (and) {sql.append(" AND "); }
+                        sql.append("mi.unread = ?");
+                        and = true;
                         params.add(bool ? 1 : 0);
                     } else {
                         flags |= flag.toBitmask();
                     }
                 } else {
-                    sql.append(" AND (mi.tag_names");
+                    if (and) {sql.append(" AND "); }
+                    and = true;
+                    sql.append("(mi.tag_names");
                     if (!bool) { // Include NULL because LIKE does not match NULL.
                         sql.append(" IS NULL OR mi.tag_names NOT");
                     }
@@ -791,11 +990,15 @@ public final class DbSearch {
                 Tag tag = tags.iterator().next();
 
                 //AND (mi.id = ti.item_id AND mi.mailbox_id = ti.mailbox_id AND ti.tag_id = -10)
-                sql.append(" AND (mi.id = ti.item_id AND mi.mailbox_id = ti.mailbox_id AND ti.tag_id = ?)");
+                if (and) {sql.append(" AND "); }
+                sql.append("(mi.id = ti.item_id AND mi.mailbox_id = ti.mailbox_id AND ti.tag_id = ?)");
                 params.add(tag.getId());
+                and = true;
             } else {
                 for (Tag tag : tags) {
-                    sql.append(" AND EXISTS (SELECT * FROM ").append(DbTag.getTaggedItemTableName(mailbox, "ti"));
+                    if (and) {sql.append(" AND "); }
+                    sql.append("EXISTS (SELECT * FROM ").append(DbTag.getTaggedItemTableName(mailbox, "ti"));
+                    and = true;
                     sql.append(" WHERE ");
                     if (!DebugConfig.disableMailboxGroups) {
                         sql.append("mi.mailbox_id = ti.mailbox_id AND ");
@@ -805,7 +1008,9 @@ public final class DbSearch {
                 }
             }
         } else { // NOT EXISTS (SELECT... WHERE... tag_id IN...)
-            sql.append(" AND NOT EXISTS (SELECT * FROM ").append(DbTag.getTaggedItemTableName(mailbox, "ti"));
+            if (and) {sql.append(" AND "); }
+            sql.append("NOT EXISTS (SELECT * FROM ").append(DbTag.getTaggedItemTableName(mailbox, "ti"));
+            and = true;
             sql.append(" WHERE ");
             if (!DebugConfig.disableMailboxGroups) {
                 sql.append("mi.mailbox_id = ti.mailbox_id AND ");
@@ -815,37 +1020,60 @@ public final class DbSearch {
                 params.add(tag.getId());
             }
         }
+        return true;
     }
 
-    private void encodeDateRange(String column, DbSearchConstraints.NumericRange range) {
-        encodeRange(column, range, 1L, (int) Math.min(range.min / 1000, Integer.MAX_VALUE),
-                (int) Math.min(range.max / 1000, Integer.MAX_VALUE));
+    private boolean encodeDateRange(String column, DbSearchConstraints.NumericRange range) {
+        return encodeDateRange(column, range, true);
     }
 
-    private void encodeTimestampRange(String column, DbSearchConstraints.NumericRange range, long cutoff) {
-        encodeRange(column, range, cutoff, new Timestamp(range.min), new Timestamp(range.max));
+    private boolean encodeTimestampRange(String column, DbSearchConstraints.NumericRange range, long cutoff) {
+        return encodeTimestampRange(column, range, cutoff, true);
     }
 
-    private void encodeLongRange(String column, DbSearchConstraints.NumericRange range, long cutoff) {
-        encodeRange(column, range, cutoff, range.min, range.max);
+    private boolean encodeLongRange(String column, DbSearchConstraints.NumericRange range, long cutoff) {
+        return encodeLongRange(column, range, cutoff, true);
     }
 
-    private void encodeIntRange(String column, DbSearchConstraints.NumericRange range, int cutoff) {
-        encodeRange(column, range, cutoff, (int) range.min, (int) range.max);
+    private boolean encodeIntRange(String column, DbSearchConstraints.NumericRange range, int cutoff) {
+        return encodeIntRange(column, range, cutoff, true);
     }
 
-    private void encodeRange(String column, DbSearchConstraints.NumericRange range,
+    private boolean encodeDateRange(String column, DbSearchConstraints.NumericRange range, boolean and) {
+        return encodeRange(column, range, 1L, (int) Math.min(range.min / 1000, Integer.MAX_VALUE),
+                          (int) Math.min(range.max / 1000, Integer.MAX_VALUE), and);
+    }
+
+    private boolean encodeTimestampRange(String column, DbSearchConstraints.NumericRange range, long cutoff, boolean and) {
+        return encodeRange(column, range, cutoff, new Timestamp(range.min), new Timestamp(range.max), and);
+    }
+
+    private boolean encodeLongRange(String column, DbSearchConstraints.NumericRange range, long cutoff, boolean and) {
+        return encodeRange(column, range, cutoff, range.min, range.max, and);
+    }
+
+    private boolean encodeIntRange(String column, DbSearchConstraints.NumericRange range, int cutoff, boolean and) {
+        return encodeRange(column, range, cutoff, (int) range.min, (int) range.max, and);
+    }
+
+    private boolean encodeRange(String column, DbSearchConstraints.NumericRange range,
             long cutoff, Object min, Object max) {
+        return encodeRange(column, range, cutoff, min, max, true);
+    }
+
+    private boolean encodeRange(String column, DbSearchConstraints.NumericRange range,
+            long cutoff, Object min, Object max, boolean and) {
         if (Db.supports(Db.Capability.CASE_SENSITIVE_COMPARISON) && isCaseSensitiveField(column)) {
             column = "UPPER(" + column + ")";
         }
         boolean lowValid = range.min >= cutoff;
         boolean highValid = range.max >= cutoff;
         if (!(lowValid || highValid)) {
-            return;
+            return false;
         }
-
-        sql.append(range.bool ? " AND (" : " AND NOT (");
+        if (and) {sql.append(" AND "); }
+        sql.append(range.bool ? "(" : "NOT (");
+        and = true;
         if (lowValid) {
             sql.append(column).append(range.minInclusive ? " >= ?" : " > ?");
             params.add(min);
@@ -858,13 +1086,19 @@ public final class DbSearch {
             params.add(max);
         }
         sql.append(')');
+        return true;
     }
 
-    private void encodeStringRange(String column, DbSearchConstraints.StringRange range) {
+    private boolean encodeStringRange(String column, DbSearchConstraints.StringRange range) {
+        return encodeStringRange(column, range, true);
+    }
+
+    private boolean encodeStringRange(String column, DbSearchConstraints.StringRange range, boolean and) {
         if (Db.supports(Db.Capability.CASE_SENSITIVE_COMPARISON) && isCaseSensitiveField(column)) {
             column = "UPPER(" + column + ")";
         }
-        sql.append(range.bool ?  " AND (" : " AND NOT (");
+        if (and) {sql.append(" AND "); }
+        sql.append(range.bool ?  "(" : "NOT (");
         if (range.min != null) {
             sql.append(column).append(range.minInclusive ? " >= ?" : " > ?");
             params.add(range.min.replace("\\\"", "\""));
@@ -877,12 +1111,18 @@ public final class DbSearch {
             params.add(range.max.replace("\\\"", "\""));
         }
         sql.append(')');
+        return true;
     }
 
-    private void encodeCursorRange(DbSearchConstraints.CursorRange range) {
+    private boolean encodeCursorRange(DbSearchConstraints.CursorRange range) {
+        return encodeCursorRange(range, true);
+    }
+
+    private boolean encodeCursorRange(DbSearchConstraints.CursorRange range, boolean and) {
         // Can't use SORT_COLUMN_ALIAS because column aliases in SELECT are illegal to use in WHERE
         String col = toSortField(range.sortBy);
-        sql.append(" AND (");
+        if (and) {sql.append(" AND "); }
+        sql.append("(");
         if (range.min != null) {
             sql.append(col).append(range.minInclusive ? " >= ?" : " > ?");
             params.add(range.min.replace("\\\"", "\""));
@@ -895,6 +1135,7 @@ public final class DbSearch {
             params.add(range.max.replace("\\\"", "\""));
         }
         sql.append(')');
+        return true;
     }
 
     private void setParameters(PreparedStatement stmt) throws SQLException {
@@ -1035,7 +1276,7 @@ public final class DbSearch {
     }
 
     private static final class ImapResult extends IdResult {
-        private ImapMessage i4msg;
+        private final ImapMessage i4msg;
 
         ImapResult(ResultSet rs, Object sortkey) throws SQLException {
             super(rs, sortkey);

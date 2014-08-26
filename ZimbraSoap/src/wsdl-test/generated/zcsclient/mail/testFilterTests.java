@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -60,6 +62,9 @@ import javax.xml.bind.annotation.XmlType;
  *           &lt;element name="socialcastTest" type="{urn:zimbraMail}socialcastTest"/>
  *           &lt;element name="trueTest" type="{urn:zimbraMail}trueTest"/>
  *           &lt;element name="twitterTest" type="{urn:zimbraMail}twitterTest"/>
+ *           &lt;element name="communityRequestsTest" type="{urn:zimbraMail}communityRequestsTest"/>
+ *           &lt;element name="communityContentTest" type="{urn:zimbraMail}communityContentTest"/>
+ *           &lt;element name="communityConnectionsTest" type="{urn:zimbraMail}communityConnectionsTest"/>
  *         &lt;/choice>
  *       &lt;/sequence>
  *       &lt;attribute name="condition" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
@@ -77,30 +82,33 @@ import javax.xml.bind.annotation.XmlType;
 public class testFilterTests {
 
     @XmlElements({
-        @XmlElement(name = "twitterTest", type = testTwitterTest.class),
-        @XmlElement(name = "attachmentTest", type = testAttachmentTest.class),
+        @XmlElement(name = "importanceTest", type = testImportanceTest.class),
+        @XmlElement(name = "mimeHeaderTest", type = testMimeHeaderTest.class),
+        @XmlElement(name = "trueTest", type = testTrueTest.class),
+        @XmlElement(name = "conversationTest", type = testConversationTest.class),
+        @XmlElement(name = "addressBookTest", type = testAddressBookTest.class),
+        @XmlElement(name = "listTest", type = testListTest.class),
+        @XmlElement(name = "communityContentTest", type = testCommunityContentTest.class),
+        @XmlElement(name = "headerTest", type = testHeaderTest.class),
         @XmlElement(name = "currentDayOfWeekTest", type = testCurrentDayOfWeekTest.class),
-        @XmlElement(name = "meTest", type = testMeTest.class),
+        @XmlElement(name = "bulkTest", type = testBulkTest.class),
+        @XmlElement(name = "sizeTest", type = testSizeTest.class),
+        @XmlElement(name = "linkedinTest", type = testLinkedInTest.class),
+        @XmlElement(name = "addressTest", type = testAddressTest.class),
         @XmlElement(name = "currentTimeTest", type = testCurrentTimeTest.class),
         @XmlElement(name = "contactRankingTest", type = testContactRankingTest.class),
-        @XmlElement(name = "dateTest", type = testDateTest.class),
-        @XmlElement(name = "linkedinTest", type = testLinkedInTest.class),
-        @XmlElement(name = "sizeTest", type = testSizeTest.class),
-        @XmlElement(name = "facebookTest", type = testFacebookTest.class),
-        @XmlElement(name = "trueTest", type = testTrueTest.class),
-        @XmlElement(name = "importanceTest", type = testImportanceTest.class),
-        @XmlElement(name = "flaggedTest", type = testFlaggedTest.class),
-        @XmlElement(name = "listTest", type = testListTest.class),
-        @XmlElement(name = "bodyTest", type = testBodyTest.class),
         @XmlElement(name = "headerExistsTest", type = testHeaderExistsTest.class),
         @XmlElement(name = "socialcastTest", type = testSocialcastTest.class),
-        @XmlElement(name = "mimeHeaderTest", type = testMimeHeaderTest.class),
-        @XmlElement(name = "addressBookTest", type = testAddressBookTest.class),
-        @XmlElement(name = "bulkTest", type = testBulkTest.class),
-        @XmlElement(name = "conversationTest", type = testConversationTest.class),
-        @XmlElement(name = "addressTest", type = testAddressTest.class),
-        @XmlElement(name = "headerTest", type = testHeaderTest.class),
-        @XmlElement(name = "inviteTest", type = testInviteTest.class)
+        @XmlElement(name = "dateTest", type = testDateTest.class),
+        @XmlElement(name = "communityConnectionsTest", type = testCommunityConnectionsTest.class),
+        @XmlElement(name = "attachmentTest", type = testAttachmentTest.class),
+        @XmlElement(name = "communityRequestsTest", type = testCommunityRequestsTest.class),
+        @XmlElement(name = "inviteTest", type = testInviteTest.class),
+        @XmlElement(name = "bodyTest", type = testBodyTest.class),
+        @XmlElement(name = "facebookTest", type = testFacebookTest.class),
+        @XmlElement(name = "meTest", type = testMeTest.class),
+        @XmlElement(name = "flaggedTest", type = testFlaggedTest.class),
+        @XmlElement(name = "twitterTest", type = testTwitterTest.class)
     })
     protected List<testFilterTest> addressBookTestOrAddressTestOrAttachmentTest;
     @XmlAttribute(name = "condition", required = true)
@@ -124,30 +132,33 @@ public class testFilterTests {
      * 
      * <p>
      * Objects of the following type(s) are allowed in the list
-     * {@link testTwitterTest }
-     * {@link testAttachmentTest }
+     * {@link testImportanceTest }
+     * {@link testMimeHeaderTest }
+     * {@link testTrueTest }
+     * {@link testConversationTest }
+     * {@link testAddressBookTest }
+     * {@link testListTest }
+     * {@link testCommunityContentTest }
+     * {@link testHeaderTest }
      * {@link testCurrentDayOfWeekTest }
-     * {@link testMeTest }
+     * {@link testBulkTest }
+     * {@link testSizeTest }
+     * {@link testLinkedInTest }
+     * {@link testAddressTest }
      * {@link testCurrentTimeTest }
      * {@link testContactRankingTest }
-     * {@link testDateTest }
-     * {@link testLinkedInTest }
-     * {@link testSizeTest }
-     * {@link testFacebookTest }
-     * {@link testTrueTest }
-     * {@link testImportanceTest }
-     * {@link testFlaggedTest }
-     * {@link testListTest }
-     * {@link testBodyTest }
      * {@link testHeaderExistsTest }
      * {@link testSocialcastTest }
-     * {@link testMimeHeaderTest }
-     * {@link testAddressBookTest }
-     * {@link testBulkTest }
-     * {@link testConversationTest }
-     * {@link testAddressTest }
-     * {@link testHeaderTest }
+     * {@link testDateTest }
+     * {@link testCommunityConnectionsTest }
+     * {@link testAttachmentTest }
+     * {@link testCommunityRequestsTest }
      * {@link testInviteTest }
+     * {@link testBodyTest }
+     * {@link testFacebookTest }
+     * {@link testMeTest }
+     * {@link testFlaggedTest }
+     * {@link testTwitterTest }
      * 
      * 
      */

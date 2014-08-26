@@ -56,6 +56,10 @@
              destfile="${build.jars.dir}/zimbra-extns-storemanager.jar"
              basedir="${build.classes.dir}"
              includes="**/storemanager/**"/>
+        <jar manifest="${conf.dir}/sieveaction/MANIFEST.MF"
+             destfile="${build.jars.dir}/zimbra-extns-sieveaction.jar"
+             basedir="${build.classes.dir}"
+             includes="**/sieveaction/**"/>
 	</target>
 
     <target name="javadoc">

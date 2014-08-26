@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.index;
@@ -17,53 +19,138 @@ package com.zimbra.cs.index;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import org.apache.lucene.search.IndexSearcher;
-
+import com.google.common.annotations.VisibleForTesting;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.extension.ExtensionUtil;
+import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.util.Zimbra;
 
 /**
  * Abstraction of index store backend.
  *
  * @author ysasaki
  */
-public interface IndexStore {
+public abstract class IndexStore {
+
+    private static Factory factory;
 
     /**
      * {@link Indexer#close()} must be called after use.
      */
-    Indexer openIndexer() throws IOException;
+    public abstract Indexer openIndexer() throws IOException;
 
     /**
-     * {@link IndexSearcher#close()} must be called after use.
+     * {@link ZimbraIndexSearcher#close()} must be called after use.
      */
-    IndexSearcher openSearcher() throws IOException;
+    public abstract ZimbraIndexSearcher openSearcher() throws IOException;
 
     /**
      * Prime the index.
      */
-    void warmup();
+    public abstract void warmup();
 
     /**
-     * Removes from cache.
+     * Removes any IndexSearcher used for this index from cache - if appropriate
      */
-    void evict();
+    public abstract void evict();
 
     /**
      * Deletes the whole index data for the mailbox.
      */
-    void deleteIndex() throws IOException;
-    public boolean isPendingDelete();
-    public void setPendingDelete(boolean pendingDelete);
+    public abstract void deleteIndex() throws IOException;
 
     /**
-     * Runs a sanity check for the index data.
+     * Get value of Flag that indicates that the index is scheduled for deletion
      */
-    boolean verify(PrintStream out) throws IOException;
+    public abstract boolean isPendingDelete();
 
-    interface Factory {
-        IndexStore getInstance(Mailbox mbox) throws ServiceException;
-        void destroy();
+    /**
+     * Set Flag to indicate that the index is scheduled for deletion
+     */
+    public abstract void setPendingDelete(boolean pendingDelete);
+
+    /**
+     * Primes the index for the fastest available search if the underlying IndexStore supports (and benefits from)
+     * an appropriate optimization feature.
+     */
+    public abstract void optimize();
+
+    /**
+     * Runs a sanity check for the index data.  Used by the "VerifyIndexRequest" SOAP Admin request
+     */
+    public abstract boolean verify(PrintStream out) throws IOException;
+
+    public static Factory getFactory() {
+        if (factory == null) {
+            setFactory(LC.zimbra_class_index_store_factory.value());
+        }
+        return factory;
     }
 
+    public static void setFields(MailItem item, IndexDocument doc) {
+        doc.removeSortSubject();
+        doc.addSortSubject(item.getSortSubject());
+        doc.removeSortName();
+        doc.addSortName(item.getSortSender());
+        doc.removeMailboxBlobId();
+        doc.addMailboxBlobId(item.getId());
+        // If this doc is shared by multi threads, then the date might just be wrong,
+        // so remove and re-add the date here to make sure the right one gets written!
+        doc.removeSortDate();
+        doc.addSortDate(item.getDate());
+        doc.removeSortSize();
+        doc.addSortSize(item.getSize());
+        doc.removeSortAttachment();
+        doc.addSortAttachment(item.hasAttachment());
+        doc.removeSortFlag();
+        doc.addSortFlag(item.isFlagged());
+        doc.removeSortPriority();
+        doc.addSortPriority(item.getFlagBitmask());
+}
+
+@VisibleForTesting
+    public static final void setFactory(String factoryClassName) {
+        Class<? extends Factory> factoryClass = null;
+        try {
+            try {
+                factoryClass = Class.forName(factoryClassName).asSubclass(Factory.class);
+            } catch (ClassNotFoundException e) {
+                try {
+                    factoryClass = ExtensionUtil.findClass(factoryClassName)
+                            .asSubclass(Factory.class);
+                } catch (ClassNotFoundException cnfe) {
+                    Zimbra.halt("Unable to initialize Index Store for class " + factoryClassName, cnfe);
+                }
+            }
+        } catch (ClassCastException cce) {
+            Zimbra.halt("Unable to initialize Index Store for class " + factoryClassName, cce);
+        }
+        setFactory(factoryClass);
+        ZimbraLog.index.info("Using Index Store %s", factory.getClass().getDeclaringClass().getSimpleName());
+    }
+
+    private static synchronized final void setFactory(Class<? extends Factory> factoryClass) {
+        try {
+            factory = factoryClass.newInstance();
+        } catch (InstantiationException ie) {
+            Zimbra.halt("Unable to initialize Index Store for " + factoryClass.getDeclaringClass().getSimpleName(), ie);
+        } catch (IllegalAccessException iae) {
+            Zimbra.halt("Unable to initialize Index Store for " + factoryClass.getDeclaringClass().getSimpleName(), iae);
+        }
+    }
+
+    public interface Factory {
+        /**
+         * Get an IndexStore instance for a particular mailbox
+         */
+        IndexStore getIndexStore(Mailbox mbox) throws ServiceException;
+
+        /**
+         * Cleanup any caches etc associated with the IndexStore
+         */
+        void destroy();
+    }
 }

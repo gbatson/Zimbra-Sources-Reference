@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.offline;
@@ -20,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.NameValuePair;
@@ -154,6 +157,9 @@ public class OfflineFolderAction extends FolderAction {
         return response;
     }
 
+    private static ScheduledThreadPoolExecutor folderMoveTimer =
+        new ScheduledThreadPoolExecutor(1); //let the folder move jobs pile up
+
     /**
      * @param source sourceAcctId:folderId
      * @param target localAcctId:folderId
@@ -168,7 +174,7 @@ public class OfflineFolderAction extends FolderAction {
         final int sourceFolderId = Integer.parseInt(source.split(":")[1]);
         final int targetParentFolderId = Integer.parseInt(target.split(":")[1]);
 
-        new Thread("folder-move-" + source) {
+        folderMoveTimer.execute(new Thread("folder-move-" + source) {
 
             @Override
             public void run() {
@@ -242,10 +248,6 @@ public class OfflineFolderAction extends FolderAction {
                             }
                             throw e;
                         }
-                        // delete backup file
-                        if (backupFile != null) {
-                            FileUtil.delete(backupFile);
-                        }
                     }
 
                     // delete src folder
@@ -267,7 +269,7 @@ public class OfflineFolderAction extends FolderAction {
                             synchronized (mbox) {
                                 DbConnection conn = null;
                                 try {
-                                    conn = DbPool.getConnection();
+                                    conn = DbPool.getConnection(mbox);
                                     Set<Integer> newlyChangedItemIds = DbMailItem.getIds(mbox, conn, dbParams, false);
                                     // need to use message type even for conversation
                                     ItemActionHelper.MOVE(octxt, mbox, zsc.getResponseProtocol(), new ArrayList<Integer>(newlyChangedItemIds),
@@ -284,7 +286,10 @@ public class OfflineFolderAction extends FolderAction {
                             throw e;
                         }
                     }
-
+                    // delete backup file
+                    if (backupFile != null) {
+                        FileUtil.delete(backupFile);
+                    }
                     OfflineSyncManager.getInstance().registerDialog(
                             sourceAccount,
                             new Pair<String, String>(OfflineDialogAction.DIALOG_TYPE_FOLDER_MOVE_COMPLETE,
@@ -301,6 +306,6 @@ public class OfflineFolderAction extends FolderAction {
                     OfflineLog.offline.warn("[Folder Move] failed", e);
                 }
             }
-        }.start();
+        });
     }
 }

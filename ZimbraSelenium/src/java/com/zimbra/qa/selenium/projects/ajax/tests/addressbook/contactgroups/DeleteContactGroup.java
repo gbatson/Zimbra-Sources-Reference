@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contactgroups;
@@ -140,7 +142,7 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		app.zPageAddressbook.zRefresh();
 		
 		// Select the contact group
-		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group.getName());
+		//app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group.getName());
 		
         //delete contact group by click Delete button on toolbar
         app.zPageAddressbook.zToolbarPressButton(Button.B_DELETE);
@@ -254,9 +256,12 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		app.zPageAddressbook.zRefresh();
 		
 		// Select the contact group
+		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group3.getName());
 		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group1.getName());
 		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group2.getName());
-		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group3.getName());
+		
+
+		
 		
         //delete contact group by click Delete button on toolbar
         app.zPageAddressbook.zToolbarPressButton(Button.B_DELETE);
@@ -292,8 +297,9 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		FolderItem trash = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
 		
 		// Create a contact group
-		ContactGroupItem group = ContactGroupItem.createContactGroupItem(app.zGetActiveAccount());
 		ContactItem contact = ContactItem.createContactItem(app.zGetActiveAccount());
+		ContactGroupItem group = ContactGroupItem.createContactGroupItem(app.zGetActiveAccount());
+
 		
 		
 		
@@ -302,10 +308,10 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		// Refresh
 		app.zPageAddressbook.zRefresh();
 		
-		// Select the contact group
+		// Select the contact group		
 		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group.getName());
 		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact.getName());
-		
+
         //delete contact group by click Delete button on toolbar
         app.zPageAddressbook.zToolbarPressButton(Button.B_DELETE);
 

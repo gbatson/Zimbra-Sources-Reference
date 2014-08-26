@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
@@ -75,10 +81,15 @@ function(line, startIndex) {
  */
 SearchHighlighterZimlet.prototype.generateSpan =
 function(html, idx, obj, spanId, context) {
-	var id = Dwt.getNextId();
-	this._spanIds.push(id);
-	html[idx++] = ["<span id= '",id,"'class='ZmSearchResult'>",AjxStringUtil.htmlEncode(obj),"</span>"].join("");
-	return idx;
+    var currentApp  = appCtxt.getCurrentApp();
+    if (currentApp && currentApp.isZmSearchApp){
+        var id = Dwt.getNextId();
+        this._spanIds.push(id);
+        html[idx++] = ["<span id= '",id,"'class='ZmSearchResult'>",AjxStringUtil.htmlEncode(obj),"</span>"].join("");
+    } else {
+        html[idx++] = AjxStringUtil.htmlEncode(obj);
+    }
+    return idx;
 };
 
 /**
@@ -135,33 +146,33 @@ function(searchStr) {
 			result2.push(word);
 		}
 	}
-	return searchWordHighlighter_unique(result2);
+	return SearchHighlighterZimlet.searchWordHighlighter_unique(result2);
 };
 
 /**
  * Utility function that returns unique elements
  * @param {array} b An Array w/ duplicate items
  */
-function searchWordHighlighter_unique(b) {
+SearchHighlighterZimlet.searchWordHighlighter_unique = function(b) {
 	var a = [], i, l = b.length;
 	for (i = 0; i < l; i++) {
-		if (!searchWordHighlighter_arrayHasEl(a, b[i])) {
+		if (!SearchHighlighterZimlet.searchWordHighlighter_arrayHasEl(a, b[i])) {
 			a.push(b[i]);
 		}
 	}
 	return a;
-}
+};
 /**
  *  A helper function
  */
-function searchWordHighlighter_arrayHasEl(array, val) {
+SearchHighlighterZimlet.searchWordHighlighter_arrayHasEl = function(array, val) {
 	for (var i = 0; i < array.length; i++) {
 		if (array[i] == val) {
 			return true;
 		}
 	}
 	return false;
-}
+};
  /**
  *  Creates list of regular expressions to match
  */

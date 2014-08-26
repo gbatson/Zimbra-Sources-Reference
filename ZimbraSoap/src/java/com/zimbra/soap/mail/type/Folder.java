@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -33,9 +35,14 @@ import javax.xml.bind.annotation.XmlType;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.zimbra.common.soap.MailConstants;
-import com.zimbra.soap.type.ZmBoolean;
 import com.zimbra.soap.json.jackson.annotate.ZimbraUniqueElement;
+import com.zimbra.soap.type.ZmBoolean;
 
+/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * Note, if adding XmlElements, make sure ToXML.transferMountpointContents handles them correctly with regard
+ * to uniqueness (or better still, use JAXB there - but that doesn't seem immediately trivial)
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ */
 // Root element name needed to differentiate between types of folder
 @XmlRootElement(name=MailConstants.E_FOLDER /* folder */)
 @XmlType(propOrder = {"metadatas", "acl", "retentionPolicy", "subfolders"})
@@ -237,9 +244,16 @@ public class Folder {
      */
     @XmlAttribute(name=MailConstants.A_URL /* url */, required=false)
     private String url;
-    
+
     @XmlAttribute(name=MailConstants.A_ACTIVESYNC_DISABLED /* activesyncdisabled */, required=false)
     private ZmBoolean activeSyncDisabled;
+
+    /**
+     * @zm-api-field-tag num-days
+     * @zm-api-field-description Number of days for which web client would sync folder data for offline use
+     */
+    @XmlAttribute(name=MailConstants.A_WEB_OFFLINE_SYNC_DAYS /* webOfflineSyncDays */, required=false)
+    private Integer webOfflineSyncDays;
 
     /**
      * @zm-api-field-tag effective-perms
@@ -269,7 +283,7 @@ public class Folder {
      * @zm-api-field-description Custom metadata
      */
     @XmlElement(name=MailConstants.E_METADATA /* meta */, required=false)
-    private List<MailCustomMetadata> metadatas = Lists.newArrayList();
+    private final List<MailCustomMetadata> metadatas = Lists.newArrayList();
 
     /**
      * @zm-api-field-description ACL for sharing
@@ -286,7 +300,7 @@ public class Folder {
         @XmlElement(name=MailConstants.E_MOUNT /* link */, type=Mountpoint.class),
         @XmlElement(name=MailConstants.E_SEARCH /* search */, type=SearchFolder.class)
     })
-    private List<Folder> subfolders = new ArrayList<Folder>();
+    private final List<Folder> subfolders = new ArrayList<Folder>();
 
     /**
      * @zm-api-field-description Retention policy
@@ -320,6 +334,7 @@ public class Folder {
 
     public String getUrl() { return url; }
     public Boolean isActiveSyncDisabled() { return ZmBoolean.toBool(activeSyncDisabled); }
+    public Integer getWebOfflineSyncDays() { return webOfflineSyncDays; }
     public String getPerm() { return perm; }
     public List<Folder> getSubfolders() {
         return Collections.unmodifiableList(subfolders);
@@ -360,6 +375,7 @@ public class Folder {
     public void setView(View view) { this.view = view; }
     public void setUrl(String url) { this.url = url; }
     public void setDisableActiveSync(Boolean disableActiveSync) { this.recursive = ZmBoolean.fromBool(disableActiveSync); }
+    public void setWebOfflineSyncDays(Integer webOfflineSyncDays) { this.webOfflineSyncDays = webOfflineSyncDays; }
     public void setPerm(String perm) { this.perm = perm; }
     public void setRestUrl(String restUrl) { this.restUrl = restUrl; }
 

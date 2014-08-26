@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox;
@@ -66,6 +68,8 @@ public final class MailboxTest {
     @Before
     public void setUp() throws Exception {
         MailboxTestUtil.clearData();
+        MailboxTestUtil.cleanupIndexStore(
+                MailboxManager.getInstance().getMailboxByAccountId(MockProvisioning.DEFAULT_ACCOUNT_ID));
     }
 
     public static final DeliveryOptions STANDARD_DELIVERY_OPTIONS = new DeliveryOptions().setFolderId(Mailbox.ID_FOLDER_INBOX);
@@ -88,11 +92,11 @@ public final class MailboxTest {
         mbox.index.indexDeferredItems();
 
         List<BrowseTerm> terms = mbox.browse(null, Mailbox.BrowseBy.domains, null, 100);
-        Assert.assertEquals(4, terms.size());
         Assert.assertEquals("sub1.zimbra.com", terms.get(0).getText());
         Assert.assertEquals("sub2.zimbra.com", terms.get(1).getText());
         Assert.assertEquals("sub3.zimbra.com", terms.get(2).getText());
         Assert.assertEquals("sub4.zimbra.com", terms.get(3).getText());
+        Assert.assertEquals("Number of expected terms", 4, terms.size());
         Assert.assertEquals(8, terms.get(0).getFreq());
         Assert.assertEquals(6, terms.get(1).getFreq());
         Assert.assertEquals(4, terms.get(2).getFreq());
@@ -530,6 +534,12 @@ public final class MailboxTest {
         addrs.add(new InternetAddress("user4@email.com"));
         contactList = mbox.createAutoContact(null, addrs);
         assertEquals(3, contactList.size());
+    }
+
+    @Test
+    public void getVisibleFolders() throws Exception {
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        mbox.getVisibleFolders(new OperationContext(mbox));
     }
 
     /**

@@ -1,31 +1,45 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.calendar.appointments.views.workweek.allday;
 
 import java.awt.event.KeyEvent;
 import java.util.Calendar;
+
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
 import com.zimbra.common.soap.Element;
 import com.zimbra.qa.selenium.framework.core.Bugs;
+import com.zimbra.qa.selenium.framework.items.AppointmentItem;
+import com.zimbra.qa.selenium.framework.items.RecipientItem;
+import com.zimbra.qa.selenium.framework.ui.AbsApplication;
+import com.zimbra.qa.selenium.framework.ui.AbsDialog;
+import com.zimbra.qa.selenium.framework.ui.AbsSeleniumObject;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.ui.Shortcut;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.DialogWarningID;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.*;
 
+@SuppressWarnings("unused")
 public class DeleteAppointment extends CalendarWorkWeekTest {
 	
 	public DeleteAppointment() {
@@ -64,7 +78,9 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
                                "</mp>" +
                                "<su>"+ apptSubject +"</su>" +
                                "</m>" +
-                         "</CreateAppointmentRequest>");       
+                         "</CreateAppointmentRequest>");
+        String apptId = app.zGetActiveAccount().soapSelectValue("//mail:CreateAppointmentResponse", "apptId");
+        
         
         //-- GUI actions
         
@@ -78,7 +94,7 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
         DialogConfirmDeleteAppointment dlgConfirm = (DialogConfirmDeleteAppointment)app.zPageCalendar.zToolbarPressButton(Button.B_DELETE);
 		dlgConfirm.zClickButton(Button.B_YES);
 		dlgConfirm.zWaitForClose();
-		app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
+		
 		
 		//-- Verification
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetAllDayApptLocator(apptSubject)), false, "Verify all-day appointment is deleted");
@@ -118,6 +134,8 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
                                "<su>"+ apptSubject +"</su>" +
                                "</m>" +
                          "</CreateAppointmentRequest>");
+        String apptId = app.zGetActiveAccount().soapSelectValue("//mail:CreateAppointmentResponse//mail:appt", "id");
+        
         
         //-- GUI Actions
         
@@ -128,7 +146,7 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
         DialogConfirmDeleteAppointment dlgConfirm = (DialogConfirmDeleteAppointment)app.zPageCalendar.zListItem(Action.A_RIGHTCLICK, Button.O_DELETE, apptSubject);
 		dlgConfirm.zClickButton(Button.B_YES);
 		dlgConfirm.zWaitForClose();
-		app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
+		
 		
 		//-- Verification
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetAllDayApptLocator(apptSubject)), false, "Verify all-day appointment is deleted");
@@ -176,7 +194,12 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
                                "<su>"+ apptSubject +"</su>" +
                                "</m>" +
                          "</CreateAppointmentRequest>");
-       
+        String apptId = app.zGetActiveAccount().soapSelectValue("//mail:CreateAppointmentResponse//mail:appt", "id");
+        
+        
+        //-- GUI Actions
+        
+        
         // Refresh the calendar view
         app.zPageCalendar.zToolbarPressButton(Button.B_REFRESH);
         

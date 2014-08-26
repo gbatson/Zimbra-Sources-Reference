@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
@@ -30,15 +32,27 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
  *
  */
 public class PageManageBackups extends AbsTab {
-	
+
 	public static class Locators {
+		public static final String GEAR_ICON="css=div.ImgConfigure";
+		public static final String VIEW="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgProperties']";
+		public static final String BACKUP="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgBackup']";
+		public static final String RESTORE="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgRestoreMailbox']";
+		public static final String CONFIGURE="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgAdvancedTools']";
+		public static final String REFRESH="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgRefresh']";
+
+		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
+		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgEdit']";
+		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON="css=div[id^='zm__ACLV__MENU_POP'] div[class='ImgDelete']";
+		public static final String RIGHT_CLICK_MENU_EDIT_BUTTON="css=div[id^='zm__ACLV__MENU_POP'] div[class='ImgEdit']";
+
+
 		public static final String TOOLS_AND_MIGRATION_ICON="css=div.ImgToolsAndMigration";
-		public static final String BACKUP="css=div[id^='zti__AppAdmin__magHV__BackUpHV'][id$='div']";
 		public static final String HOME="Home";
 		public static final String TOOLS_AND_MIGRATION="Tools and Migration";
 		public static final String BACKUPS="Backups";
 	}
-	
+
 	public PageManageBackups(AbsApplication application) {
 		super(application);
 	}
@@ -85,7 +99,7 @@ public class PageManageBackups extends AbsTab {
 
 		if ( zIsActive() ) {
 			// This page is already active.
-			
+
 			return;
 		}
 
@@ -93,40 +107,35 @@ public class PageManageBackups extends AbsTab {
 		zClickAt(Locators.TOOLS_AND_MIGRATION_ICON,"");
 		if(sIsElementPresent(Locators.BACKUP));
 		sClickAt(Locators.BACKUP, "");
-		
+
 		zWaitForActive();
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;	
+		return null;
 	}
-	
+
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.tasks;
@@ -18,6 +20,7 @@ import com.zimbra.qa.selenium.framework.core.SeleniumService;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
@@ -64,16 +67,17 @@ public class FormTaskNew extends AbsForm {
 		public static final String zBodyField = "css=body";
 		public static final String zNameField = "css=[id^=DWT4] [input$=]";
 		public static final String zEditNameField = "css=[class=DwtInputField] [input$=]";
-		public static final String zSaveTask = "css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='__SAVE_title']";
+		//public static final String zSaveTask = "css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='__SAVE_title']";
+		public static final String zSaveTask = "css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='_title']:contains('Save')";
 		//public static final String zTasksubjField = "//td[contains(@id,'zv__TKE1_subject')]/div/input";
 		public static final String zTasksubjField = "css=td[id$='_subject'] div input";
 		public static final String zTasksubjFieldDesktop = "//td[contains(@id,'_subject')]/div/input";
-		public static final String zCancelTask = "zb__TKE-1__CANCEL_left_icon";
-		public static final String zTaskOptionDropDown = "css=div[id^='ztb__TKE'] div[id$='__COMPOSE_OPTIONS'] td[id$='__COMPOSE_OPTIONS_dropdown']>div";
+		//public static final String zCancelTask = "zb__TKE-1__CANCEL_left_icon";
+		public static final String zCancelTask = "css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='_title']:contains('Cancel')";
+	//	public static final String zTaskOptionDropDown = "css=div[id^='ztb__TKE'] div[id$='__COMPOSE_OPTIONS'] td[id$='__COMPOSE_OPTIONS_dropdown']>div";
 		public static final String zTaskFormatAsHtml="css=div[id$='_FORMAT_HTML']";
-		public static final String zTaskFormatAsText="css=div[id$='_FORMAT_TEXT']";
-	
-		
+		public static final String zTaskFormatAsText="css=div[id$='_FORMAT_TEXT']";	
+		public static final String zCloseButton="css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='_title']:contains('Close')";
 	}
 
 	public static class Field {
@@ -215,25 +219,32 @@ public class FormTaskNew extends AbsForm {
 		
 		if ( pulldown == Button.B_PRIORITY ) {
 			
+			logger.info(ZimbraDOM.showIDs());
+
+			String divID = ZimbraDOM.getID(
+					ZimbraDOM.APP.APP_TASKS,
+					ZimbraDOM.COMPONENT_NAME.OP_VIEW_TASKEDIT,
+					ZimbraDOM.COMPONENT_TYPE.WIDGET_VIEW);	
+
 			if ( option == Button.O_PRIORITY_HIGH ) {
 				
-				// TODO
-				pulldownLocator = "css=[id^='zv__COMPOSE'][id$='___priority_left_icon']";
-				optionLocator = "TODO";
+				// I18N: https://bugzilla.zimbra.com/show_bug.cgi?id=83574
+				pulldownLocator = "css=div#"+ divID +" td[id$='_priority'] div.ImgSelectPullDownArrow";
+				optionLocator = "css=div[id^='EditTaskPriorityMenu_high']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
 				
-				// TODO
-				pulldownLocator = "css=[id^='zv__COMPOSE'][id$='___priority_left_icon']";
-				optionLocator = "TODO";
+				// I18N: https://bugzilla.zimbra.com/show_bug.cgi?id=83574
+				pulldownLocator = "css=div#"+ divID +" td[id$='_priority'] div.ImgSelectPullDownArrow";
+				optionLocator = "css=div[id^='EditTaskPriorityMenu_normal']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_LOW ) {
 				
-				// TODO
-				pulldownLocator = "css=[id^='zv__COMPOSE'][id$='___priority_left_icon']";
-				optionLocator = "TODO";
+				// I18N: https://bugzilla.zimbra.com/show_bug.cgi?id=83574
+				pulldownLocator = "css=div#"+ divID +" td[id$='_priority'] div.ImgSelectPullDownArrow";
+				optionLocator = "css=div[id^='EditTaskPriorityMenu_low']";
 				page = this;
 
 			} else {
@@ -243,20 +254,35 @@ public class FormTaskNew extends AbsForm {
 		}else if(pulldown==Button.B_OPTIONS){ 
 			if(option==Button.O_OPTION_FORMAT_AS_HTML){
 				
-				pulldownLocator=Locators.zTaskOptionDropDown;
+				String zTaskOptionDropDown = ZimbraDOM.getID(
+						ZimbraDOM.APP.APP_TASKS,
+						ZimbraDOM.COMPONENT_NAME.OP_COMPOSE_OPTIONS,
+						ZimbraDOM.COMPONENT_TYPE.WIDGET_BUTTON);	
+				
+				pulldownLocator = "css=div#" + zTaskOptionDropDown + " td[id$='_dropdown']";
+				//pulldownLocator=Locators.zTaskOptionDropDown;
+				
 				optionLocator=Locators.zTaskFormatAsHtml;
 				page=this;
 				
 			}else if(option==Button.O_OPTION_FORMAT_AS_TEXT){
-				pulldownLocator=Locators.zTaskOptionDropDown;
+				//pulldownLocator=Locators.zTaskOptionDropDown;
+
+				String zTaskOptionDropDown = ZimbraDOM.getID(
+						ZimbraDOM.APP.APP_TASKS,
+						ZimbraDOM.COMPONENT_NAME.OP_COMPOSE_OPTIONS,
+						ZimbraDOM.COMPONENT_TYPE.WIDGET_BUTTON);
+				
+				pulldownLocator = "css=div#" + zTaskOptionDropDown + " td[id$='_dropdown']";
 				optionLocator=Locators.zTaskFormatAsText;
+				
 				page = new DialogWarning(
 						DialogWarning.DialogWarningID.SwitchingToTextWillDiscardHtmlFormatting,
 						this.MyApplication,
 						((AppAjaxClient)this.MyApplication).zPageTasks);
 
 			}
-			
+
 			
 		}else {
 		
@@ -271,7 +297,10 @@ public class FormTaskNew extends AbsForm {
 				throw new HarnessException("Button "+ pulldown +" option "+ option +" pulldownLocator "+ pulldownLocator +" not present!");
 			}
 			
-			this.zClick(pulldownLocator);
+			SleepUtil.sleepMedium();
+			this.zClickAt(pulldownLocator,"");
+			SleepUtil.sleepMedium();
+			
 
 			this.zWaitForBusyOverlay();
 			
@@ -282,7 +311,7 @@ public class FormTaskNew extends AbsForm {
 					throw new HarnessException("Button "+ pulldown +" option "+ option +" optionLocator "+ optionLocator +" not present!");
 				}
 				
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator,"");
 
 				this.zWaitForBusyOverlay();
 
@@ -322,7 +351,8 @@ public class FormTaskNew extends AbsForm {
 
 		} else if (field == Field.Body) {
 			
-			locator = "css=div[id^='zv__TKE-'] textarea[id$='_content']";
+		//	locator = "css=div[id^='zv__TKE-'] textarea[id$='_content']";
+			locator = "css=div[class='ZmTaskEditView'] div[id$='_notes'] textarea[id$='_body']";
 			this.sFocus(locator);
 			this.zClick(locator);
 			zKeyboard.zTypeCharacters(value);
@@ -352,7 +382,9 @@ public class FormTaskNew extends AbsForm {
 				} else {
 					
 					
-					sSelectFrame("css=div[id^='zv__TKE-'] iframe[id$='_content_ifr']");
+					//sSelectFrame("css=div[id^='zv__TKE-'] iframe[id$='_content_ifr']");
+					sSelectFrame("css=div[class='ZmTaskEditView'] div[id$='_notes'] iframe[id$='_body_ifr']");
+					
 
 					locator = "css=body[id='tinymce']";
 					this.sFocus(locator);

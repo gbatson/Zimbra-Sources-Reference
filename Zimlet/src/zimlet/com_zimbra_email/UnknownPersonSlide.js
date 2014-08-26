@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
@@ -132,11 +138,6 @@ function(img) {
 	if (this.emailZimlet.emailAddress.indexOf(UnknownPersonSlide.DOMAIN) != -1) {
 		img.onclick =  AjxCallback.simpleClosure(this._handleProfileImageClick, this); 
 		img.style.cursor = "pointer";
-		img.style.maxHeight = UnknownPersonSlide.HEIGHT + "px";
-		img.style.maxWidth = UnknownPersonSlide.WIDTH + "px";
-	}
-	if (AjxEnv.isIE) {
-		img.height = UnknownPersonSlide.HEIGHT;
 	}
 };
 
@@ -149,17 +150,13 @@ UnknownPersonSlide.prototype._handleAllClicks =
 function(ev) {
 	var isRightClick;
 	this.emailZimlet.popdown();
-	if (AjxEnv.isIE) {
-		ev = window.event;
-	}
+	ev = DwtUiEvent.getEvent(ev);
 	if (ev.which){
 		isRightClick = (ev.which == 3);
 	} else if (ev.button) {
 		isRightClick = (ev.button == 2);
 	}
 	if(isRightClick) {
-		DwtUiEvent.setBehaviour(ev, true, false);
-		this.emailZimlet.contextMenu.popup(100, this.emailZimlet.x, this.emailZimlet.y);
 		return;
 	}
 
@@ -168,9 +165,9 @@ function(ev) {
 	dwtev.setFromDhtmlEvent(ev);
 	var el = dwtev.target;
 	if(el.id == "UnknownPersonSlide_EmailAnchorId") {
-		this.emailZimlet._composeListener(null, this.emailZimlet.emailAddress);
+		this._composeListener(null, this.emailZimlet.emailAddress);
 	} else if(el.id == "UnknownPersonSlide_NameAnchorId") {
-		this.emailZimlet._contactListener(true);
+		this._contactListener(true);
 	}
     else if (el.id == "UnknownPersonSlide_mobilePhoneAnchorId" &&
 		appCtxt.getSettings()._hasVoiceFeature()) {
@@ -220,14 +217,14 @@ function() {
 UnknownPersonSlide.prototype._handleMailSlideSelect =
     function() {
         this.emailZimlet.popdown();
-        this.emailZimlet._composeListener(null, this.emailZimlet.emailAddress);
+        this._composeListener(null, this.emailZimlet.emailAddress);
     };
 
 UnknownPersonSlide.prototype._handleCalendarSlideSelect =
     function() {
         this.emailZimlet.popdown();
         var appt = new ZmAppt();
-        var c =  this.emailZimlet._getActionedContact() || new AjxEmailAddress(this.emailZimlet.emailAddress);
+        var c =  this._getActionedContact() || new AjxEmailAddress(this.emailZimlet.emailAddress);
         appt.setAttendees(c, ZmCalBaseItem.PERSON);
         AjxDispatcher.run("GetCalController").newAppointment(appt, null, null, null);
     };
@@ -264,7 +261,7 @@ UnknownPersonSlide.prototype._handleContactDetails =
 function(response, contact) {
 	var attrs = null;
     var id = null;
-	if(response) {
+	if (response) {
 		var data = response.getResponse();
         var r = data.SearchGalResponse;
 		var cn = r.cn;
@@ -274,12 +271,13 @@ function(response, contact) {
 		}
     }
 
-    attrs = attrs || contact && contact.attr || {};
+	//the use of hashCopy is due to bug 81951 - Don't modify the contact attributes.
+    attrs = attrs || (contact && contact.attr && AjxUtil.hashCopy(contact.attr)) || {};
 
     attrs["fullName"] =  this.emailZimlet.fullName || attrs["fullName"] || contact && contact._fileAs;
     this._presentity = attrs["email"] = this.emailZimlet.emailAddress || attrs["email"];        // email is the presence identity
 
-	var imgUrl = contact && contact.getImageUrl(UnknownPersonSlide.WIDTH);
+	var imgUrl = contact && contact.getImageUrl(UnknownPersonSlide.WIDTH, UnknownPersonSlide.HEIGHT);
 
 	this._setProfileImage(imgUrl);
 	this._setContactDetails(attrs);
@@ -335,7 +333,7 @@ UnknownPersonSlide.prototype._getTooltipBGHtml =
 function(email) {
 	var width = ";";
 	var left = ";";
-	if (AjxEnv.isIE) {
+	if (AjxEnv.isIE8) {
 		var width = "width:100%;";
 		var left = "left:3%;";
 	}
@@ -382,9 +380,16 @@ function(attrs) {
     this.attribs = attrs;
     attrs = this._formatTexts(attrs);
 
-	var iHtml = AjxTemplate.expand("com_zimbra_email.templates.Email1#ContactDetails", attrs);
-	document.getElementById(UnknownPersonSlide.TEXT_DIV_ID).innerHTML = iHtml;
-	document.getElementById("UnknownPersonSlide_Frame").onmouseup =  AjxCallback.simpleClosure(this._handleAllClicks, this);
+	var iHtml = AjxTemplate.expand("com_zimbra_email.templates.Email1#ContactDetails", attrs),
+		textDiv = document.getElementById(UnknownPersonSlide.TEXT_DIV_ID),
+		frame = document.getElementById("UnknownPersonSlide_Frame");
+
+	if (textDiv) {
+		textDiv.innerHTML = iHtml;
+	}
+	if (frame) {
+		frame.onmouseup =  AjxCallback.simpleClosure(this._handleAllClicks, this);
+	}
 	/*
 	document.getElementById("UnknownPersonSlide_EmailAnchorId").onclick =  AjxCallback.simpleClosure(this._openCompose, this);
 	if(document.getElementById("UnknownPersonSlide_NameAnchorId")) {
@@ -399,25 +404,16 @@ function(attrs) {
 
 UnknownPersonSlide.prototype._removeCustomAttrs =
 function(attrs) {
-	if(attrs["rightClickForMoreOptions"]) {
-		delete attrs["rightClickForMoreOptions"];
-	}
-	if(attrs["formattedEmail"]) {
-		delete attrs["formattedEmail"];
-	}
-	if(attrs["address"]) {
-		delete attrs["address"];
-	}
-    if(attrs["presence"]) {
-        delete attrs["presence"];
-    }
+	delete attrs["rightClickForMoreOptions"];
+	delete attrs["formattedEmail"];
+	delete attrs["address"];
+	delete attrs["presence"];
+
     /* See bug 77183. imagepart is not a generated attr so do not remove it
     if(attrs["imagepart"]) {
         delete attrs["imagepart"];
     }*/
-    if(attrs["imURI"]) {
-        delete attrs["imURI"];
-    }
+	delete attrs["imURI"];
 };
 
 UnknownPersonSlide.prototype._formatTexts =
@@ -446,13 +442,12 @@ function(imgUrl) {
 	if (!div || !this.emailZimlet.emailAddress) {
 		return;
 	}
-	div.width = div.style.width = UnknownPersonSlide.WIDTH;
-	div.height = div.style.height = UnknownPersonSlide.HEIGHT;
-
-	if (this.emailZimlet.emailAddress.indexOf(UnknownPersonSlide.DOMAIN) == -1 || !imgUrl) {
+	if (this.emailZimlet.emailAddress.indexOf(UnknownPersonSlide.DOMAIN) == -1 || !imgUrl || !div) {
 		this._handleImgLoadFailure();
 		return;
 	}
+	div.width = div.style.width = UnknownPersonSlide.WIDTH;
+	div.height = div.style.height = UnknownPersonSlide.HEIGHT;
 
 	var img = new Image();
     img.src = imgUrl;
@@ -460,6 +455,75 @@ function(imgUrl) {
 	var timeoutCallback = new AjxCallback(this, this._handleImgLoadFailure);
 	this.emailZimlet.showLoadingAtId(timeoutCallback, UnknownPersonSlide.PHOTO_PARENT_ID);
 };
+
+UnknownPersonSlide.prototype._contactListener =
+	function() {
+		this.emailZimlet.popdown();
+		var loadCallback = new AjxCallback(this, this._handleLoadContact);
+		AjxDispatcher.require(["ContactsCore", "Contacts"], false, loadCallback, null, true);
+	};
+
+UnknownPersonSlide.prototype._handleLoadContact =
+	function() {
+		var contact = this._getActionedContact(true);
+
+		var isDirty = this._isNewContact;
+
+		if (window.parentAppCtxt) {
+			var capp = window.parentAppCtxt.getApp(ZmApp.CONTACTS);
+			capp.getContactController().show(contact, isDirty);
+		} else {
+			AjxDispatcher.run("GetContactController").show(contact, isDirty);
+		}
+	};
+
+UnknownPersonSlide.prototype._composeListener =
+	function(ev, addr) {
+
+		this.emailZimlet.popdown();
+
+		var obj = this.emailZimlet._actionObject;
+		addr = addr ? this.emailZimlet._getAddress(addr) : (obj ? this.emailZimlet._getAddress(obj) : "");
+
+		var params = {};
+		var inNewWindow = (!appCtxt.get(ZmSetting.NEW_WINDOW_COMPOSE) && ev && ev.shiftKey) ||
+			(appCtxt.get(ZmSetting.NEW_WINDOW_COMPOSE) && ev && !ev.shiftKey);
+
+		params.action = ZmOperation.NEW_MESSAGE;
+		params.inNewWindow = inNewWindow;
+		if (!params.toOverride) {
+			params.toOverride = addr + AjxEmailAddress.SEPARATOR;
+		}
+		if (obj && obj.isAjxEmailAddress && obj.address == addr) {
+			params.toOverride = obj;
+		}
+
+		AjxDispatcher.run("Compose", params );
+	};
+
+UnknownPersonSlide.prototype._getActionedContact =
+	function(create) {
+		// actionObject can be a ZmContact, a String, or a generic Object (phew!)
+		var contact;
+		var addr = this.emailZimlet._actionObject;
+		if (addr) {
+			if (addr.isZmContact) {
+				contact = this._actionObject;
+			} else if (AjxUtil.isString(addr)) {
+				addr = this.emailZimlet._getAddress(addr);
+				contact = AjxDispatcher.run("GetContacts").getContactByEmail(addr);
+			} else {
+				contact = AjxDispatcher.run("GetContacts").getContactByEmail(addr.address);
+			}
+		}
+		this._isNewContact = false;
+		if (contact == null && create) {
+			this._isNewContact = true;
+			contact = new ZmContact(null);
+			contact.initFromEmail(addr);
+		}
+		return contact;
+	};
 
 /***
  * <person id ="p1"  >

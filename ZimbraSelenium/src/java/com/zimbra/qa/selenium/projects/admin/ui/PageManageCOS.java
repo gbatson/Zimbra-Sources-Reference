@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
@@ -43,10 +45,10 @@ public class PageManageCOS extends AbsTab {
 		public static final String HOME="Home";
 		public static final String CONFIGURE="Configure";
 		public static final String CLASS_OS_SERVICE="Class of Service";
-		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";		
-		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgEdit']";
+		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
+		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgProperties']";
 		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
-		public static final String RIGHT_CLICK_MENU_EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgEdit']";
+		public static final String RIGHT_CLICK_MENU_EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgProperties']";
 	}
 
 	public PageManageCOS(AbsApplication application) {
@@ -129,12 +131,12 @@ public class PageManageCOS extends AbsTab {
 			String locator;
 
 			// Email Address
-			locator = accountLocator + " td[id^='dl_data_emailaddress']";
+			locator = accountLocator + " td[id^='cos_data_name']";
 
 
-			if(this.sIsElementPresent(locator)) 
+			if(this.sIsElementPresent(locator))
 			{
-				if(this.sGetText(locator).trim().equalsIgnoreCase(item)) 
+				if(this.sGetText(locator).trim().equalsIgnoreCase(item))
 				{
 					if(action == Action.A_LEFTCLICK) {
 						zClick(locator);
@@ -145,7 +147,7 @@ public class PageManageCOS extends AbsTab {
 					}
 
 				}
-				
+
 			}
 		}
 		return page;
@@ -154,14 +156,12 @@ public class PageManageCOS extends AbsTab {
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;	
+		return null;
 	}
 
 
@@ -197,7 +197,13 @@ public class PageManageCOS extends AbsTab {
 
 			locator=Locators.RIGHT_CLICK_MENU_DELETE_BUTTON;
 
-			page = new DialogForDeleteOperation(this.MyApplication, null);
+			page = new DialogForDeleteOperationCos(this.MyApplication, null);
+
+		} else if(button == Button.B_TREE_EDIT) {
+
+			locator=Locators.RIGHT_CLICK_MENU_EDIT_BUTTON;
+
+			page=new FormEditCos(this.MyApplication);
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);
 		}
@@ -238,7 +244,7 @@ public class PageManageCOS extends AbsTab {
 		AbsPage page = null; // If set, this page will be returned
 
 		if (pulldown == Button.B_GEAR_BOX) {
-			pulldownLocator = Locators.GEAR_ICON; 
+			pulldownLocator = Locators.GEAR_ICON;
 
 			if (option == Button.O_NEW) {
 
@@ -249,9 +255,16 @@ public class PageManageCOS extends AbsTab {
 				// FALL THROUGH
 
 			}   else if(option == Button.O_DELETE) {
+
 				optionLocator = Locators.DELETE_BUTTON;
 
-				page = new DialogForDeleteOperation(this.MyApplication,null);
+				page = new DialogForDeleteOperationCos(this.MyApplication,null);
+
+			}  else if(option == Button.O_EDIT) {
+
+				optionLocator = Locators.EDIT_BUTTON;
+
+				page=new FormEditCos(this.MyApplication);
 
 			}  else {
 				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
@@ -294,12 +307,12 @@ public class PageManageCOS extends AbsTab {
 		return (page);
 
 	}
-	
+
 	/**
 	 * Return a list of all cos entries in the current view
 	 * @return
-	 * @throws HarnessException 
-	 * @throws HarnessException 
+	 * @throws HarnessException
+	 * @throws HarnessException
 	 */
 	public List<CosItem> zListGetCos() throws HarnessException {
 
@@ -310,29 +323,21 @@ public class PageManageCOS extends AbsTab {
 			throw new HarnessException("Account Rows is not present");
 
 		// How many items are in the table?
-		String rowsLocator = "//div[@id='zl__COS_MANAGE']//div[contains(@id, '__rows')]//div[contains(@id,'zli__')]";
-		int count = this.sGetXpathCount(rowsLocator);
-		logger.debug(myPageName() + " zListGetCOS: number of cos: "+ count);
+		String rowsLocator = "css=div#zl__COS_MANAGE div[id$='__rows'] div[id^='zli__']";
+		int count = this.sGetCssCount(rowsLocator);
+		logger.debug(myPageName() + " zListGetAccounts: number of accounts: "+ count);
 
 		// Get each conversation's data from the table list
 		for (int i = 1; i <= count; i++) {
-			final String cosLocator = rowsLocator + "["+ i +"]";
+			final String cosLocator = rowsLocator + ":nth-child("+i+")";
 			String locator;
 
 			CosItem item = new CosItem();
 
-			// Type (image)
-			// ImgAdminUser ImgAccount ImgSystemResource (others?)
-			locator = cosLocator + "//nobr";
-			if ( this.sIsElementPresent(locator) ) {
-				//item.setGAccountType(this.sGetAttribute("xpath=("+ locator + ")@class"));
-			}
-
-
 			// Email Address
-			locator = cosLocator + "//td[contains(@id, 'alias_data_emailaddress_')]";
+			locator = cosLocator + "//td[contains(@id,'cos_data_name')]";
 			if ( this.sIsElementPresent(locator) ) {
-//				item.setGEmailAddress(this.sGetText(locator).trim());
+				item.setCosName(this.sGetText(locator).trim());
 			}
 
 			// Display Name
@@ -350,7 +355,7 @@ public class PageManageCOS extends AbsTab {
 		return (items);
 	}
 
-	
+
 	public boolean zVerifyHeader (String header) throws HarnessException {
 		if(this.sIsElementPresent("css=span:contains('" + header + "')"))
 			return true;

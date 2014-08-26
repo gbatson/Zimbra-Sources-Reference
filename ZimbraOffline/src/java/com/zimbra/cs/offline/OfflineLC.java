@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.offline;
@@ -311,11 +313,11 @@ public class OfflineLC {
         
         // base uri for yab
         zdesktop_yab_baseuri = new KnownKey("zdesktop_yab_baseuri");
-        zdesktop_yab_baseuri.setDefault("http://address.yahooapis.com/v1");
+        zdesktop_yab_baseuri.setDefault("https://address.yahooapis.com/v1");
 
         // base uri for ymail
         zdesktop_ymail_baseuri = new KnownKey("zdesktop_ymail_baseuri");
-        zdesktop_ymail_baseuri.setDefault("http://mail.yahooapis.com/ws/mail/v1.1/soap");
+        zdesktop_ymail_baseuri.setDefault("https://mail.yahooapis.com/ws/mail/v1.1/soap");
         
         //yahoo oauth consumer key
         zdesktop_yoauth_consumer_key = new KnownKey("zdesktop_yoauth_consumer_key");
@@ -337,11 +339,11 @@ public class OfflineLC {
         
         //yahoo oauth get contacts url
         zdesktop_yoauth_get_contacts_url = new KnownKey("zdesktop_yoauth_get_contacts_url");
-        zdesktop_yoauth_get_contacts_url.setDefault("http://social.yahooapis.com/v1/user/%s/contacts?view=sync&rev=%s");
+        zdesktop_yoauth_get_contacts_url.setDefault("https://social.yahooapis.com/v1/user/%s/contacts?view=sync&rev=%s");
         
         //yahoo oauth put contact url
         zdesktop_yoauth_put_contacts_url = new KnownKey("zdesktop_yoauth_put_contacts_url");
-        zdesktop_yoauth_put_contacts_url.setDefault("http://social.yahooapis.com/v1/user/%s/contacts");
+        zdesktop_yoauth_put_contacts_url.setDefault("https://social.yahooapis.com/v1/user/%s/contacts");
         
         //yahoo oauth token expire period (1 hour)
         zdesktop_yoauth_token_expire_period = new KnownKey("zdesktop_yoauth_token_expire_period");

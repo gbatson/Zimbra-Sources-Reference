@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox;
@@ -829,7 +831,18 @@ public class MailboxManager {
                 mailboxKey = mailboxIds.get(account.getId().toLowerCase());
                 if (mailboxKey != null)
                     continue;
-
+                // check if the mailbox is created by other server after this server's startup
+                DbConnection conn = null;
+                try {
+                    conn = DbPool.getConnection();
+                    mailboxKey = DbMailbox.getMailboxId(conn, account.getId());
+                    if (mailboxKey != null && mailboxKey > 0) {
+                        cacheAccount(account.getId(), mailboxKey);
+                        continue;
+                    }
+                } finally {
+                    DbPool.quietClose(conn);
+                }
                 // didn't have the mailbox in the database; need to create one now
                 mbox = createMailboxInternal(octxt, account, isGalSyncAccount);
             }
@@ -854,17 +867,35 @@ public class MailboxManager {
             int id = (redoPlayer == null ? Mailbox.ID_AUTO_INCREMENT : redoPlayer.getMailboxId());
 
             // create the mailbox row and the mailbox database
-            MailboxData data = DbMailbox.createMailbox(conn, id, account.getId(), account.getName(), -1);
-            ZimbraLog.mailbox.info("Creating mailbox with id %d and group id %d for %s.", data.id, data.schemaGroupId, account.getName());
-
+            MailboxData data;
+            boolean created = false;
+            try {
+                data = DbMailbox.createMailbox(conn, id, account.getId(), account.getName(), -1);
+                ZimbraLog.mailbox.info("Creating mailbox with id %d and group id %d for %s.", data.id, data.schemaGroupId, account.getName());
+                created = true;
+            } catch (ServiceException se) {
+                if (MailServiceException.ALREADY_EXISTS.equals(se.getCode())) {
+                    // mailbox for the account may be created by other server, re-fetch now.
+                    id = DbMailbox.getMailboxId(conn, account.getId());
+                    if (id > 0) {
+                        data = DbMailbox.getMailboxStats(conn, id);
+                    } else {
+                        throw ServiceException.FAILURE("could not create mailbox", se);
+                    }
+                } else {
+                    throw se;
+                }
+            }
             mbox = account.isIsExternalVirtualAccount() ?
                     instantiateExternalVirtualMailbox(data) : instantiateMailbox(data);
             mbox.setGalSyncMailbox(isGalSyncAccount);
             // the existing Connection is used for the rest of this transaction...
             mbox.beginTransaction("createMailbox", octxt, redoRecorder, conn);
 
-            // create the default folders
-            mbox.initialize();
+            if (created) {
+                // create the default folders
+                mbox.initialize();
+            }
 
             // cache the accountID-to-mailboxID and mailboxID-to-Mailbox relationships
             cacheAccount(data.accountId, data.id);

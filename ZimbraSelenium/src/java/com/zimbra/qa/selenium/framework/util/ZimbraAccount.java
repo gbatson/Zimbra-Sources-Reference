@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.util;
@@ -172,6 +174,20 @@ public class ZimbraAccount {
 		_AccountZMC = null;
 	}
 	private static ZimbraAccount _AccountZMC = null;
+	
+	public static synchronized ZimbraAccount AccountZTC() {
+		if ( _AccountZTC == null ) {
+			_AccountZTC = new ZimbraAccount();
+			_AccountZTC.provision();
+			_AccountZTC.authenticate();
+		}
+		return (_AccountZTC);
+	}
+	public static synchronized void ResetAccountZTC() {
+		logger.warn("AccountZTC is being reset");
+		_AccountZTC = null;
+	}
+	private static ZimbraAccount _AccountZTC = null;
 
 	/**
 	 * Get a general use account for interacting with the test account
@@ -200,7 +216,16 @@ public class ZimbraAccount {
 		return (_AccountB);
 	}
 	private static ZimbraAccount _AccountB = null;
-
+	
+	public static synchronized ZimbraAccount AccountC() {
+		if ( _AccountC == null ) {
+			_AccountC = new ZimbraAccount();
+			_AccountC.provision();
+			_AccountC.authenticate();
+		}
+		return (_AccountC);
+	}
+	private static ZimbraAccount _AccountC = null;
 
 	/**
 	 * Reset all static accounts.  This method should be used before/after
@@ -212,9 +237,11 @@ public class ZimbraAccount {
 	public static void reset() {
 		ZimbraAccount._AccountA = null;
 		ZimbraAccount._AccountB = null;
+		ZimbraAccount._AccountC = null;
 		ZimbraAccount._AccountHTML = null;
 		ZimbraAccount._AccountZMC = null;
-		ZimbraAccount._AccountZWC = null;		
+		ZimbraAccount._AccountZWC = null;
+		ZimbraAccount._AccountZTC = null;
 	}
 	
 	// Set the default account settings
@@ -887,6 +914,21 @@ public class ZimbraAccount {
 		  * @return
 		  */
 		 public String setAuthToken(String token) {
+			 
+			 
+			 if ( token == null ) {
+			
+				 // If the authToken is null, then we need to
+				 // also clear the mTransport, which has a cookie
+				 // associated with the authToken.
+				 //
+				 // Clearing the current URI will have the same
+				 // effect.
+				 //
+				 mURI = null;
+				 			 
+			 }
+			 
 			 return (AuthToken = token);
 		 }
 
@@ -935,7 +977,7 @@ public class ZimbraAccount {
 				 ZAuthToken zat = new ZAuthToken(null, token, null);
 				 if ( sessionId == null )
 				 {
-					 requestContext = SoapUtil.toCtxt(mSoapProto, zat);
+					 requestContext = SoapUtil.toCtxt(mSoapProto, zat, null);
 				 }
 				 else 
 				 {

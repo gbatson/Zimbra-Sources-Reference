@@ -18,7 +18,7 @@ public class BaseViewModel: INotifyPropertyChanged
 {
     public enum ViewType
     {
-        INTRO, SVRSRC, USRSRC, SVRDEST, USRDEST, OPTIONS, USERS, SCHED, RESULTS, MAX
+        INTRO, SVRSRC, USRSRC,ZDSRC, SVRDEST, USRDEST, OPTIONS, USERS, SCHED, RESULTS, MAX
     }
 
     public event PropertyChangedEventHandler PropertyChanged;
@@ -33,6 +33,7 @@ public class BaseViewModel: INotifyPropertyChanged
     public string ViewTitle { get; set; }
     public ListBox lb { get; set; }
     public static bool isServer { get; set; }
+    public static bool isDesktop { get; set; }
     public bool isBrowser { get; set; }
     public string savedDomain { get; set; }
     public static Object[] ViewModelPtrs = new Object[(int)ViewType.MAX];
@@ -223,6 +224,9 @@ public class BaseViewModel: INotifyPropertyChanged
         m_config.AdvancedImportOptions.SpecialCharReplace = optionsModel.SpecialCharReplace;
         m_config.AdvancedImportOptions.CSVDelimiter = optionsModel.CSVDelimiter;
         m_config.AdvancedImportOptions.LangID = optionsModel.LangID;
+        m_config.AdvancedImportOptions.IsPublicFolders = optionsModel.IsPublicFolders;
+
+        m_config.AdvancedImportOptions.IsZDesktop = optionsModel.IsZDesktop;
         // deal with skip folders
         m_config.AdvancedImportOptions.IsSkipFolders = optionsModel.IsSkipFolders;
         if (optionsModel.IsSkipFolders)

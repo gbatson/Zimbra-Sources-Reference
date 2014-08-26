@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.taglib.tag;
@@ -43,12 +45,14 @@ public class CalSearchJSONTag extends ZimbraSimpleTag {
 
     private String mVar;
     private ZAuthToken mAuthToken;
+    private String mCsrfToken;
     private String mItemsPerPage;
     private String mTypes;
     private TimeZone mTimeZone;
 
     public void setVar(String var) { this.mVar = var; }
     public void setAuthtoken(ZAuthToken authToken) { this.mAuthToken = authToken; }
+    public void setCsrftoken(String csrfToken) { this.mCsrfToken = csrfToken; }
     public void setItemsperpage(String itemsPerPage) { mItemsPerPage = itemsPerPage; }
     public void setTypes(String types) { mTypes = types; }
     public void setTimezone(TimeZone timezone) { mTimeZone = timezone; }
@@ -83,6 +87,21 @@ public class CalSearchJSONTag extends ZimbraSimpleTag {
      * @throws ServiceException on error
      */
     public static Element getBootstrapCalSearchJSON(String url, String remoteAddr, ZAuthToken authToken, String itemsPerPage, String searchTypes) throws ServiceException {
+        return getBootstrapCalSearchJSON(url, remoteAddr, authToken, null, itemsPerPage, searchTypes);
+    }
+
+    /**
+     * used when bootstrapping AJAX client.
+     *
+     * @param url url to connect to
+     * @param authToken auth token to use
+     * @param csrfToken csrf token
+     * @param itemsPerPage number of search items to return
+     * @param searchTypes what to search for
+     * @return top-level JSON respsonse
+     * @throws ServiceException on error
+     */
+    public static Element getBootstrapCalSearchJSON(String url, String remoteAddr, ZAuthToken authToken, String csrfToken, String itemsPerPage, String searchTypes) throws ServiceException {
         ZMailbox.Options options = new ZMailbox.Options(authToken, url);
         options.setNoSession(false);
         options.setAuthAuthToken(false);
@@ -156,7 +175,7 @@ public class CalSearchJSONTag extends ZimbraSimpleTag {
             queryEl.setText(searchQuery.toString());
 
             JsonDebugListener debug = new JsonDebugListener();
-            SoapTransport transport = TagUtil.newJsonTransport(url, remoteAddr, authToken, debug);
+            SoapTransport transport = TagUtil.newJsonTransport(url, remoteAddr, authToken, csrfToken, debug);
             transport.invoke(batch);
 
             Element e = debug.getEnvelope();

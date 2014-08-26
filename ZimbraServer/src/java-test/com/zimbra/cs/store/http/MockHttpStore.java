@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.store.http;
@@ -22,11 +24,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetHeaders;
 
 import com.google.common.collect.Maps;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.util.ByteUtil;
 
 public class MockHttpStore {
@@ -35,6 +39,10 @@ public class MockHttpStore {
 
     private static ServerSocket ssock;
     private static Map<String, byte[]> blobs = Maps.newHashMap();
+
+    //for mocking error conditions
+    private static AtomicBoolean fail = new AtomicBoolean(false);
+    private static AtomicBoolean delay = new AtomicBoolean(false);
 
     public static void startup() throws IOException {
         final ServerSocket s = ssock = new ServerSocket(PORT);
@@ -67,6 +75,16 @@ public class MockHttpStore {
         return blobs.size();
     }
 
+    public static void setFail() {
+        fail.set(true);
+    }
+
+    public static void setDelay() {
+        delay.set(true);
+    }
+
+
+
     static void handle(Socket socket) throws IOException {
         InputStream in = null;
         OutputStream out = null;
@@ -80,26 +98,34 @@ public class MockHttpStore {
                 reqline.append((char) b);
             }
             String[] reqparts = reqline.toString().trim().split(" ");
-
-            if (reqparts.length != 3 || !reqparts[2].startsWith("HTTP/")) {
-                out.write("HTTP/1.0 400 malformed request-line\r\n\r\n".getBytes());
+            if (fail.compareAndSet(true, false)) {
+                out.write("HTTP/1.0 400 force fail".getBytes());
+            } else if (delay.compareAndSet(true, false)) {
+              try {
+                Thread.sleep(LC.httpclient_internal_connmgr_so_timeout.longValue() + 10000);
+            } catch (InterruptedException e) {
+            }
             } else {
-                String method = reqparts[0].toUpperCase(), filename = getFilename(reqparts[1]), version = reqparts[2];
-                try {
-                    InternetHeaders headers = new InternetHeaders(in);
+                if (reqparts.length != 3 || !reqparts[2].startsWith("HTTP/")) {
+                    out.write("HTTP/1.0 400 malformed request-line\r\n\r\n".getBytes());
+                } else {
+                    String method = reqparts[0].toUpperCase(), filename = getFilename(reqparts[1]), version = reqparts[2];
+                    try {
+                        InternetHeaders headers = new InternetHeaders(in);
 
-                    if (method.equals("GET")) {
-                        doGet(version, filename, out);
-                    } else if (method.equals("POST") || method.equals("PUT")) {
-                        doPost(version, headers, in, out);
-                    } else if (method.equals("DELETE")) {
-                        doDelete(version, filename, out);
-                    } else {
-                        out.write((version + " 400 unknown method: " + reqparts[0] + "\r\n\r\n").getBytes());
+                        if (method.equals("GET")) {
+                            doGet(version, filename, out);
+                        } else if (method.equals("POST") || method.equals("PUT")) {
+                            doPost(version, headers, in, out);
+                        } else if (method.equals("DELETE")) {
+                            doDelete(version, filename, out);
+                        } else {
+                            out.write((version + " 400 unknown method: " + reqparts[0] + "\r\n\r\n").getBytes());
+                        }
+                    } catch (MessagingException e) {
+                        out.write((version + " 500 Internal Server Error\r\n\r\n").getBytes());
+                        return;
                     }
-                } catch (MessagingException e) {
-                    out.write((version + " 500 Internal Server Error\r\n\r\n").getBytes());
-                    return;
                 }
             }
             out.flush();

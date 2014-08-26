@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.bugs;
@@ -90,7 +92,7 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 	}
 
 	@Test(	description = "D1 Enhancement : Add a contact to an existing group",
-			groups = { "smoke", "matt" })
+			groups = { "smoke" })
 	public void Add1ContactToExistingGroup() throws HarnessException {			
 		
 		//-- Data
@@ -136,15 +138,16 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 	}
 
 	@Test(	description = "D1 Enhancement : Add 3 contacts to an existing group",
-			groups = { "functional", "matt" })
+			groups = { "functional" })
 	public void Add3ContactsToExistingGroup() throws HarnessException {
 		
 		//-- Data
 		
 		// Create a contact
-		ContactItem contact1 = ContactItem.createContactItem(app.zGetActiveAccount());
+		ContactItem contact1 = ContactItem.createContactItem(app.zGetActiveAccount());		
 		ContactItem contact2 = ContactItem.createContactItem(app.zGetActiveAccount());
 		ContactItem contact3 = ContactItem.createContactItem(app.zGetActiveAccount());
+		
 		
 		// Create a contact group
 		ContactGroupItem group = ContactGroupItem.createContactGroupItem(app.zGetActiveAccount());
@@ -206,9 +209,12 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		//-- Data
 		
 		// Create a contact
-		ContactItem contact1 = ContactItem.createContactItem(app.zGetActiveAccount());
+		
+		ContactItem contact1 = ContactItem.createContactItem(app.zGetActiveAccount());		
 		ContactItem contact2 = ContactItem.createContactItem(app.zGetActiveAccount());
 		ContactItem contact3 = ContactItem.createContactItem(app.zGetActiveAccount());
+		ContactItem contact4 = ContactItem.createContactItem(app.zGetActiveAccount());
+		
 		
 		// Create a contact group
 		String groupname = "group"+ ZimbraSeleniumProperties.getUniqueString();
@@ -222,9 +228,9 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		app.zPageAddressbook.zRefresh();
 
 		// Check 3 contact items
-	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact1.getName());
+		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact1.getName());
 	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact2.getName());
-	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact3.getName());
+	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact3.getName());  
 
 
 		// Right click on one contact -> Group -> Existing Group Name
@@ -232,7 +238,7 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 				Action.A_RIGHTCLICK, 
 				Button.B_CONTACTGROUP, 
 				Button.O_NEW_CONTACTGROUP, 
-				contact1.getName());
+				contact3.getName());
 
 		dialog.zEnterGroupName(groupname);
 		dialog.zClickButton(Button.B_OK);
@@ -287,8 +293,9 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		app.zPageAddressbook.zRefresh();
 
 		// Check 3 contact items
+		app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group.getName());
 	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact.getName());
-	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group.getName());
+	  
 
 
 		// Right click on one contact -> Group -> Existing Group Name
@@ -368,7 +375,7 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		//-- Verification
 		
 		// Verify the contact group is created
-		ContactGroupItem actual = ContactGroupItem.importFromSOAP(app.zGetActiveAccount(), group1.getName());
+		ContactGroupItem actual = ContactGroupItem.importFromSOAP(app.zGetActiveAccount(), group2.getName());
 		ZAssert.assertNotNull(actual,  "Verify the contact group is created");
 		
 		// Verify the contact group contains the contact
@@ -378,7 +385,7 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 				"Verify the contact group conatins the contact");
 		
 		// The group members will be added to the new group
-		for (ContactGroupItem.MemberItem m : group1.getMemberList()) {
+		for (ContactGroupItem.MemberItem m : group2.getMemberList()) {
 			ZAssert.assertContains(
 					actual.getMemberList(),
 					m,

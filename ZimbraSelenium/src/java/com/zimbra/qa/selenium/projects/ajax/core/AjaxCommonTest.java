@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.core;
@@ -18,17 +20,14 @@ import java.awt.Toolkit;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.*;
+
 import org.apache.log4j.*;
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.Dimension;
-import org.openqa.selenium.Point;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriverBackedSelenium;
-import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.*;
+import org.openqa.selenium.remote.*;
 import org.testng.*;
 import org.testng.annotations.*;
 import org.xml.sax.SAXException;
+
 import com.thoughtworks.selenium.*;
 import com.zimbra.qa.selenium.framework.core.*;
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -207,6 +206,13 @@ public class AjaxCommonTest {
 					if (ZimbraSeleniumProperties.isWebDriver()) {
 						//_webDriver.get(ZimbraSeleniumProperties.getBaseURL());
 						_webDriver.navigate().to(ZimbraSeleniumProperties.getBaseURL());
+						/*
+						if(ZimbraSeleniumProperties.getCalculatedBrowser().contains("iexplore")){	
+							if(app.zPageMain.sIsElementPresent("id=overridelink")){
+								_webDriver.navigate().to("javascript:document.getElementById('overridelink').click()");						
+							}
+						}
+						*/
 					} 
 					else if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()) 
 						_webDriverBackedSelenium.open(ZimbraSeleniumProperties.getBaseURL());
@@ -505,6 +511,17 @@ public class AjaxCommonTest {
 
     }
 	
+	/**
+	 * A TestNG data provider for all supported character sets
+	 * @return
+	 * @throws HarnessException 
+	 */
+	@DataProvider(name = "DataProviderSupportedCharsets")
+	public Object[][] DataProviderSupportedCharsets() throws HarnessException {
+		return (ZimbraCharsets.getInstance().getSampleTable());
+	}
+
+
 	public void ModifyAccountPreferences(String string) throws HarnessException {
 		StringBuilder settings = new StringBuilder();
 		for (Map.Entry<String, String> entry : startingAccountPreferences.entrySet()) {

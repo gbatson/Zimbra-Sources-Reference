@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -60,11 +62,11 @@ import javax.xml.bind.annotation.XmlType;
 public class testSearchAccountsResponse {
 
     @XmlElements({
-        @XmlElement(name = "dl", type = testDistributionListInfo.class),
-        @XmlElement(name = "cos", type = testCosInfo.class),
-        @XmlElement(name = "account", type = testAccountInfo.class),
         @XmlElement(name = "domain", type = testDomainInfo.class),
+        @XmlElement(name = "cos", type = testCosInfo.class),
         @XmlElement(name = "alias", type = testAliasInfo.class),
+        @XmlElement(name = "account", type = testAccountInfo.class),
+        @XmlElement(name = "dl", type = testDistributionListInfo.class),
         @XmlElement(name = "calresource", type = testCalendarResourceInfo.class)
     })
     protected List<Object> calresourceOrDlOrAlias;
@@ -91,11 +93,11 @@ public class testSearchAccountsResponse {
      * 
      * <p>
      * Objects of the following type(s) are allowed in the list
-     * {@link testDistributionListInfo }
-     * {@link testCosInfo }
-     * {@link testAccountInfo }
      * {@link testDomainInfo }
+     * {@link testCosInfo }
      * {@link testAliasInfo }
+     * {@link testAccountInfo }
+     * {@link testDistributionListInfo }
      * {@link testCalendarResourceInfo }
      * 
      * 

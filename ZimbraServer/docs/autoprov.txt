@@ -40,7 +40,7 @@ All auto provisioning are on domain level.
 ------------------------------
 zimbraAutoProvMode
   type="enum" value="EAGER,LAZY,MANUAL" cardinality="multi" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
     Auto provision modes enabled.  Multiple modes can be enabled on a domain.
     
@@ -72,7 +72,7 @@ $ zmprov md test.com +zimbraAutoProvMode LAZY +zimbraAutoProvMode MANUAL
 ------------------------------
 zimbraAutoProvAuthMech
   type="enum" value="LDAP,PREAUTH,KRB5,SPNEGO" cardinality="multi" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: N/A
       LAZY mode: required
@@ -97,7 +97,7 @@ $ zmprov md test.com +zimbraAutoProvAuthMech PREAUTH +zimbraAutoProvAuthMech KRB
 ------------------------------
 zimbraAutoProvLdapURL
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: required
@@ -113,7 +113,7 @@ $ zmprov md test.com zimbraAutoProvLdapURL "ldap://autoprov.source.com:389"
 ------------------------------
 zimbraAutoProvLdapStartTlsEnabled
   type="boolean" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: optional 
       LAZY mode: optional 
@@ -131,7 +131,7 @@ $ zmprov md test.com zimbraAutoProvLdapStartTlsEnabled TRUE
 ------------------------------
 zimbraAutoProvLdapAdminBindDn
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: required (if using zimbraAutoProvLdapSearchFilter) 
@@ -146,7 +146,7 @@ $ zmprov md test.com zimbraAutoProvLdapAdminBindDn "cn=admin,dc=autoprov,dc=comp
 ------------------------------
 zimbraAutoProvLdapAdminBindPassword
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: required
@@ -162,7 +162,7 @@ $ zmprov md test.com zimbraAutoProvLdapAdminBindPassword secret
 ------------------------------
 zimbraAutoProvLdapSearchBase
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: required (if using zimbraAutoProvLdapSearchFilter), 
@@ -179,7 +179,7 @@ $ zmprov md test.com zimbraAutoProvLdapSearchBase "dc=autoprov,dc=company,dc=com
 ------------------------------
 zimbraAutoProvLdapSearchFilter
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: optional (if not using zimbraAutoProvLdapBindDn) 
@@ -203,7 +203,7 @@ $ zmprov md test.com zimbraAutoProvLdapSearchFilter "(uid=%u)"
 ------------------------------
 zimbraAutoProvLdapBindDn
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: optional (if not using zimbraAutoProvLdapSearchFilters) 
@@ -227,9 +227,9 @@ $ zmprov md test.com zimbraAutoProvLdapBindDn "uid=%u,ou=people,%D"
 ------------------------------
 zimbraAutoProvAccountNameMap
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
-     EAGER mode: optional 
+     EAGER mode: required 
       LAZY mode: optional 
     MANUAL mode: optional 
     
@@ -245,7 +245,7 @@ $ zmprov md test.com zimbraAutoProvAccountNameMap uid
 ------------------------------
 zimbraAutoProvAttrMap
   type="string" max="256" cardinality="multi" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: optional 
       LAZY mode: optional 
@@ -272,7 +272,7 @@ $ zmprov md test.com +zimbraAutoProvAttrMap sn=displayName +zimbraAutoProvAttrMa
 ------------------------------
 zimbraAutoProvNotificationFromAddress
   type="string" max="256" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: optional 
       LAZY mode: optional 
@@ -283,6 +283,40 @@ zimbraAutoProvNotificationFromAddress
 
 examples:
 $ zmprov md test.com zimbraAutoProvNotificationFromAddress prov-admin@test.com
+
+
+------------------------------
+zimbraAutoProvNotificationSubject
+  type="string" cardinality="single" optionalIn="globalConfig,domain"
+  Exposed in admin console: NO
+  Description:
+     EAGER mode: optional 
+      LAZY mode: optional 
+    MANUAL mode: optional  
+    
+    Template used to construct the subject of the notification message sent to the user 
+    when the user's account is auto provisioned.
+    Supported variables: ${ACCOUNT_ADDRESS}, ${ACCOUNT_DISPLAY_NAME}
+
+examples:
+$ zmprov md test.com zimbraAutoProvNotificationSubject "New account auto provisioned for ${ACCOUNT_DISPLAY_NAME}"
+
+
+------------------------------
+zimbraAutoProvNotificationBody
+  type="string" cardinality="single" optionalIn="globalConfig,domain"
+  Exposed in admin console: NO
+  Description:
+     EAGER mode: optional 
+      LAZY mode: optional 
+    MANUAL mode: optional  
+    
+    Template used to construct the subject of the notification message sent to the user 
+    when the user's account is auto provisioned.
+    Supported variables: ${ACCOUNT_ADDRESS}, ${ACCOUNT_DISPLAY_NAME}
+
+examples:
+$ zmprov md test.com zimbraAutoProvNotificationBody "Your account has been auto provisioned.  Your email address is ${ACCOUNT_ADDRESS}."
 
 
 ------------------------------
@@ -297,8 +331,23 @@ zimbraAutoProvListenerClass
     Class name of auto provision listener.  The class must implement the 
     com.zimbra.cs.account.Account.AutoProvisionListener interface.
     The singleton listener instance is invoked after each account is auto created in Zimbra.  
-    Listener can be plugged in as a server externsion to handle tasks like updating the account auto 
+    Listener can be plugged in as a server extension to handle tasks like updating the account auto 
     provision status in the external LDAP directory.
+    
+    At each eager provision interval, ZCS does an LDAP search based on the value configured 
+    in zimbraAutoProvLdapSearchFilter.  Returned entries from this search are candidates to 
+    be auto provisioned in this batch.   The zimbraAutoProvLdapSearchFilter should include 
+    an assertion that will only hit entries in the external directory that have not yet 
+    been provisioned in ZCS, otherwise it's likely the same entries will be repeated pulled 
+    in to ZCS.  After an account is auto provisioned in 
+    ZCS, com.zimbra.cs.account.Account.AutoProvisionListener.postCreate(Domain domain, Account acct, String externalDN) 
+    will be called by the auto provisioning framework.   Customer can implement the 
+    AutoProvisionListener interface in a ZCS server extension and get their 
+    AutoProvisionListener.postCreate() get called.   The implementation of customer's 
+    postCreate method can be, for example, setting an attribute in the external directory 
+    on the account just provisioned in ZCS.  The attribute can be included as a condition 
+    in the zimbraAutoProvLdapSearchFilter, so the entry won't be returned again by the 
+    LDAP search in the next interval.
 
 examples:
 $ zmprov md test.com zimbraAutoProvListenerClass com.company.PostAutoProvision
@@ -307,7 +356,7 @@ $ zmprov md test.com zimbraAutoProvListenerClass com.company.PostAutoProvision
 ------------------------------
 zimbraAutoProvBatchSize
   type="integer" cardinality="single" optionalIn="domain,globalConfig"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required 
       LAZY mode: N/A 
@@ -322,7 +371,7 @@ $ zmprov md test.com zimbraAutoProvBatchSize 20
 ------------------------------
 zimbraAutoProvLastPolledTimestamp
   type="gentime" cardinality="single" optionalIn="domain"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: for Zimbra internal use only - do not change it.
       LAZY mode: N/A
@@ -357,7 +406,7 @@ examples:
 ------------------------------
 zimbraAutoProvScheduledDomains
   type="string" cardinality="multi" optionalIn="server"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: N/A
@@ -374,7 +423,7 @@ $ zmprov ms server.com +zimbraAutoProvScheduledDomains domain1.com +zimbraAutoPr
 ------------------------------
 zimbraAutoProvPollingInterval
   type="duration" cardinality="single" optionalIn="server,globalConfig"
-  Exposed in admin console: YES
+  Exposed in admin console: NO
   Description:
      EAGER mode: required
       LAZY mode: N/A

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /*
@@ -49,23 +51,25 @@
  */
 package sample.oauth.provider.core;
 
-import java.util.HashSet;
-
-import java.util.Collections;
-
-import java.util.Set;
-
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+
+import net.oauth.OAuth;
+import net.oauth.OAuthAccessor;
+import net.oauth.OAuthException;
+import net.oauth.OAuthMessage;
+import net.oauth.OAuthProblemException;
+import net.oauth.OAuthValidator;
+import net.oauth.signature.OAuthSignatureMethod;
 
 import com.zimbra.common.util.StringUtil;
-import net.oauth.signature.OAuthSignatureMethod;
-import net.oauth.*;
-
 import com.zimbra.common.util.ZimbraLog;
 
 /**
@@ -123,8 +127,9 @@ public class SimpleOAuthRevAValidator implements OAuthValidator {
     protected final double maxVersion;
     protected final long timestampWindow;
 
-    /** {@inherit} 
+    /** {@inherit}
      * @throws URISyntaxException */
+    @Override
     public void validateMessage(OAuthMessage message, OAuthAccessor accessor)
     throws OAuthException, IOException, URISyntaxException {
         checkSingleParameters(message);
@@ -132,7 +137,7 @@ public class SimpleOAuthRevAValidator implements OAuthValidator {
         validateTimestampAndNonce(message);
         validateSignature(message, accessor);
     }
-    
+
     public void validateAccTokenMessage(OAuthMessage message, OAuthAccessor accessor)
     throws OAuthException, IOException, URISyntaxException {
         checkSingleParameters(message);
@@ -224,7 +229,7 @@ public class SimpleOAuthRevAValidator implements OAuthValidator {
                 OAuth.OAUTH_SIGNATURE_METHOD, OAuth.OAUTH_SIGNATURE);
         OAuthSignatureMethod.newSigner(message, accessor).validate(message);
     }
-    
+
     protected void validateVerifier(OAuthMessage message, OAuthAccessor accessor)
     throws OAuthException, IOException {
         String verifier = message.getParameter(OAuth.OAUTH_VERIFIER);
@@ -234,16 +239,16 @@ public class SimpleOAuthRevAValidator implements OAuthValidator {
                 throw problem;
         }
     }
-    
+
     // Support oauth_callback here for RevA
     protected void validateCallback(OAuthMessage message, OAuthAccessor accessor)
     throws OAuthException, IOException {
-     
+
         String callback = message.getParameter(OAuth.OAUTH_CALLBACK);
         if (callback != null && callback != "") {
         	ZimbraLog.extensions.debug("callback is ready.");
         	//if(callback=="oob"){
-        		//oob is not implemented yet	
+        		//oob is not implemented yet
         	//}else{
         		accessor.setProperty(OAuth.OAUTH_CALLBACK, callback);
         	//}
@@ -253,7 +258,7 @@ public class SimpleOAuthRevAValidator implements OAuthValidator {
             throw problem;
         }
     }
-    
+
     protected long currentTimeMsec() {
         return System.currentTimeMillis();
     }

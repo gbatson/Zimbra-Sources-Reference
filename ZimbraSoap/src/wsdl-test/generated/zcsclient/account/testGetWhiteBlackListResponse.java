@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
@@ -40,6 +43,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="addr" type="{http://www.w3.org/2001/XMLSchema}string" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -51,6 +55,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="addr" type="{http://www.w3.org/2001/XMLSchema}string" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -136,6 +141,7 @@ public class testGetWhiteBlackListResponse {
      *       &lt;sequence>
      *         &lt;element name="addr" type="{http://www.w3.org/2001/XMLSchema}string" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -150,6 +156,8 @@ public class testGetWhiteBlackListResponse {
     public static class BlackList {
 
         protected List<String> addr;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the addr property.
@@ -180,6 +188,30 @@ public class testGetWhiteBlackListResponse {
             return this.addr;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -195,6 +227,7 @@ public class testGetWhiteBlackListResponse {
      *       &lt;sequence>
      *         &lt;element name="addr" type="{http://www.w3.org/2001/XMLSchema}string" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -209,6 +242,8 @@ public class testGetWhiteBlackListResponse {
     public static class WhiteList {
 
         protected List<String> addr;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the addr property.
@@ -237,6 +272,30 @@ public class testGetWhiteBlackListResponse {
                 addr = new ArrayList<String>();
             }
             return this.addr;
+        }
+
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
         }
 
     }

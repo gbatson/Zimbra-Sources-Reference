@@ -746,7 +746,7 @@ ID: UTC-02
    Offset from UTC:                      -2 hours, 0 minutes
    Number of adjustment rules:                          0
 ID: Mid-Atlantic Standard Time
-   Display Name:                 (UTC-02:00) Mid-Atlantic
+   Display Name:           (UTC-02:00) Mid-Atlantic - Old
    Standard Name:              Mid-Atlantic Standard Time
    Daylight Name:              Mid-Atlantic Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                      -2 hours, 0 minutes
@@ -811,11 +811,11 @@ ID: Morocco Standard Time
       From 01/01/2013 00:00:00 to 31/12/2013 00:00:00
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of April
-      Ends at 03:00 on Sunday of week 5 of September
+      Ends at 03:00 on Sunday of week 5 of October
       From 01/01/2014 00:00:00 to 31/12/9999 00:00:00
       Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of April
-      Ends at 03:00 on Sunday of week 5 of September
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 03:00 on Sunday of week 5 of October
 ID: UTC
    Display Name:         (UTC) Coordinated Universal Time
    Standard Name:              Coordinated Universal Time
@@ -883,21 +883,6 @@ ID: Central European Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of March
       Ends at 03:00 on Sunday of week 5 of October
-ID: Libya Standard Time
-   Display Name:                      (UTC+01:00) Tripoli
-   Standard Name:                     Libya Standard Time
-   Daylight Name:                     Libya Daylight Time   ***Has Daylight Saving Time***
-   Offset from UTC:                       1 hours, 0 minutes
-   Number of adjustment rules:                          2
-   Adjustment Rules:
-      From 01/01/2012 00:00:00 to 31/12/2012 00:00:00
-      Delta: 01:00:00
-      Begins at 00:00 on Sunday of week 1 of January
-      Ends at 02:00 on Saturday of week 2 of November
-      From 01/01/2013 00:00:00 to 31/12/9999 00:00:00
-      Delta: 01:00:00
-      Begins at 01:00 on Friday of week 5 of March
-      Ends at 02:00 on Friday of week 5 of October
 ID: W. Central Africa Standard Time
    Display Name:          (UTC+01:00) West Central Africa
    Standard Name:         W. Central Africa Standard Time
@@ -1205,6 +1190,21 @@ ID: Israel Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Friday of week 4 of March
       Ends at 02:00 on Sunday of week 5 of October
+ID: Libya Standard Time
+   Display Name:                      (UTC+02:00) Tripoli
+   Standard Name:                     Libya Standard Time
+   Daylight Name:                     Libya Daylight Time   ***Has Daylight Saving Time***
+   Offset from UTC:                       2 hours, 0 minutes
+   Number of adjustment rules:                          2
+   Adjustment Rules:
+      From 01/01/2012 00:00:00 to 31/12/2012 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Sunday of week 1 of January
+      Ends at 02:00 on Saturday of week 2 of November
+      From 01/01/2013 00:00:00 to 31/12/2013 00:00:00
+      Delta: 01:00:00
+      Begins at 01:00 on Friday of week 5 of March
+      Ends at 00:00 on Tuesday of week 1 of January
 ID: Jordan Standard Time
    Display Name:                        (UTC+03:00) Amman
    Standard Name:                    Jordan Standard Time
@@ -1687,7 +1687,7 @@ ID: Fiji Standard Time
    Standard Name:                      Fiji Standard Time
    Daylight Name:                      Fiji Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                      12 hours, 0 minutes
-   Number of adjustment rules:                          6
+   Number of adjustment rules:                          7
    Adjustment Rules:
       From 01/01/2009 00:00:00 to 31/12/2009 00:00:00
       Delta: 01:00:00
@@ -1709,7 +1709,11 @@ ID: Fiji Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 4 of October
       Ends at 03:00 on Sunday of week 3 of January
-      From 01/01/2014 00:00:00 to 31/12/9999 00:00:00
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 4 of October
+      Ends at 03:00 on Sunday of week 3 of January
+      From 01/01/2015 00:00:00 to 31/12/9999 00:00:00
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 4 of October
       Ends at 03:00 on Sunday of week 4 of January

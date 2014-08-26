@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mime;
@@ -107,6 +109,56 @@ public class MimeTest {
         Assert.assertTrue("first body found", foundFirstBody);
         Assert.assertTrue("second body found", foundSecondBody);
 
+    }
+
+    String boundary = "----------1111971890AC3BB91";
+
+    String baseNdrContent = "From: MAILER-DAEMON@example.com\r\n" + "To: user2@example.com\r\n" + "Subject: Postmaster Copy: Undelivered Mail\r\n"
+                    + "Content-Type: multipart/report; report-type=delivery-status;\r\n" + "boundary=\"" + boundary + "\"\r\n";
+
+    @Test
+    public void multipartReportRfc822Headers() throws Exception {
+        String content = baseNdrContent + boundary + "\r\n" +
+            "Content-Description: Notification\r\n" +
+            "Content-Type: text/plain;charset=us-ascii\r\n\r\n" +
+            "<mta@example.com>: host mta.example.com[255.255.255.0] said: 554 delivery error: This user doesn't have an example.com account (in reply to end of DATA command)\r\n\r\n" +
+            boundary + "\r\n" +
+            "Content-Description: Delivery report\r\n" +
+            "Content-Type: message/delivery-status\r\n\r\n" +
+            "X-Postfix-Queue-ID: 12345\r\n" +
+            "X-Postfix-Sender: rfc822; test123@example.com\r\n" +
+            "Arrival-Date: Wed,  8 Aug 2012 00:05:30 +0900 (JST)\r\n\r\n" +
+            boundary + "\r\n" +
+            "Content-Description: Undelivered Message Headers\r\n" +
+            "Content-Type: text/rfc822-headers\r\n" +
+            "Content-Transfer-Encoding: 7bit\r\n\r\n" +
+            "From: admin@example\r\n" +
+            "To: test15@example.com\r\n" +
+            "Message-ID: <123456@client.example.com>\r\n" +
+            "Subject: test msg";
+
+        MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(
+                        content.getBytes()));
+
+        List<MPartInfo> parts = Mime.getParts(mm);
+        Assert.assertNotNull(parts);
+        Assert.assertEquals(4, parts.size());
+        MPartInfo mpart = parts.get(0);
+        Assert.assertEquals("multipart/report", mpart.getContentType());
+        List<MPartInfo> children = mpart.getChildren();
+        Assert.assertEquals(3, children.size());
+        Set<String> types = Sets.newHashSet("text/plain","message/delivery-status", "text/rfc822-headers");
+        for (MPartInfo child : children) {
+            Assert.assertTrue("Expected: " + child.getContentType(), types.remove(child.getContentType()));
+        }
+
+        Set<MPartInfo> bodies = Mime.getBody(parts, false);
+        Assert.assertEquals(2, bodies.size());
+
+        types = Sets.newHashSet("text/plain","text/rfc822-headers");
+        for (MPartInfo body : bodies) {
+            Assert.assertTrue("Expected: " + body.getContentType(), types.remove(body.getContentType()));
+        }
     }
 
     @Test

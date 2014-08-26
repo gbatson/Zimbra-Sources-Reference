@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -23,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.calendar.ParsedDateTime;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
@@ -30,7 +33,6 @@ import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Appointment;
 import com.zimbra.cs.mailbox.CalendarItem;
@@ -39,13 +41,14 @@ import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.MailboxManager.FetchMode;
+import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.acl.FolderACL;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteInfo;
 import com.zimbra.cs.mailbox.util.TagUtil;
 import com.zimbra.cs.memcached.MemcachedConnector;
+import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.session.PendingModifications.ModificationKey;
@@ -92,15 +95,16 @@ public class CalSummaryCache {
     throws ServiceException {
         CalendarItemData calItemData = null;
         try {
-            boolean rangeValid = (rangeStart >= 0 && rangeEnd > 0 && rangeStart < rangeEnd);
-            if (!rangeValid)
+            boolean rangeValid = (rangeStart >= CalendarUtils.MICROSOFT_EPOC_START_MS_SINCE_EPOC &&
+                    rangeEnd > CalendarUtils.MICROSOFT_EPOC_START_MS_SINCE_EPOC && rangeStart < rangeEnd);
+            if (!rangeValid) {
                 return null;
+            }
 
             Invite defaultInvite = calItem.getDefaultInviteOrNull();
             if (defaultInvite == null) {
                 ZimbraLog.calendar.info(
-                        "Could not load defaultinfo for calendar item with id=" +
-                        calItem.getId() + "; SKIPPING");
+                        "Could not load defaultinfo for calendar item with id=" + calItem.getId() + "; SKIPPING");
                 return null;
             }
             String defaultFba = null;
@@ -156,7 +160,8 @@ public class CalSummaryCache {
                 try {
                     long instStart = inst.getStart();
                     long duration = inst.getEnd() - instStart;
-                    Long instStartLong = instStart > 0 ? Long.valueOf(instStart) : null;
+                    // 0 means "no DTSTART", however, note that negative numbers are valid
+                    Long instStartLong = instStart != 0 ? Long.valueOf(instStart) : null;
                     Long durationLong = duration > 0 ? Long.valueOf(duration) : null;
 
                     // For an instance whose alarm time is within the time range, we must
@@ -256,8 +261,9 @@ public class CalSummaryCache {
                     // by old id to return a MailItem object having the new id.  We must ignore it here.  If
                     // we don't, we'll end up with duplicates because the new id is also in the stale item ids
                     // list.
-                    if (calItemData.getCalItemId() == calItemId)
+                    if (calItemData.getCalItemId() == calItemId) {
                         calData.addCalendarItem(calItemData);
+                    }
                 }
             }
         }
@@ -270,8 +276,9 @@ public class CalSummaryCache {
                 // by old id to return a MailItem object having the new id.  We must ignore it here.  If
                 // we don't, we'll end up with duplicates because the new id is also in the stale item ids
                 // list.
-                if (calItemData.getCalItemId() == calItemId)
+                if (calItemData.getCalItemId() == calItemId) {
                     calData.addCalendarItem(calItemData);
+                }
             }
         }
         return calData;  // return a non-null object even if there are no items in the range
@@ -356,12 +363,12 @@ public class CalSummaryCache {
 
     @SuppressWarnings("serial")
     private static class SummaryLRU extends LinkedHashMap<CalSummaryKey, CalendarData> {
-        private int mMaxAllowed;
+        private final int mMaxAllowed;
 
         // map that keeps track of which calendar folders are cached for each account
         // This map is updated every time a calendar folder is added, removed, or aged out
         // of the LRU.
-        private Map<String /* account id */, Set<Integer> /* folder ids */> mAccountFolders;
+        private final Map<String /* account id */, Set<Integer> /* folder ids */> mAccountFolders;
 
         private SummaryLRU(int capacity) {
             super(capacity + 1, 1.0f, true);
@@ -471,9 +478,9 @@ public class CalSummaryCache {
     }
 
     // LRU cache containing range-limited calendar summary by calendar folder
-    private SummaryLRU mSummaryCache;
-    private int mLRUCapacity;
-    private CalSummaryMemcachedCache mMemcachedCache;
+    private final SummaryLRU mSummaryCache;
+    private final int mLRUCapacity;
+    private final CalSummaryMemcachedCache mMemcachedCache;
 
     CalSummaryCache(final int capacity) {
         mLRUCapacity = capacity;
@@ -512,12 +519,24 @@ public class CalSummaryCache {
             boolean asAdmin = octxt != null ? octxt.isUsingAdminPrivileges() : false;
             result.allowPrivateAccess = CalendarItem.allowPrivateAccess(folder, authAcct, asAdmin);
             result.data = reloadCalendarOverRangeWithFolderScan(octxt, mbox, folderId, type, rangeStart, rangeEnd, null);
+            if (ZimbraLog.calendar.isDebugEnabled()) {
+                ZimbraLog.calendar.debug("Calendar Summary for %s reloaded (no cache) - %s items private=%s",
+                        folder.getName(), result.data.getNumItems(), result.allowPrivateAccess);
+            }
             return result;
         }
 
         // Check if we have read permission.
-        FolderACL facl = new FolderACL(octxt, targetAcctId, folderId);
-        short perms = facl.getEffectivePermissions();
+        short perms;
+        try {
+            FolderACL facl = new FolderACL(octxt, targetAcctId, folderId);
+            perms = facl.getEffectivePermissions();
+        } catch (ServiceException se) {
+            ZimbraLog.calendar.warn("Problem discovering ACLs for folder %s:%s", targetAcctId, folderId, se);
+            throw ServiceException.PERM_DENIED(
+                    "problem determining whether you have sufficient permissions on folder " +
+                    targetAcctId + ":" + folderId + " (" + se.getMessage() + ")");
+        }
         if ((short) (perms & ACL.RIGHT_READ) != ACL.RIGHT_READ)
             throw ServiceException.PERM_DENIED(
                     "you do not have sufficient permissions on folder " + targetAcctId + ":" + folderId);
@@ -525,16 +544,25 @@ public class CalSummaryCache {
 
         // Look up from memcached.
         CalSummaryKey key = new CalSummaryKey(targetAcctId, folderId);
-            CalendarData calData = mMemcachedCache.getForRange(key, rangeStart, rangeEnd);
-            if (calData != null) {
-                ZimbraPerf.COUNTER_CALENDAR_CACHE_HIT.increment(1);
-                ZimbraPerf.COUNTER_CALENDAR_CACHE_MEM_HIT.increment(1);
+        CalendarData calData = mMemcachedCache.getForRange(key, rangeStart, rangeEnd);
+        if (calData != null) {
+            ZimbraPerf.COUNTER_CALENDAR_CACHE_HIT.increment(1);
+            ZimbraPerf.COUNTER_CALENDAR_CACHE_MEM_HIT.increment(1);
             result.data = calData;
-            return result;
+            if (ZimbraLog.calendar.isDebugEnabled()) {
+                ZimbraLog.calendar.debug("Calendar Summary for %s:%s reloaded (memcached) - %s items private=%s",
+                        targetAcctId, folderId, result.data.getNumItems(), result.allowPrivateAccess);
             }
+            return result;
+        }
         // If not found in memcached and account is not on local server, we're done.
-        if (!targetAcctOnLocalServer)
+        if (!targetAcctOnLocalServer) {
+            if (ZimbraLog.calendar.isDebugEnabled()) {
+                ZimbraLog.calendar.debug("Calendar Summary - ignoring non-local %s:%s",
+                        targetAcctId, folderId);
+            }
             return null;
+        }
 
         int lruSize = 0;
         CacheLevel dataFrom = CacheLevel.Memory;
@@ -675,6 +703,11 @@ public class CalSummaryCache {
         }
         ZimbraPerf.COUNTER_CALENDAR_CACHE_LRU_SIZE.increment(lruSize);
 
+        if (ZimbraLog.calendar.isDebugEnabled()) {
+            ZimbraLog.calendar.debug("Calendar Summary for %s:%s reloaded (dataFrom=%s) - %s items private=%s",
+                    targetAcctId, folderId, dataFrom, (result.data == null) ? 0 : result.data.getNumItems(),
+                    result.allowPrivateAccess);
+        }
         return result;
     }
 

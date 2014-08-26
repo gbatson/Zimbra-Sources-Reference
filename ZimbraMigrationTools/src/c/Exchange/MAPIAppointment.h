@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #pragma once
@@ -53,7 +55,7 @@ private:
     enum
     {
         C_MESSAGE_FLAGS, C_SUBJECT, C_BODY, C_HTMLBODY, C_UID, C_START, C_END, C_LOCATION, C_BUSYSTATUS, C_ALLDAY, C_ISRECUR, C_RECURSTREAM,
-	C_TIMEZONEID, C_RESPONSESTATUS,C_RESPONSEREQUESTED, C_EXCEPTIONREPLACETIME, C_REMINDERMINUTES, C_PRIVATE, C_REMINDERSET, C_NUMALLAPPTPROPS
+	C_TIMEZONEID, C_RESPONSESTATUS,C_RESPONSEREQUESTED, C_EXCEPTIONREPLACETIME, C_REMINDERMINUTES, C_PRIVATE, C_REMINDERSET, C_SENSITIVITY,C_NUMALLAPPTPROPS
 	//org stuff later
     };
 
@@ -62,7 +64,7 @@ private:
     LONG nameIdsC[N_NUMCOMMONPROPS];
 
     int m_iExceptionType;
-
+	bool m_bUseOOM;
     // appointment data members (represented both by regular and named props
     wstring m_pSubject;
     wstring m_pInstanceUID;
@@ -91,7 +93,7 @@ private:
     LPWSTR _pTzString;
 	Zimbra::MAPI::MAPIStore *m_mapiStore;
 	Zimbra::Mail::TimeZone *pInvTz;
-
+	double m_dStartDate;
 	IAddrBook *m_pAddrBook;
 	HRESULT UpdateAttendeeFromEntryId(Attendee &pAttendee,SBinary &eid);
 public:
@@ -100,9 +102,11 @@ public:
     HRESULT InitNamedPropsForAppt();
     HRESULT SetMAPIAppointmentValues();
     void SetSubject(LPTSTR pStr);
-    void SetStartDate(FILETIME ft);
+    void SetStartDate(double vst);
+	void SetStartDate(FILETIME ft);
     LPWSTR MakeDateFromExPtr(FILETIME ft);
-    void SetEndDate(FILETIME ft, bool bAllday);
+    void SetEndDate(double vet, bool bAllday);
+	void SetEndDate(FILETIME ft, bool bAllday);
     void SetInstanceUID(LPSBinary bin);
     void SetLocation(LPTSTR pStr);
     void SetBusyStatus(long busystatus);
@@ -115,7 +119,7 @@ public:
     wstring ConvertValueToPartStat(long ps);
     HRESULT SetOrganizerAndAttendees();
     void SetReminderMinutes(long reminderminutes);
-    void SetPrivate(unsigned short usPrivate);
+    void SetPrivate(unsigned short usPrivate,bool bSensitivity=false);
 	void SetReminderSet(unsigned short usReminderset);
 	void SetResponseRequested(unsigned short usPrivate);
     void SetPlainTextFileAndContent();

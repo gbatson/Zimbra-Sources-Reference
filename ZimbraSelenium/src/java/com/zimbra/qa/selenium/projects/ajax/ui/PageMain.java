@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -17,12 +19,11 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import org.openqa.selenium.JavascriptExecutor;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogError.DialogErrorID;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.DialogWarningID;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogError.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.*;
 
 
 /**
@@ -145,7 +146,14 @@ public class PageMain extends AbsTab {
 			((AppAjaxClient)MyApplication).zPageLogin.zNavigateTo();
 		}
 		((AppAjaxClient)MyApplication).zPageLogin.zLogin(ZimbraAccount.AccountZWC());
-		zWaitForActive();
+		
+		// June 28, 2013 (9.0.0 Beta)
+		// For coverage, it seems to take longer than 60 seconds for the page to load
+		// Update the value to 120 seconds, and then make sure the harness doesn't slow
+		// down, or else that could mean a slowdown in the client.
+		//
+		// zWaitForActive();		// Default: 60 seconds
+		zWaitForActive(120000);
 		
 	}
 
@@ -247,7 +255,104 @@ public class PageMain extends AbsTab {
 
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option) throws HarnessException {
-		throw new HarnessException("Main page does not have a Toolbar");
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
+		
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+		
+		
+		
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (option == null)
+			throw new HarnessException("Option cannot be null!");
+
+		
+		// Default behavior variables
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+		
+
+		if (pulldown == Button.B_ACCOUNT) {
+			
+			
+			if (option == Button.O_PRODUCT_HELP) {
+
+				pulldownLocator = "css=div#skin_outer td#skin_dropMenu div.DwtLinkButtonDropDownArrow";
+				optionLocator = "css=div[id^='POPUP'] div[id='documentation'] td[id$='_title']";
+				
+				SeparateWindow window = new SeparateWindow(this.MyApplication);
+				window.zInitializeWindowNames();
+				
+				this.zClickAt(pulldownLocator, "0,0");
+				this.zWaitForBusyOverlay();
+
+				this.zClickAt(optionLocator, "0,0");
+				this.zWaitForBusyOverlay();
+
+				return (window);
+				
+			} else if (option == Button.O_ABOUT) {
+
+					pulldownLocator = "css=div#skin_outer td#skin_dropMenu div.DwtLinkButtonDropDownArrow";
+					optionLocator = "css=div[id^='POPUP'] div[id='about'] td[id$='_title']";
+					page = new DialogInformational(DialogInformational.DialogWarningID.InformationalDialog, this.MyApplication, this);
+
+					// FALL THROUGH
+					
+			} else {
+				
+				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
+			}
+			
+
+		} else {
+			throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
+		}
+
+		
+		
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown + " option " + option + " pulldownLocator " + pulldownLocator + " not present!");
+			}
+
+			this.zClickAt(pulldownLocator, "0,0");
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException("Button " + pulldown + " option " + option + " optionLocator " + optionLocator + " not present!");
+				}
+
+				this.zClickAt(optionLocator, "0,0");
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+				
+			}
+
+		}
+		
+		// If we click on pulldown/option and the page is specified, then
+		// wait for the page to go active
+		if (page != null) {
+			
+			page.zWaitForActive();
+			
+		}
+
+		// Return the specified page, or null if not set
+		return (page);
+
 	}
 
 	@Override
@@ -283,6 +388,52 @@ public class PageMain extends AbsTab {
 				this.zWaitForBusyOverlay();
 			}
 		}
+	}
+
+	/**
+	 * Change the URL (and reload) to access deep-link pages
+	 * @param uri The URL to access (e.g. ?to=foo@foo.com&body=MsgContent&subject=MsgSubject&view=compose)
+	 * @return the page that opens
+	 * @throws HarnessException 
+	 */
+	public AbsPage zOpenDeeplink(ZimbraURI uri) throws HarnessException {
+		logger.info("PageMain.zOpenDeeplink("+ uri.toString() + ")");
+		
+		AbsPage page = null;
+		
+		
+		if ( !uri.getQuery().containsKey("view") ) {
+			throw new HarnessException("query attribute 'view' must be specified");
+		}
+		
+		if ( uri.getQuery().get("view").equals("compose") ) {
+			
+			page = new FormMailNew(this.MyApplication);
+			
+			// FALL THROUGH
+			
+		} else if ( uri.getQuery().get("view").equals("msg") ) {
+			
+			// page = new DisplayMail(this.MyApplication);
+			throw new HarnessException("implement me!");
+			
+			// FALL THROUGH
+			
+		} else {
+			
+			throw new HarnessException("query attribute 'view' must be specified");
+			
+		}
+		
+		// Re-open the URL
+		this.sOpen(uri.getURL().toString());
+
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		
+		return (page);
+
 	}
 
 	

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -24,17 +26,14 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.LinkedHashMultimap;
@@ -45,6 +44,7 @@ import com.google.common.io.Closeables;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.index.ZimbraIndexReader.TermFieldEnumeration;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -85,10 +85,10 @@ public final class LuceneQueryOperation extends QueryOperation {
     private final List<QueryInfo> queryInfo = Lists.newArrayList();
     private boolean hasSpamTrashSetting = false;
 
-    private TopDocs hits;
+    private ZimbraTopDocs hits;
     private int topDocsLen = 0; // number of hits fetched
     private int topDocsChunkSize = 2000; // how many hits to fetch per step in Lucene
-    private IndexSearcher searcher;
+    private ZimbraIndexSearcher searcher;
     private Sort sort;
 
     /**
@@ -308,7 +308,7 @@ public final class LuceneQueryOperation extends QueryOperation {
 
         long start = System.currentTimeMillis();
         LuceneResultsChunk result = new LuceneResultsChunk();
-        int luceneLen = hits != null ? hits.totalHits : 0;
+        int luceneLen = hits != null ? hits.getTotalHits() : 0;
         while ((result.size() < max) && (curHitNo < luceneLen)) {
             if (topDocsLen <= curHitNo) {
                 topDocsLen += topDocsChunkSize;
@@ -324,9 +324,10 @@ public final class LuceneQueryOperation extends QueryOperation {
 
             Document doc;
             try {
-                doc = searcher.doc(hits.scoreDocs[curHitNo].doc);
+                doc = searcher.doc(hits.getScoreDoc(curHitNo).getDocumentID());
             } catch (Exception e) {
-                ZimbraLog.search.error("Failed to retrieve Lucene document: %d", hits.scoreDocs[curHitNo].doc, e);
+                ZimbraLog.search.error("Failed to retrieve Lucene document: %s",
+                        hits.getScoreDoc(curHitNo).getDocumentID().toString(), e);
                 return result;
             }
             curHitNo++;
@@ -392,13 +393,7 @@ public final class LuceneQueryOperation extends QueryOperation {
                 hits = null;
                 return;
             }
-            TermsFilter filter = null;
-            if (filterTerms != null) {
-                filter = new TermsFilter();
-                for (Term t : filterTerms) {
-                    filter.addTerm(t);
-                }
-            }
+            ZimbraTermsFilter filter = (filterTerms != null) ? new ZimbraTermsFilter(filterTerms) : null;
             long start = System.currentTimeMillis();
             if (sort == null) {
                 hits = searcher.search(luceneQuery, filter, topDocsLen);
@@ -406,7 +401,7 @@ public final class LuceneQueryOperation extends QueryOperation {
                 hits = searcher.search(luceneQuery, filter, topDocsLen, sort);
             }
             ZimbraLog.search.debug("LuceneSearch query=%s,n=%d,total=%d,elapsed=%d",
-                    luceneQuery, topDocsLen, hits.totalHits, System.currentTimeMillis() - start);
+                    luceneQuery, topDocsLen, hits.getTotalHits(), System.currentTimeMillis() - start);
         } catch (IOException e) {
             ZimbraLog.search.error("Failed to search query=%s", luceneQuery, e);
             Closeables.closeQuietly(searcher);
@@ -430,20 +425,23 @@ public final class LuceneQueryOperation extends QueryOperation {
                     mquery.add(terms);
                     continue;
                 }
-                TermEnum itr = searcher.getIndexReader().terms(base);
                 List<Term> expanded = Lists.newArrayList();
-                do {
-                    Term term = itr.term();
-                    if (term != null && base.field().equals(term.field()) && term.text().startsWith(base.text())) {
-                        if (expanded.size() >= max) { // too many terms expanded
+                TermFieldEnumeration itr = searcher.getIndexReader().getTermsForField(base.field(), base.text());
+                try {
+                    while (itr.hasMoreElements()) {
+                        BrowseTerm term = itr.nextElement();
+                        if (term != null && term.getText().startsWith(base.text())) {
+                            if (expanded.size() >= max) { // too many terms expanded
+                                break;
+                            }
+                            expanded.add(new Term(base.field(), term.getText()));
+                        } else {
                             break;
                         }
-                        expanded.add(term);
-                    } else {
-                        break;
                     }
-                } while (itr.next());
-                itr.close();
+                } finally {
+                    Closeables.closeQuietly(itr);
+                }
                 if (expanded.isEmpty()) {
                     return null;
                 } else {
@@ -515,7 +513,7 @@ public final class LuceneQueryOperation extends QueryOperation {
      * @return number of hits in this search
      */
     private long getTotalHitCount() {
-        return hits != null ? hits.totalHits : 0;
+        return hits != null ? hits.getTotalHits() : 0;
     }
 
     @Override
@@ -585,6 +583,9 @@ public final class LuceneQueryOperation extends QueryOperation {
             }
             luceneQuery = top;
             queryInfo.addAll(other.getResultInfo());
+            if (other.hasSpamTrashSetting()) {
+                forceHasSpamTrashSetting();
+            }
             return this;
         }
         return null;
@@ -631,6 +632,14 @@ public final class LuceneQueryOperation extends QueryOperation {
 
     List<QueryInfo> getQueryInfo() {
         return queryInfo;
+    }
+
+    public String getQueryString() {
+        return queryString;
+    }
+
+    public Query getQuery() {
+        return luceneQuery;
     }
 
     @Override
@@ -791,7 +800,8 @@ public final class LuceneQueryOperation extends QueryOperation {
                 assert false : sortBy; // should already be checked in the compile phase
             case DATE:
             default: // default to DATE_DESCENDING
-                return new Sort(new SortField(LuceneFields.L_SORT_DATE, SortField.STRING, true));
+                return new Sort(new SortField(LuceneFields.L_SORT_DATE, SortField.STRING,
+                        sortBy.getDirection() == SortBy.Direction.DESC));
         }
     }
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.common.util;
@@ -33,6 +35,7 @@ import com.zimbra.common.service.ServiceException;
 public final class DateUtil {
 
     public static final String ZIMBRA_LDAP_GENERALIZED_TIME_FORMAT = "yyyyMMddHHmmss'Z'";
+    public static final String ZIMBRA_LDAP_GENERALIZED_TIME_FORMAT_WITH_MS = "yyyyMMddHHmmss.SSS'Z'";
 
     private DateUtil() {
     }
@@ -42,6 +45,17 @@ public final class DateUtil {
      */
     public static String toGeneralizedTime(Date date) {
         SimpleDateFormat fmt = new SimpleDateFormat(ZIMBRA_LDAP_GENERALIZED_TIME_FORMAT);
+        TimeZone tz = fmt.getCalendar().getTimeZone();
+        Date gmtDate;
+        if (tz.inDaylightTime(date))
+            gmtDate = new Date(date.getTime() - (tz.getRawOffset() + tz.getDSTSavings()));
+        else
+            gmtDate = new Date(date.getTime() - tz.getRawOffset());
+        return fmt.format(gmtDate);
+    }
+
+    public static String toGeneralizedTimeWithMs(Date date) {
+        SimpleDateFormat fmt = new SimpleDateFormat(ZIMBRA_LDAP_GENERALIZED_TIME_FORMAT_WITH_MS);
         TimeZone tz = fmt.getCalendar().getTimeZone();
         Date gmtDate;
         if (tz.inDaylightTime(date))
@@ -134,9 +148,9 @@ public final class DateUtil {
         cal.setTime(date);
         return toRFC822Date(cal);
     }
-
+    
     public static String toRFC822Date(Calendar cal) {
-
+        
         String tzabbr = getTimezoneAbbreviation(cal.getTimeZone().getID(), cal.get(Calendar.DST_OFFSET) != 0);
         int tzoffset = (cal.get(Calendar.ZONE_OFFSET) + cal.get(Calendar.DST_OFFSET)) / 60000;
         char tzsign = tzoffset > 0 ? '+' : '-';
@@ -157,6 +171,22 @@ public final class DateUtil {
         append2DigitNumber(sb, tzoffset % 60);
         if (tzabbr != null)
             sb.append(" (").append(tzabbr).append(')');
+        return sb.toString();
+    }
+
+    public static String toRFC1123Date(Calendar cal) {
+        cal.setTimeZone(TimeZone.getTimeZone("GMT"));
+        
+        StringBuilder sb = new StringBuilder(40);
+        sb.append(DAY_NAME[cal.get(Calendar.DAY_OF_WEEK)]);
+        append2DigitNumber(sb, cal.get(Calendar.DAY_OF_MONTH)).append(' ');
+        sb.append(MONTH_NAME[cal.get(Calendar.MONTH)]).append(' ');
+        sb.append(cal.get(Calendar.YEAR)).append(' ');
+
+        append2DigitNumber(sb, cal.get(Calendar.HOUR_OF_DAY)).append(':');
+        append2DigitNumber(sb, cal.get(Calendar.MINUTE)).append(':');
+        append2DigitNumber(sb, cal.get(Calendar.SECOND)).append(' ');
+        sb.append("GMT");
         return sb.toString();
     }
 
@@ -597,7 +627,7 @@ public final class DateUtil {
         DateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
         Date formatDate;
         try {
-            formatDate = (Date)formatter.parse(date);
+            formatDate = formatter.parse(date);
             return formatDate.getTime()/Constants.MILLIS_PER_SECOND;
         } catch (ParseException e) {
             return -1;

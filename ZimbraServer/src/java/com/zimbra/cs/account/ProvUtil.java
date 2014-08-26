@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -67,8 +69,8 @@ import com.zimbra.common.net.SocketFactories;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.soap.SoapHttpTransport.HttpDebugListener;
+import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.util.AccountLogger;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.CliUtil;
@@ -97,12 +99,12 @@ import com.zimbra.cs.account.accesscontrol.ComboRight;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.Help;
 import com.zimbra.cs.account.accesscontrol.Right;
+import com.zimbra.cs.account.accesscontrol.Right.RightType;
 import com.zimbra.cs.account.accesscontrol.RightClass;
 import com.zimbra.cs.account.accesscontrol.RightCommand;
 import com.zimbra.cs.account.accesscontrol.RightManager;
 import com.zimbra.cs.account.accesscontrol.RightModifier;
 import com.zimbra.cs.account.accesscontrol.TargetType;
-import com.zimbra.cs.account.accesscontrol.Right.RightType;
 import com.zimbra.cs.account.ldap.LdapEntrySearchFilter;
 import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.account.soap.SoapProvisioning;
@@ -304,6 +306,7 @@ public class ProvUtil implements HttpDebugListener {
         RIGHT("help on right-related commands"),
         SEARCH("help on search-related commands"),
         SERVER("help on server-related commands"),
+        ALWAYSONCLUSTER("help on alwaysOnCluster-related commands"),
         UCSERVICE("help on ucservice-related commands"),
         SHARE("help on share related commands");
 
@@ -524,146 +527,154 @@ public class ProvUtil implements HttpDebugListener {
         CHECK_PASSWORD_STRENGTH("checkPasswordStrength", "cps", "{name@domain|id} {password}", Category.ACCOUNT, 2, 2),
         CHECK_RIGHT("checkRight", "ckr", "{target-type} [{target-id|target-name}] {grantee-id|grantee-name (note:can only check internal user)} {right}",
                 Category.RIGHT, 3, 4, null, new RightCommandHelp(false, false, true)),
-        COPY_COS("copyCos", "cpc", "{src-cos-name|id} {dest-cos-name}", Category.COS, 2, 2),
-        COUNT_ACCOUNT("countAccount", "cta", "{domain|id}", Category.DOMAIN, 1, 1),
-        COUNT_OBJECTS("countObjects", "cto", "{" + CountObjectsType.names("|") + "} [-d {domain|id}] [-u {UCService|id}]", Category.MISC, 1, 4),
-        CREATE_ACCOUNT("createAccount", "ca", "{name@domain} {password} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 2, Integer.MAX_VALUE),
-        CREATE_ALIAS_DOMAIN("createAliasDomain", "cad", "{alias-domain-name} {local-domain-name|id} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
-        CREATE_BULK_ACCOUNTS("createBulkAccounts", "cabulk", "{domain} {namemask} {number of accounts to create}", Category.MISC, 3, 3),
-        CREATE_CALENDAR_RESOURCE("createCalendarResource",  "ccr", "{name@domain} {password} [attr1 value1 [attr2 value2...]]", Category.CALENDAR, 2, Integer.MAX_VALUE),
-        CREATE_COS("createCos", "cc", "{name} [attr1 value1 [attr2 value2...]]", Category.COS, 1, Integer.MAX_VALUE),
-        CREATE_DATA_SOURCE("createDataSource", "cds", "{name@domain} {ds-type} {ds-name} zimbraDataSourceEnabled {TRUE|FALSE} zimbraDataSourceFolderId {folder-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 3, Integer.MAX_VALUE),
-        CREATE_DISTRIBUTION_LIST("createDistributionList", "cdl", "{list@domain}", Category.LIST, 1, Integer.MAX_VALUE),
-        CREATE_DYNAMIC_DISTRIBUTION_LIST("createDynamicDistributionList", "cddl", "{list@domain}", Category.LIST, 1, Integer.MAX_VALUE),
-        CREATE_DISTRIBUTION_LISTS_BULK("createDistributionListsBulk", "cdlbulk"),
-        CREATE_DOMAIN("createDomain", "cd", "{domain} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
-        CREATE_SERVER("createServer", "cs", "{name} [attr1 value1 [attr2 value2...]]", Category.SERVER, 1, Integer.MAX_VALUE),
-        CREATE_UC_SERVICE("createUCService", "cucs", "{name} [attr1 value1 [attr2 value2...]]", Category.UCSERVICE, 1, Integer.MAX_VALUE),
-        CREATE_IDENTITY("createIdentity", "cid", "{name@domain} {identity-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 2, Integer.MAX_VALUE),
-        CREATE_SIGNATURE("createSignature", "csig", "{name@domain} {signature-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 2, Integer.MAX_VALUE),
-        CREATE_XMPP_COMPONENT("createXMPPComponent", "cxc", "{short-name} {domain}  {server} {classname} {category} {type} [attr value1 [attr2 value2...]]", Category.CONFIG, 6, Integer.MAX_VALUE),
-        DELETE_ACCOUNT("deleteAccount", "da", "{name@domain|id}", Category.ACCOUNT, 1, 1),
-        DELETE_CALENDAR_RESOURCE("deleteCalendarResource",  "dcr", "{name@domain|id}", Category.CALENDAR, 1, 1),
-        DELETE_COS("deleteCos", "dc", "{name|id}", Category.COS, 1, 1),
-        DELETE_DATA_SOURCE("deleteDataSource", "dds", "{name@domain|id} {ds-name|ds-id}", Category.ACCOUNT, 2, 2),
-        DELETE_DISTRIBUTION_LIST("deleteDistributionList", "ddl", "{list@domain|id}", Category.LIST, 1, 1),
-        DELETE_DOMAIN("deleteDomain", "dd", "{domain|id}", Category.DOMAIN, 1, 1),
-        DELETE_IDENTITY("deleteIdentity", "did", "{name@domain|id} {identity-name}", Category.ACCOUNT, 2, 2),
-        DELETE_SIGNATURE("deleteSignature", "dsig", "{name@domain|id} {signature-name}", Category.ACCOUNT, 2, 2),
-        DELETE_SERVER("deleteServer", "ds", "{name|id}", Category.SERVER, 1, 1),
-        DELETE_UC_SERVICE("deleteUCService", "ducs", "{name|id}", Category.UCSERVICE, 1, 1),
-        DELETE_XMPP_COMPONENT("deleteXMPPComponent", "dxc", "{xmpp-component-name}", Category.CONFIG, 1, 1),
-        DESCRIBE("describe", "desc", "[[-v] [-ni] [{entry-type}]] | [-a {attribute-name}]", Category.MISC, 0, Integer.MAX_VALUE, null, null, true),
-        EXIT("exit", "quit", "", Category.MISC, 0, 0),
-        FLUSH_CACHE("flushCache", "fc", "[-a] {"+CacheEntryType.names()+"|<extension-cache-type>} [name1|id1 [name2|id2...]]", Category.MISC, 1, Integer.MAX_VALUE),
-        GENERATE_DOMAIN_PRE_AUTH("generateDomainPreAuth", "gdpa", "{domain|id} {name|id|foreignPrincipal} {by} {timestamp|0} {expires|0}", Category.MISC, 5, 6),
-        GENERATE_DOMAIN_PRE_AUTH_KEY("generateDomainPreAuthKey", "gdpak", "[-f] {domain|id}", Category.MISC, 1, 2),
-        GET_ACCOUNT("getAccount", "ga", "[-e] {name@domain|id} [attr1 [attr2...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
-        GET_DATA_SOURCES("getDataSources", "gds", "{name@domain|id} [arg1 [arg2...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
-        GET_IDENTITIES("getIdentities", "gid", "{name@domain|id} [arg1 [arg...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
-        GET_SIGNATURES("getSignatures", "gsig", "{name@domain|id} [arg1 [arg...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
-        GET_ACCOUNT_MEMBERSHIP("getAccountMembership", "gam", "{name@domain|id}", Category.ACCOUNT, 1, 2),
-        GET_ALL_ACCOUNTS("getAllAccounts","gaa", "[-v] [-e] [-s server] [{domain}]", Category.ACCOUNT, 0, 5, Via.ldap),
-        GET_ACCOUNT_LOGGERS("getAccountLoggers", "gal", "[-s/--server hostname] {name@domain|id}", Category.LOG, 1, 3),
-        GET_ALL_ACCOUNT_LOGGERS("getAllAccountLoggers", "gaal", "[-s/--server hostname]", Category.LOG, 0, 2),
-        GET_ALL_ADMIN_ACCOUNTS("getAllAdminAccounts", "gaaa", "[-v] [-e] [attr1 [attr2...]]", Category.ACCOUNT, 0, Integer.MAX_VALUE),
-        GET_ALL_CALENDAR_RESOURCES("getAllCalendarResources", "gacr", "[-v] [-e] [-s server] [{domain}]", Category.CALENDAR, 0, 5),
-        GET_ALL_CONFIG("getAllConfig", "gacf", "[attr1 [attr2...]]", Category.CONFIG, 0, Integer.MAX_VALUE),
-        GET_ALL_COS("getAllCos", "gac", "[-v]", Category.COS, 0, 1),
-        GET_ALL_DISTRIBUTION_LISTS("getAllDistributionLists", "gadl", "[-v] [{domain}]", Category.LIST, 0, 2),
-        GET_ALL_DOMAINS("getAllDomains", "gad", "[-v] [-e] [attr1 [attr2...]]", Category.DOMAIN, 0, Integer.MAX_VALUE),
-        GET_ALL_EFFECTIVE_RIGHTS("getAllEffectiveRights", "gaer", "{grantee-type} {grantee-id|grantee-name} [expandSetAttrs] [expandGetAttrs]", Category.RIGHT, 2, 4),
-        GET_ALL_FREEBUSY_PROVIDERS("getAllFbp", "gafbp", "[-v]", Category.FREEBUSY, 0, 1),
-        GET_ALL_RIGHTS("getAllRights", "gar", "[-v] [-t {target-type}] [-c " + RightClass.allValuesInString("|") + "]", Category.RIGHT, 0, 5),
-        GET_ALL_SERVERS("getAllServers", "gas", "[-v] [-e] [service]", Category.SERVER, 0, 3),
-        GET_ALL_UC_SERVICES("getAllUCServices", "gaucs", "[-v]", Category.UCSERVICE, 0, 3),
-        GET_ALL_XMPP_COMPONENTS("getAllXMPPComponents", "gaxcs", "", Category.CONFIG, 0, 0),
-        GET_AUTH_TOKEN_INFO("getAuthTokenInfo", "gati", "{auth-token}", Category.MISC, 1, 1),
-        GET_CALENDAR_RESOURCE("getCalendarResource",     "gcr", "{name@domain|id} [attr1 [attr2...]]", Category.CALENDAR, 1, Integer.MAX_VALUE),
-        GET_CONFIG("getConfig", "gcf", "{name}", Category.CONFIG, 1, 1),
-        GET_COS("getCos", "gc", "{name|id} [attr1 [attr2...]]", Category.COS, 1, Integer.MAX_VALUE),
-        GET_DISTRIBUTION_LIST("getDistributionList", "gdl", "{list@domain|id} [attr1 [attr2...]]", Category.LIST, 1, Integer.MAX_VALUE),
-        GET_DISTRIBUTION_LIST_MEMBERSHIP("getDistributionListMembership", "gdlm", "{name@domain|id}", Category.LIST, 1, 1),
-        GET_DOMAIN("getDomain", "gd", "[-e] {domain|id} [attr1 [attr2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
-        GET_DOMAIN_INFO("getDomainInfo", "gdi", "name|id|virtualHostname {value} [attr1 [attr2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
-        GET_CONFIG_SMIME_CONFIG("getConfigSMIMEConfig", "gcsc", "[configName]", Category.DOMAIN, 0, 1),
-        GET_DOMAIN_SMIME_CONFIG("getDomainSMIMEConfig", "gdsc", "name|id [configName]", Category.DOMAIN, 1, 2),
-        GET_EFFECTIVE_RIGHTS("getEffectiveRights", "ger", "{target-type} [{target-id|target-name}] {grantee-id|grantee-name} [expandSetAttrs] [expandGetAttrs]",
-                Category.RIGHT, 1, 5, null, new RightCommandHelp(false, false, false)),
+                COPY_COS("copyCos", "cpc", "{src-cos-name|id} {dest-cos-name}", Category.COS, 2, 2),
+                COUNT_ACCOUNT("countAccount", "cta", "{domain|id}", Category.DOMAIN, 1, 1),
+                COUNT_OBJECTS("countObjects", "cto", "{" + CountObjectsType.names("|") + "} [-d {domain|id}] [-u {UCService|id}]", Category.MISC, 1, 4),
+                CREATE_ACCOUNT("createAccount", "ca", "{name@domain} {password} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 2, Integer.MAX_VALUE),
+                CREATE_ALIAS_DOMAIN("createAliasDomain", "cad", "{alias-domain-name} {local-domain-name|id} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
+                CREATE_ALWAYSONCLUSTER("createAlwaysOnCluster", "caoc", "{name} [attr1 value1 [attr2 value2...]]", Category.ALWAYSONCLUSTER, 1, Integer.MAX_VALUE),
+                CREATE_BULK_ACCOUNTS("createBulkAccounts", "cabulk", "{domain} {namemask} {number of accounts to create}", Category.MISC, 3, 3),
+                CREATE_CALENDAR_RESOURCE("createCalendarResource",  "ccr", "{name@domain} {password} [attr1 value1 [attr2 value2...]]", Category.CALENDAR, 2, Integer.MAX_VALUE),
+                CREATE_COS("createCos", "cc", "{name} [attr1 value1 [attr2 value2...]]", Category.COS, 1, Integer.MAX_VALUE),
+                CREATE_DATA_SOURCE("createDataSource", "cds", "{name@domain} {ds-type} {ds-name} zimbraDataSourceEnabled {TRUE|FALSE} zimbraDataSourceFolderId {folder-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 3, Integer.MAX_VALUE),
+                CREATE_DISTRIBUTION_LIST("createDistributionList", "cdl", "{list@domain}", Category.LIST, 1, Integer.MAX_VALUE),
+                CREATE_DYNAMIC_DISTRIBUTION_LIST("createDynamicDistributionList", "cddl", "{list@domain}", Category.LIST, 1, Integer.MAX_VALUE),
+                CREATE_DISTRIBUTION_LISTS_BULK("createDistributionListsBulk", "cdlbulk"),
+                CREATE_DOMAIN("createDomain", "cd", "{domain} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
+                CREATE_SERVER("createServer", "cs", "{name} [attr1 value1 [attr2 value2...]]", Category.SERVER, 1, Integer.MAX_VALUE),
+                CREATE_UC_SERVICE("createUCService", "cucs", "{name} [attr1 value1 [attr2 value2...]]", Category.UCSERVICE, 1, Integer.MAX_VALUE),
+                CREATE_IDENTITY("createIdentity", "cid", "{name@domain} {identity-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 2, Integer.MAX_VALUE),
+                CREATE_SIGNATURE("createSignature", "csig", "{name@domain} {signature-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 2, Integer.MAX_VALUE),
+                CREATE_XMPP_COMPONENT("createXMPPComponent", "cxc", "{short-name} {domain}  {server} {classname} {category} {type} [attr value1 [attr2 value2...]]", Category.CONFIG, 6, Integer.MAX_VALUE),
+                DELETE_ACCOUNT("deleteAccount", "da", "{name@domain|id}", Category.ACCOUNT, 1, 1),
+                DELETE_ALWAYSONCLUSTER("deleteAlwaysOnCluster", "daoc", "{name|id}", Category.ALWAYSONCLUSTER, 1, 1),
+                DELETE_CALENDAR_RESOURCE("deleteCalendarResource",  "dcr", "{name@domain|id}", Category.CALENDAR, 1, 1),
+                DELETE_COS("deleteCos", "dc", "{name|id}", Category.COS, 1, 1),
+                DELETE_DATA_SOURCE("deleteDataSource", "dds", "{name@domain|id} {ds-name|ds-id}", Category.ACCOUNT, 2, 2),
+                DELETE_DISTRIBUTION_LIST("deleteDistributionList", "ddl", "{list@domain|id}", Category.LIST, 1, 1),
+                DELETE_DOMAIN("deleteDomain", "dd", "{domain|id}", Category.DOMAIN, 1, 1),
+                DELETE_IDENTITY("deleteIdentity", "did", "{name@domain|id} {identity-name}", Category.ACCOUNT, 2, 2),
+                DELETE_SIGNATURE("deleteSignature", "dsig", "{name@domain|id} {signature-name}", Category.ACCOUNT, 2, 2),
+                DELETE_SERVER("deleteServer", "ds", "{name|id}", Category.SERVER, 1, 1),
+                DELETE_UC_SERVICE("deleteUCService", "ducs", "{name|id}", Category.UCSERVICE, 1, 1),
+                DELETE_XMPP_COMPONENT("deleteXMPPComponent", "dxc", "{xmpp-component-name}", Category.CONFIG, 1, 1),
+                DESCRIBE("describe", "desc", "[[-v] [-ni] [{entry-type}]] | [-a {attribute-name}]", Category.MISC, 0, Integer.MAX_VALUE, null, null, true),
+                EXIT("exit", "quit", "", Category.MISC, 0, 0),
+                FLUSH_CACHE("flushCache", "fc", "[-a] {"+CacheEntryType.names()+"|<extension-cache-type>} [name1|id1 [name2|id2...]]", Category.MISC, 1, Integer.MAX_VALUE),
+                GENERATE_DOMAIN_PRE_AUTH("generateDomainPreAuth", "gdpa", "{domain|id} {name|id|foreignPrincipal} {by} {timestamp|0} {expires|0}", Category.MISC, 5, 6),
+                GENERATE_DOMAIN_PRE_AUTH_KEY("generateDomainPreAuthKey", "gdpak", "[-f] {domain|id}", Category.MISC, 1, 2),
+                GET_ACCOUNT("getAccount", "ga", "[-e] {name@domain|id} [attr1 [attr2...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
+                GET_ALWAYSONCLUSTER("getAlwaysOnCluster", "gaoc", "{name|id} [attr1 [attr2...]]", Category.ALWAYSONCLUSTER, 1, Integer.MAX_VALUE),
+                GET_DATA_SOURCES("getDataSources", "gds", "{name@domain|id} [arg1 [arg2...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
+                GET_IDENTITIES("getIdentities", "gid", "{name@domain|id} [arg1 [arg...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
+                GET_SIGNATURES("getSignatures", "gsig", "{name@domain|id} [arg1 [arg...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
+                GET_ACCOUNT_MEMBERSHIP("getAccountMembership", "gam", "{name@domain|id}", Category.ACCOUNT, 1, 2),
+                GET_ALL_ACCOUNTS("getAllAccounts","gaa", "[-v] [-e] [-s server] [{domain}]", Category.ACCOUNT, 0, 5, Via.ldap),
+                GET_ACCOUNT_LOGGERS("getAccountLoggers", "gal", "[-s/--server hostname] {name@domain|id}", Category.LOG, 1, 3),
+                GET_ALL_ACTIVE_SERVERS("getAllActiveServers", "gaas", "[-v]", Category.SERVER, 0, 1),
+                GET_ALL_ACCOUNT_LOGGERS("getAllAccountLoggers", "gaal", "[-s/--server hostname]", Category.LOG, 0, 2),
+                GET_ALL_ADMIN_ACCOUNTS("getAllAdminAccounts", "gaaa", "[-v] [-e] [attr1 [attr2...]]", Category.ACCOUNT, 0, Integer.MAX_VALUE),
+                GET_ALL_ALWAYSONCLUSTERS("getAllAlwaysOnClusters", "gaaoc", "[-v]", Category.ALWAYSONCLUSTER, 0, 1),
+                GET_ALL_CALENDAR_RESOURCES("getAllCalendarResources", "gacr", "[-v] [-e] [-s server] [{domain}]", Category.CALENDAR, 0, 5),
+                GET_ALL_CONFIG("getAllConfig", "gacf", "[attr1 [attr2...]]", Category.CONFIG, 0, Integer.MAX_VALUE),
+                GET_ALL_COS("getAllCos", "gac", "[-v]", Category.COS, 0, 1),
+                GET_ALL_DISTRIBUTION_LISTS("getAllDistributionLists", "gadl", "[-v] [{domain}]", Category.LIST, 0, 2),
+                GET_ALL_DOMAINS("getAllDomains", "gad", "[-v] [-e] [attr1 [attr2...]]", Category.DOMAIN, 0, Integer.MAX_VALUE),
+                GET_ALL_EFFECTIVE_RIGHTS("getAllEffectiveRights", "gaer", "{grantee-type} {grantee-id|grantee-name} [expandSetAttrs] [expandGetAttrs]", Category.RIGHT, 2, 4),
+                GET_ALL_FREEBUSY_PROVIDERS("getAllFbp", "gafbp", "[-v]", Category.FREEBUSY, 0, 1),
+                GET_ALL_RIGHTS("getAllRights", "gar", "[-v] [-t {target-type}] [-c " + RightClass.allValuesInString("|") + "]", Category.RIGHT, 0, 5),
+                GET_ALL_SERVERS("getAllServers", "gas", "[-v] [-e] [service]", Category.SERVER, 0, 3),
+                GET_ALL_UC_SERVICES("getAllUCServices", "gaucs", "[-v]", Category.UCSERVICE, 0, 3),
+                GET_ALL_XMPP_COMPONENTS("getAllXMPPComponents", "gaxcs", "", Category.CONFIG, 0, 0),
+                GET_AUTH_TOKEN_INFO("getAuthTokenInfo", "gati", "{auth-token}", Category.MISC, 1, 1),
+                GET_CALENDAR_RESOURCE("getCalendarResource",     "gcr", "{name@domain|id} [attr1 [attr2...]]", Category.CALENDAR, 1, Integer.MAX_VALUE),
+                GET_CONFIG("getConfig", "gcf", "{name}", Category.CONFIG, 1, 1),
+                GET_COS("getCos", "gc", "{name|id} [attr1 [attr2...]]", Category.COS, 1, Integer.MAX_VALUE),
+                GET_DISTRIBUTION_LIST("getDistributionList", "gdl", "{list@domain|id} [attr1 [attr2...]]", Category.LIST, 1, Integer.MAX_VALUE),
+                GET_DISTRIBUTION_LIST_MEMBERSHIP("getDistributionListMembership", "gdlm", "{name@domain|id}", Category.LIST, 1, 1),
+                GET_DOMAIN("getDomain", "gd", "[-e] {domain|id} [attr1 [attr2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
+                GET_DOMAIN_INFO("getDomainInfo", "gdi", "name|id|virtualHostname {value} [attr1 [attr2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
+                GET_CONFIG_SMIME_CONFIG("getConfigSMIMEConfig", "gcsc", "[configName]", Category.DOMAIN, 0, 1),
+                GET_DOMAIN_SMIME_CONFIG("getDomainSMIMEConfig", "gdsc", "name|id [configName]", Category.DOMAIN, 1, 2),
+                GET_EFFECTIVE_RIGHTS("getEffectiveRights", "ger", "{target-type} [{target-id|target-name}] {grantee-id|grantee-name} [expandSetAttrs] [expandGetAttrs]",
+                        Category.RIGHT, 1, 5, null, new RightCommandHelp(false, false, false)),
 
                         // for testing the provisioning interface only, comment out after testing, the soap is only used by admin console
                         GET_CREATE_OBJECT_ATTRS("getCreateObjectAttrs", "gcoa", "{target-type} {domain-id|domain-name} {cos-id|cos-name} {grantee-id|grantee-name}", Category.RIGHT, 3, 4),
 
-        GET_FREEBUSY_QUEUE_INFO("getFreebusyQueueInfo", "gfbqi", "[{provider-name}]", Category.FREEBUSY, 0, 1),
-        GET_GRANTS("getGrants", "gg", "[-t {target-type} [{target-id|target-name}]] [-g {grantee-type} {grantee-id|grantee-name} [{0|1 (whether to include grants granted to groups the grantee belongs)}]]",
-                Category.RIGHT, 2, 7, null, new RightCommandHelp(false, false, false)),
-        GET_MAILBOX_INFO("getMailboxInfo", "gmi", "{account}", Category.MAILBOX, 1, 1),
-        GET_QUOTA_USAGE("getQuotaUsage", "gqu", "{server}", Category.MAILBOX, 1, 1),
-        GET_RIGHT("getRight", "gr", "{right} [-e] (whether to expand combo rights recursively)", Category.RIGHT, 1, 2),
-        GET_RIGHTS_DOC("getRightsDoc", "grd", "[java packages]", Category.RIGHT, 0, Integer.MAX_VALUE),
-        GET_SERVER("getServer", "gs", "[-e] {name|id} [attr1 [attr2...]]", Category.SERVER, 1, Integer.MAX_VALUE),
-        GET_UC_SERVICES("getUCService", "gucs", "[-e] {name|id} [attr1 [attr2...]]", Category.UCSERVICE, 1, Integer.MAX_VALUE),
-        GET_SHARE_INFO("getShareInfo", "gsi", "{owner-name|owner-id}", Category.SHARE, 1, 1),
-        GET_SPNEGO_DOMAIN("getSpnegoDomain", "gsd", "", Category.MISC, 0, 0),
-        GET_XMPP_COMPONENT("getXMPPComponent", "gxc", "{name|id} [attr1 [attr2...]]", Category.CONFIG, 1, Integer.MAX_VALUE),
-        GRANT_RIGHT("grantRight", "grr", "{target-type} [{target-id|target-name}] {grantee-type} [{grantee-id|grantee-name} [secret]] {right}",
-                Category.RIGHT, 3, 6, null, new RightCommandHelp(false, true, true)),
-        HELP("help", "?", "commands", Category.MISC, 0, 1),
-        LDAP(".ldap", ".l"),
-        MODIFY_ACCOUNT("modifyAccount", "ma", "{name@domain|id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 3, Integer.MAX_VALUE),
-        MODIFY_CALENDAR_RESOURCE("modifyCalendarResource",  "mcr", "{name@domain|id} [attr1 value1 [attr2 value2...]]", Category.CALENDAR, 3, Integer.MAX_VALUE),
-        MODIFY_CONFIG("modifyConfig", "mcf", "attr1 value1 [attr2 value2...]", Category.CONFIG, 2, Integer.MAX_VALUE),
-        MODIFY_COS("modifyCos", "mc", "{name|id} [attr1 value1 [attr2 value2...]]", Category.COS, 3, Integer.MAX_VALUE),
-        MODIFY_DATA_SOURCE("modifyDataSource", "mds", "{name@domain|id} {ds-name|ds-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
-        MODIFY_DISTRIBUTION_LIST("modifyDistributionList", "mdl", "{list@domain|id} attr1 value1 [attr2 value2...]", Category.LIST, 3, Integer.MAX_VALUE),
-        MODIFY_DOMAIN("modifyDomain", "md", "{domain|id} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 3, Integer.MAX_VALUE),
-        MODIFY_CONFIG_SMIME_CONFIG("modifyConfigSMIMEConfig", "mcsc", "configName [attr2 value2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
-        MODIFY_DOMAIN_SMIME_CONFIG("modifyDomainSMIMEConfig", "mdsc", "name|id configName [attr2 value2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
-        MODIFY_IDENTITY("modifyIdentity", "mid", "{name@domain|id} {identity-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
-        MODIFY_SIGNATURE("modifySignature", "msig", "{name@domain|id} {signature-name|signature-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
-        MODIFY_SERVER("modifyServer", "ms", "{name|id} [attr1 value1 [attr2 value2...]]", Category.SERVER, 3, Integer.MAX_VALUE),
-        MODIFY_UC_SERVICE("modifyUCService", "mucs", "{name|id} [attr1 value1 [attr2 value2...]]", Category.UCSERVICE, 3, Integer.MAX_VALUE),
-        MODIFY_XMPP_COMPONENT("modifyXMPPComponent", "mxc", "{name@domain} [attr1 value1 [attr value2...]]", Category.CONFIG, 3, Integer.MAX_VALUE),
-        PUSH_FREEBUSY("pushFreebusy", "pfb", "[account-id ...]", Category.FREEBUSY, 1, Integer.MAX_VALUE),
-        PUSH_FREEBUSY_DOMAIN("pushFreebusyDomain", "pfbd", "{domain}", Category.FREEBUSY, 1, 1),
-        PURGE_ACCOUNT_CALENDAR_CACHE("purgeAccountCalendarCache", "pacc", "{name@domain|id} [...]", Category.CALENDAR, 1, Integer.MAX_VALUE),
-        PURGE_FREEBUSY_QUEUE("purgeFreebusyQueue", "pfbq", "[{provider-name}]", Category.FREEBUSY, 0, 1),
-        RECALCULATE_MAILBOX_COUNTS("recalculateMailboxCounts", "rmc", "{name@domain|id}", Category.MAILBOX, 1, 1),
-        REMOVE_ACCOUNT_ALIAS("removeAccountAlias", "raa", "{name@domain|id} {alias@domain}", Category.ACCOUNT, 2, 2),
-        REMOVE_ACCOUNT_LOGGER("removeAccountLogger", "ral", "[-s/--server hostname] [{name@domain|id}] [{logging-category}]", Category.LOG, 0, 4),
-        REMOVE_DISTRIBUTION_LIST_ALIAS("removeDistributionListAlias", "rdla", "{list@domain|id} {alias@domain}", Category.LIST, 2, 2),
-        REMOVE_DISTRIBUTION_LIST_MEMBER("removeDistributionListMember", "rdlm", "{list@domain|id} {member@domain}", Category.LIST, 2, Integer.MAX_VALUE),
-        REMOVE_CONFIG_SMIME_CONFIG("removeConfigSMIMEConfig", "rcsc", "configName", Category.DOMAIN, 1, 1),
-        REMOVE_DOMAIN_SMIME_CONFIG("removeDomainSMIMEConfig", "rdsc", "name|id configName", Category.DOMAIN, 2, 2),
-        RENAME_ACCOUNT("renameAccount", "ra", "{name@domain|id} {newName@domain}", Category.ACCOUNT, 2, 2),
-        RENAME_CALENDAR_RESOURCE("renameCalendarResource",  "rcr", "{name@domain|id} {newName@domain}", Category.CALENDAR, 2, 2),
-        RENAME_COS("renameCos", "rc", "{name|id} {newName}", Category.COS, 2, 2),
-        RENAME_DISTRIBUTION_LIST("renameDistributionList", "rdl", "{list@domain|id} {newName@domain}", Category.LIST, 2, 2),
-        RENAME_DOMAIN("renameDomain", "rd", "{domain|id} {newDomain}", Category.DOMAIN, 2, 2, Via.ldap),
-        RENAME_UCSERVICE("renameUCService", "rucs", "{name|id} {newName}", Category.UCSERVICE, 2, 2),
-        REINDEX_MAILBOX("reIndexMailbox", "rim", "{name@domain|id} {start|status|cancel} [{types|ids} {type or id} [,type or id...]]", Category.MAILBOX, 2, Integer.MAX_VALUE, null, new ReindexCommandHelp()),
-        COMPACT_INBOX_MAILBOX("compactIndexMailbox", "cim", "{name@domain|id} {start|status}", Category.MAILBOX, 2, Integer.MAX_VALUE),
-        VERIFY_INDEX("verifyIndex", "vi", "{name@domain|id}", Category.MAILBOX, 1, 1),
-        GET_INDEX_STATS("getIndexStats", "gis", "{name@domain|id}", Category.MAILBOX, 1, 1),
-        REVOKE_RIGHT("revokeRight", "rvr", "{target-type} [{target-id|target-name}] {grantee-type} [{grantee-id|grantee-name}] {right}",
-                Category.RIGHT, 3, 5, null, new RightCommandHelp(false, false, true)),
-        SEARCH_ACCOUNTS("searchAccounts", "sa", "[-v] {ldap-query} [limit {limit}] [offset {offset}] [sortBy {attr}] [sortAscending 0|1*] [domain {domain}]", Category.SEARCH, 1, Integer.MAX_VALUE),
-        SEARCH_CALENDAR_RESOURCES("searchCalendarResources", "scr", "[-v] domain attr op value [attr op value...]", Category.SEARCH, 1, Integer.MAX_VALUE, Via.ldap),
-        SEARCH_GAL("searchGal", "sg", "{domain} {name} [limit {limit}] [offset {offset}] [sortBy {attr}]", Category.SEARCH, 2, Integer.MAX_VALUE),
-        SELECT_MAILBOX("selectMailbox", "sm", "{account-name} [{zmmailbox commands}]", Category.MAILBOX, 1, Integer.MAX_VALUE),
-        SET_ACCOUNT_COS("setAccountCos", "sac", "{name@domain|id} {cos-name|cos-id}", Category.ACCOUNT, 2, 2),
-        SET_PASSWORD("setPassword", "sp", "{name@domain|id} {password}", Category.ACCOUNT, 2, 2),
-        GET_ALL_MTA_AUTH_URLS("getAllMtaAuthURLs", "gamau", "", Category.SERVER, 0, 0),
-        GET_ALL_REVERSE_PROXY_URLS("getAllReverseProxyURLs", "garpu", "", Category.REVERSEPROXY, 0, 0),
-        GET_ALL_REVERSE_PROXY_BACKENDS("getAllReverseProxyBackends", "garpb", "", Category.REVERSEPROXY, 0, 0),
-        GET_ALL_REVERSE_PROXY_DOMAINS("getAllReverseProxyDomains", "garpd", "", Category.REVERSEPROXY, 0, 0, Via.ldap),
-        GET_ALL_MEMCACHED_SERVERS("getAllMemcachedServers", "gamcs", "", Category.SERVER, 0, 0),
-        RELOAD_MEMCACHED_CLIENT_CONFIG("reloadMemcachedClientConfig", "rmcc", "all | mailbox-server [...]", Category.MISC, 1, Integer.MAX_VALUE, Via.soap),
-        GET_MEMCACHED_CLIENT_CONFIG("getMemcachedClientConfig", "gmcc", "all | mailbox-server [...]", Category.MISC, 1, Integer.MAX_VALUE, Via.soap),
-        SOAP(".soap", ".s"),
-        SYNC_GAL("syncGal", "syg", "{domain} [{token}]", Category.MISC, 1, 2),
-        UPDATE_PRESENCE_SESSION_ID("updatePresenceSessionId", "upsid", "{UC service name or id} {app-username} {app-password}", Category.MISC, 3, 3, Via.soap),
-        RESET_ALL_LOGGERS("resetAllLoggers", "rlog", "[-s/--server hostname]", Category.LOG, 0, 2);
+                        GET_FREEBUSY_QUEUE_INFO("getFreebusyQueueInfo", "gfbqi", "[{provider-name}]", Category.FREEBUSY, 0, 1),
+                        GET_GRANTS("getGrants", "gg", "[-t {target-type} [{target-id|target-name}]] [-g {grantee-type} {grantee-id|grantee-name} [{0|1 (whether to include grants granted to groups the grantee belongs)}]]",
+                                Category.RIGHT, 2, 7, null, new RightCommandHelp(false, false, false)),
+                                GET_MAILBOX_INFO("getMailboxInfo", "gmi", "{account}", Category.MAILBOX, 1, 1),
+                                GET_QUOTA_USAGE("getQuotaUsage", "gqu", "{server}", Category.MAILBOX, 1, 1),
+                                GET_RIGHT("getRight", "gr", "{right} [-e] (whether to expand combo rights recursively)", Category.RIGHT, 1, 2),
+                                GET_RIGHTS_DOC("getRightsDoc", "grd", "[java packages]", Category.RIGHT, 0, Integer.MAX_VALUE),
+                                GET_SERVER("getServer", "gs", "[-e] {name|id} [attr1 [attr2...]]", Category.SERVER, 1, Integer.MAX_VALUE),
+                                GET_UC_SERVICES("getUCService", "gucs", "[-e] {name|id} [attr1 [attr2...]]", Category.UCSERVICE, 1, Integer.MAX_VALUE),
+                                GET_SHARE_INFO("getShareInfo", "gsi", "{owner-name|owner-id}", Category.SHARE, 1, 1),
+                                GET_SPNEGO_DOMAIN("getSpnegoDomain", "gsd", "", Category.MISC, 0, 0),
+                                GET_XMPP_COMPONENT("getXMPPComponent", "gxc", "{name|id} [attr1 [attr2...]]", Category.CONFIG, 1, Integer.MAX_VALUE),
+                                GRANT_RIGHT("grantRight", "grr", "{target-type} [{target-id|target-name}] {grantee-type} [{grantee-id|grantee-name} [secret]] {right}",
+                                        Category.RIGHT, 3, 6, null, new RightCommandHelp(false, true, true)),
+                                        HELP("help", "?", "commands", Category.MISC, 0, 1),
+                                        LDAP(".ldap", ".l"),
+                                        MODIFY_ACCOUNT("modifyAccount", "ma", "{name@domain|id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 3, Integer.MAX_VALUE),
+                                        MODIFY_ALWAYSONCLUSTER("modifyAlwaysOnCluster", "maoc", "{name|id} [attr1 value1 [attr2 value2...]]", Category.ALWAYSONCLUSTER, 3, Integer.MAX_VALUE),
+                                        MODIFY_CALENDAR_RESOURCE("modifyCalendarResource",  "mcr", "{name@domain|id} [attr1 value1 [attr2 value2...]]", Category.CALENDAR, 3, Integer.MAX_VALUE),
+                                        MODIFY_CONFIG("modifyConfig", "mcf", "attr1 value1 [attr2 value2...]", Category.CONFIG, 2, Integer.MAX_VALUE),
+                                        MODIFY_COS("modifyCos", "mc", "{name|id} [attr1 value1 [attr2 value2...]]", Category.COS, 3, Integer.MAX_VALUE),
+                                        MODIFY_DATA_SOURCE("modifyDataSource", "mds", "{name@domain|id} {ds-name|ds-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
+                                        MODIFY_DISTRIBUTION_LIST("modifyDistributionList", "mdl", "{list@domain|id} attr1 value1 [attr2 value2...]", Category.LIST, 3, Integer.MAX_VALUE),
+                                        MODIFY_DOMAIN("modifyDomain", "md", "{domain|id} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 3, Integer.MAX_VALUE),
+                                        MODIFY_CONFIG_SMIME_CONFIG("modifyConfigSMIMEConfig", "mcsc", "configName [attr2 value2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
+                                        MODIFY_DOMAIN_SMIME_CONFIG("modifyDomainSMIMEConfig", "mdsc", "name|id configName [attr2 value2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
+                                        MODIFY_IDENTITY("modifyIdentity", "mid", "{name@domain|id} {identity-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
+                                        MODIFY_SIGNATURE("modifySignature", "msig", "{name@domain|id} {signature-name|signature-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
+                                        MODIFY_SERVER("modifyServer", "ms", "{name|id} [attr1 value1 [attr2 value2...]]", Category.SERVER, 3, Integer.MAX_VALUE),
+                                        MODIFY_UC_SERVICE("modifyUCService", "mucs", "{name|id} [attr1 value1 [attr2 value2...]]", Category.UCSERVICE, 3, Integer.MAX_VALUE),
+                                        MODIFY_XMPP_COMPONENT("modifyXMPPComponent", "mxc", "{name@domain} [attr1 value1 [attr value2...]]", Category.CONFIG, 3, Integer.MAX_VALUE),
+                                        PUSH_FREEBUSY("pushFreebusy", "pfb", "[account-id ...]", Category.FREEBUSY, 1, Integer.MAX_VALUE),
+                                        PUSH_FREEBUSY_DOMAIN("pushFreebusyDomain", "pfbd", "{domain}", Category.FREEBUSY, 1, 1),
+                                        PURGE_ACCOUNT_CALENDAR_CACHE("purgeAccountCalendarCache", "pacc", "{name@domain|id} [...]", Category.CALENDAR, 1, Integer.MAX_VALUE),
+                                        PURGE_FREEBUSY_QUEUE("purgeFreebusyQueue", "pfbq", "[{provider-name}]", Category.FREEBUSY, 0, 1),
+                                        RECALCULATE_MAILBOX_COUNTS("recalculateMailboxCounts", "rmc", "{name@domain|id}", Category.MAILBOX, 1, 1),
+                                        REMOVE_ACCOUNT_ALIAS("removeAccountAlias", "raa", "{name@domain|id} {alias@domain}", Category.ACCOUNT, 2, 2),
+                                        REMOVE_ACCOUNT_LOGGER("removeAccountLogger", "ral", "[-s/--server hostname] [{name@domain|id}] [{logging-category}]", Category.LOG, 0, 4),
+                                        REMOVE_DISTRIBUTION_LIST_ALIAS("removeDistributionListAlias", "rdla", "{list@domain|id} {alias@domain}", Category.LIST, 2, 2),
+                                        REMOVE_DISTRIBUTION_LIST_MEMBER("removeDistributionListMember", "rdlm", "{list@domain|id} {member@domain}", Category.LIST, 2, Integer.MAX_VALUE),
+                                        REMOVE_CONFIG_SMIME_CONFIG("removeConfigSMIMEConfig", "rcsc", "configName", Category.DOMAIN, 1, 1),
+                                        REMOVE_DOMAIN_SMIME_CONFIG("removeDomainSMIMEConfig", "rdsc", "name|id configName", Category.DOMAIN, 2, 2),
+                                        RENAME_ACCOUNT("renameAccount", "ra", "{name@domain|id} {newName@domain}", Category.ACCOUNT, 2, 2),
+                                        RENAME_CALENDAR_RESOURCE("renameCalendarResource",  "rcr", "{name@domain|id} {newName@domain}", Category.CALENDAR, 2, 2),
+                                        RENAME_COS("renameCos", "rc", "{name|id} {newName}", Category.COS, 2, 2),
+                                        RENAME_DISTRIBUTION_LIST("renameDistributionList", "rdl", "{list@domain|id} {newName@domain}", Category.LIST, 2, 2),
+                                        RENAME_DOMAIN("renameDomain", "rd", "{domain|id} {newDomain}", Category.DOMAIN, 2, 2, Via.ldap),
+                                        RENAME_UCSERVICE("renameUCService", "rucs", "{name|id} {newName}", Category.UCSERVICE, 2, 2),
+                                        REINDEX_MAILBOX("reIndexMailbox", "rim", "{name@domain|id} {start|status|cancel} [{types|ids} {type or id} [,type or id...]]", Category.MAILBOX, 2, Integer.MAX_VALUE, null, new ReindexCommandHelp()),
+                                        COMPACT_INBOX_MAILBOX("compactIndexMailbox", "cim", "{name@domain|id} {start|status}", Category.MAILBOX, 2, Integer.MAX_VALUE),
+                                        VERIFY_INDEX("verifyIndex", "vi", "{name@domain|id}", Category.MAILBOX, 1, 1),
+                                        GET_INDEX_STATS("getIndexStats", "gis", "{name@domain|id}", Category.MAILBOX, 1, 1),
+                                        REVOKE_RIGHT("revokeRight", "rvr", "{target-type} [{target-id|target-name}] {grantee-type} [{grantee-id|grantee-name}] {right}",
+                                                Category.RIGHT, 3, 5, null, new RightCommandHelp(false, false, true)),
+                                                SEARCH_ACCOUNTS("searchAccounts", "sa", "[-v] {ldap-query} [limit {limit}] [offset {offset}] [sortBy {attr}] [sortAscending 0|1*] [domain {domain}]", Category.SEARCH, 1, Integer.MAX_VALUE),
+                                                SEARCH_CALENDAR_RESOURCES("searchCalendarResources", "scr", "[-v] domain attr op value [attr op value...]", Category.SEARCH, 1, Integer.MAX_VALUE, Via.ldap),
+                                                SEARCH_GAL("searchGal", "sg", "{domain} {name} [limit {limit}] [offset {offset}] [sortBy {attr}]", Category.SEARCH, 2, Integer.MAX_VALUE),
+                                                SET_LOCAL_SERVER_ONLINE("setLocalServerOnline", "slso", "", Category.SERVER, 0, 0),
+                                                SELECT_MAILBOX("selectMailbox", "sm", "{account-name} [{zmmailbox commands}]", Category.MAILBOX, 1, Integer.MAX_VALUE),
+                                                SET_ACCOUNT_COS("setAccountCos", "sac", "{name@domain|id} {cos-name|cos-id}", Category.ACCOUNT, 2, 2),
+                                                SET_PASSWORD("setPassword", "sp", "{name@domain|id} {password}", Category.ACCOUNT, 2, 2),
+                                                SET_SERVER_OFFLINE("setServerOffline", "sso", "{name|id}", Category.SERVER, 1, 1),
+                                                GET_ALL_MTA_AUTH_URLS("getAllMtaAuthURLs", "gamau", "", Category.SERVER, 0, 0),
+                                                GET_ALL_REVERSE_PROXY_URLS("getAllReverseProxyURLs", "garpu", "", Category.REVERSEPROXY, 0, 0),
+                                                GET_ALL_REVERSE_PROXY_BACKENDS("getAllReverseProxyBackends", "garpb", "", Category.REVERSEPROXY, 0, 0),
+                                                GET_ALL_REVERSE_PROXY_DOMAINS("getAllReverseProxyDomains", "garpd", "", Category.REVERSEPROXY, 0, 0, Via.ldap),
+                                                GET_ALL_MEMCACHED_SERVERS("getAllMemcachedServers", "gamcs", "", Category.SERVER, 0, 0),
+                                                RELOAD_MEMCACHED_CLIENT_CONFIG("reloadMemcachedClientConfig", "rmcc", "all | mailbox-server [...]", Category.MISC, 1, Integer.MAX_VALUE, Via.soap),
+                                                GET_MEMCACHED_CLIENT_CONFIG("getMemcachedClientConfig", "gmcc", "all | mailbox-server [...]", Category.MISC, 1, Integer.MAX_VALUE, Via.soap),
+                                                SOAP(".soap", ".s"),
+                                                SYNC_GAL("syncGal", "syg", "{domain} [{token}]", Category.MISC, 1, 2),
+                                                UPDATE_PRESENCE_SESSION_ID("updatePresenceSessionId", "upsid", "{UC service name or id} {app-username} {app-password}", Category.MISC, 3, 3, Via.soap),
+                                                RESET_ALL_LOGGERS("resetAllLoggers", "rlog", "[-s/--server hostname]", Category.LOG, 0, 2);
 
         private String mName;
         private String mAlias;
@@ -882,6 +893,9 @@ public class ProvUtil implements HttpDebugListener {
             case CREATE_ALIAS_DOMAIN:
                 console.println(doCreateAliasDomain(args[1], args[2], getMapAndCheck(args, 3, true)).getId());
                 break;
+            case CREATE_ALWAYSONCLUSTER:
+                console.println(prov.createAlwaysOnCluster(args[1], getMapAndCheck(args, 2, true)).getId());
+                break;
             case CREATE_COS:
                 console.println(prov.createCos(args[1], getMapAndCheck(args, 2, true)).getId());
                 break;
@@ -927,6 +941,9 @@ public class ProvUtil implements HttpDebugListener {
             case GET_ACCOUNT_MEMBERSHIP:
                 doGetAccountMembership(args);
                 break;
+            case GET_ALWAYSONCLUSTER:
+                doGetAlwaysOnCluster(args);
+                break;
             case GET_IDENTITIES:
                 doGetAccountIdentities(args);
                 break;
@@ -955,8 +972,14 @@ public class ProvUtil implements HttpDebugListener {
             case GET_ALL_ACCOUNTS:
                 doGetAllAccounts(args);
                 break;
+            case GET_ALL_ACTIVE_SERVERS:
+                doGetAllActiveServers(args);
+                break;
             case GET_ALL_ADMIN_ACCOUNTS:
                 doGetAllAdminAccounts(args);
+                break;
+            case GET_ALL_ALWAYSONCLUSTERS:
+                doGetAllAlwaysOnClusters(args);
                 break;
             case GET_ALL_CONFIG:
                 dumpAttrs(prov.getConfig().getAttrs(), getArgNameSet(args, 1));
@@ -1045,6 +1068,9 @@ public class ProvUtil implements HttpDebugListener {
             case MODIFY_ACCOUNT:
                 prov.modifyAttrs(lookupAccount(args[1]), getMapAndCheck(args,2, false), true);
                 break;
+            case MODIFY_ALWAYSONCLUSTER:
+                prov.modifyAttrs(lookupAlwaysOnCluster(args[1]), getMapAndCheck(args, 2, false), true);
+                break;
             case MODIFY_DATA_SOURCE:
                 account = lookupAccount(args[1]);
                 prov.modifyDataSource(account, lookupDataSourceId(account, args[2]), getMapAndCheck(args,3, false));
@@ -1080,6 +1106,9 @@ public class ProvUtil implements HttpDebugListener {
                 break;
             case DELETE_ACCOUNT:
                 doDeleteAccount(args);
+                break;
+            case DELETE_ALWAYSONCLUSTER:
+                prov.deleteAlwaysOnCluster(lookupAlwaysOnCluster(args[1]).getId());
                 break;
             case DELETE_COS:
                 prov.deleteCos(lookupCos(args[1]).getId());
@@ -1156,6 +1185,12 @@ public class ProvUtil implements HttpDebugListener {
                 break;
             case SET_ACCOUNT_COS:
                 prov.setCOS(lookupAccount(args[1]),lookupCos(args[2]));
+                break;
+            case SET_SERVER_OFFLINE:
+                doSetServerOffline(args);
+                break;
+            case SET_LOCAL_SERVER_ONLINE:
+                doSetLocalServerOnline();
                 break;
             case SEARCH_ACCOUNTS:
                 doSearchAccounts(args);
@@ -1889,13 +1924,12 @@ public class ProvUtil implements HttpDebugListener {
             }
         };
 
-        SearchAccountsOptions options = new SearchAccountsOptions(domain);
-        options.setUseControl(false);
+        SearchAccountsOptions options = new SearchAccountsOptions();
+        if(domain != null) {
+            options.setDomain(domain);
+        }
         options.setIncludeType(IncludeType.ACCOUNTS_ONLY);
-        if (verbose && applyDefault) {
-            // ldapProv.getAllAccounts(domain, server, visitor);
-        } else {
-            // ldapProv.getAllAccountsNoDefaults(domain, server, visitor);
+        if (!applyDefault) {
             options.setMakeObjectOpt(MakeObjectOpt.NO_DEFAULTS);
         }
 
@@ -1960,9 +1994,7 @@ public class ProvUtil implements HttpDebugListener {
             server = lookupServer(s);
         }
         if (d == null) {
-            for (Domain domain : ldapProv.getAllDomains()) {
-                doGetAllAccounts(ldapProv, domain, server, verbose, applyDefault, null);
-            }
+            doGetAllAccounts(ldapProv, null, server, verbose, applyDefault, null);
         } else {
             Domain domain = lookupDomain(d, ldapProv);
             doGetAllAccounts(ldapProv, domain, server, verbose, applyDefault, null);
@@ -2576,6 +2608,60 @@ public class ProvUtil implements HttpDebugListener {
         }
     }
 
+    private void doGetAllAlwaysOnClusters(String[] args) throws ServiceException {
+        boolean verbose = false;
+
+        int i = 1;
+        while (i < args.length) {
+            String arg = args[i];
+            if (arg.equals("-v")) {
+                verbose = true;
+            }
+            i++;
+        }
+
+        List<AlwaysOnCluster> clusters;
+        if (prov instanceof SoapProvisioning) {
+            SoapProvisioning soapProv = (SoapProvisioning) prov;
+            clusters = soapProv.getAllAlwaysOnClusters();
+        } else {
+            clusters = prov.getAllAlwaysOnClusters();
+        }
+        for (AlwaysOnCluster cluster : clusters) {
+            if (verbose) {
+                dumpAlwaysOnCluster(cluster, null);
+            } else {
+                console.println(cluster.getName());
+            }
+        }
+    }
+
+    private void doGetAllActiveServers(String[] args) throws ServiceException {
+        boolean verbose = false;
+
+        int i = 1;
+        while (i < args.length) {
+            String arg = args[i];
+            if (arg.equals("-v")) {
+                verbose = true;
+            }
+            i++;
+        }
+
+        if (!(prov instanceof SoapProvisioning)) {
+            throwSoapOnly();
+        }
+
+        List<Server> servers = ((SoapProvisioning)prov).getAllActiveServers();
+        for (Server server : servers) {
+            if (verbose) {
+                dumpServer(server, true, null);
+            } else {
+                console.println(server.getName());
+            }
+        }
+    }
+
     private void doGetAllUCServices(String[] args) throws ServiceException {
         boolean verbose = args.length > 1 && args[1].equals("-v");
         Set<String> attrNames = getArgNameSet(args, verbose ? 2 : 1);
@@ -2592,6 +2678,13 @@ public class ProvUtil implements HttpDebugListener {
     private void dumpServer(Server server, boolean expandConfig, Set<String> attrNames) throws ServiceException {
         console.println("# name "+server.getName());
         Map<String, Object> attrs = server.getAttrs(expandConfig);
+        dumpAttrs(attrs, attrNames);
+        console.println();
+    }
+
+    private void dumpAlwaysOnCluster(AlwaysOnCluster cluster, Set<String> attrNames) throws ServiceException {
+        console.println("# name "+cluster.getName());
+        Map<String, Object> attrs = cluster.getAttrs();
         dumpAttrs(attrs, attrNames);
         console.println();
     }
@@ -3037,6 +3130,21 @@ public class ProvUtil implements HttpDebugListener {
         }
     }
 
+    private AlwaysOnCluster lookupAlwaysOnCluster(String key) throws ServiceException {
+        AlwaysOnCluster cluster;
+        if (prov instanceof SoapProvisioning) {
+            SoapProvisioning soapProv = (SoapProvisioning) prov;
+            cluster = soapProv.get(guessAlwaysOnClusterBy(key), key);
+        } else {
+            cluster = prov.get(guessAlwaysOnClusterBy(key), key);
+        }
+        if (cluster == null) {
+            throw AccountServiceException.NO_SUCH_ALWAYSONCLUSTER(key);
+        } else {
+            return cluster;
+        }
+    }
+
     private UCService lookupUCService(String key) throws ServiceException {
         UCService ucService = prov.get(guessUCServiceBy(key), key);
         if (ucService == null) {
@@ -3128,6 +3236,13 @@ public class ProvUtil implements HttpDebugListener {
             return Key.ServerBy.id;
         }
         return Key.ServerBy.name;
+    }
+
+    public static Key.AlwaysOnClusterBy guessAlwaysOnClusterBy(String value) {
+        if (Provisioning.isUUID(value)) {
+            return Key.AlwaysOnClusterBy.id;
+        }
+        return Key.AlwaysOnClusterBy.name;
     }
 
     public static Key.UCServiceBy guessUCServiceBy(String value) {
@@ -3744,9 +3859,14 @@ public class ProvUtil implements HttpDebugListener {
                         out = formatRequiresRestart(ai);
                         break;
                     case since:
-                        Version since = ai.getSince();
+                        List<Version> since = ai.getSince();
                         if (since != null) {
-                            out = since.toString();
+                            StringBuilder sb = new StringBuilder();
+                            for (Version version : since) {
+                                sb.append(version.toString()).append(",");
+                            }
+                            sb.setLength(sb.length() - 1);
+                            out = sb.toString();
                         }
                         break;
                     case deprecatedSince:
@@ -4021,7 +4141,12 @@ public class ProvUtil implements HttpDebugListener {
         int argIdx = 1;
         if (args[argIdx].equals("-a")) {
             allServers = true;
-            argIdx++;
+            if (args.length > 2) {
+                argIdx++;
+            } else {
+                usage();
+                return;
+            }
         }
         String type = args[argIdx++];
 
@@ -4119,7 +4244,7 @@ public class ProvUtil implements HttpDebugListener {
         // String REVERSE_PROXY_PATH = "/service/extension/nginx-lookup";
         String REVERSE_PROXY_PATH = ExtensionDispatcherServlet.EXTENSION_PATH + "/nginx-lookup";
 
-        List<Server> servers = prov.getAllServers();
+        List<Server> servers = prov.getAllMailClientServers();
         for (Server server : servers) {
             boolean isTarget = server.getBooleanAttr(Provisioning.A_zimbraReverseProxyLookupTarget, false);
             if (isTarget) {
@@ -4206,7 +4331,7 @@ public class ProvUtil implements HttpDebugListener {
         List<Pair<String, Integer>> entries = new ArrayList<Pair<String, Integer>>();
         if (args.length == 2 && "all".equalsIgnoreCase(args[1])) {
             // Get all mailbox servers.
-            List<Server> servers = prov.getAllServers(Provisioning.SERVICE_MAILBOX);
+            List<Server> servers = prov.getAllMailClientServers();
             for (Server svr : servers) {
                 String host = svr.getAttr(Provisioning.A_zimbraServiceHostname);
                 int port = (int) svr.getLongAttr(Provisioning.A_zimbraAdminPort, serverPort);
@@ -4355,6 +4480,10 @@ public class ProvUtil implements HttpDebugListener {
         dumpServer(lookupServer(args[i], applyDefault), applyDefault, getArgNameSet(args, i+1));
     }
 
+    private void doGetAlwaysOnCluster(String[] args) throws ServiceException {
+        dumpAlwaysOnCluster(lookupAlwaysOnCluster(args[1]), getArgNameSet(args, 2));
+    }
+
     private void doPurgeAccountCalendarCache(String[] args) throws ServiceException {
         if (!(prov instanceof SoapProvisioning)) {
             throwSoapOnly();
@@ -4382,6 +4511,21 @@ public class ProvUtil implements HttpDebugListener {
 
     private void doGetXMPPComponent(String[] args) throws ServiceException {
         dumpXMPPComponent(lookupXMPPComponent(args[1]), getArgNameSet(args, 2));
+    }
+
+    private void doSetServerOffline(String[] args) throws ServiceException {
+        if (!(prov instanceof SoapProvisioning)) {
+            throwSoapOnly();
+        }
+        String key = args[1];
+        ((SoapProvisioning)prov).setServerOffline(guessServerBy(key), key);
+    }
+
+    private void doSetLocalServerOnline() throws ServiceException {
+        if (!(prov instanceof SoapProvisioning)) {
+            throwSoapOnly();
+        }
+        ((SoapProvisioning)prov).setLocalServerOnline();
     }
 
     static private class RightArgs {
@@ -4887,7 +5031,7 @@ public class ProvUtil implements HttpDebugListener {
     private void doPushFreeBusyForDomain(String[] args) throws ServiceException, IOException {
         lookupDomain(args[1]);
         FbCli fbcli = new FbCli();
-        for (Server server : prov.getAllServers(Provisioning.SERVICE_MAILBOX)) {
+        for (Server server : prov.getAllMailClientServers()) {
             console.println("pushing to server " + server.getName());
             fbcli.setServer(server.getName());
             fbcli.pushFreeBusyForDomain(args[1]);

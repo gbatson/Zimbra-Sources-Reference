@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -33,7 +35,7 @@ import javax.xml.bind.annotation.XmlType;
  * &lt;complexType name="mailboxBlobConsistency">
  *   &lt;complexContent>
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
- *       &lt;all>
+ *       &lt;sequence>
  *         &lt;element name="missingBlobs">
  *           &lt;complexType>
  *             &lt;complexContent>
@@ -41,6 +43,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="item" type="{urn:zimbraAdmin}missingBlobInfo" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -52,6 +55,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="item" type="{urn:zimbraAdmin}incorrectBlobSizeInfo" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -63,6 +67,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="blob" type="{urn:zimbraAdmin}unexpectedBlobInfo" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -74,11 +79,24 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="item" type="{urn:zimbraAdmin}incorrectBlobRevisionInfo" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
  *         &lt;/element>
- *       &lt;/all>
+ *         &lt;element name="usedBlobs">
+ *           &lt;complexType>
+ *             &lt;complexContent>
+ *               &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
+ *                 &lt;sequence>
+ *                   &lt;element name="item" type="{urn:zimbraAdmin}usedBlobInfo" maxOccurs="unbounded" minOccurs="0"/>
+ *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
+ *               &lt;/restriction>
+ *             &lt;/complexContent>
+ *           &lt;/complexType>
+ *         &lt;/element>
+ *       &lt;/sequence>
  *       &lt;attribute name="id" use="required" type="{http://www.w3.org/2001/XMLSchema}int" />
  *     &lt;/restriction>
  *   &lt;/complexContent>
@@ -89,7 +107,11 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "mailboxBlobConsistency", propOrder = {
-
+    "missingBlobs",
+    "incorrectSize",
+    "unexpectedBlobs",
+    "incorrectRevision",
+    "usedBlobs"
 })
 public class testMailboxBlobConsistency {
 
@@ -101,6 +123,8 @@ public class testMailboxBlobConsistency {
     protected testMailboxBlobConsistency.UnexpectedBlobs unexpectedBlobs;
     @XmlElement(required = true)
     protected testMailboxBlobConsistency.IncorrectRevision incorrectRevision;
+    @XmlElement(required = true)
+    protected testMailboxBlobConsistency.UsedBlobs usedBlobs;
     @XmlAttribute(name = "id", required = true)
     protected int id;
 
@@ -201,6 +225,30 @@ public class testMailboxBlobConsistency {
     }
 
     /**
+     * Gets the value of the usedBlobs property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link testMailboxBlobConsistency.UsedBlobs }
+     *     
+     */
+    public testMailboxBlobConsistency.UsedBlobs getUsedBlobs() {
+        return usedBlobs;
+    }
+
+    /**
+     * Sets the value of the usedBlobs property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link testMailboxBlobConsistency.UsedBlobs }
+     *     
+     */
+    public void setUsedBlobs(testMailboxBlobConsistency.UsedBlobs value) {
+        this.usedBlobs = value;
+    }
+
+    /**
      * Gets the value of the id property.
      * 
      */
@@ -229,6 +277,7 @@ public class testMailboxBlobConsistency {
      *       &lt;sequence>
      *         &lt;element name="item" type="{urn:zimbraAdmin}incorrectBlobRevisionInfo" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -243,6 +292,8 @@ public class testMailboxBlobConsistency {
     public static class IncorrectRevision {
 
         protected List<testIncorrectBlobRevisionInfo> item;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the item property.
@@ -273,6 +324,30 @@ public class testMailboxBlobConsistency {
             return this.item;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -288,6 +363,7 @@ public class testMailboxBlobConsistency {
      *       &lt;sequence>
      *         &lt;element name="item" type="{urn:zimbraAdmin}incorrectBlobSizeInfo" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -302,6 +378,8 @@ public class testMailboxBlobConsistency {
     public static class IncorrectSize {
 
         protected List<testIncorrectBlobSizeInfo> item;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the item property.
@@ -332,6 +410,30 @@ public class testMailboxBlobConsistency {
             return this.item;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -347,6 +449,7 @@ public class testMailboxBlobConsistency {
      *       &lt;sequence>
      *         &lt;element name="item" type="{urn:zimbraAdmin}missingBlobInfo" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -361,6 +464,8 @@ public class testMailboxBlobConsistency {
     public static class MissingBlobs {
 
         protected List<testMissingBlobInfo> item;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the item property.
@@ -391,6 +496,30 @@ public class testMailboxBlobConsistency {
             return this.item;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -406,6 +535,7 @@ public class testMailboxBlobConsistency {
      *       &lt;sequence>
      *         &lt;element name="blob" type="{urn:zimbraAdmin}unexpectedBlobInfo" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -420,6 +550,8 @@ public class testMailboxBlobConsistency {
     public static class UnexpectedBlobs {
 
         protected List<testUnexpectedBlobInfo> blob;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the blob property.
@@ -448,6 +580,116 @@ public class testMailboxBlobConsistency {
                 blob = new ArrayList<testUnexpectedBlobInfo>();
             }
             return this.blob;
+        }
+
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
+    }
+
+
+    /**
+     * <p>Java class for anonymous complex type.
+     * 
+     * <p>The following schema fragment specifies the expected content contained within this class.
+     * 
+     * <pre>
+     * &lt;complexType>
+     *   &lt;complexContent>
+     *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
+     *       &lt;sequence>
+     *         &lt;element name="item" type="{urn:zimbraAdmin}usedBlobInfo" maxOccurs="unbounded" minOccurs="0"/>
+     *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
+     *     &lt;/restriction>
+     *   &lt;/complexContent>
+     * &lt;/complexType>
+     * </pre>
+     * 
+     * 
+     */
+    @XmlAccessorType(XmlAccessType.FIELD)
+    @XmlType(name = "", propOrder = {
+        "item"
+    })
+    public static class UsedBlobs {
+
+        protected List<testUsedBlobInfo> item;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
+
+        /**
+         * Gets the value of the item property.
+         * 
+         * <p>
+         * This accessor method returns a reference to the live list,
+         * not a snapshot. Therefore any modification you make to the
+         * returned list will be present inside the JAXB object.
+         * This is why there is not a <CODE>set</CODE> method for the item property.
+         * 
+         * <p>
+         * For example, to add a new item, do as follows:
+         * <pre>
+         *    getItem().add(newItem);
+         * </pre>
+         * 
+         * 
+         * <p>
+         * Objects of the following type(s) are allowed in the list
+         * {@link testUsedBlobInfo }
+         * 
+         * 
+         */
+        public List<testUsedBlobInfo> getItem() {
+            if (item == null) {
+                item = new ArrayList<testUsedBlobInfo>();
+            }
+            return this.item;
+        }
+
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
         }
 
     }

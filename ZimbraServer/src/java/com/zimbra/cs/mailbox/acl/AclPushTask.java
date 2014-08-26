@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox.acl;
@@ -17,11 +19,15 @@ package com.zimbra.cs.mailbox.acl;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimerTask;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
@@ -58,16 +64,17 @@ public class AclPushTask extends TimerTask {
             return;
         ZimbraLog.misc.debug("Starting pending ACL push");
         
-        int mailboxIdUnderProcess = -1;
-        int itemIdUnderProcess = -1;
+        Multimap<Integer, List<Integer>> currentItemIdsProcessed = ArrayListMultimap.create();
+        		
         try {
         	Date now = new Date();
             Multimap<Integer, Integer> mboxIdToItemIds = DbPendingAclPush.getEntries(now);
 
             for (int mboxId : mboxIdToItemIds.keySet()) {
                 Mailbox mbox;
-                try {
-                    mbox = MailboxManager.getInstance().getMailboxById(mboxId);
+                List<Integer> itemsProcessed = new ArrayList<Integer> ();
+                try {      
+                   mbox = MailboxManager.getInstance().getMailboxById(mboxId);
                 } catch (ServiceException e) {
                     ZimbraLog.misc.info("Exception occurred while getting mailbox for id %s during ACL push", mboxId, e);
                     continue;
@@ -81,8 +88,6 @@ public class AclPushTask extends TimerTask {
                     if (itemIds.size() > 1) {
                         List<MailItem> itemList = new ArrayList<MailItem>();
                         for (int itemId : itemIds) {
-                        	itemIdUnderProcess = itemId;
-                        	mailboxIdUnderProcess = mbox.getId();
                             try {
                                 itemList.add(mbox.getItemById(null, itemId, MailItem.Type.UNKNOWN));
                             } catch (MailServiceException.NoSuchItemException ignored) {
@@ -98,6 +103,7 @@ public class AclPushTask extends TimerTask {
 
                 for (String sharedItem : existingSharedItems) {
                     ShareInfoData shareData = AclPushSerializer.deserialize(sharedItem);
+                    
                     if (!itemIds.contains(shareData.getItemId())) {
                         updatedSharedItems.add(sharedItem);
                     }
@@ -115,30 +121,52 @@ public class AclPushTask extends TimerTask {
                         ACL acl = item.getACL();
                         if (acl == null) {
                             continue;
-                        }
+                        }                       
                         for (ACL.Grant grant : acl.getGrants()) {
                             updatedSharedItems.add(AclPushSerializer.serialize(item, grant));
                         }
+                        itemsProcessed.add(item.getId());
+                        currentItemIdsProcessed.put(mboxId, itemsProcessed);
                     }
                 }
-
-                account.setSharedItem(updatedSharedItems.toArray(new String[updatedSharedItems.size()]));
-            }
-
+                account.setSharedItem(updatedSharedItems.toArray(new String[updatedSharedItems.size()]));         
+            } // for
             DbPendingAclPush.deleteEntries(now);
+            
         } catch (ServiceException e){
-        	if (e.getCode() == ServiceException.WRONG_HOST) {
-        		try {
-        			DbPendingAclPush.deleteEntry(mailboxIdUnderProcess, itemIdUnderProcess);
-        		} catch (ServiceException e2) {
-        			ZimbraLog.misc.warn("Wrong host error during ACL push task and deleting ACL push entry.");
-        		}
-        	}
         	ZimbraLog.misc.warn("Error during ACL push task", e);
         	
         } catch (Throwable t) {  //don't let exceptions kill the timer
+        	try {
+        		
+        		// We ran into runtime exception, so we want to delete records from ACL 
+        		// table for processed records.
+        		 deleteDbAclEntryForProcessedItems(currentItemIdsProcessed);        		
+    		} catch (ServiceException e) {
+    			ZimbraLog.misc.warn("Error during ACL push task and deleting ACL push entry.");
+    		}
             ZimbraLog.misc.warn("Error during ACL push task", t);
         }
         ZimbraLog.misc.debug("Finished pending ACL push");
     }
+
+	/**
+	 * @param mailboxIdUnderProcess
+	 * @param currentItemIdsProcessed
+	 * @throws ServiceException
+	 */
+	private static void deleteDbAclEntryForProcessedItems( Multimap<Integer, List<Integer>> currentItemIdsProcessed)
+			throws ServiceException {
+		if (currentItemIdsProcessed.size() != 0) {
+			Collection<Entry<Integer, List<Integer>>> mailboxIds = currentItemIdsProcessed.entries();
+			for (Entry<Integer, List<Integer>> entry : mailboxIds) {
+				int mboxId = entry.getKey();
+				List<Integer> itemIds = entry.getValue();
+				for (int itemId : itemIds)
+					DbPendingAclPush.deleteEntry(mboxId, itemId);
+			}
+		}
+	}
+
+	
 }

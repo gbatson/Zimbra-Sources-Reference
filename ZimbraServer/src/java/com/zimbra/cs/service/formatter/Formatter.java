@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
@@ -26,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.mail.MessagingException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
@@ -157,7 +160,7 @@ public abstract class Formatter {
     }
 
     public abstract void formatCallback(UserServletContext context)
-        throws UserServletException, ServiceException, IOException, ServletException;
+        throws UserServletException, ServiceException, IOException, ServletException, MessagingException;
 
     public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename)
         throws UserServletException, ServiceException, IOException, ServletException {
@@ -318,6 +321,12 @@ public abstract class Formatter {
                 cause instanceof ServletException ||
                 cause instanceof IOException ? cause : e;
             context.logError(exception);
+        }
+
+        // Don't report a ConversionUnsupportedException to the caller, unless they registered an error callback.
+        // This ensures seamless display of manual download link provided by error callback, or otherwise a null blank preview pane.
+        if (exception instanceof ConversionUnsupportedException && (callback == null || !callback.startsWith("ZmPreviewView._errorCallback"))) {
+            exception = null;
         }
 
         if (callback == null || callback.equals("")) {

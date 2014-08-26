@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -59,14 +61,14 @@ import javax.xml.bind.annotation.XmlType;
 public class testGetDataSourcesResponse {
 
     @XmlElements({
-        @XmlElement(name = "caldav", type = testMailCaldavDataSource.class),
-        @XmlElement(name = "imap", type = testMailImapDataSource.class),
-        @XmlElement(name = "yab", type = testMailYabDataSource.class),
-        @XmlElement(name = "rss", type = testMailRssDataSource.class),
         @XmlElement(name = "pop3", type = testMailPop3DataSource.class),
+        @XmlElement(name = "rss", type = testMailRssDataSource.class),
         @XmlElement(name = "cal", type = testMailCalDataSource.class),
-        @XmlElement(name = "unknown", type = testMailUnknownDataSource.class),
-        @XmlElement(name = "gal", type = testMailGalDataSource.class)
+        @XmlElement(name = "gal", type = testMailGalDataSource.class),
+        @XmlElement(name = "yab", type = testMailYabDataSource.class),
+        @XmlElement(name = "imap", type = testMailImapDataSource.class),
+        @XmlElement(name = "caldav", type = testMailCaldavDataSource.class),
+        @XmlElement(name = "unknown", type = testMailUnknownDataSource.class)
     })
     protected List<testMailDataSource> imapOrPop3OrCaldav;
 
@@ -88,14 +90,14 @@ public class testGetDataSourcesResponse {
      * 
      * <p>
      * Objects of the following type(s) are allowed in the list
-     * {@link testMailCaldavDataSource }
-     * {@link testMailImapDataSource }
-     * {@link testMailYabDataSource }
-     * {@link testMailRssDataSource }
      * {@link testMailPop3DataSource }
+     * {@link testMailRssDataSource }
      * {@link testMailCalDataSource }
-     * {@link testMailUnknownDataSource }
      * {@link testMailGalDataSource }
+     * {@link testMailYabDataSource }
+     * {@link testMailImapDataSource }
+     * {@link testMailCaldavDataSource }
+     * {@link testMailUnknownDataSource }
      * 
      * 
      */

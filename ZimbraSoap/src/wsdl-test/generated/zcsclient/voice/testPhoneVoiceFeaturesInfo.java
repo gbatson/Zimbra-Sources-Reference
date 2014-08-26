@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -65,14 +67,14 @@ public class testPhoneVoiceFeaturesInfo {
     @XmlElements({
         @XmlElement(name = "selectivecallrejection", type = testSelectiveCallRejectionFeature.class),
         @XmlElement(name = "callforward", type = testCallForwardFeature.class),
-        @XmlElement(name = "callwaiting", type = testCallWaitingFeature.class),
-        @XmlElement(name = "callforwardbusyline", type = testCallForwardBusyLineFeature.class),
-        @XmlElement(name = "anoncallrejection", type = testAnonCallRejectionFeature.class),
-        @XmlElement(name = "calleridblocking", type = testCallerIdBlockingFeature.class),
-        @XmlElement(name = "selectivecallacceptance", type = testSelectiveCallAcceptanceFeature.class),
         @XmlElement(name = "voicemailprefs", type = testVoiceMailPrefsFeature.class),
+        @XmlElement(name = "callwaiting", type = testCallWaitingFeature.class),
+        @XmlElement(name = "selectivecallforward", type = testSelectiveCallForwardFeature.class),
+        @XmlElement(name = "callforwardbusyline", type = testCallForwardBusyLineFeature.class),
+        @XmlElement(name = "selectivecallacceptance", type = testSelectiveCallAcceptanceFeature.class),
         @XmlElement(name = "callforwardnoanswer", type = testCallForwardNoAnswerFeature.class),
-        @XmlElement(name = "selectivecallforward", type = testSelectiveCallForwardFeature.class)
+        @XmlElement(name = "anoncallrejection", type = testAnonCallRejectionFeature.class),
+        @XmlElement(name = "calleridblocking", type = testCallerIdBlockingFeature.class)
     })
     protected List<testCallFeatureInfo> voicemailprefsOrAnoncallrejectionOrCalleridblocking;
     @XmlAttribute(name = "name", required = true)
@@ -98,14 +100,14 @@ public class testPhoneVoiceFeaturesInfo {
      * Objects of the following type(s) are allowed in the list
      * {@link testSelectiveCallRejectionFeature }
      * {@link testCallForwardFeature }
+     * {@link testVoiceMailPrefsFeature }
      * {@link testCallWaitingFeature }
+     * {@link testSelectiveCallForwardFeature }
      * {@link testCallForwardBusyLineFeature }
+     * {@link testSelectiveCallAcceptanceFeature }
+     * {@link testCallForwardNoAnswerFeature }
      * {@link testAnonCallRejectionFeature }
      * {@link testCallerIdBlockingFeature }
-     * {@link testSelectiveCallAcceptanceFeature }
-     * {@link testVoiceMailPrefsFeature }
-     * {@link testCallForwardNoAnswerFeature }
-     * {@link testSelectiveCallForwardFeature }
      * 
      * 
      */

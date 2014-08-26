@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.taglib;
@@ -18,8 +20,16 @@ import com.google.common.base.Charsets;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.BlobMetaData;
+import com.zimbra.common.util.BlobMetaDataEncodingException;
+import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.RemoteIP;
+import com.zimbra.common.util.WebSplitUtil;
+import com.zimbra.common.util.ngxlookup.NginxAuthServer;
+import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.taglib.bean.BeanUtils;
+import com.zimbra.cs.taglib.memcached.RouteCache;
+import com.zimbra.cs.taglib.ngxlookup.NginxRouteLookUpConnector;
 import com.zimbra.client.ZAuthResult;
 import com.zimbra.client.ZFolder;
 import com.zimbra.client.ZMailbox;
@@ -32,6 +42,10 @@ import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspTagException;
 import javax.servlet.jsp.PageContext;
 import javax.servlet.jsp.jstl.core.Config;
+
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Enumeration;
@@ -40,6 +54,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import com.zimbra.common.util.ZimbraLog;
 
 public class ZJspSession {
 
@@ -49,7 +64,7 @@ public class ZJspSession {
     // AP-TODO: COOKIE_NAME is no longer used, retire
     public static final String COOKIE_NAME = "ZM_AUTH_TOKEN";
     public static final String ZM_LAST_SERVER_COOKIE_NAME = "ZM_LAST_SERVER";
-
+    private static final String C_ID  = "id";
 
     private static final String CONFIG_ZIMBRA_SOAP_URL = "zimbra.soap.url";
     private static final String CONFIG_ZIMBRA_JSP_SESSION_TIMEOUT = "zimbra.jsp.session.timeout";
@@ -79,6 +94,7 @@ public class ZJspSession {
     private static final String PROTO_MIXED = "mixed";
     private static final String PROTO_HTTP = "http";
     private static final String PROTO_HTTPS = "https";
+    private static final String HTTP_SSL = "httpssl";
 
     private static final String sProtocolMode = BeanUtils.getEnvString("protocolMode", PROTO_HTTP);
     private static final boolean MODE_HTTP = sProtocolMode.equals(PROTO_HTTP);
@@ -362,7 +378,36 @@ public class ZJspSession {
         return useOffset != null && (useOffset.equalsIgnoreCase("true") || useOffset.equalsIgnoreCase("1"));
     }
 
-    public static synchronized String getSoapURL(PageContext context) {
+    public static synchronized String getSoapURL(PageContext context) throws ServiceException {
+    	ZimbraLog.misc.debug("Getting SOAP URL");
+        if (WebSplitUtil.isZimbraWebClientSplitEnabled()) {
+        	ZimbraLog.misc.debug("Web split enabled");
+            RouteCache rtCache = RouteCache.getInstance();
+            String accountID;
+            try {
+                accountID = getAccountId(context);
+                ZimbraLog.misc.debug("got accountId");
+            } catch (AuthTokenException e) {
+                throw ServiceException.AUTH_REQUIRED();
+            }
+            String route = null;
+            String authProtocol = (MODE_HTTP ? PROTO_HTTP : HTTP_SSL);
+            if (!accountID.equals("99999999-9999-9999-9999-999999999999")) {
+                route = rtCache.get(accountID);
+                if (route == null) {
+                    HttpServletRequest request = (HttpServletRequest) context.getRequest();
+                    NginxAuthServer nginxLookUpServer = NginxRouteLookUpConnector.getClient().getRouteforAccount(accountID, "zimbraId",
+                            authProtocol, HttpUtil.getVirtualHost(request), request.getRemoteAddr(), request.getHeader("Host"));
+                    rtCache.put(nginxLookUpServer.getNginxAuthUser(), nginxLookUpServer.getNginxAuthServer());
+                    route = nginxLookUpServer.getNginxAuthServer();
+                }
+            } else {
+                 // For Guest Account, no lookup is needed. connect to one of the available upstream servers
+                 route = NginxRouteLookUpConnector.getClient().getUpstreamMailServer(authProtocol);
+            }
+            ZimbraLog.misc.debug("got route %s",route);
+            return ((MODE_HTTP ? PROTO_HTTP : PROTO_HTTPS) + "://" + route + "/service/soap");
+        }
         if (sSoapUrl == null) {
             sSoapUrl = (String) Config.find(context, CONFIG_ZIMBRA_SOAP_URL);
             if (sSoapUrl == null) {
@@ -380,6 +425,35 @@ public class ZJspSession {
             }
         }
         return sSoapUrl;
+    }
+
+    private static String getAccountId (PageContext context) throws AuthTokenException {
+        ZAuthToken authToken = getAuthToken(context);
+        if (authToken == null) {
+            authToken = new ZAuthToken((String) context.getAttribute("zimbra_authToken", PageContext.REQUEST_SCOPE));
+        }
+        if (!authToken.isEmpty()) {
+            String encoded = authToken.getValue();
+            int pos = encoded.indexOf('_');
+            if (pos == -1) {
+                throw new AuthTokenException("invalid authtoken format");
+            }
+            int pos1 = encoded.indexOf('_', pos+1);
+            if (pos1 == -1) {
+                throw new AuthTokenException("invalid authtoken format");
+            }
+            String data = encoded.substring(pos1+1);
+            try {
+                String decoded = new String(Hex.decodeHex(data.toCharArray()));
+                return (String) BlobMetaData.decode(decoded).get(C_ID);
+            } catch (DecoderException e) {
+                throw new AuthTokenException("decoding exception", e);
+            } catch (BlobMetaDataEncodingException e) {
+                throw new AuthTokenException("blob decoding exception", e);
+            }
+        } else {
+            throw new AuthTokenException("invalid authtoken");
+        }
     }
 
     public static ZMailbox getZMailbox(PageContext context) throws JspException {
@@ -432,24 +506,34 @@ public class ZJspSession {
         if (authToken == null || authToken.isEmpty()) {
             return null;
         } else {
-            // see if we can get a mailbox from the auth token
-            ZMailbox.Options options = new ZMailbox.Options(authToken, getSoapURL(context));
+            //Force a authRequest with csrfSupported=1 so that the generated mailbox object has csrfToken.
+            ZMailbox.Options options = new ZMailbox.Options(authToken, getSoapURL(context), true, true);
             options.setClientIp(getRemoteAddr(context));
-            //options.setAuthAuthToken(true);
             ZMailbox mbox = ZMailbox.getMailbox(options);
             mbox.getAccountInfo(false);
             return setSession(context, mbox);
         }
     }
 
-    public static ZMailbox getRestMailbox(PageContext context, String authToken, String targetAccountId) throws ServiceException {
+    public static ZMailbox getRestMailbox(PageContext context, String authToken, String targetAccountId)
+            throws ServiceException {
+        return getRestMailbox(context, authToken, false, targetAccountId);
+    }
+
+    public static ZMailbox getRestMailbox(PageContext context, String authToken, boolean csrfEnabled,
+            String targetAccountId)
+            throws ServiceException {
         if (authToken == null || authToken.length() == 0) {
             return null;
         } else {
             // see if we can get a mailbox from the auth token
             ZMailbox.Options options = new ZMailbox.Options(authToken, getSoapURL(context));
             options.setNoSession(true);
-            options.setAuthAuthToken(false);
+            options.setAuthAuthToken(csrfEnabled);
+            if (csrfEnabled) {
+                // to get a csrf token
+                options.setCsrfSupported(true);
+            }
             options.setTargetAccount(targetAccountId);
             options.setTargetAccountBy(Key.AccountBy.id);
             options.setClientIp(getRemoteAddr(context));
@@ -457,14 +541,17 @@ public class ZJspSession {
         }
     }
 
-    public static ZMailbox getRestMailbox(PageContext context, ZAuthToken authToken, String targetAccountId) throws ServiceException {
+    public static ZMailbox getRestMailbox(PageContext context, ZAuthToken authToken, String targetAccountId)
+            throws ServiceException {
         if (authToken == null) {
             return null;
         } else {
             // see if we can get a mailbox from the auth token
             ZMailbox.Options options = new ZMailbox.Options(authToken, getSoapURL(context));
             options.setNoSession(true);
-            options.setAuthAuthToken(false);
+            options.setAuthAuthToken(true);
+            // Get a csrf token too
+            options.setCsrfSupported(true);
             options.setTargetAccount(targetAccountId);
             options.setTargetAccountBy(Key.AccountBy.id);
             options.setClientIp(getRemoteAddr(context));

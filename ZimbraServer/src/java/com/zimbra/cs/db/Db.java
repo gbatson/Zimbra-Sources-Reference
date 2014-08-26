@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.db;
@@ -72,6 +74,8 @@ public abstract class Db {
 
     private static Db sDatabase;
 
+    private static String ESCAPE_SEQUENCE = "\\";
+
     public synchronized static Db getInstance() {
         if (sDatabase == null) {
             String className = LC.zimbra_class_database.value();
@@ -83,7 +87,8 @@ public abstract class Db {
                 }
             }
             if (sDatabase == null)
-                sDatabase = new MySQL();
+                sDatabase = new MariaDB();
+            ESCAPE_SEQUENCE = sDatabase.escapeSequence();
         }
         return sDatabase;
     }
@@ -144,7 +149,7 @@ public abstract class Db {
     void preOpen(Integer mboxId) {
         //default do nothing
     }
-    
+
     /**
      * Called when connection attempt is aborted, so shared resources can be released
      */
@@ -306,36 +311,44 @@ public abstract class Db {
      * Concatenates two or more fields.
      */
     public abstract String concat(String... fieldsToConcat);
-    
+
     /**
      * Generates the sign value of the field.
      */
     public abstract String sign(String field);
-    
+
     /**
      * Pads to the left end of the field.
      */
     public abstract String lpad(String field, int padSize, String padString);
-    
+
     /** Returns a {@code LIMIT} clause that is appended to a {@code SELECT}
      *  statement to limit the number of rows in the result set.  If the
      *  database does not support this feature, returns an empty string.
-     * 
+     *
      * @param limit number of rows to return */
     public String limit(int limit) {
         return limit(0, limit);
     }
-    
+
     /**
      * Returns a {@code LIMIT} clause that is appended to a {@code SELECT} statement
      * to limit the number of rows in the result set.  If the database does not support
      * this feature, returns an empty string.
-     * 
+     *
      * @param offset number of rows at the beginning of the result set that will be skipped
      * @param limit number of rows to return
      * @return
      */
     public String limit(int offset, int limit) {
         return "";
+    }
+
+    protected String escapeSequence() {
+        return "\\";
+    }
+
+    public static String getEscapeSequence() {
+        return ESCAPE_SEQUENCE;
     }
 }

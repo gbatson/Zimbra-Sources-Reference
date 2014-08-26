@@ -45,6 +45,7 @@ urn:zimbra  -- top-level namespace for global attributes/elements
   <soap:Header>
     <context xmlns="urn:zimbra">
       [<authToken>...</authToken>]
+      [<csrfToken>...</csrfToken>]
       [<authTokenControl voidOnExpired="1"/>]
       [<session [id="{returned-from-server-in-last-response}" [seq="{highest_notification_received}"] [type="admin"]/>]
       [<account by="name|id">{account-name-or-id}</account>]
@@ -416,7 +417,7 @@ global soap/system errors used with zimbra:Error/Code:
    account.TOO_MANY_DATA_SOURCES
    account.TOO_MANY_SEARCH_RESULTS
 
- <AuthRequest xmlns="urn:zimbraAccount" [persistAuthTokenCookie="1"]>
+ <AuthRequest xmlns="urn:zimbraAccount" [persistAuthTokenCookie="1"][csrfTokenSecured="0|1"]>
    [<account by="name|id|foreignPrincipal">...</account>]
    [<password>...</password>]
    [<preauth timestamp="{timestamp}" expires="{expires}">{computed-preauth-value}</preauth>]
@@ -429,6 +430,7 @@ global soap/system errors used with zimbra:Error/Code:
 
  <AuthResponse">
    <authToken>...</authToken>
+   [<csrfToken>...</csrfToken>]
    <lifetime>...</lifetime>
    <session .../>
    <refer>{mail-host}</refer>
@@ -454,6 +456,9 @@ If verifyAccount="0" (default), only the auth token is verified and any <account
                              1: The "Expires" attribute of the cookie will be set per rfc6265.
                   
   
+  {csrfTokenSecured} = controls whether the client has the capability to handle CSRF token
+                0: (default) the client is not capable of handling CSRF token
+                1: The client is capable of handling CSRF token.
   {mail-host} = host additional SOAP requests should be directed to. Always returned, might be same as original host request was sent to.
 
   {virtual-host} = if specified (in conjunction with by="name"), virtual-host is used to determine the domain of the account name, if it
@@ -504,11 +509,13 @@ See also //depot/zimbra/main/ThirdParty/nginx/docs/HTTP for more details on the 
 
 ---------------------------
 
-<EndSessionRequest xmlns="urn:zimbraAccount"/>
+<EndSessionRequest xmlns="urn:zimbraAccount" [logoff="1"]/>
 
 Ends the current session, removing it from all caches.  Called when
 the browser app (or other session-using app) shuts down.  Has no
 effect if called in a <nosession> context.
+
+Setting logoff to "1" will prevent the cookie from being re-used.
 
 ---------
  <GetPrefsRequest>
@@ -573,6 +580,7 @@ effect if called in a <nosession> context.
    </zimlets>
    <mailURL>{mail-url}</mailURL>+
    <publicURL>{account-base-public-url}</publicURL>
+   [<communityURL>{community-url}</communityURL>]
    <identities>
      <identity name={identity-name} id="...">
        <a name="{name}">{value}</a>
@@ -652,6 +660,7 @@ effect if called in a <nosession> context.
    <soapURL>{soap-url}</soapURL>+
    <publicURL>{account-base-public-url}</publicURL>
    [<changePasswordURL>{change-password-url}</changePasswordURL>]
+   [<communityURL>{community-url}</communityURL>]
 </GetAccountInfoResponse>
 
   {account-name} = email address (user@domain)
@@ -672,6 +681,10 @@ effect if called in a <nosession> context.
   {account-base-public-url} = base public URL for the requested account
   {change-password-url} = URL to talk to in order to change a password.  Not returned if not configured via domain
                           attribute zimbraChangePasswordURL
+  {community-url} = Zimbra Community URL to load in Community tab. 
+                    The URL points to /api.ashx/v2/oauth/redirect script in Zimbra Community and contains signed GET parameters used by Zimbra Community to authenticate current user.  
+                    This parameter is returned only when zimbraFeatureSocialExternalEnabled is set to TRUE and the following attributes are configured:
+                        zimbraCommunityAPIClientID, zimbraCommunityAPIClientSecret, zimbraCommunityUsernameMapping,zimbraCommunityBaseURL,zimbraCommunityHomeURL  
 
 ----------------------------
 
@@ -793,8 +806,9 @@ import and export of addressbook.
   {type} = type of addresses to auto-complete on
            "account" for regular user accounts, aliases and distribution lists
            "resource" for calendar resources
-           "all" for combination of both types
-           if omitted, defaults to "accounts"
+           "group" for contact groups
+           "all" for combination of all types
+           if omitted, defaults to "account"
 
   {more-flag} = 1 if the results were truncated.
 
@@ -814,7 +828,7 @@ import and export of addressbook.
 
 ----------------------------
 
-<AutoCompleteRequest [folders="{folders}"] [includeGal="0|1"] [needExp="1|0"]>
+<AutoCompleteRequest [folders="{folders}"] [includeGal="0|1"] [needExp="1|0"] [t="{type}"]>
   <name>...</name>
 </AutoCompleteRequest>
 
@@ -823,6 +837,13 @@ import and export of addressbook.
 </AutoCompleteResponse>
 
   {folders} - comma separates list of folder IDs.
+
+  {type} = type of addresses to auto-complete on
+           "account" for regular user accounts, aliases and distribution lists
+           "resource" for calendar resources
+           "group" for contact groups
+           "all" for combination of all types
+           if omitted, defaults to "account"
 
   - the number of entries in the response is limited by Account/COS attribute
     zimbraContactAutoCompleteMaxResults with default value of 20.
@@ -1286,7 +1307,7 @@ Folders:
 
   <folder id="{folder-id}" name="{folder-name}" l="{parent-id}" [f="{flags}"] [color="{color}"]
        u="{unread}" [i4u="{imap-unread}"] n="{msg-count}" [i4n="{imap-count}"] s="{total-size}" [view="{default-type}"]
-       [url="{remote-url}"] [activesyncdisabled="0|1"] [perm="{effective-perms}"] [rest="{rest-url}"]>
+       [url="{remote-url}"] [activesyncdisabled="0|1"] [perm="{effective-perms}"] [rest="{rest-url}"] [webOfflineSyncDays="num-days"]>
     <acl [internalGrantExpiry="{millis-since-epoch}"] [guestGrantExpiry="{millis-since-epoch}"]>
       <grant perm="{rights}" gt="{grantee-type}" zid="{zimbra-id}" [expiry="{millis-since-epoch}"] [d="{grantee-name}"] [pw="{password-for-guest}"] [key="{access-key}"]/>*
     </acl>?
@@ -1404,11 +1425,13 @@ Tags:
 
 ----------
 
-<SearchRequest [limit="..."] [offset="..."] [sortBy="{sort-by}"] [groupBy="{group-by}"] [types="{types}"] [recip="*0|1"]
+<SearchRequest [limit="..."] [offset="..."] [sortBy="{sort-by}"] [groupBy="{group-by}"]
+    [types="{types}"] [recip="*0|1|2"]
     [fetch="1|all|{item-id}"] [read="*0|1"] [max="{max-inlined-length}"] [html="*0|1"] [neuter="0|*1"] [needExp="1|*0"]
     [field={default_field}] [calExpandInstStart=TIME_IN_MSEC] [calExpandInstEnd=TIME_IN_MSEC]
-    [allowableTaskStatus="need,inprogress,completed,canceled"] [includeTagDeleted="{include-imap-deleted}"] [includeTagMuted="{include-muted}"]
-    [resultMode="{result-mode}"] [inDumpster="*0|1"]
+    [allowableTaskStatus="need,inprogress,completed,canceled"]
+    [includeTagDeleted="{include-imap-deleted}"] [includeTagMuted="{include-muted}"]
+    [resultMode="{result-mode}"] [fullConversation="*0|1"] [inDumpster="*0|1"]
     [warmup="*0|1"] [quick="*0|1"]>
 
   *(<header n="{header-name}/>)
@@ -1487,14 +1510,19 @@ if fetch="all", all hits are expanded inline
     + if max="{max-inlined-length}" is specified, inlined body content in limited to the given length;
          if the part is truncated, truncated="1" is specified on the <mp> in question
 
-if recip="2" is specified
-      returned both "From:" Senders and "To:" recipients
-else if recip="1" is specified
-    + returned sent messages will contain the set of "To:" recipients instead of the sender
-    + returned conversations whose first hit was sent by the user will contain
-      that hit's "To:" recipients instead of the conversation's sender list
-else
-    return "From:" Senders only
+Setting specifying which recipients should be returned.
+recip="0" [default]
+    returned sent messages will contain "From:" Senders only
+    returned conversations will contain an aggregated list of "From:" Senders from messages in the conversation
+    (maximum of 8) 
+recip="1"
+    returned sent messages will contain the set of "To:" Recipients instead of the Sender
+    returned conversations whose first hit was sent by the user will contain that hit's "To:" recipients instead
+    of the conversation's sender list (maximum of 8) 
+recip="2"
+    returned sent messages will contain the sets of both "From:" Senders and "To:" Recipients
+    returned conversations will contain an aggregated list of "From:" Senders and "To:" Recipients from messages
+    in the conversation (maximum of 8 of each) 
 
 unless include-imap-deleted="1", items with the \Deleted flag are omitted from the search results (defaults to "0")
 if include-muted="0", items with the \Muted flag are omitted from the search results (defaults to "1")
@@ -1545,6 +1573,10 @@ if include-muted="0", items with the \Muted flag are omitted from the search res
                       NORMAL|IDS
                   NORMAL : everything
                   IDS    : only IDs
+
+  fullConversation: By default, only matching messages are included in conversation results.
+                    Set to 1 (true) to include all messages in the conversation, even if they don't match the search,
+                    including items in Trash and Junk folders.
 
   warmup: When this option is specified, all other options are simply ignored, so you can't include this option in
    regular search requests. This option gives a hint to the index system to open the index data and primes it for
@@ -1733,7 +1765,7 @@ message-part result:
 -----------
 
 <SearchConvRequest cid="conversation-id" [limit="..."] [offset="..."] [sortBy="{sort-by}"] [types="{types}"] [nest="0|1"]
-    [fetch="0|1|u|u1|hits|all|{item-id}"] [max="{max-inlined-length}"] [html="1"] [read="1"] [neuter="0"] [needExp="1|0"]>
+    [fetch="0|1|u|u1|hits|all|!|hits!|u!|u1!|{comma-separated item-ids}] [max="{max-inlined-length}"] [html="1"] [read="1"] [neuter="0"] [needExp="1|0"]>
   *(<header n="{header-name}/>)
   <query>{query-string}</query>
 </SearchConvRequest>
@@ -1743,11 +1775,15 @@ message-part result:
   fetch:
     0|none|false: no messages are expanded inline
     1|first: the first matching message is expanded inline
-    u|unread: all unread messages are expanded inline
+    !: the first message in the conversation is expanded inline
+    u|unread: all unread matching messages are expanded inline
     u1|unread-first: all unread messages (or the first message if there are no unread messages) are expanded inline
+    u!: if there are unread matching messages, they are expanded inline, otherwise the first message is expanded
+    u1!: if there are unread matching messages, they are expanded inline, otherwise the first message and the first matching message are expanded
     hits: all matching messages are expanded inline
+    hits!: if there are matching messages, they are expanded inline, otherwise the first message is expanded
     all: all messages are expanded inline
-    {item-id}: only the message with the given {item-id} is expanded inline
+    {comma-separated item-ids}: only the messages with {item-id} in the list are expanded inline
 
   SEE SearchRequest for more info
 
@@ -1890,7 +1926,7 @@ If "tr" is true, broken links are rendered with broken="1" on the resulting <lin
 ----------
 
 <GetConvRequest>
-  <c id="{conv-id}" [fetch="1|all|{item-id}" max="{max-inlined-length}" html="0|1"]>
+  <c id="{conv-id}" [fetch="1|all|{item-id}" max="{max-inlined-length}" html="0|1" needExp="0|1"]>
     *(<header n="{header-name}/>)
   </c>
 </GetConvRequest>
@@ -1904,6 +1940,9 @@ if fetch="{item-id}", only the message with the given {item-id} is expanded inli
 
 if <header>s are requested, any matching headers are inlined into the response
     (not available when raw="1")
+    
+needExp="1" to return group info (isGroup and exp flags) on <e> elements in the response
+   (default is 0.)
 
 <GetConvResponse>
   <c id="{conv-id}" [tn="{tag-names}"] n="{num-msgs}" [total="{all-msgs}"] [f="{flags}"]>
@@ -2115,9 +2154,9 @@ If needExp is "1" in the request, two additional flags will be included in <e> e
 ---------
 
 <FolderActionRequest>
-  <action id="{list}" op="read|delete|rename|move|trash|empty|color|[!]grant|revokeorphangrants|url|import|sync|fb|[!]check|update|[!]syncon|retentionpolicy|[!]disableactivesync" [l="{target-folder}"]
+  <action id="{list}" op="read|delete|rename|move|trash|empty|color|[!]grant|revokeorphangrants|url|import|sync|fb|[!]check|update|[!]syncon|retentionpolicy|[!]disableactivesync|webofflinesyncdays" [l="{target-folder}"]
                       [name="{new-name}"] [color="{new-color}"] [rgb="{rgb-color}"] [zid="{grantee-zimbra-id}"] [url="{target-url}"]
-                      [excludeFreeBusy="{exclude-free-busy-boolean}">
+                      [excludeFreeBusy="{exclude-free-busy-boolean}"] [numDays="{web-offline-sync-days}"]>
     [<grant perm="..." gt="..." zid="..." [expiry="{millis-since-epoch}"] [d="..."] [key="..."]/>]
     [<retentionPolicy> ... </retentionPolicy>]
   </action>
@@ -2189,6 +2228,10 @@ Actions:
   <action op="[!]disableactivesync" id="{list}"/>
     - If set, disable access to the folder via activesync.
       Note: Only works for user folders, doesn't have any effect on system folders.
+
+  <action op="webofflinesyncdays" id="{list}" numDays="{web-offline-sync-days}"/>
+    - set the number of days for which web client would sync folder data for offline use
+      {web-offline-sync-days} must not be greater than value of zimbraWebClientOfflineSyncMaxDays account attribute
 
   <action op="update" id="{list}" [f="{new-flags}"] [name="{new-name}"] [l="{target-folder}"] [color="{new-color}"] [view="{new-view}"]>
     [<acl><grant .../>*</acl>]
@@ -3025,11 +3068,16 @@ use and error handling.  The old APIs still work in ZCS 6.0, but have been remov
         [test]
         ...
       </filterTests>
-      <filterActions>
+      [<nestedRule>
+        <filterTests>...</filterTests>
+        [<nestedRule>...</nestedRule>]
+        [<filterActions>...</filterActions>]
+      </nestedRule>]
+      [<filterActions>
         {action}
         [action]
         ...
-      </filterActions>
+      </filterActions>]
     </filterRule>
   </filterRules>
 </GetFilterRulesResponse>
@@ -3071,6 +3119,9 @@ Tests:
   <sizeTest numberComparison="{over|under}" s="{size}"/>
   <socialcastTest/>
   <twitterTest/>
+  <communityRequestsTest/>
+  <communityContentTest/>
+  <communityConnectionsTest/>
 
 Each test has the following optional attributes:
     * "negative": specifies a "not" condition for that test
@@ -3114,6 +3165,38 @@ origHeaders: Specifies list of headers to be copied from the original message to
   Value "*" implies that all headers need to be copied.
 <addressTest>: this test is preferred instead of <headerTest> for headers that contain email addresses. The default
   value of the part attribute is "all" which implies comparison against the full email address.
+<communityRequestsTest>, <communityContentTest>, and <communityConnectionsTest> all check the "X-Zimbra-Community-Notification-Type"
+header against predefined groups of values. The groups are:
+
+communityRequestsTest:
+bb196c30-fad3-4ad8-a644-2a0187fc5617 - Friendships Requests
+3772ef23-6aa0-4a22-9e88-a4313c37ebe6 - Group Membership Request
+1b0500d2-c789-421e-a25b-3ab823af53be - Forums Requiring Moderation
+
+communityContentTest:
+6a3659db-dec2-477f-981c-ada53603ccbb - Likes
+94dc0d37-3a65-43de-915d-d7d62774b576 - Ratings
+4876d7ce-b48c-4a08-8cd9-872342c5bdf8 - Blog Post Comment
+82e1d0b4-854e-43c9-85d7-dea7d4dec949 - Wiki Page Update
+8e627c29-8602-4110-877d-0232e4ea2fd5 - Media Comment
+be997a7a-5026-435f-8ea5-4fe3d90a6ba9 - New Media in Owned Gallery
+eea4ccbb-6e07-4a6d-9bb6-8b02f060f79c - Forum Thread Awaiting Moderation Notification
+352a702d-2a77-4307-9e9e-c564426e8cc8 - Forum Thread Subscription Notification
+0e952633-fa46-448d-b1aa-bb6c60a388fb - Forum Reply Awaiting Moderation Notification
+e3df1b21-ac81-4eb3-8ab6-69dc049f5684 - Forum Replies
+f8c93cd5-d40e-461d-b13a-b02e92bfcbbf - Forum Thread Verified Answers
+
+communityConnectionsTest:
+194d3363-f5a8-43b4-a1bd-92a95f6dd76b - Friendships
+1cee0f92-3650-4110-9f0b-69b0e175914d - Mentions
+bb196c30-fad3-4ad8-a644-2a0187fc5617 - Group Membership
+328e5139-d759-405c-98da-91cd25bcc80c - Group Mentions
+
+Nested Rules:
+
+In addition to the normal set of tests and actions, a filter rule may contain one or more layers of nested rules. If nested rules are
+specified the filter action(s) must be specified on the innermost level. All conditions are evaluated and if true the innermost action(s) are executed.
+Note that as of ZCS 8.5 nested filter rules are supported in the SOAP API but not in the end user filter preferences UI.
 
 ---------------------------
 

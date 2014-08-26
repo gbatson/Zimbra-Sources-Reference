@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.framework.items;
 
@@ -24,9 +26,9 @@ import com.zimbra.qa.selenium.framework.util.*;
 
 /**
  * This class represents a mail message
- * 
+ *
  * @author Matt Rhoades
- * 
+ *
  */
 public class TaskItem implements IItem {
 
@@ -65,15 +67,22 @@ public class TaskItem implements IItem {
 	public TaskItem() {
 		populateTaskData();
 	}
-	
+
 	public void setName(String name) {
 		gSubject=name;
 	}
 	public String getName() {
 		return (gSubject);
 	}
-	
-	
+
+	public void setPriority(String p) {
+		gPriority=p;
+	}
+	public String getPriority() {
+		return (gPriority);
+	}
+
+
 	public String gettaskBody() {
 
 		return gtaskBody;
@@ -91,7 +100,6 @@ public class TaskItem implements IItem {
 		gtaskHtmlBody = taskHtmlBody;
 	}
 	public void populateTaskData() {
-		// TODO Auto-generated method stub
 		//taskSubject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 		//taskBody = "Body" + ZimbraSeleniumProperties.getUniqueString();
 	}
@@ -115,7 +123,7 @@ public class TaskItem implements IItem {
 			// Make sure we only have the GetMsgResponse part
 			Element getMsgResponse = ZimbraAccount.SoapClient.selectNode(
 					GetMsgResponse, "//mail:GetMsgResponse");
-			
+
 			if (getMsgResponse == null)
 				throw new HarnessException(
 						"Element does not contain GetMsgResponse");
@@ -133,6 +141,7 @@ public class TaskItem implements IItem {
 			//Set task id
 			task.setId(m.getAttribute("calItemId", null));
 			task.setHtmlTaskBody(m.getAttribute("descHtml", null));
+			task.setPriority(m.getAttribute("priority", null));
 			// TODO: parse the <m/> element
 
 			return (task);

@@ -30,6 +30,7 @@ public class ConfigViewModelS: BaseViewModel
         IsmailServer = false;
         CSEnableNext = false;
         iMailSvrInitialized = -1;
+        IscfgPublicFolder = false;
     }
     public ICommand LoadCommand {
         get;
@@ -58,6 +59,7 @@ public class ConfigViewModelS: BaseViewModel
             MailServerAdminPwd = config.SourceServer.AdminPwd;
         }
         savedDomain = config.UserProvision.DestinationDomain;
+        IscfgPublicFolder=config.AdvancedImportOptions.IsPublicFolders;
     }
 
     private void Load()
@@ -166,7 +168,7 @@ public class ConfigViewModelS: BaseViewModel
                     "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            if (iMailSvrInitialized == -1)
+            if ((!IscfgPublicFolder)&&(iMailSvrInitialized == -1))
                 ret = mw.GlobalInit(ProfileList[CurrentProfileSelection], "", "");
         }
         else
@@ -204,6 +206,7 @@ public class ConfigViewModelS: BaseViewModel
     private int iMailSvrInitialized;
     private bool IsProfile;
     private bool IsMailServer;
+    private bool IsCfgPublicFolder;
     public bool IsMailServerInitialized {
         get { return iMailSvrInitialized != -1; }
     }
@@ -214,6 +217,14 @@ public class ConfigViewModelS: BaseViewModel
             IsMailServer = value;
             CSEnableNext = (IsMailServer) ? true : ProfileList.Count > 0;
             OnPropertyChanged(new PropertyChangedEventArgs("IsmailServer"));
+        }
+    }
+    public bool IscfgPublicFolder
+    {
+        get { return IsCfgPublicFolder; }
+        set
+        {
+            IsCfgPublicFolder = value;
         }
     }
     public bool Isprofile {

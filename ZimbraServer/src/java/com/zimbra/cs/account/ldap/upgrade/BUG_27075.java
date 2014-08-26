@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.ldap.upgrade;
@@ -94,13 +96,10 @@ public class BUG_27075 extends UpgradeOp {
         return sb.toString();
     }
 
-    private boolean needsUpgrade(AttributeManager am, String attr, Version attrVersion) throws ServiceException  {
+    private boolean needsUpgrade(AttributeManager am, String attr) throws ServiceException  {
         String since = mSince.toString();
 
-        if (attrVersion == null)
-            return false;  // no version info, i.e. a 4.X attr, not need to upgrade
-
-        if (!am.beforeVersion(attr, since) && !attrVersion.isFuture())
+        if (!am.beforeVersion(attr, since) && !am.isFuture(attr))
             return true;
 
 
@@ -120,7 +119,7 @@ public class BUG_27075 extends UpgradeOp {
         //              6.0.0_BETA2 from a 6.0.0_BETA1 described above, attrs added in 5.0.17
         //              that were missing in the 6.0.0_BETA1 are still missing in the 6.0.0_BETA2
         //
-        if (attrVersion.compare("5.0.17") == 0) {
+        if (am.addedIn(attr, "5.0.17")) {
             boolean fromATroubledInstall = (mSince.compare("6.0.0_BETA1") == 0 || mSince.compare("6.0.0_BETA2") == 0);
             if (fromATroubledInstall) {
                 return true;
@@ -183,12 +182,12 @@ public class BUG_27075 extends UpgradeOp {
             if (ai == null)
                 continue;
 
-            Version attrVersion = ai.getSince();
+            List<Version> attrVersion = ai.getSince();
 
-            if (needsUpgrade(am, attr, attrVersion)) {
+            if (needsUpgrade(am, attr)) {
                 if (verbose) {
                     printer.println("");
-                    printer.println("Checking " + entryName + " attribute: " + attr + "(" + attrVersion + ")");
+                    printer.println("Checking " + entryName + " attribute: " + attr + attrVersion);
                 }
 
                 String curVal = entry.getAttr(attr);
@@ -237,10 +236,10 @@ public class BUG_27075 extends UpgradeOp {
 
                 attrValues.clear();
                 if (ai.getCardinality() != AttributeCardinality.multi) {
-                    printer.println("    setting " + entryName + " attribute " + attr + "(" + attrVersion + ")" + " to: " + values.get(0));
+                    printer.println("    setting " + entryName + " attribute " + attr + attrVersion + " to: " + values.get(0));
                     attrValues.put(attr, values.get(0));
                 } else {
-                    printer.println("    setting " + entryName + " attribute " + attr + "(" + attrVersion + ")" + " to: " + formatMultiValue(values));
+                    printer.println("    setting " + entryName + " attribute " + attr + attrVersion + " to: " + formatMultiValue(values));
                     attrValues.put(attr, values.toArray(new String[0]));
                 }
 

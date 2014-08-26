@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -37,7 +39,7 @@ import javax.xml.bind.annotation.XmlType;
  *       &lt;sequence>
  *         &lt;element name="deleted" type="{urn:zimbraMail}syncDeletedInfo" minOccurs="0"/>
  *         &lt;choice maxOccurs="unbounded" minOccurs="0">
- *           &lt;element ref="{urn:zimbraMail}folder"/>
+ *           &lt;element name="folder" type="{urn:zimbraMail}syncFolder"/>
  *           &lt;element name="tag" type="{urn:zimbraMail}tagInfo"/>
  *           &lt;element name="note" type="{urn:zimbraMail}noteInfo"/>
  *           &lt;element name="cn" type="{urn:zimbraMail}contactInfo"/>
@@ -71,16 +73,16 @@ public class testSyncResponse {
     protected testSyncDeletedInfo deleted;
     @XmlElements({
         @XmlElement(name = "tag", type = testTagInfo.class),
-        @XmlElement(name = "chat", type = testChatSummary.class),
-        @XmlElement(name = "w", type = testCommonDocumentInfo.class),
-        @XmlElement(name = "folder", type = testFolder.class),
+        @XmlElement(name = "note", type = testNoteInfo.class),
         @XmlElement(name = "m", type = testMessageSummary.class),
         @XmlElement(name = "appt", type = testCalendarItemInfo.class),
+        @XmlElement(name = "w", type = testCommonDocumentInfo.class),
+        @XmlElement(name = "chat", type = testChatSummary.class),
         @XmlElement(name = "doc", type = testDocumentInfo.class),
         @XmlElement(name = "task", type = testTaskItemInfo.class),
-        @XmlElement(name = "cn", type = testContactInfo.class),
-        @XmlElement(name = "note", type = testNoteInfo.class),
-        @XmlElement(name = "c", type = testConversationSummary.class)
+        @XmlElement(name = "folder", type = testSyncFolder.class),
+        @XmlElement(name = "c", type = testConversationSummary.class),
+        @XmlElement(name = "cn", type = testContactInfo.class)
     })
     protected List<Object> folderOrTagOrNote;
     @XmlAttribute(name = "md", required = true)
@@ -135,16 +137,16 @@ public class testSyncResponse {
      * <p>
      * Objects of the following type(s) are allowed in the list
      * {@link testTagInfo }
-     * {@link testChatSummary }
-     * {@link testCommonDocumentInfo }
-     * {@link testFolder }
+     * {@link testNoteInfo }
      * {@link testMessageSummary }
      * {@link testCalendarItemInfo }
+     * {@link testCommonDocumentInfo }
+     * {@link testChatSummary }
      * {@link testDocumentInfo }
      * {@link testTaskItemInfo }
-     * {@link testContactInfo }
-     * {@link testNoteInfo }
+     * {@link testSyncFolder }
      * {@link testConversationSummary }
+     * {@link testContactInfo }
      * 
      * 
      */

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
@@ -26,11 +28,13 @@ import java.util.UUID;
 import com.google.common.collect.Maps;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.AlwaysOnClusterBy;
 import com.zimbra.common.account.Key.ShareLocatorBy;
 import com.zimbra.common.account.Key.UCServiceBy;
 import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.account.auth.AuthContext.Protocol;
@@ -73,8 +77,18 @@ public final class MockProvisioning extends Provisioning {
         attrs.put(A_zimbraId, UUID.randomUUID().toString());
         attrs.put(A_zimbraMailMode, MailMode.http.toString());
         attrs.put(A_zimbraSmtpPort, "7025");
+        attrs.put(A_zimbraLowestSupportedAuthVersion, "1");
         localhost = new Server("localhost", "localhost", attrs, Collections.<String, Object>emptyMap(), this);
-
+        try {
+            config.setDefaultDomainName("testdomain.biz");
+			config.setDefaultAnalyzerStopWords(new String[] { "a", "an", "and",
+					"are", "as", "at", "be", "but", "by", "for", "if", "in",
+					"into", "is", "it", "no", "not", "of", "on", "or", "such",
+					"that", "the", "their", "then", "there", "these", "they",
+					"this", "to", "was", "will", "with" });
+        } catch (ServiceException e) {
+            ZimbraLog.test.warn("Could not set default domain name?", e);
+        }
         initializeMimeHandlers();
     }
 
@@ -757,6 +771,35 @@ public final class MockProvisioning extends Provisioning {
 
     @Override
     public void renameUCService(String zimbraId, String newName) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AlwaysOnCluster createAlwaysOnCluster(String name,
+            Map<String, Object> attrs) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AlwaysOnCluster get(AlwaysOnClusterBy keyname, String key)
+            throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void deleteAlwaysOnCluster(String zimbraId) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<AlwaysOnCluster> getAllAlwaysOnClusters()
+            throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<Server> getAllServers(String service, String clusterId)
+            throws ServiceException {
         throw new UnsupportedOperationException();
     }
 

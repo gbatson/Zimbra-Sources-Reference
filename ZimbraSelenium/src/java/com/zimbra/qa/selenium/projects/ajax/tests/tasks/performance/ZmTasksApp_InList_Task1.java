@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks.performance;
@@ -71,7 +73,8 @@ public class ZmTasksApp_InList_Task1 extends AjaxCommonTest {
       PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmTasksApp,
             logMessage);
 
-      app.zPageTasks.zNavigateTo();
+     // app.zPageTasks.zNavigateTo();//id=zb__App__Tasks_title
+      app.zPageAddressbook.zClickAt("css=td[id='zb__App__Tasks_title']","");
 
       PerfMetrics.waitTimestamp(token);
 
@@ -84,23 +87,24 @@ public class ZmTasksApp_InList_Task1 extends AjaxCommonTest {
    public void ZmTasksApp_02() throws HarnessException {
 
       // Import 100 appointments using Tasks.ics and REST to speed up the setup
-      String filename = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/ics/100tasks.ics";
+	   String filename = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/ics/100tasks.ics";
 
-      RestUtil rest = new RestUtil();
-      rest.setAuthentication(app.zGetActiveAccount());
-      rest.setPath("/service/home/~/Tasks");
-      rest.setQueryParameter("fmt", "ics");
-      rest.setUploadFile(new File(filename));
-      rest.doPost();
+	   RestUtil rest = new RestUtil();
+	   rest.setAuthentication(app.zGetActiveAccount());
+	   rest.setPath("/service/home/~/Tasks");
+	   rest.setQueryParameter("fmt", "ics");
+	   rest.setUploadFile(new File(filename));
+	   rest.doPost();
 
-      PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmTasksApp,
-            "Load the Tasks app, 100 tasks in list");
+	   PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmTasksApp,
+			   "Load the Tasks app, 100 tasks in list");
 
-      app.zPageTasks.zNavigateTo();
+	   // app.zPageTasks.zNavigateTo();
+	   app.zPageAddressbook.zClickAt("css=td[id='zb__App__Tasks_title']","");
 
-      PerfMetrics.waitTimestamp(token);
+	   PerfMetrics.waitTimestamp(token);
 
-      // Wait for the app to load
-      app.zPageTasks.zWaitForActive();
+	   // Wait for the app to load
+	   app.zPageTasks.zWaitForActive();
    }
 }

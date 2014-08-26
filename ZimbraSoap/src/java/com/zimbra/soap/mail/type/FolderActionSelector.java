@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -100,6 +102,13 @@ public class FolderActionSelector extends ActionSelector {
     @XmlElement(name=MailConstants.E_RETENTION_POLICY /* retentionPolicy */, required=false)
     private RetentionPolicy retentionPolicy;
 
+    /**
+     * @zm-api-field-tag web-offline-sync-days
+     * @zm-api-field-description Number of days for which web client would sync folder data for offline use
+     */
+    @XmlAttribute(name=MailConstants.A_NUM_DAYS /* numDays */, required=false)
+    private Integer numDays;
+
     public FolderActionSelector() {
         this((String) null, (String) null);
     }
@@ -131,6 +140,7 @@ public class FolderActionSelector extends ActionSelector {
     }
 
     public void setRetentionPolicy(RetentionPolicy retentionPolicy) { this.retentionPolicy = retentionPolicy; }
+    public void setNumDays(Integer numDays) { this.numDays = numDays; }
     public Boolean getRecursive() { return ZmBoolean.toBool(recursive); }
     public String getUrl() { return url; }
     public Boolean getExcludeFreebusy() { return ZmBoolean.toBool(excludeFreebusy); }
@@ -142,6 +152,7 @@ public class FolderActionSelector extends ActionSelector {
         return Collections.unmodifiableList(grants);
     }
     public RetentionPolicy getRetentionPolicy() { return retentionPolicy; }
+    public Integer getNumDays() { return numDays; }
 
     public Objects.ToStringHelper addToStringInfo(Objects.ToStringHelper helper) {
         helper = super.addToStringInfo(helper);
@@ -154,7 +165,8 @@ public class FolderActionSelector extends ActionSelector {
             .add("view", view)
             .add("grant", grant)
             .add("grants", grants)
-            .add("retentionPolicy", retentionPolicy);
+            .add("retentionPolicy", retentionPolicy)
+            .add("numDays", numDays);
     }
 
     @Override

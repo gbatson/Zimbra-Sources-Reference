@@ -1,21 +1,25 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #include "common.h"
 #include "Exchange.h"
 #include "MAPISession.h"
 #include "MAPIStore.h"
+#include "edk/edkmapi.h"
+#include "Logger.h"
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 // Exception class
@@ -36,16 +40,18 @@ MAPISessionException::MAPISessionException(HRESULT hrErrCode, LPCWSTR lpszDescri
 // MAPI Session Class
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-MAPISession::MAPISession(): m_Session(NULL)
+MAPISession::MAPISession(): m_Session(NULL)	
 {
     Zimbra::Util::AutoCriticalSection autocriticalsection(cs);
 
-    MAPIINIT_0 MAPIInit;
-   MAPIInit.ulFlags = MAPI_NO_COINIT | 0;
-   MAPIInit.ulVersion = MAPI_INIT_VERSION;
-   HRESULT hr= MAPIInitialize(&MAPIInit);
-       
-    UNREFERENCED_PARAMETER(hr);
+	MAPIINIT_0 MAPIInit;
+	MAPIInit.ulFlags = MAPI_NO_COINIT | 0;
+	MAPIInit.ulVersion = MAPI_INIT_VERSION;
+	HRESULT hr= MAPIInitialize(&MAPIInit);
+	if(FAILED(hr))
+		throw MAPISessionException(hr, L"MAPISession(): MAPIInitialize Failed.",
+            ERR_MAPI_INIT, __LINE__, __FILE__);
+    
     Zimbra::Mapi::Memory::SetMemAllocRoutines(NULL, MAPIAllocateBuffer, MAPIAllocateMore,
         MAPIFreeBuffer);
 }
@@ -67,6 +73,7 @@ HRESULT MAPISession::_mapiLogon(LPWSTR strProfile, DWORD dwFlags, LPMAPISESSION 
 {
     Zimbra::Util::AutoCriticalSection autocriticalsection(cs);
     HRESULT hr = S_OK;
+	wstrProfileName= strProfile;
 
     if (FAILED(hr = MAPILogonEx(0, strProfile, NULL, dwFlags, &session)))
         throw MAPISessionException(hr, L"_mapiLogon(): MAPILogonEx Failed.", 
@@ -127,8 +134,21 @@ HRESULT MAPISession::OpenDefaultStore(MAPIStore &Store)
     if (FAILED(hr))
         throw MAPISessionException(hr, L"OpenDefaultStore(): OpenMsgStore Failed.",
 		ERR_STORE_ERR, __LINE__, __FILE__);
-    Store.Initialize(m_Session, pDefaultMDB);
+    Store.Initialize(m_Session, pDefaultMDB, (LPWSTR) wstrProfileName.c_str(), true);
     return S_OK;
+}
+
+HRESULT MAPISession::OpenPublicStore(MAPIStore &Store)
+{
+	Zimbra::Util::AutoCriticalSection autocriticalsection(cs);
+    HRESULT hr = S_OK;
+	LPMDB pMdb = NULL;
+	hr=Store.OpenPublicMessageStore(m_Session,0x0000,&pMdb);
+	if (FAILED(hr))
+        throw MAPISessionException(hr, L"OpenPublicMessageStore() Failed.", 
+		ERR_STORE_ERR, __LINE__,  __FILE__);
+    Store.Initialize(m_Session, pMdb, (LPWSTR) wstrProfileName.c_str());
+	return hr;
 }
 
 HRESULT MAPISession::OpenOtherStore(LPMDB OpenedStore, LPWSTR pServerDn, LPWSTR pUserDn,
@@ -155,7 +175,7 @@ HRESULT MAPISession::OpenOtherStore(LPMDB OpenedStore, LPWSTR pServerDn, LPWSTR 
     if (FAILED(hr))
         throw MAPISessionException(hr, L"OpenDefaultStore(): MailboxLogon Failed.", 
 		ERR_STORE_ERR, __LINE__,  __FILE__);
-    OtherStore.Initialize(m_Session, pMdb);
+    OtherStore.Initialize(m_Session, pMdb, (LPWSTR) wstrProfileName.c_str());
 
     return S_OK;
 }

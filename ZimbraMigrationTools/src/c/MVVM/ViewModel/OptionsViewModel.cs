@@ -62,6 +62,9 @@ public class OptionsViewModel: BaseViewModel
         SpecialCharReplace = config.AdvancedImportOptions.SpecialCharReplace;
         LangID = config.AdvancedImportOptions.LangID;
         MaxRetries = config.AdvancedImportOptions.MaxRetries;
+        IsPublicFolders = config.AdvancedImportOptions.IsPublicFolders;
+        IsZDesktop = config.AdvancedImportOptions.IsZDesktop;
+        
 
         if (config.GeneralOptions != null)  // so old config files will work
         {
@@ -164,6 +167,11 @@ public class OptionsViewModel: BaseViewModel
 
     private void Back()
     {
+        if (isDesktop)
+        {
+            lb.SelectedIndex = 1;
+        }
+        else
         lb.SelectedIndex = 2;
     }
 
@@ -433,6 +441,32 @@ public class OptionsViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("SpecialCharReplace"));
         }
     }
+
+    public bool IsPublicFolders
+    {
+        get { return m_config.AdvancedImportOptions.IsPublicFolders; }
+        set
+        {
+            if (value == m_config.AdvancedImportOptions.IsPublicFolders)
+                return;
+            m_config.AdvancedImportOptions.IsPublicFolders = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("IsPublicFolders"));
+        }
+    }
+    public bool IsZDesktop
+    {
+        get { return m_config.AdvancedImportOptions.IsZDesktop; }
+        set
+        {
+            if (value == m_config.AdvancedImportOptions.IsZDesktop)
+                return;
+            m_config.AdvancedImportOptions.IsZDesktop = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("IsZDesktop"));
+        }
+    }
+   
     public string CSVDelimiter
     {
         get { return m_config.AdvancedImportOptions.CSVDelimiter; }

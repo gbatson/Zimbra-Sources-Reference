@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
@@ -31,6 +33,14 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
  */
 public class PageManageMailQueues extends AbsTab {
 
+	public static class Locators {
+		public static final String MONITOR_ICON="css=div.ImgMonitor";
+		public static final String MAIL_QUEUES="css=td:contains('Mail Queues')";
+		public static final String HOME="Home";
+		public static final String MONITOR="Monitor";
+		public static final String MAIL_QUEUES_TEXT="Mail Queues";
+	}
+
 	public PageManageMailQueues(AbsApplication application) {
 		super(application);
 	}
@@ -40,7 +50,17 @@ public class PageManageMailQueues extends AbsTab {
 	 */
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		throw new HarnessException("implement me");
+		// If the "Refresh" button is visible, assume the ServerStatus page is active
+
+		// Look for the Refresh Button
+		boolean present = sIsElementPresent(Locators.MAIL_QUEUES);
+		if ( !present ) {
+			logger.debug("isActive() present = "+ present);
+			return (false);
+		}
+
+		logger.debug("isActive() = "+ true);
+		return (true);
 	}
 
 	/* (non-Javadoc)
@@ -56,40 +76,50 @@ public class PageManageMailQueues extends AbsTab {
 	 */
 	@Override
 	public void zNavigateTo() throws HarnessException {
-		throw new HarnessException("implement me");
+		if ( zIsActive() ) {
+			// This page is already active.
+			return;
+		}
+
+		// Click on Addresses -> Accounts
+		zClickAt(Locators.MONITOR_ICON,"");
+		sIsElementPresent(Locators.MAIL_QUEUES);
+		zClickAt(Locators.MAIL_QUEUES, "");
+
+		zWaitForActive();
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
 			throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;	
+		return null;
 	}
-	
+
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
 			throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
+	public boolean zVerifyHeader (String header) throws HarnessException {
+		if(this.sIsElementPresent("css=span:contains('" + header + "')"))
+			return true;
+		return false;
+	}
 }

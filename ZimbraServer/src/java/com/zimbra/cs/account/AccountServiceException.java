@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -50,6 +52,7 @@ public class AccountServiceException extends ServiceException {
     public static final String NO_SUCH_DATA_SOURCE = "account.NO_SUCH_DATA_SOURCE";
     public static final String NO_SUCH_RIGHT       = "account.NO_SUCH_RIGHT";
     public static final String NO_SUCH_SERVER      = "account.NO_SUCH_SERVER";
+    public static final String NO_SUCH_ALWAYSONCLUSTER      = "account.NO_SUCH_ALWAYSONCLUSTER";
     public static final String NO_SUCH_UC_SERVICE  = "account.NO_SUCH_UC_SERVICE";
     public static final String NO_SUCH_SHARE_LOCATOR = "account.NO_SUCH_SHARE_LOCATOR";
     public static final String NO_SUCH_ZIMLET     = "account.NO_SUCH_ZIMLET";
@@ -66,6 +69,7 @@ public class AccountServiceException extends ServiceException {
     public static final String COS_EXISTS         = "account.COS_EXISTS";
     public static final String RIGHT_EXISTS       = "account.RIGHT_EXISTS";
     public static final String SERVER_EXISTS      = "account.SERVER_EXISTS";
+    public static final String ALWAYSONCLUSTER_EXISTS = "account.ALWAYSONCLUSTER_EXISTS";
     public static final String SHARE_LOCATOR_EXISTS = "account.SHARE_LOCATOR_EXISTS";
     public static final String ZIMLET_EXISTS      = "account.ZIMLET_EXISTS";
     public static final String DISTRIBUTION_LIST_EXISTS = "account.DISTRIBUTION_LIST_EXISTS";
@@ -106,8 +110,8 @@ public class AccountServiceException extends ServiceException {
      *             This info is logged but not returned to the client, for security reasons.
      */
     public static class AuthFailedServiceException extends AccountServiceException {
-        private String mReason;
-        private String mAcctName;  // real account name
+        private final String mReason;
+        private final String mAcctName;  // real account name
 
         private AuthFailedServiceException(String acctName, String namePassedIn, String reason, String code, boolean isReceiversFault, Throwable cause) {
             super("authentication failed for [" + namePassedIn + "]", code, isReceiversFault, cause);
@@ -231,7 +235,11 @@ public class AccountServiceException extends ServiceException {
     public static AccountServiceException NO_SUCH_SERVER(String name) {
         return new AccountServiceException("no such server: "+name, NO_SUCH_SERVER, SENDERS_FAULT, null);
     }
-    
+
+    public static AccountServiceException NO_SUCH_ALWAYSONCLUSTER(String name) {
+        return new AccountServiceException("no such alwaysoncluster: "+name, NO_SUCH_ALWAYSONCLUSTER, SENDERS_FAULT, null);
+    }
+
     public static AccountServiceException NO_SUCH_UC_SERVICE(String name) {
         return new AccountServiceException("no such uc service: "+name, NO_SUCH_UC_SERVICE, SENDERS_FAULT, null);
     }
@@ -260,7 +268,7 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException("no such distribution list: " + name, NO_SUCH_DISTRIBUTION_LIST,
                 SENDERS_FAULT, null);
     }
-    
+
     public static AccountServiceException NO_SUCH_GROUP(String name) {
         return new AccountServiceException("no such group: " + name, NO_SUCH_GROUP,
                 SENDERS_FAULT, null);
@@ -270,7 +278,7 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException("no such calendar resource: " + name, NO_SUCH_CALENDAR_RESOURCE,
                 SENDERS_FAULT, null);
     }
-    
+
     public static AccountServiceException NO_SUCH_EXTERNAL_ENTRY(String name) {
         return new AccountServiceException("no such external entry: " + name, NO_SUCH_EXTERNAL_ENTRY,
                 SENDERS_FAULT, null);
@@ -302,6 +310,10 @@ public class AccountServiceException extends ServiceException {
 
     public static AccountServiceException SERVER_EXISTS(String name) {
         return new AccountServiceException("server already exists: " + name, SERVER_EXISTS, SENDERS_FAULT, null);
+    }
+
+    public static AccountServiceException ALWAYSONCLUSTER_EXISTS(String name) {
+        return new AccountServiceException("alwaysOnCluster already exists: " + name, ALWAYSONCLUSTER_EXISTS, SENDERS_FAULT, null);
     }
 
     public static AccountServiceException SHARE_LOCATOR_EXISTS(String id) {

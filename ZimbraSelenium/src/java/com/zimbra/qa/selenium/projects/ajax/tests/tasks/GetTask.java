@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
@@ -19,7 +21,6 @@ import java.util.*;
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.core.Bugs;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -168,7 +169,7 @@ public class GetTask extends AjaxCommonTest {
 	}
 
 	@Test(	description = "Verify Multipart/alternative (text and html) task that can be display the body in preview pane",
-			groups = { "smoke" })
+			groups = { "smoke123" })
 			public void GetTask_03() throws HarnessException {
 
 		FolderItem taskFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Tasks);
@@ -177,7 +178,7 @@ public class GetTask extends AjaxCommonTest {
 		// Create the message data to be sent
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 		String bodyText = "text" + ZimbraSeleniumProperties.getUniqueString();
-		String bodyHTML = "text<strong>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong>text";
+		String bodyHTML = "text<strong style=" + (char)34 + (char)34 + ">bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong>text";
 		String contentHTML = XmlStringUtil.escapeXml(
 				"<html>" +
 				"<head></head>" +
@@ -412,11 +413,12 @@ public class GetTask extends AjaxCommonTest {
 		FormTaskNew taskNew = (FormTaskNew) app.zPageTasks.zToolbarPressButton(Button.B_NEW);
 		
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}else{
-			SleepUtil.sleepMedium();
-		}
+		//}else{
+		//	SleepUtil.sleepMedium();
+		//}
 		// Fill out the resulting form
 		taskNew.zFillField(com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew.Field.Subject, newsubject);
 		taskNew.zFillField(com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew.Field.Body, newcontent);
@@ -428,7 +430,7 @@ public class GetTask extends AjaxCommonTest {
 		 */
 		
 		//Click Save
-		app.zPageTasks.zClickAt("css=td[id='zb__TKE-2__SAVE_title']", "0,0");
+		app.zPageTasks.zClickAt("css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='_title']:contains('Save')", "0,0");
 		
 		SleepUtil.sleepMedium();
 		
@@ -462,7 +464,7 @@ public class GetTask extends AjaxCommonTest {
 		
 		String subject = "atask"+ ZimbraSeleniumProperties.getUniqueString();
 		String content = "content"+ ZimbraSeleniumProperties.getUniqueString();
-		ZDate dueDate  = new ZDate(2015, 1, 17, 12, 0, 0);
+		ZDate dueDate      = new ZDate(2015, 1, 17, 12, 0, 0);
 						
 		app.zGetActiveAccount().soapSend(
 				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
@@ -502,8 +504,6 @@ public class GetTask extends AjaxCommonTest {
 		//Click Filter By Drop down and select To-Do List menu item
 		app.zPageTasks.zToolbarPressPulldown(Button.B_TASK_FILTERBY, Button.O_TASK_TODOLIST);
 		
-		
-		
 		//Verify the task is no longer present for Mark as completed Tasks"		
 		List<TaskItem> tasks = app.zPageTasks.zGetTasks();
 		ZAssert.assertNotNull(tasks, "Verify the task list exists");
@@ -527,7 +527,7 @@ public class GetTask extends AjaxCommonTest {
 		
 		FolderItem taskFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Tasks);
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
-		String bodyHTML = "text<strong>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong>text";
+		String bodyHTML = "text<strong style=" + (char)34 + (char)34 + ">bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong>text";
 		String contentHTML = XmlStringUtil.escapeXml(
 				"<html>" +
 				"<head></head>" +

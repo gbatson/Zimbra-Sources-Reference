@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.performance;
@@ -18,8 +20,6 @@ import java.io.File;
 import java.util.HashMap;
 
 import org.testng.annotations.Test;
-
-import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.performance.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
@@ -34,14 +34,14 @@ public class ZmMailItem extends AjaxCommonTest {
 	@SuppressWarnings("serial")
 	public ZmMailItem() throws HarnessException {
 		logger.info("New "+ ZmMailItem.class.getCanonicalName());
-		
+
 		super.startingPage = app.zPageMail;
 
-		
+
 		super.startingAccountPreferences = new HashMap<String, String>() {{
-				    put("zimbraPrefGroupMailBy", "message");
-				    put("zimbraPrefMessageViewHtmlPreferred", "FALSE");
-				}};
+			put("zimbraPrefGroupMailBy", "message");
+			put("zimbraPrefMessageViewHtmlPreferred", "FALSE");
+		}};
 
 
 	}
@@ -55,8 +55,6 @@ public class ZmMailItem extends AjaxCommonTest {
 		String subject = "Subject13155016716713";
 
 		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mime));
-
-
 		
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
@@ -64,13 +62,16 @@ public class ZmMailItem extends AjaxCommonTest {
 		PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmMailItem, "Load preview pane, text message, initial load");
 
 		// Select the message so that it shows in the reading pane
-		app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+	//	css=ul[id='zl__TV-main__rows'] li[id^='zli__TV-main__'] [id$='__su']:contains('23')
+		//app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		
+		app.zPageMail.zClickAt("css=ul[id='zl__TV-main__rows'] li[id^='zli__TV-main__']  div span[id$='__su']:contains('"+subject+"')","");
 
 		PerfMetrics.waitTimestamp(token);
 
 	}
 
-	@Test(	description = "Measure the performance for preview pane, html message, 1 message",
+	@Test(	description = "Measure the performance for preview pane, text message, 1 message",
 			groups = { "performance" })
 	public void ZmMailItem_02() throws HarnessException {
 		
@@ -87,12 +88,52 @@ public class ZmMailItem extends AjaxCommonTest {
 		PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmMailItem, "Load preview pane, text message, 1 message");
 
 		// Select the message so that it shows in the reading pane
-		app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		//app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		app.zPageMail.zClickAt("css=ul[id='zl__TV-main__rows'] li[id^='zli__TV-main__']  div span[id$='__su']:contains('"+subject+"')","");
 
 		PerfMetrics.waitTimestamp(token);
 
 	}
+	
+	@Test(	description = "Measure the performance for preview pane,  message with 1 attachment",
+			groups = { "performance" })
+	public void ZmMailItem_03() throws HarnessException {
+		
+		final String mimeFile = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/mime/email05/mime01.txt";
+		final String subject = "subject151615738";
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFile));
 
+		// Click Get Mail button
+		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
 
+		PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmMailItem, "Load preview pane, text message, 1 attachment");
+
+		// Select the message so that it shows in the reading pane
+	//	app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		app.zPageMail.zClickAt("css=ul[id='zl__TV-main__rows'] li[id^='zli__TV-main__']  div span[id$='__su']:contains('"+subject+"')","");
+
+		PerfMetrics.waitTimestamp(token);
+	}
+	
+	
+	@Test(	description = "Measure the performance for preview pane,  message with 3 attachment",
+			groups = { "performance" })
+	public void ZmMailItem_04() throws HarnessException {
+		
+		final String mimeFile = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/mime/email05/mime02.txt";
+		final String subject = "subject151111738";
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mimeFile));
+		
+		// Click Get Mail button
+		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+
+		PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmMailItem, "Load preview pane, text message, 3 attachments");
+
+		// Select the message so that it shows in the reading pane
+		//app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		app.zPageMail.zClickAt("css=ul[id='zl__TV-main__rows'] li[id^='zli__TV-main__']  div span[id$='__su']:contains('"+subject+"')","");
+
+		PerfMetrics.waitTimestamp(token);
+	}
 
 }

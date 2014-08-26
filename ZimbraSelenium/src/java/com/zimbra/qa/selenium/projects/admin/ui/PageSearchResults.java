@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
@@ -34,9 +36,33 @@ public class PageSearchResults extends AbsTab {
 		public static final String SEARCH_INPUT_TEXT_BOX="_XForm_query_display";
 		public static final String SEARCH_BUTTON="css=td.xform_container div.ImgSearch";
 		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
+		public static final String DELETE_BUTTON_DISABLED="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete ZDisabledImage']";
 		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON="css=div[id='zm__SCHLV__MENU_POP'] div[class='ImgDelete']";
-		public static final String EDIT_BUTTON="div[id='zm__zb_currentApp__MENU_POP']  div[class='ImgEdit']";
+		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON_DISABLED="css=div[id='zm__SCHLV__MENU_POP'] div[class='ImgDelete ZDisabledImage']";
+		public static final String RIGHT_CLICK_MENU_EDIT_BUTTON="css=div[id='zm__SCHLV__MENU_POP'] div[class='ImgEdit']";
+		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP']  div[class='ImgEdit']";
 		public static final String GEAR_ICON="css=div.ImgConfigure";
+	}
+
+	public static class TypeOfObject {
+		public static final String ACCOUNT = "Account";
+		public static final String ALIAS = "ALIAS";
+		public static final String RESOURCE = "RESOURCE";
+		public static final String DISTRIBUTION_LIST = "Distribution List";
+		public static final String COS = "Cos";
+		public static final String DOMAIN = "Domain";
+		public static final String DOMAIN_ALIAS="Domain Alias";
+	}
+
+	public String typeOfObject = "";
+
+
+	public String getType() {
+		return typeOfObject;
+	}
+
+	public void setType(String type) {
+		this.typeOfObject = type;
 	}
 
 	public PageSearchResults(AbsApplication application) {
@@ -61,7 +87,7 @@ public class PageSearchResults extends AbsTab {
 	/**
 	 * Enter text into the query string field
 	 * @param query
-	 * @throws HarnessException 
+	 * @throws HarnessException
 	 */
 	public void zAddSearchQuery(String query) throws HarnessException {
 		logger.info(myPageName() + " zAddSearchQuery("+ query +")");
@@ -94,9 +120,9 @@ public class PageSearchResults extends AbsTab {
 			locator = accountLocator + " td[id^='SEARCH_MANAGE_data_emailaddress']";
 
 
-			if(this.sIsElementPresent(locator)) 
+			if(this.sIsElementPresent(locator))
 			{
-				if(this.sGetText(locator).trim().equalsIgnoreCase(entity)) 
+				if(this.sGetText(locator).trim().equalsIgnoreCase(entity))
 				{
 					if(action == Action.A_LEFTCLICK) {
 						zClick(locator);
@@ -116,14 +142,13 @@ public class PageSearchResults extends AbsTab {
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
+
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;	
+		return null;
 	}
 
 	@Override
@@ -164,7 +189,35 @@ public class PageSearchResults extends AbsTab {
 				throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
 
 			// FALL THROUGH
-		} else{
+		} else if(button == Button.B_TREE_EDIT) {
+			locator = Locators.RIGHT_CLICK_MENU_EDIT_BUTTON;
+
+			if(typeOfObject.equals(TypeOfObject.DISTRIBUTION_LIST))
+				page=new FormEditDistributionList(this.MyApplication);
+			else if(typeOfObject.equals(TypeOfObject.ACCOUNT))
+				page=new FormEditAccount(this.MyApplication);
+			else if(typeOfObject.equals(TypeOfObject.RESOURCE))
+				page=new FormEditResource(this.MyApplication);
+			else if(typeOfObject.equals(TypeOfObject.ALIAS))
+				page=new FormEditAccount(this.MyApplication);
+			else if(typeOfObject.equals(TypeOfObject.COS))
+				page=new FormEditCos(this.MyApplication);
+			else if(typeOfObject.equals(TypeOfObject.DOMAIN))
+				page=new FormEditDomain(this.MyApplication);
+			else if (typeOfObject.equals(TypeOfObject.DOMAIN_ALIAS))
+				page=new WizardCreateDomainAlias(this);
+
+			// Make sure the button exists
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
+
+			// FALL THROUGH
+		}else if(button == Button.B_DELETE) {
+				locator = Locators.DELETE_BUTTON;
+				page = new DialogForDeleteOperation(this.MyApplication,null);
+
+			// FALL THROUGH
+		}else{
 			throw new HarnessException("no logic defined for button "+ button);
 		}
 
@@ -229,11 +282,20 @@ public class PageSearchResults extends AbsTab {
 				pulldownLocator = Locators.GEAR_ICON;
 				optionLocator = Locators.EDIT_BUTTON;
 
-				//page = new FormEditAccount(this.MyApplication);
-				page=new FormEditDistributionList(this.MyApplication);
-
-				// FALL THROUGH
-
+				if(typeOfObject.equals(TypeOfObject.DISTRIBUTION_LIST))
+					page=new FormEditDistributionList(this.MyApplication);
+				else if(typeOfObject.equals(TypeOfObject.ACCOUNT))
+					page=new FormEditAccount(this.MyApplication);
+				else if(typeOfObject.equals(TypeOfObject.RESOURCE))
+					page=new FormEditResource(this.MyApplication);
+				else if(typeOfObject.equals(TypeOfObject.ALIAS))
+					page=new FormEditAccount(this.MyApplication);
+				else if(typeOfObject.equals(TypeOfObject.COS))
+					page=new FormEditCos(this.MyApplication);
+				else if(typeOfObject.equals(TypeOfObject.DOMAIN))
+					page=new FormEditDomain(this.MyApplication);
+				else if (typeOfObject.equals(TypeOfObject.DOMAIN_ALIAS))
+					page=new WizardCreateDomainAlias(this);
 			}else {
 				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
 			}
@@ -278,8 +340,8 @@ public class PageSearchResults extends AbsTab {
 	/**
 	 * Return a list of all accounts in the current view
 	 * @return
-	 * @throws HarnessException 
-	 * @throws HarnessException 
+	 * @throws HarnessException
+	 * @throws HarnessException
 	 */
 	public List<AccountItem> zListGetAccounts() throws HarnessException {
 
@@ -330,5 +392,15 @@ public class PageSearchResults extends AbsTab {
 		return (items);
 	}
 
+	public boolean zVerifyDisabled(String  buttonID)throws HarnessException{
+		if(buttonID=="DeleteContext"){
+			boolean test= this.sIsElementPresent(Locators.DELETE_BUTTON_DISABLED);
+			return test;
+		}else if(buttonID=="DeleteTreeMenu"){
+			return this.sIsElementPresent(Locators.RIGHT_CLICK_MENU_DELETE_BUTTON_DISABLED);
+		}else{
+			return false;
+		}
 
+	}
 }

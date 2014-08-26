@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.ldap.unboundid;
@@ -25,6 +27,7 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.LDAPResult;
 import com.unboundid.ldap.sdk.Modification;
 import com.unboundid.ldap.sdk.ModifyRequest;
+import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
@@ -32,9 +35,9 @@ import com.unboundid.ldap.sdk.schema.Schema;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.ldap.LdapOp;
+import com.zimbra.cs.ldap.LdapServerConfig.ExternalLdapConfig;
 import com.zimbra.cs.ldap.LdapUsage;
 import com.zimbra.cs.ldap.ZLdapFilter;
-import com.zimbra.cs.ldap.LdapServerConfig.ExternalLdapConfig;
 import com.zimbra.cs.stats.ZimbraPerf;
 
 abstract class UBIDLdapOperation {
@@ -208,6 +211,14 @@ abstract class UBIDLdapOperation {
                 result = ctx.getConn().add(entry);
                 stat(startTime);
                 return result;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    result = ctx.getConnectionPool().add(entry);
+                    stat(startTime);
+                    return result;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     debug(ctx, startTime, result,
@@ -235,6 +246,14 @@ abstract class UBIDLdapOperation {
                 result = ctx.getConn().delete(dn);
                 stat(startTime);
                 return result;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    result = ctx.getConnectionPool().delete(dn);
+                    stat(startTime);
+                    return result;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     debug(ctx, startTime, result,
@@ -262,6 +281,14 @@ abstract class UBIDLdapOperation {
                 result = ctx.getConn().search(searchRequest);
                 searchStat(startTime, zFilter.getStatString());
                 return result;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    result = ctx.getConnectionPool().search(searchRequest);
+                    searchStat(startTime, zFilter.getStatString());
+                    return result;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     Control[] controls = searchRequest.getControls();
@@ -311,6 +338,15 @@ abstract class UBIDLdapOperation {
                     ctx.getConn().getEntry(dn, attrs);
                 stat(startTime);
                 return entry;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    SearchResultEntry entry = (attrs == null) ? ctx.getConnectionPool().getEntry(dn) :
+                            ctx.getConnectionPool().getEntry(dn, attrs);
+                    stat(startTime);
+                    return entry;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     debug(ctx,  startTime,
@@ -337,6 +373,14 @@ abstract class UBIDLdapOperation {
                 Schema schema = ctx.getConn().getSchema();
                 stat(startTime);
                 return schema;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    Schema schema = ctx.getConnectionPool().getSchema();
+                    stat(startTime);
+                    return schema;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     debug(ctx, startTime);
@@ -364,6 +408,14 @@ abstract class UBIDLdapOperation {
                 result = ctx.getConn().modify(dn, modList);
                 stat(startTime);
                 return result;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    result = ctx.getConnectionPool().modify(dn, modList);
+                    stat(startTime);
+                    return result;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     debug(ctx, startTime, result,
@@ -424,6 +476,14 @@ abstract class UBIDLdapOperation {
                 result = ctx.getConn().modifyDN(dn, newRDN, deleteOldRDN, newSuperiorDN);
                 stat(startTime);
                 return result;
+            } catch (LDAPException e) {
+                if (ResultCode.SERVER_DOWN == e.getResultCode()) {
+                    result = ctx.getConnectionPool().modifyDN(dn, newRDN, deleteOldRDN, newSuperiorDN);
+                    stat(startTime);
+                    return result;
+                } else {
+                    throw e;
+                }
             } finally {
                 if (debugEnabled()) {
                     debug(ctx, startTime, result,

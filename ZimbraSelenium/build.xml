@@ -28,6 +28,8 @@
 		<pathelement location="${build.classes.dir}" />
 		<pathelement location="${build.resources.dir}" />
 
+		<pathelement location="jars/testng-5.12.1.jar" />
+
 		<fileset dir="jars">
 			<include name="**/*.jar" />
 		</fileset>
@@ -121,6 +123,9 @@
 			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_linkedin/">
 				<filename name="*.properties"/>
 			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_linkedinimage/">
+				<filename name="*.properties"/>
+			</fileset>
 			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_phone/">
 				<filename name="*.properties"/>
 			</fileset>
@@ -185,7 +190,7 @@
 				<include name="ws-commons-util-1.0.2.jar" />
 				<include name="xmlrpc-client-3.1.3.jar" />
 				<include name="xmlrpc-common-3.1.3.jar" />
-				<include name="commons-codec-1.6.jar" />
+				<include name="commons-codec-1.7.jar" />
 				<include name="ldtp-1.0.jar"/>
 			</fileset>
 			<fileset dir="${common.dir}/jars">
@@ -201,7 +206,7 @@
 				<include name="libidn-1.24.jar" />
 				<include name="log4j-1.2.16.jar" />
 				<include name="javamail-1.4.5.jar" />
-				<include name="mysql-connector-java-5.1.18-bin.jar" />
+				<include name="mysql-connector-java-*.jar" />
 				<include name="guava-*.jar" />
 			</fileset>
 			<fileset file="${common.jarfile}" />
@@ -213,7 +218,7 @@
 				<attribute name="Main-Class" value="staf.Driver" />
 				<section name="staf/service/info">
 					<attribute name="Service-Class" value="com.zimbra.qa.selenium.staf.StafIntegration" />
-					<attribute name="Packaged-Jars" value="guava-13.0.1 commons-beanutils-1.7 commons-configuration-1.5 commons-lang-2.6 ezmorph-1.0.6 htmlcleaner-2.2 json-lib-2.3-jdk15 ocutil-2.4.2 testng-5.12.1 selenium-java-2.37.0 selenium-server-standalone-2.37.0 xalan apache-log4j-extras-1.0 commons-cli-1.2 commons-code-1.4 commons-configuration-1.5 commons-httpclient-3.1 commons-logging dom4j-1.5.2 jaxen-1.1.3 libidn-1.24 log4j-1.2.16 mail mysql-connector-java-5.1.18-bin resources coverage zimbra-native zimbracommon ant-tar-patched" />
+					<attribute name="Packaged-Jars" value="guava-13.0.1 commons-beanutils-1.7 commons-configuration-1.5 commons-lang-2.6 ezmorph-1.0.6 htmlcleaner-2.2 json-lib-2.3-jdk15 ocutil-2.4.2 testng-5.12.1 selenium-java-2.37.0 selenium-server-standalone-2.37.0 xalan apache-log4j-extras-1.0 commons-cli-1.2 commons-codec-1.7 commons-configuration-1.5 commons-httpclient-3.1 commons-logging dom4j-1.5.2 jaxen-1.1.3 libidn-1.24 log4j-1.2.16 mail mysql-connector-java-5.1.29-bin resources coverage zimbra-native zimbracommon ant-tar-patched" />
 				</section>
 			</manifest>
 		</jar>

@@ -1,35 +1,38 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.filter;
-
-import com.google.common.collect.ImmutableSet;
-import com.zimbra.common.filter.Sieve;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.soap.mail.type.FilterTest;
-import org.apache.jsieve.TagArgument;
-import org.apache.jsieve.parser.SieveNode;
-import org.apache.jsieve.parser.generated.ASTcommand;
-import org.apache.jsieve.parser.generated.ASTtest;
-import org.apache.jsieve.parser.generated.Node;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.jsieve.TagArgument;
+import org.apache.jsieve.parser.SieveNode;
+import org.apache.jsieve.parser.generated.ASTcommand;
+import org.apache.jsieve.parser.generated.ASTtest;
+import org.apache.jsieve.parser.generated.Node;
+
+import com.google.common.collect.ImmutableSet;
+import com.zimbra.common.filter.Sieve;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.soap.mail.type.FilterTest;
 
 /**
  * Iterates a Sieve node tree and calls callbacks at various
@@ -46,6 +49,10 @@ public abstract class SieveVisitor {
 
     @SuppressWarnings("unused")
     protected void visitRule(Node node, VisitPhase phase, RuleProperties props) throws ServiceException {
+    }
+
+    @SuppressWarnings("unused")
+    protected void visitIfControl(Node node, VisitPhase phase, RuleProperties props) throws ServiceException {
     }
 
     @SuppressWarnings("unused")
@@ -124,6 +131,16 @@ public abstract class SieveVisitor {
 
     @SuppressWarnings("unused")
     protected void visitBulkTest(Node node, VisitPhase phase, RuleProperties props) throws ServiceException {
+    }
+
+    @SuppressWarnings("unused")
+    protected void visitCommunityRequestsTest(Node node, VisitPhase phase, RuleProperties props) throws ServiceException {
+    }
+    @SuppressWarnings("unused")
+    protected void visitCommunityContentTest(Node node, VisitPhase phase, RuleProperties props) throws ServiceException {
+    }
+    @SuppressWarnings("unused")
+    protected void visitCommunityConnectionsTest(Node node, VisitPhase phase, RuleProperties props) throws ServiceException {
     }
 
     @SuppressWarnings("unused")
@@ -231,12 +248,14 @@ public abstract class SieveVisitor {
             Node node = parent.jjtGetChild(i);
 
             if (isRuleNode(node)) {
-                // New rule tree.
+                // New rule tree or Nested if. New RuleProperties is created for each nested if
                 RuleProperties newProps = new RuleProperties();
                 if ("disabled_if".equalsIgnoreCase(getNodeName(node))) {
                     newProps.isEnabled = false;
                 }
+                visitIfControl(node,VisitPhase.begin,newProps);
                 accept(node, newProps);
+                visitIfControl(node,VisitPhase.end,newProps);
             } else if (node instanceof ASTtest) {
                 acceptTest(node, props);
             } else if (node instanceof ASTcommand) {
@@ -483,7 +502,19 @@ public abstract class SieveVisitor {
                 visitTrueTest(node, VisitPhase.begin, props);
                 accept(node, props);
                 visitTrueTest(node, VisitPhase.end, props);
-            } else {
+            } else if ("community_requests".equalsIgnoreCase(nodeName)) {
+                visitCommunityRequestsTest(node, VisitPhase.begin, props);
+                accept(node, props);
+                visitCommunityRequestsTest(node, VisitPhase.end, props);
+            } else if ("community_content".equalsIgnoreCase(nodeName)) {
+                visitCommunityContentTest(node, VisitPhase.begin, props);
+                accept(node, props);
+                visitCommunityContentTest(node, VisitPhase.end, props);
+            } else if ("community_connections".equalsIgnoreCase(nodeName)) {
+                visitCommunityConnectionsTest(node, VisitPhase.begin, props);
+                accept(node, props);
+                visitCommunityConnectionsTest(node, VisitPhase.end, props);
+            }else {
                 ZimbraLog.filter.debug("Ignoring unrecognized test type '%s'.", nodeName);
                 accept(node, props);
             }

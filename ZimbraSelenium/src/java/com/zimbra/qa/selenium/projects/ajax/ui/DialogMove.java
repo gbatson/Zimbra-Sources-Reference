@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
@@ -41,7 +43,7 @@ public class DialogMove extends AbsDialog {
 
 	public DialogMove(AbsApplication application,AbsTab page) {
 		super(application,page);
-		
+
 		logger.info("new "+ DialogMove.class.getCanonicalName());
 	}
 
@@ -90,7 +92,6 @@ public class DialogMove extends AbsDialog {
 
 	@Override
 	public String zGetDisplayedText(String locator) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -100,37 +101,37 @@ public class DialogMove extends AbsDialog {
 		logger.info(myPageName() + " zIsActive()");
 
 		String locator = "css=div[id='"+ Locators.zDialogId +"']";
-		
+
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false); // Not even present
 		}
-		
+
 		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
 			return (false);	// Not visible per position
 		}
-	
+
 		// Yes, visible
 		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
 
 	}
-	
+
 	/**
 	 * Enter text into the move message dialog folder name field
 	 * @param folder
 	 */
 	public void zEnterFolderName(String folder) throws HarnessException {
 		String locator = "css=div[id='ChooseFolderDialog_inputDivId']>div>input";
-		
+
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("unable to find folder name field "+ locator);
-		
+
 		this.zClick(locator);
 		zKeyboard.zTypeCharacters(folder);
-		
+
 		// SleepUtil.sleepSmall();
-		this.zWaitForBusyOverlay(); 
-			
+		this.zWaitForBusyOverlay();
+
 	}
 
 
@@ -154,11 +155,11 @@ public class DialogMove extends AbsDialog {
 		   if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
 		      locator = "css=div[id='" + Locators.zDialogId+ "'] td[id^='zti__" +
 		            MyApplication.zGetActiveAccount().EmailAddress +
-		            ":ZmChooseFolderDialog_Mail__'][id$=':" +
+		            ":ZmChooseFolderDialog_Mail___'][id$=':" +
 		            folder.getId() +
-		            "_textCell']"; 
+		            "_textCell']";
 		   } else {
-		      locator = "css=div[id='" + Locators.zDialogId+ "'] td[id='zti__ZmChooseFolderDialog_Mail__"+ folder.getId() + "_textCell']";
+		      locator = "css=div[id='" + Locators.zDialogId+ "'] td[id='zti__ZmChooseFolderDialog_Mail_FOLDER___"+ folder.getId() + "_textCell']";
 		   }
 
 		} else if (MyTab instanceof PageAddressbook) {
@@ -170,37 +171,37 @@ public class DialogMove extends AbsDialog {
 	            + folder.getId() + "_textCell']";
 			   } else {
 	   			locator = "css=div[id='" + Locators.zDialogId
-	   			+ "'] td[id='zti__ZmChooseFolderDialog_Contacts__"
+	   			+ "'] td[id='zti__ZmChooseFolderDialog_Contacts___"
 	   			+ folder.getId() + "_textCell']";
 			   }
 
 		} else if (MyTab instanceof PageCalendar) {
 
 			locator = String.format(
-					"css=div[id='%s'] td[id='zti__ZmChooseFolderDialog_Calendar__%s_textCell']", 
-					Locators.zDialogId, 
+					"css=div[id='%s'] td[id='zti__ZmChooseFolderDialog_Calendar___%s_textCell']",
+					Locators.zDialogId,
 					folder.getId());
 
 		}else if (MyTab instanceof PageTasks){
 			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
 			   locator = "css=div[id='" + Locators.zDialogId + "'] td[id^='zti__" +
 			         MyApplication.zGetActiveAccount().EmailAddress +
-			         ":ZmChooseFolderDialog_Tasks__'][id$='" +
+			         ":ZmChooseFolderDialog_Tasks___'][id$='" +
 			         folder.getId() +
 			         "_textCell']";
 			} else {
-			   locator = "css=div[id='" + Locators.zDialogId + "'] td[id='zti__ZmChooseFolderDialog_Tasks__"+ folder.getId() + "_textCell']";
+			   locator = "css=div[id='" + Locators.zDialogId + "'] div[class='DwtTreeItemLevel1ChildDiv'] td[id='zti__ZmChooseFolderDialog_Tasks___"+ folder.getId() + "_textCell']";
 			}
 
 		}else if (MyTab instanceof PageBriefcase ) {
 			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
 			   locator = "css=div[id='" + Locators.zDialogId + "'] td[id='zti__"+
 			         MyApplication.zGetActiveAccount().EmailAddress +
-			         ":ZmChooseFolderDialog_Briefcase__'][id$='" +
+			         ":ZmChooseFolderDialog_Briefcase___'][id$='" +
 			         folder.getId() +
 			         "_textCell']";
 			} else {
-			   locator = "css=div[id='" + Locators.zDialogId + "'] td[id='zti__ZmChooseFolderDialog_Briefcase__"+ folder.getId() + "_textCell']";
+			   locator = "css=div[id='" + Locators.zDialogId + "'] td[id='zti__ZmChooseFolderDialog_Briefcase___"+ folder.getId() + "_textCell']";
 			}
 
 		} else {
@@ -209,7 +210,7 @@ public class DialogMove extends AbsDialog {
 
 		// For some reason, the text doesn't get entered on the first try
 
-		this.zClick(locator);
+		this.zClickAt(locator,"");
 
 		this.zWaitForBusyOverlay(); // This method call seems to be missing from
 		// the briefcase function

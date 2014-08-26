@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * Zimbra Collaboration Suite CSharp Client
+ * Copyright (C) 2011, 2012, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
+ * ***** END LICENSE BLOCK *****
+ */
 #pragma once
 
 #define ERR_OPEN_ENTRYID					L"Item cannot be opened"
@@ -30,6 +46,7 @@
 #define ERR_STORE_ERR						L"Error: Message store could not be opened"
 #define ERR_ROOT_FOLDER						L"Error: Root folder cannot be opened"
 #define ERR_MAPI_TASK						L"Error: MAPI Task item error"
+#define ERR_MAPI_INIT						L"Error: MAPI Init Error"
 
 const WCHAR* const ERR_AVOID_LIST[] = {ERR_ADOBJECT_OPEN, ERR_AD_NOROWS};
 

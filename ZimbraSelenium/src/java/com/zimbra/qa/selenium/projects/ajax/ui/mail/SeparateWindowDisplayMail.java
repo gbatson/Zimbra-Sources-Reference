@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -20,8 +22,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 import java.util.*;
 
 import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.DialogWarningID;
@@ -61,7 +62,9 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 		
 		if ( field == Field.From ) {
 			
-			locator = container + " tr[id$='_from'] span[id$='_com_zimbra_email']";
+			//locator = container + " tr[id$='_from'] span[id$='_com_zimbra_email']";
+			locator = container + " td[id$='_from'] span:nth-child(1)>span[class='addrBubble']>span";
+			
 			if ( !this.sIsElementPresent(locator) ) {
 				locator = container + " tr[id$='_from']"; // No bubbles
 			}
@@ -80,20 +83,22 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 				locator = container + " tr[id$='_cc']"; // No bubbles
 			}
 			
-		} else if ( field == Field.OnBehalfOf ) {
-			
-			locator = container + " td[id$='_obo'] span[id$='_com_zimbra_email']";
+		} else if ( field == Field.OnBehalfOf ) {		
+			locator = container + " span[id$='_obo_span'] span[class='addrBubble']>span";
+			//locator = container + " td[id$='_from']>span:nth-child(3)>span[class='addrBubble']";
+		
 			if ( !sIsElementPresent(locator) ) {
 				// no email zimlet case
-				locator = container + " td[id$='_obo']";
+				locator = container + " span[id$='_obo_span']";
 			}
 
 		} else if ( field == Field.ResentFrom ) {
 			
-			locator = container + " td[id$='_bwo'] span[id$='_com_zimbra_email']";
+			//locator = container + "  td[id$='_from'] span[class='addrBubble'] span:contains(resentfrom)";
+			locator = container + " span[id$='_bwo_span'] span[class='addrBubble']>span";
 			if ( !sIsElementPresent(locator) ) {
 				// no email zimlet case
-				locator = container + " tr[id$='_bwo']";
+				locator = container + " span[id$='_bwo_span']";
 			}
 
 		} else if ( field == Field.OnBehalfOfLabel ) {
@@ -102,7 +107,8 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 
 		} else if ( field == Field.ReplyTo ) {
 			
-			locator = container + " tr[id$='_reply to'] span[id$='_com_zimbra_email']";
+			locator = container + " tr[id$='_reply to'] span[class='addrBubble'] span:contains(replyto)";
+			
 			if ( !sIsElementPresent(locator) ) {
 				// no email zimlet case
 				locator = container + " tr[id$='_reply to']";
@@ -114,22 +120,22 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 			
 		} else if ( field == Field.ReceivedDate ) {
 			
-			locator = container + " tr[id$='_hdrTableTopRow'] td[class~='DateCol'] span[id$='_com_zimbra_date']";
+			locator = container + " tr[id$='_hdrTableTopRow'] td[class~='DateCol']";
 
 		} else if ( field == Field.ReceivedTime ) {
 			
-			String timeAndDateLocator = container + " tr[id$='_hdrTableTopRow'] td[class~='DateCol'] span[id$='_com_zimbra_date']";
+			String timeAndDateLocator = container + " tr[id$='_hdrTableTopRow'] td[class~='DateCol'] ";
 
 			// Make sure the subject is present
 			if ( !sIsElementPresent(timeAndDateLocator) )
 				throw new HarnessException("Unable to find the time and date field!");
 			
 			// Get the subject value
-			String timeAndDate = this.sGetText(timeAndDateLocator).trim();
-			String date = this.zGetMailProperty(Field.ReceivedDate);
+			String time = this.sGetText(timeAndDateLocator).trim();
+			//String date = this.zGetMailProperty(Field.ReceivedDate);
 			
 			// Strip the date so that only the time remains
-			String time = timeAndDate.replace(date, "").trim();
+			//String time = timeAndDate.replace(date, "").trim();
 			
 			logger.info("zGetDisplayedValue(" + field + ") = " + time);
 			return(time);
@@ -258,6 +264,13 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 
 			locator = container + " div[id$='__SPAM'] td[id$='_title']";
 			page = null;
+
+		} else if ( button == Button.B_ARCHIVE ) {
+
+			locator = container + " div[id$='__ARCHIVE_ZIMLET_BUTTON_ID'] td[id$='_title']";
+			page = null;
+
+			// FALL THROUGH
 
 		} else {
 			
@@ -391,16 +404,29 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 		}
 		
 		
-		if (pulldownLocator != null) {
+		if ( ZimbraSeleniumProperties.isWebDriver() ) {
 
-			this.zClickAt(pulldownLocator,"");
-
-			if (optionLocator != null) {
-
-				this.zClickAt(optionLocator,"");
-
-			}
+			// Webdriver
+			List<String> locators = new ArrayList<String>();
+			locators.add(pulldownLocator);
+			locators.add(optionLocator);
 			
+			// Click on:
+			// 1. pulldownLocator
+			// 2. optionLocator
+			//
+			this.sClick(locators);
+			
+		} else {
+			
+			// Selenium
+			if (pulldownLocator != null) {
+				this.zClickAt(pulldownLocator,"");
+				if (optionLocator != null) {
+					this.zClickAt(optionLocator,"");
+				}
+			
+			}
 		}
 		
 		if ( page != null ) {
@@ -651,7 +677,7 @@ public class SeparateWindowDisplayMail extends AbsSeparateWindow {
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("locator is not present for button "+ button +" : "+ locator);
 		
-		this.zClick(locator);
+		this.zClickAt(locator, "");
 		
 		this.zWaitForBusyOverlay();
 

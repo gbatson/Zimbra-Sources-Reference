@@ -2,15 +2,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -399,7 +401,21 @@ StartMailboxd()
     }
 
     fclose(stdin);
+    
+    fp = fopen(GC_OUTFILE, "a");
+    if (fp != NULL) {
+	/* Change mailboxd.out ownership */
+	pw = getpwnam(ZIMBRA_USER);
+	if (pw) {
+	    fchown(fileno(fp), pw->pw_uid, pw->pw_gid);
+	} else {
+	    syslog(LOG_WARNING, "can't change ownership of %s: user %s not found: %s", GC_OUTFILE, ZIMBRA_USER, strerror(errno));
+	}
 
+	fclose(fp);
+    } else {
+	syslog(LOG_WARNING, "opening output file %s failed: %s", GC_OUTFILE, strerror(errno));
+    }
 #ifdef DARWIN
     {
 	int tfd;
@@ -564,9 +580,8 @@ Start(int nextArg, int argc, char *argv[])
     AddArgFmt("-DSTART=%s/etc/start.config", MAILBOXD_HOME);
     AddArg("-jar");
     AddArgFmt("%s/start.jar", MAILBOXD_HOME);
-    AddArg("OPTIONS=Server,jsp,jmx,resources,websocket,ext,jta,plus,rewrite,setuid");
-    AddArgFmt("%s/etc/jetty.properties", MAILBOXD_HOME);
-    AddArgFmt("%s/etc/jetty-setuid.xml", MAILBOXD_HOME);
+    AddArg("--module=zimbra,server,servlet,servlets,jsp,jmx,resources,websocket,ext,plus,rewrite,monitor,continuation,webapp,setuid");
+    AddArgFmt("jetty.home=%s", MAILBOXD_HOME);
     AddArgFmt("%s/etc/jetty.xml", MAILBOXD_HOME);
 
     if (Verbose) {

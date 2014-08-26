@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.dav.service;
@@ -95,6 +97,7 @@ import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.FileUploadServlet.Upload;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.servlet.ZimbraServlet;
+import com.zimbra.cs.servlet.util.AuthUtil;
 import com.zimbra.cs.util.AccountUtil;
 
 @SuppressWarnings("serial")
@@ -244,6 +247,12 @@ public class DavServlet extends ZimbraServlet {
         ZimbraLog.clearContext();
         addRemoteIpToLoggingContext(req);
         ZimbraLog.addUserAgentToContext(req.getHeader(DavProtocol.HEADER_USER_AGENT));
+        
+        //bug fix - send 400 for Range requests
+        String rangeHeader = req.getHeader(DavProtocol.HEADER_RANGE);
+        if(null != rangeHeader){
+           sendError(resp, HttpServletResponse.SC_BAD_REQUEST, "Range header not supported", null, Level.debug);
+        }
 
         RequestType rtype = getAllowedRequestType(req);
         ZimbraLog.dav.debug("Allowable request types %s", rtype);
@@ -258,7 +267,7 @@ public class DavServlet extends ZimbraServlet {
         DavContext ctxt;
         try {
             AuthToken at = AuthProvider.getAuthToken(req, false);
-            if (at != null && at.isExpired())
+            if (at != null && (at.isExpired() || !at.isRegistered()))
                 at = null;
             if (at != null && (rtype == RequestType.both || rtype == RequestType.authtoken))
                 authUser = Provisioning.getInstance().get(AccountBy.id, at.getAccountId());
@@ -383,7 +392,7 @@ public class DavServlet extends ZimbraServlet {
             Element prop = top.element(DavElements.E_PROP);
             if (prop == null)
                 return false;
-            Iterator iter = prop.elementIterator();
+            Iterator<?> iter = prop.elementIterator();
             while (iter.hasNext()) {
                 prop = (Element) iter.next();
                 if (prop.getQName().equals(DavElements.E_GETCTAG))

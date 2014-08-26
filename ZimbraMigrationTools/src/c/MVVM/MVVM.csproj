@@ -154,6 +154,7 @@
     <Compile Include="ViewModel\ConfigViewModelSDest.cs" />
     <Compile Include="ViewModel\ConfigViewModelU.cs" />
     <Compile Include="ViewModel\ConfigViewModelUDest.cs" />
+    <Compile Include="ViewModel\ConfigViewModelZU.cs" />
     <Compile Include="ViewModel\IntroViewModel.cs" />
     <Compile Include="ViewModel\OptionsViewModel.cs" />
     <Compile Include="ViewModel\ScheduleViewModel.cs" />
@@ -171,6 +172,9 @@
     </Compile>
     <Compile Include="View\ConfigViewUDest.xaml.cs">
       <DependentUpon>ConfigViewUDest.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\ConfigViewZU.xaml.cs">
+      <DependentUpon>ConfigViewZU.xaml</DependentUpon>
     </Compile>
     <Compile Include="View\IntroView.xaml.cs">
       <DependentUpon>IntroView.xaml</DependentUpon>
@@ -234,6 +238,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="View\ConfigViewUDest.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\ConfigViewZU.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

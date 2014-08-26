@@ -1,18 +1,22 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.compose;
+
+import java.util.ArrayList;
 
 import org.testng.annotations.*;
 
@@ -111,7 +115,7 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 		}
 		mailform.zKeyDown(keyCode);
 		mailform.zWaitForActive();
-		boolean present = mailform.zWaitForElementPresent("css=textarea[id*='DWT'][class='DwtHtmlEditorTextArea']","30000");
+		boolean present = mailform.zWaitForElementPresent("css=textarea[id*='ZmHtmlEditor'][class='ZmHtmlEditorTextArea']","30000");
 		ZAssert.assertTrue(present, "Verify the new form opened");
 		
 		
@@ -265,6 +269,48 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 		
 		
 	}
+
+	@Test(	description = "Send a mail to 100 recipients",
+			groups = { "deprecated" } // The harness doesn't handle the postqueue for such a large message
+		)
+	public void CreateMailText_06() throws HarnessException {
+		
+		//-- Data
+		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
+
+		// Create 100 accounts
+		StringBuilder destination = new StringBuilder(ZimbraAccount.AccountA().EmailAddress);
+		ArrayList<ZimbraAccount> destinations = new ArrayList<ZimbraAccount>();
+		for(int i=0;i<100;i++) {
+			ZimbraAccount account = new ZimbraAccount();
+			account.provision();
+			destinations.add(account);
+			destination.append("; ").append(account.EmailAddress);
+		}
+		
+
+		//-- GUI steps
+		
+		// Open the new mail form
+		FormMailNew mailform = (FormMailNew) app.zPageMail.zToolbarPressButton(Button.B_NEW);
+		ZAssert.assertNotNull(mailform, "Verify the new form opened");
+
+		mailform.zFillField(Field.Subject, subject);
+		mailform.zFillField(Field.Body, "body" + ZimbraSeleniumProperties.getUniqueString());
+		mailform.zFillField(Field.To, destination.toString());
+		
+		mailform.zSubmit();
+		
+		
+		//-- Verification
+		
+
+		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
+		ZAssert.assertNotNull(received, "Verify the message is received");
+
+		
+	}
+
 
 
 }

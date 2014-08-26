@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -20,11 +22,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.items.IItem;
-import com.zimbra.qa.selenium.framework.items.SavedSearchFolderItem;
-import com.zimbra.qa.selenium.framework.items.TagItem;
-import com.zimbra.qa.selenium.framework.items.ZimletItem;
+import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
 import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.AbsTree;
@@ -32,16 +30,8 @@ import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.ContextMenu;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogMove;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogRenameFolder;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogRenameTag;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogShare;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogShareFind;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
-import com.zimbra.qa.selenium.projects.ajax.ui.FormRecoverDeletedItems;
 
 
 
@@ -295,7 +285,7 @@ public class TreeMail extends AbsTree {
 		}  else if (option == Button.B_EDIT) {
 
 			optionLocator += " div[id^='EDIT_PROPS'] td[id$='_title']";
-			page = new DialogMove(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+			page = new DialogEditFolder(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
 
 		}  else if (option == Button.B_MOVE) {
 
@@ -446,6 +436,123 @@ public class TreeMail extends AbsTree {
 
 	}
 
+	/**
+	 * This is the same locators as FolderItem ... hmm. How to combine?
+	 * @param action
+	 * @param tag
+	 * @return
+	 * @throws HarnessException
+	 */
+	protected AbsPage zTreeItem(Action action, TagItem tag) throws HarnessException {
+		AbsPage page = null;
+		String locator = null;
+
+		if ( action == Action.A_LEFTCLICK ) {
+			
+			locator = "css=td[id='zti__main_Mail__"+ tag.getId() +"_textCell']";
+
+			// FALL THROUGH
+
+		} else if ( action == Action.A_RIGHTCLICK ) {
+
+			locator = "css=td[id='zti__main_Mail__"+ tag.getId() +"_textCell']";
+
+			// Select the folder
+			this.zRightClickAt(locator,"");
+
+			// return a context menu
+			return (new ContextMenu(MyApplication));
+
+		} else if ( action == Action.A_TREE_EXPAND ) {
+
+			locator = "css=[id='zti__main_Mail__"+ tag.getId() +"_nodeCell'] div[class='ImgNodeCollapsed']";
+			if ( !this.sIsElementPresent(locator) ) {
+				logger.warn("Trying to expand a folder that probably has no subfolders or is already expanded");
+				return (page);
+			}
+
+			this.sMouseDown(locator);
+
+			this.zWaitForBusyOverlay();
+
+			// No page to return
+			return (null);
+
+		} else if ( action == Action.A_TREE_COLLAPSE ) {
+
+			locator = "css=[id='zti__main_Mail__"+ tag.getId() +"_nodeCell'] div[class='ImgNodeExpanded']";
+			if ( !this.sIsElementPresent(locator) ) {
+				logger.warn("Trying to collapse a folder that probably has no subfolders or is already collapsed");
+				return (page);
+			}
+
+			this.sMouseDown(locator);
+
+			this.zWaitForBusyOverlay();
+
+			// No page to return
+			return (null);
+
+		} else if ( action == Action.A_HOVEROVER ) {
+			
+			locator = "css=td[id='zti__main_Mail__"+ tag.getId() +"_textCell']";
+			page = new TooltipFolder(MyApplication);
+			
+			// If another tooltip is active, sometimes it takes a few seconds for the new text to show
+			// So, wait if the tooltip is already active
+			// Don't wait if the tooltip is not active
+			//
+			
+			if (page.zIsActive()) {
+				
+				// Mouse over
+				this.sMouseOver(locator);
+				this.zWaitForBusyOverlay();
+				
+				// Wait for the new text
+				SleepUtil.sleep(5000);
+				
+				// Make sure the tooltip is active
+				page.zWaitForActive();
+
+			} else {
+				
+				// Mouse over
+				this.sMouseOver(locator);
+				this.zWaitForBusyOverlay();
+
+				// Make sure the tooltip is active
+				page.zWaitForActive();
+
+			}
+						
+			return (page);
+			
+		} else {
+			throw new HarnessException("Action "+ action +" not yet implemented");
+		}
+
+
+		if ( locator == null )
+			throw new HarnessException("locator is null for action "+ action);
+
+
+		// Default behavior.  Click the locator
+		zClickAt(locator,"");
+
+		// If there is a busy overlay, wait for that to finish
+		this.zWaitForBusyOverlay();
+
+		if ( page != null ) {
+
+			// Wait for the page to become active, if it was specified
+			page.zWaitForActive();
+		}
+
+		return (page);
+
+	}
+
 	protected AbsPage zTreeItem(Action action, FolderItem folder) throws HarnessException {
 		AbsPage page = null;
 		String locator = null;
@@ -496,6 +603,41 @@ public class TreeMail extends AbsTree {
 			// No page to return
 			return (null);
 
+		} else if ( action == Action.A_HOVEROVER ) {
+			
+			locator = "css=td[id='zti__main_Mail__"+ folder.getId() +"_textCell']";
+			page = new TooltipFolder(MyApplication);
+			
+			// If another tooltip is active, sometimes it takes a few seconds for the new text to show
+			// So, wait if the tooltip is already active
+			// Don't wait if the tooltip is not active
+			//
+			
+			if (page.zIsActive()) {
+				
+				// Mouse over
+				this.sMouseOver(locator);
+				this.zWaitForBusyOverlay();
+				
+				// Wait for the new text
+				SleepUtil.sleep(5000);
+				
+				// Make sure the tooltip is active
+				page.zWaitForActive();
+
+			} else {
+				
+				// Mouse over
+				this.sMouseOver(locator);
+				this.zWaitForBusyOverlay();
+
+				// Make sure the tooltip is active
+				page.zWaitForActive();
+
+			}
+						
+			return (page);
+			
 		} else {
 			throw new HarnessException("Action "+ action +" not yet implemented");
 		}
@@ -507,6 +649,11 @@ public class TreeMail extends AbsTree {
 
 		// Default behavior.  Click the locator
 		zClickAt(locator,"");
+		
+		if ( folder instanceof FolderMountpointItem ) {
+			// Mountpoints seem to take longer to render.  Pause a bit.
+			SleepUtil.sleepSmall();
+		}
 
 		// If there is a busy overlay, wait for that to finish
 		this.zWaitForBusyOverlay();
@@ -590,6 +737,11 @@ public class TreeMail extends AbsTree {
 				optionLocator = "css=div[id='ZmActionMenu_mail_FOLDER'] div[id='NEW_FOLDER'] td[id$='_title']";
 				page = new DialogCreateFolder(MyApplication, ((AppAjaxClient)MyApplication).zPageMail);
 			
+			} else if ( option == Button.B_TREE_FIND_SHARES ) {
+					
+				optionLocator = "css=div[id='ZmActionMenu_mail_FOLDER'] div[id='FIND_SHARES'] td[id$='_title']";
+				page = new DialogShareFind(MyApplication, ((AppAjaxClient)MyApplication).zPageMail);
+				
 			} else {
 				throw new HarnessException("Pulldown/Option "+ pulldown +"/"+ option +" not implemented");
 			}
@@ -797,6 +949,8 @@ public class TreeMail extends AbsTree {
 		
 		if ( folder instanceof FolderItem ) {
 			return (zTreeItem(action, (FolderItem)folder));
+		} else if ( folder instanceof TagItem ) {
+			return (zTreeItem(action, (TagItem)folder));
 		} else if ( folder instanceof SavedSearchFolderItem ) {
 			return (zTreeItem(action, (SavedSearchFolderItem)folder));
 		} else if ( folder instanceof ZimletItem ) {
@@ -875,7 +1029,12 @@ public class TreeMail extends AbsTree {
 
 		int count = this.sGetCssCount(searchLocator);
 		logger.debug(myPageName() + " zListGetFolders: number of folders: "+ count);
-
+		
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+				"8.5.")) {
+				count++; // temp-fix -- This is required because find share section removed			
+			}
+		
 		for ( int i = 1; i <= count; i++) {
 			String itemLocator = searchLocator + ":nth-child("+i+")";
 
@@ -886,7 +1045,7 @@ public class TreeMail extends AbsTree {
 			String identifier = sGetAttribute(itemLocator +"@id");
 			logger.debug(myPageName() + " identifier: "+ identifier);
 
-			if ( identifier == null || identifier.trim().length() == 0 || !(identifier.startsWith("zti__main_Mail__")) ) {
+			if( identifier == null || identifier.trim().length() == 0 || !(identifier.startsWith("zti__main_Mail__")) ) {
 				// Not a folder
 				// Maybe "Find Shares ..."
 				count++; // Add one more to the total 'count' for this 'unknown' item
@@ -904,9 +1063,8 @@ public class TreeMail extends AbsTree {
 			// Add any sub folders
 			items.addAll(zListGetFolders(itemLocator));
 
-
 		}
-
+	
 		return (items);
 
 	}

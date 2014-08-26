@@ -2,13 +2,18 @@
     <import file="../ant-global.xml" />
 
 	<property name="jar.file" value="sampleoauthprov.jar" />
+	<property name="test.jar.file" value="sampleoauthtest.jar" />
+	<property name="test.war.file" value="oauthConsumer.war" />
 	<property name="src.dir" location="src" />
+	<property name="testsrc.dir" location="src/test" />
 	<property name="src.java.dir" location="${src.dir}/java" />
 	<property name="build.dir" location="build" />
     <property name="build.jars.dir" location="${build.dir}/jars" />
 	<property name="build.classes.dir" location="${build.dir}/classes" />
+	<property name="build.test.classes.dir" location="${build.dir}/test/classes" />
 	<property name="common.dir" location="../ZimbraCommon" />
 	<property name="common.classes.dir" location="${common.dir}/build/classes" />
+	<property name="common.jars.dir" location="${common.dir}/jars" />
 
 	<path id="all.java.path">
 		<pathelement location="${src.java.dir}" />
@@ -16,6 +21,7 @@
 
 	<target name="build-init">
 		<mkdir dir="${build.classes.dir}" />
+		<mkdir dir="${build.test.classes.dir}" />
         <mkdir dir="${build.jars.dir}" />
 	</target>
 
@@ -42,12 +48,22 @@
 			<include name="**/*.jar"/>
 		</fileset>
 	</path>
+	
+	<path id="test.class.path">
+	        <pathelement location="${build.classes.dir}" />
+	        <fileset dir="jars">
+	            <include name="**/*.jar"/>
+	        </fileset>
+		   	<fileset dir="${common.dir}/jars">
+	            <include name="**/*.jar"/>
+		    </fileset>
+	</path>
 
 	<target name="compile" depends="build-init" description="Compiles the source code">
 		<ant dir="${common.dir}" target="jar" inheritAll="false" />
                 <ant dir="${client.dir}" target="jar" inheritAll="false" />
-		<javac destdir="${build.classes.dir}" debug="true" classpathref="class.path">
-			<src refid="all.java.path" />
+		<javac destdir="${build.classes.dir}" debug="true" classpathref="class.path" excludes="**/*Test*">
+			<src refid="all.java.path"/>
 		</javac>
 	</target>
 
@@ -58,4 +74,22 @@
 	<target name="clean" description="Removes any temporary files">
 		<delete dir="${build.dir}" />
 	</target>
+	
+	<target name="test-compile" depends="build-init" description="Compiles the test source code">
+		<javac destdir="${build.test.classes.dir}" debug="true" classpathref="test.class.path" includes="**/*Test*">
+			<src refid="all.java.path"/>
+	    </javac>
+	</target>
+	<target name="test-jar" depends="test-compile" description="Creates the jar file with the test servlet">
+	   <jar manifest="${testsrc.dir}/MANIFEST-TEST.MF" destfile="${build.jars.dir}/${test.jar.file}" basedir="${build.test.classes.dir}" />
+	</target>
+	
+	<target name="test-war" depends="test-jar">
+	      <war warfile="${test.war.file}" webxml="${testsrc.dir}/web.xml">
+	        <fileset file="${testsrc.dir}/index.jsp"/>
+	        <lib file="${build.jars.dir}/${test.jar.file}"/>
+	        <lib dir="jars" includes="signpost*.jar"/>
+	      	<lib dir="${common.jars.dir}" includes="commons-codec*.jar"/>
+	      </war>
+	    </target>
 </project>

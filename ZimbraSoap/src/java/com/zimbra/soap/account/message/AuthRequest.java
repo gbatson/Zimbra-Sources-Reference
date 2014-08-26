@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -61,9 +63,9 @@ import com.zimbra.soap.type.ZmBoolean;
 @XmlRootElement(name=AccountConstants.E_AUTH_REQUEST)
 @XmlType(propOrder = {})
 public class AuthRequest {
-    
+
     /**
-     * @zm-api-field-description controls whether the auth token cookie in the response should 
+     * @zm-api-field-description controls whether the auth token cookie in the response should
      * be persisted when the browser exits.<br />
      * 0: (default)<br />
      *    the cookie will be deleted when the Web browser exits.<br />
@@ -71,6 +73,16 @@ public class AuthRequest {
      */
     @XmlAttribute(name=AccountConstants.A_PERSIST_AUTH_TOKEN_COOKIE /* persistAuthTokenCookie */, required=false)
     private ZmBoolean persistAuthTokenCookie;
+
+
+    /**
+     * @zm-api-field-description controls whether the client supports CSRF token <br/>
+     * 0: (default)<br />
+     *    Client does not support CSRF token<br />
+     * 1: The client supports CSRF token. <br />
+     */
+    @XmlAttribute(name=AccountConstants.A_CSRF_SUPPORT /* support CSRF Token */, required=false)
+    private ZmBoolean csrfSupported;
 
     /**
      * @zm-api-field-description Specifies the account to authenticate against
@@ -116,7 +128,7 @@ public class AuthRequest {
      */
     @XmlElementWrapper(name=AccountConstants.E_PREFS /* prefs */, required=false)
     @XmlElement(name=AccountConstants.E_PREF /* pref */, required=false)
-    private List<Pref> prefs = new ArrayList<Pref>();
+    private final List<Pref> prefs = new ArrayList<Pref>();
 
     /**
      * @zm-api-field-description Requested attribute settings.  Only attributes that are allowed to be returned by
@@ -124,7 +136,7 @@ public class AuthRequest {
      */
     @XmlElementWrapper(name=AccountConstants.E_ATTRS /* attrs */, required=false)
     @XmlElement(name=AccountConstants.E_ATTR /* attr */, required=false)
-    private List<Attr> attrs = new ArrayList<Attr>();
+    private final List<Attr> attrs = new ArrayList<Attr>();
 
     /**
      * @zm-api-field-tag requested-skin
@@ -144,10 +156,10 @@ public class AuthRequest {
         setAccount(account);
         setPassword(password);
     }
-    
+
     public Boolean getPersistAuthTokenCookie() { return ZmBoolean.toBool(persistAuthTokenCookie); }
-    public void setPersistAuthTokenCookie(Boolean persistAuthTokenCookie) { 
-        this.persistAuthTokenCookie = ZmBoolean.fromBool(persistAuthTokenCookie); 
+    public void setPersistAuthTokenCookie(Boolean persistAuthTokenCookie) {
+        this.persistAuthTokenCookie = ZmBoolean.fromBool(persistAuthTokenCookie);
     }
 
     public AccountSelector getAccount() { return account; }
@@ -207,4 +219,22 @@ public class AuthRequest {
 
     public String getRequestedSkin() { return requestedSkin; }
     public AuthRequest setRequestedSkin(String skin) { this.requestedSkin = skin; return this; }
+
+
+    /**
+     * @return the csrfSupported
+     */
+    public ZmBoolean getCsrfSupported() {
+        return csrfSupported;
+    }
+
+
+    /**
+     * @param csrfSupported the csrfSupported to set
+     */
+    public void setCsrfSupported(Boolean csrfSupported) {
+        this.csrfSupported = ZmBoolean.fromBool(csrfSupported);
+    }
+
+
 }

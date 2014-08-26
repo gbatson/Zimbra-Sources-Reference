@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.util;
@@ -268,15 +270,53 @@ public class ZDate {
 	public String toYYYYMMDDHHMMSSZ() throws HarnessException {
 		return (format("yyyyMMddHHmmss'Z'"));
 	}
-
+	
+	public String toyyyyMMddTHHmmss() throws HarnessException {
+		return (format("yyyyMMdd'T'HHmmss"));
+	}
+	
+	public String toyyyyMMddT() throws HarnessException {
+		return (format("yyyyMMdd'T'"));
+	}
+	
 	public String toMMM_dC_yyyy() throws HarnessException {
 		return (format("MMM d, yyyy"));
+	}
+	
+	public String toMMMMM_dC() throws HarnessException {
+		return (format("MMMMM d"));
 	}
 
 	public String toMMM_dd_yyyy_A_hCmm_a() throws HarnessException {
 		return (format("MMM d, yyyy @ h:mm a"));
 	}
 
+	public String getCurrentDay() throws HarnessException {
+		String currentDay = null;
+		Calendar calendar = Calendar.getInstance();
+		int day = calendar.get(Calendar.DAY_OF_WEEK);
+		
+		if (day == 1) {
+			currentDay = "Tuesday";
+		
+		} else if (day == 2) {
+			currentDay = "Tuesday";
+			
+		} else if (day == 3) {
+			currentDay = "Tuesday";
+			
+		} else if (day == 4) {
+			currentDay = "Wednesday";
+			
+		} else if (day == 5 || day == 6) { //see CalendarWorkWeekTest, If UTC is Friday, tests may fail if the TZ offset puts the date into Saturday.
+			currentDay = "Thursday";
+			
+		} else if (day == 7) {
+			currentDay = "Tuesday";
+		}	
+		
+		return currentDay;
+	}
 
 	protected String format(String format) throws HarnessException {
 		try {

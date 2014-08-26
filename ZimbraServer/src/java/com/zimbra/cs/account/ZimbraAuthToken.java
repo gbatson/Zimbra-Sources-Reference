@@ -1,20 +1,39 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Map;
+import java.util.Random;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.httpclient.HttpState;
+import org.apache.commons.httpclient.cookie.CookiePolicy;
+
 import com.google.common.base.Objects;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
@@ -25,23 +44,9 @@ import com.zimbra.common.util.BlobMetaData;
 import com.zimbra.common.util.BlobMetaDataEncodingException;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
-import com.zimbra.common.util.ZimbraCookie;
-import com.zimbra.common.account.Key.AccountBy;
-import com.zimbra.cs.account.auth.AuthMechanism.AuthMech;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
 import com.zimbra.common.util.MapUtil;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.cookie.CookiePolicy;
-
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.servlet.http.HttpServletResponse;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Map;
+import com.zimbra.common.util.ZimbraCookie;
+import com.zimbra.cs.account.auth.AuthMechanism.AuthMech;
 
 /**
  * @since May 30, 2004
@@ -62,7 +67,11 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
     private static final String C_DIGEST = "digest";
     private static final String C_VALIDITY_VALUE  = "vv";
     private static final String C_AUTH_MECH = "am";
-
+    //cookie ID for keeping track of account's cookies
+    private static final String C_TOKEN_ID = "tid";
+    //mailbox server version where this account resides
+    private static final String C_SERVER_VERSION = "version";
+    private static final String C_CSRF = "csrf";
     private static final Map<String, ZimbraAuthToken> CACHE = MapUtil.newLruMap(LC.zimbra_authtoken_cache_size.intValue());
     private static final Log LOG = LogFactory.getLog(AuthToken.class);
 
@@ -80,7 +89,10 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
     private String accessKey; // just a dummy placeholder for now until accesskey auth is implemented in ZimbraAuthToken
     private String proxyAuthToken;
     private AuthMech authMech;
-
+    private Integer tokenID = -1;
+    private String server_version;   // version of the mailbox server where this account resides
+    private boolean csrfTokenEnabled;
+    
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
@@ -180,10 +192,10 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
             String dlga = (String) map.get(C_DLGADMIN);
             isDelegatedAdmin = "1".equals(dlga);
             type = (String)map.get(C_TYPE);
-            
+
             String authMechStr = (String)map.get(C_AUTH_MECH);
             authMech = AuthMech.fromString(authMechStr);
-            
+
             externalUserEmail = (String)map.get(C_EXTERNAL_USER_EMAIL);
             digest = (String)map.get(C_DIGEST);
             String vv = (String)map.get(C_VALIDITY_VALUE);
@@ -197,6 +209,22 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
                 validityValue = -1;
             }
 
+            String tid = (String)map.get(C_TOKEN_ID);
+            if(tid !=null) {
+            	try {
+            		tokenID = Integer.parseInt(tid);
+            	} catch (NumberFormatException e) {
+            		tokenID = -1;
+                }
+            } else {
+            	tokenID = -1;
+            }
+            server_version = (String)map.get(C_SERVER_VERSION);
+
+            String csrf = (String) map.get(C_CSRF);
+            if (csrf != null) {
+                csrfTokenEnabled = "1".equals(map.get(C_CSRF));
+            }
         } catch (ServiceException e) {
             throw new AuthTokenException("service exception", e);
         }
@@ -208,10 +236,6 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
 
     public ZimbraAuthToken(Account acct, boolean isAdmin, AuthMech authMech) {
         this(acct, 0, isAdmin, null, authMech);
-        long lifetime = isAdmin || isDomainAdmin || isDelegatedAdmin ?
-                    acct.getTimeInterval(Provisioning.A_zimbraAdminAuthTokenLifetime, DEFAULT_AUTH_LIFETIME * 1000) :
-                    acct.getTimeInterval(Provisioning.A_zimbraAuthTokenLifetime, DEFAULT_AUTH_LIFETIME * 1000);
-        expires = System.currentTimeMillis() + lifetime;
     }
 
     public ZimbraAuthToken(Account acct, long expires) {
@@ -224,9 +248,16 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
      * @param isAdmin true if acct is an admin account
      * @param adminAcct the admin account accessing acct's information, if this token was created by an admin. mainly used
      *        for auditing.
+     * @throws AuthTokenException
      */
-    public ZimbraAuthToken(Account acct, long expires, boolean isAdmin, Account adminAcct, 
+    public ZimbraAuthToken(Account acct, long expires, boolean isAdmin, Account adminAcct,
             AuthMech authMech) {
+        if(expires == 0) {
+            long lifetime = isAdmin || isDomainAdmin || isDelegatedAdmin ?
+                    acct.getTimeInterval(Provisioning.A_zimbraAdminAuthTokenLifetime, DEFAULT_AUTH_LIFETIME * 1000) :
+                    acct.getTimeInterval(Provisioning.A_zimbraAuthTokenLifetime, DEFAULT_AUTH_LIFETIME * 1000);
+            expires = System.currentTimeMillis() + lifetime;
+        }
         accountId = acct.getId();
         adminAccountId = adminAcct != null ? adminAcct.getId() : null;
         validityValue = acct.getAuthTokenValidityValue();
@@ -245,14 +276,38 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
         } else {
             type = C_TYPE_ZIMBRA_USER;
         }
+        tokenID = new Random().nextInt(Integer.MAX_VALUE-1) + 1;
+        try {
+            Server server = acct.getServer();
+            if (server != null) {
+                server_version = server.getAttr(Provisioning.A_zimbraServerVersion, "");
+            }
+        } catch (ServiceException e) {
+            LOG.error("Unable to fetch server version for the user account", e);
+        }
+        register();
     }
 
-    public ZimbraAuthToken(String acctId, String externalEmail, String pass, String digest, long expires) {
+    
+
+    public ZimbraAuthToken(String acctId, String externalEmail, String pass, String digest, long expires)  {
         accountId = acctId;
         this.expires = expires;
         externalUserEmail = externalEmail == null ? "public" : externalEmail;
         this.digest = digest != null ? digest : generateDigest(externalEmail, pass);
         type = C_TYPE_EXTERNAL_USER;
+        tokenID = new Random().nextInt(Integer.MAX_VALUE-1) + 1;
+        try {
+            Account acct = Provisioning.getInstance().getAccountById(accountId);
+            if (acct != null) {
+                Server server = acct.getServer();
+                if (server != null) {
+                    server_version = server.getAttr(Provisioning.A_zimbraServerVersion, "");
+                }
+        	}
+        } catch (ServiceException e) {
+            LOG.error("Unable to fetch server version for the user account", e);
+        }
     }
 
     @Override
@@ -314,10 +369,42 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
     public String getAccessKey() {
         return accessKey;
     }
-    
-    @Override 
+
+    @Override
     public AuthMech getAuthMech() {
         return authMech;
+    }
+
+    
+    private void register() {
+        try {
+            Account acct = Provisioning.getInstance().get(AccountBy.id, accountId);
+            if(!type.equalsIgnoreCase(C_TYPE_EXTERNAL_USER)) {
+                if (Provisioning.getInstance().getLocalServer().getLowestSupportedAuthVersion() > 1) {
+                    acct.cleanExpiredTokens(); //house keeping. If we are issuing a new token, clean up old ones.
+                    acct.addAuthTokens(String.format("%d|%d|%s", tokenID, this.expires, server_version));
+                }
+            }
+        } catch (ServiceException e) {
+            LOG.error("unable to register auth token", e);
+        }
+    }
+    
+    //remove the token from LDAP (token will be invalid for cookie-based auth after that
+    @Override
+    public void deRegister() throws AuthTokenException {
+		try {
+		    Account acct = Provisioning.getInstance().getAccountById(accountId);
+		    if(acct != null) {
+		        acct.removeAuthTokens(String.format("%d|%d|%s", tokenID, this.expires, server_version));
+		    }
+		    if(acct.getBooleanAttr(Provisioning.A_zimbraLogOutFromAllServers, false)) {
+		        AuthTokenRegistry.addTokenToQueue(this);
+		    }
+		} catch (ServiceException e) {
+			throw new AuthTokenException("unable to de-register auth token", e);
+		}
+
     }
 
     @Override
@@ -342,13 +429,19 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
                 BlobMetaData.encodeMetaData(C_VALIDITY_VALUE, validityValue, encodedBuff);
             }
             BlobMetaData.encodeMetaData(C_TYPE, type, encodedBuff);
-            
+
             if (authMech != null) {
                 BlobMetaData.encodeMetaData(C_AUTH_MECH, authMech.name(), encodedBuff);
             }
-            
+
+            BlobMetaData.encodeMetaData(C_TOKEN_ID, tokenID, encodedBuff);
             BlobMetaData.encodeMetaData(C_EXTERNAL_USER_EMAIL, externalUserEmail, encodedBuff);
             BlobMetaData.encodeMetaData(C_DIGEST, digest, encodedBuff);
+            BlobMetaData.encodeMetaData(C_SERVER_VERSION, server_version, encodedBuff);
+            if (this.csrfTokenEnabled) {
+                BlobMetaData.encodeMetaData(C_CSRF, "1", encodedBuff);
+            }
+
             String data = new String(Hex.encodeHex(encodedBuff.toString().getBytes()));
             AuthTokenKey key = getCurrentKey();
             String hmac = getHmac(data, key.getKey());
@@ -399,14 +492,59 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
     }
 
     @Override
-    public void encode(HttpClient client, HttpMethod method, boolean isAdminReq, String cookieDomain) 
+    public boolean isRegistered() {
+        if (type.equalsIgnoreCase(C_TYPE_EXTERNAL_USER)) {
+            return true;
+        }
+        try {
+            Provisioning prov = Provisioning.getInstance();
+            // support older clients if zimbraLowestSupportedAuthVersion is less
+            // than 2
+            Server localServer = Provisioning.getInstance().getLocalServer();
+            if (localServer.getLowestSupportedAuthVersion() < 2) {
+                return true;
+            }
+            Account acct = prov.getAccountById(accountId);
+            if (acct != null) {
+                if (isRegisteredInternal(acct)) {
+                    return true;
+                } else {
+                    /*
+                     * If we are here, we did not find the token in the cached
+                     * account object. Either token has been invalidated or it
+                     * was generated by another server, therefore reload the
+                     * object and check one more time.
+                     */
+                    prov.reload(acct);
+                    return isRegisteredInternal(acct);
+                }
+            }
+        } catch (ServiceException e) {
+            LOG.fatal("Unable to verify auth token registration in LDAP", e);
+        }
+
+        return false;
+    }
+
+    private boolean isRegisteredInternal(Account acct) {
+        String []  tokens = acct.getAuthTokens();
+        for(String tk : tokens) {
+            if(tk.startsWith(tokenID.toString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void encode(HttpClient client, HttpMethod method, boolean isAdminReq, String cookieDomain)
     throws ServiceException {
         String origAuthData = getOrigAuthData();
 
         HttpState state = new HttpState();
         client.setState(state);
 
-        state.addCookie(new org.apache.commons.httpclient.Cookie(cookieDomain, 
+        state.addCookie(new org.apache.commons.httpclient.Cookie(cookieDomain,
                 ZimbraCookie.authTokenCookieName(isAdminReq), origAuthData, "/", null, false));
         client.getParams().setCookiePolicy(CookiePolicy.BROWSER_COMPATIBILITY);
     }
@@ -414,16 +552,16 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
     @Override
     public void encode(HttpState state, boolean isAdminReq, String cookieDomain) throws ServiceException {
         String origAuthData = getOrigAuthData();
-        state.addCookie(new org.apache.commons.httpclient.Cookie(cookieDomain, 
+        state.addCookie(new org.apache.commons.httpclient.Cookie(cookieDomain,
                 ZimbraCookie.authTokenCookieName(isAdminReq), origAuthData, "/", null, false));
     }
 
     @Override
-    public void encode(HttpServletResponse resp, boolean isAdminReq, 
-            boolean secureCookie, boolean rememberMe) 
+    public void encode(HttpServletResponse resp, boolean isAdminReq,
+            boolean secureCookie, boolean rememberMe)
     throws ServiceException {
         String origAuthData = getOrigAuthData();
-        
+
         Integer maxAge;
         if (rememberMe) {
             long timeLeft = expires - System.currentTimeMillis();
@@ -431,9 +569,9 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
         } else {
             maxAge = Integer.valueOf(-1);
         }
-        
-        ZimbraCookie.addHttpOnlyCookie(resp, 
-                ZimbraCookie.authTokenCookieName(isAdminReq), origAuthData, 
+
+        ZimbraCookie.addHttpOnlyCookie(resp,
+                ZimbraCookie.authTokenCookieName(isAdminReq), origAuthData,
                 ZimbraCookie.PATH_ROOT, maxAge, secureCookie);
     }
 
@@ -466,9 +604,40 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
         proxyAuthToken = null;
     }
 
+    /* (non-Javadoc)
+     * @see com.zimbra.cs.account.AuthToken#isCsrfTokenEnabled()
+     */
+    @Override
+    public boolean isCsrfTokenEnabled() {
+        return csrfTokenEnabled;
+    }
+
+    @Override
+    public void setCsrfTokenEnabled(boolean csrfEnabled) {
+        if (csrfEnabled != csrfTokenEnabled) {
+            csrfTokenEnabled = csrfEnabled;
+            // force re-encoding of the token
+            encoded = null;
+        }
+    }
+    
+    /**
+     * This method is used to reset tokenID.
+     * One use case is when new authtoken is created by cloning existing authtoken, 
+     * tokenID of newly authtoken is reset to make it unique and all the other properties are 
+     * same as of authtoken from which it is cloned.
+     * Cached encoded string is also reset as the due to change in TokenID.
+     */
+    public void resetTokenId(){
+         tokenID = new Random().nextInt(Integer.MAX_VALUE-1) + 1;
+         encoded = null;
+         this.register();
+    }
+
+
     static class ByteKey implements SecretKey {
         private static final long serialVersionUID = -7237091299729195624L;
-        private byte[] mKey;
+        private final byte[] mKey;
 
         ByteKey(byte[] key) {
             mKey = key.clone();
@@ -492,8 +661,8 @@ public class ZimbraAuthToken extends AuthToken implements Cloneable {
     }
 
     @Override
-    public Object clone() throws CloneNotSupportedException {
-        return super.clone();
+    public ZimbraAuthToken clone() throws CloneNotSupportedException {
+        return (ZimbraAuthToken)super.clone();
     }
 
     public static void main(String args[]) throws ServiceException, AuthTokenException {

@@ -40,6 +40,8 @@
     <property name="common.classes.dir" location="${common.dir}/build/classes"/>
     <property name="common.jarfile" location="${common.dir}/build/zimbracommon.jar"/>
     <property name="common.jars.dir" location="${common.dir}/jars"/>
+    <property name="common.sourcejars.dir" location="${common.dir}/jars-src"/>
+    <property name="common.internal.jars.dir" location="${common.dir}/jars-internal/jars"/>
 
     <!-- ZimbraNative -->
     <property name="native.dir" location="${zimbra.root.dir}/ZimbraNative" />
@@ -58,6 +60,9 @@
     <property name="soap.dir" location="${zimbra.root.dir}/ZimbraSoap"/>
     <property name="soap.classes.dir" location="${soap.dir}/build/classes"/>
     <property name="soap.jarfile" location="${soap.dir}/build/zimbrasoap.jar"/>
+
+    <!-- ZimbraWebClient -->
+    <property name="web.client.dir" location="${zimbra.root.dir}/ZimbraWebClient"/>
 
     <!-- ZimbraClient -->
     <property name="client.dir" location="${zimbra.root.dir}/ZimbraClient"/>
@@ -124,7 +129,7 @@
     <condition property="zimbra.buildinfo.platform" value="${native.os}">
         <not><isset property="${zimbra.buildinfo.platform}"/></not>
     </condition>
-    <condition property="zimbra.buildinfo.version" value="8.0.0_BETA1_1111">
+    <condition property="zimbra.buildinfo.version" value="9.0.0_BETA1_1111">
         <not><isset property="${zimbra.buildinfo.version}"/></not>
     </condition>
 
@@ -186,7 +191,7 @@
         <delete dir="${build.dir}"/>
     </target>
 
-    <target name="compile" description="Compiles from in src/java into build/classes.">
+    <target name="compile" description="Compiles from src/java into build/classes.">
         <mkdir dir="${build.classes.dir}" />
         <javac destdir="${build.classes.dir}" debug="true" classpathref="class.path" target="${javac.target}">
             <src refid="all.java.path" />
@@ -207,6 +212,10 @@
         <delete dir="${test.dir}" quiet="true"/>
         <mkdir dir="${test.dir}/output"/>
         <mkdir dir="${test.dir}/report"/>
+        <mkdir dir="${test.dir}/extensions"/>
+        <move todir="${test.dir}/extensions/com/zimbra/extensions" failonerror="false">
+            <fileset dir="${test.classes.dir}/com/zimbra/extensions" />
+        </move>
         <copy file="${test.src.dir}/log4j-test.properties" tofile="${test.classes.dir}/log4j.properties" failonerror="false"/>
         <junit printsummary="on" showoutput="true" failureproperty="junit.failure" tempdir="${test.dir}">
             <classpath refid="class.path"/>
@@ -234,6 +243,10 @@
         <delete dir="${test.dir}" quiet="true"/>
         <mkdir dir="${test.dir}/output"/>
         <mkdir dir="${test.dir}/report"/>
+        <mkdir dir="${test.dir}/extensions"/>
+        <move todir="${test.dir}/extensions/com/zimbra/extensions" failonerror="false">
+            <fileset dir="${test.classes.dir}/com/zimbra/extensions" />
+        </move>
         <copy file="${test.src.dir}/log4j-test.properties" tofile="${test.classes.dir}/log4j.properties" failonerror="false"/>
         <junit printsummary="on" showoutput="true" failureproperty="junit.failure" tempdir="${test.dir}">
             <classpath refid="class.path"/>
@@ -245,7 +258,6 @@
                     <include name="**/*Test.java"/>
                     <exclude name="**/*ITest.java"/>
                     <exclude name="**/Abstract*Test.java"/>
-                    <exclude name="**/MailboxTest.java"/> 
                 </fileset>
             </batchtest>
         </junit>
@@ -257,7 +269,35 @@
         <fail if="junit.failure" message="Unit test failed"/>
     </target>
 
-    <target name="emma" description="Emma Instrutmentation">
+    <!-- e.g. ant -Dtest.name=com.zimbra.cs.mailbox.ContactTest single-test -->
+    <target name="single-test" depends="test-compile" description="Run single unit test">
+        <fail message="test.name must be set - Need e.g. ant -Dtest.name=com.zimbra.cs.mailbox.ContactTest single-test"
+              unless="test.name"/>
+        <property name="single.test.dir" value="${test.dir}-${test.name}"/>
+        <delete dir="${single.test.dir}" quiet="true"/>
+        <mkdir dir="${single.test.dir}/output"/>
+        <mkdir dir="${single.test.dir}/report"/>
+        <mkdir dir="${test.dir}/extensions"/>
+        <move todir="${test.dir}/extensions/com/zimbra/extensions" failonerror="false">
+            <fileset dir="${test.classes.dir}/com/zimbra/extensions" />
+        </move>
+        <copy file="${test.src.dir}/log4j-test.properties" tofile="${test.classes.dir}/log4j.properties" failonerror="false"/>
+        <junit printsummary="on" showoutput="true" failureproperty="junit.failure" tempdir="${single.test.dir}">
+            <classpath refid="class.path"/>
+            <classpath path="${test.classes.dir}"/>
+            <assertions><enable/></assertions>
+            <formatter type="xml"/>
+            <test name="${test.name}" todir="${single.test.dir}/output" />
+        </junit>
+        <junitreport todir="${single.test.dir}/report">
+            <fileset dir="${single.test.dir}/output"/>
+            <report todir="${single.test.dir}/report"/>
+        </junitreport>
+        <echo>Test Report: ${single.test.dir}/report/index.html</echo>
+        <fail if="junit.failure" message="Single Unit test failed"/>
+    </target>
+
+    <target name="emma" description="Emma Instrumentation">
 
       <taskdef resource="emma_ant.properties" classpathref="emma.lib"/>
       <delete dir="${build.instrumented.dir}" quiet="true" />

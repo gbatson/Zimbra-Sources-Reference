@@ -1,18 +1,24 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.soap;
+
+import java.io.IOException;
+
+import javax.servlet.http.HttpServletRequest;
 
 import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
@@ -21,6 +27,7 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.SoapHttpTransport;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthToken;
@@ -28,17 +35,14 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.httpclient.URLUtil;
 
-import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
-
 /**
  * @since 2005. 3. 3.
  */
 public final class ProxyTarget {
 
-    private Server mServer;
-    private AuthToken mAuthToken;
-    private String mURL;
+    private final Server mServer;
+    private final AuthToken mAuthToken;
+    private final String mURL;
 
     private int mMaxAttempts = 0;
     private long mTimeout = -1;
@@ -49,7 +53,7 @@ public final class ProxyTarget {
         if (mServer == null)
             throw AccountServiceException.NO_SUCH_SERVER(serverId);
 
-        mAuthToken = authToken;
+        mAuthToken = AuthToken.getCsrfUnsecuredAuthToken(authToken);
         String url;
         String requestStr = req.getRequestURI();
         String qs = req.getQueryString();
@@ -67,7 +71,9 @@ public final class ProxyTarget {
     }
 
     public ProxyTarget(Server server, AuthToken authToken, String url) {
-        mServer = server;  mAuthToken = authToken;  mURL = url;
+        mServer = server;
+        mAuthToken = AuthToken.getCsrfUnsecuredAuthToken(authToken);
+        mURL = url;
     }
 
     /** Instructs the proxy's underlying {@link SoapHttpTransport} to attempt
@@ -136,6 +142,14 @@ public final class ProxyTarget {
                 transport.setTimeout((int) Math.min(mTimeout, Integer.MAX_VALUE));
 
             transport.setResponseProtocol(zsc.getResponseProtocol());
+            AuthToken authToken = AuthToken.getCsrfUnsecuredAuthToken(zsc.getAuthToken());
+            if (authToken != null && !StringUtil.isNullOrEmpty(authToken.getProxyAuthToken())) {
+                transport.setAuthToken(authToken.getProxyAuthToken());
+            }
+            if (ZimbraLog.soap.isDebugEnabled()) {
+                ZimbraLog.soap.debug("Proxying request: proxy=%s targetAcctId=%s",
+                        toString(), zsc.getRequestedAccountId());
+            }
             Element response = transport.invokeRaw(envelope);
             Element body = transport.extractBodyElement(response);
             return new Pair<Element, Element>(transport.getZimbraContext(), body);

@@ -1,31 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.account;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Ordering;
-import com.google.common.collect.TreeMultimap;
-import com.zimbra.common.account.ProvisioningConstants;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ByteUtil;
-import com.zimbra.common.util.DateUtil;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.client.ToZJSONObject;
-import com.zimbra.client.ZJSONObject;
-import org.json.JSONException;
 
 import java.text.CollationKey;
 import java.text.Collator;
@@ -36,12 +26,25 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.json.JSONException;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Ordering;
+import com.google.common.collect.TreeMultimap;
+import com.zimbra.client.ToZJSONObject;
+import com.zimbra.client.ZJSONObject;
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.DateUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager.IDNType;
 
 public abstract class Entry implements ToZJSONObject {
@@ -63,6 +66,7 @@ public abstract class Entry implements ToZJSONObject {
         IDENTITY,
         MIMETYPE,
         SERVER,
+        ALWAYSONCLUSTER,
         UCSERVICE,
         SIGNATURE,
         XMPPCOMPONENT,
@@ -76,11 +80,12 @@ public abstract class Entry implements ToZJSONObject {
     private Map<String,Object> mAttrs;
     private Map<String,Object> mDefaults;
     private Map<String,Object> mSecondaryDefaults;
+    private Map<String, Object> overrideDefaults;
     private Map<String, Object> mData;
     private Map<String, Set<String>> mMultiAttrSetCache;
     private Map<String, Set<byte[]>> mMultiBinaryAttrSetCache;
     private Locale mLocale;
-    private Provisioning mProvisioning;
+    private final Provisioning mProvisioning;
     private AttributeManager mAttrMgr;
 
     protected static String[] sEmptyMulti = new String[0];
@@ -107,6 +112,16 @@ public abstract class Entry implements ToZJSONObject {
         setAttributeManager();
     }
 
+    protected Entry(Map<String,Object> attrs, Map<String,Object> defaults,
+            Map<String,Object> secondaryDefaults, Map<String,Object> overrideDefaults, Provisioning provisioning) {
+        mProvisioning = provisioning;
+        mAttrs = attrs;
+        mDefaults = defaults;
+        mSecondaryDefaults = secondaryDefaults;
+        this.overrideDefaults = overrideDefaults;
+        setAttributeManager();
+    }
+
     private void setAttributeManager() {
         try {
             mAttrMgr = AttributeManager.getInstance();
@@ -130,10 +145,11 @@ public abstract class Entry implements ToZJSONObject {
     }
 
     public synchronized void setAttrs(Map<String,Object> attrs,
-            Map<String,Object> defaults, Map<String,Object> secondaryDefaults) {
+            Map<String,Object> defaults, Map<String,Object> secondaryDefaults, Map<String,Object> overrideDefaults) {
         mAttrs = attrs;
         mDefaults = defaults;
         mSecondaryDefaults = secondaryDefaults;
+        this.overrideDefaults = overrideDefaults;
         resetData();
     }
 
@@ -156,6 +172,11 @@ public abstract class Entry implements ToZJSONObject {
 
     public synchronized void setSecondaryDefaults(Map<String,Object> secondaryDefaults) {
         mSecondaryDefaults = secondaryDefaults;
+        resetData();
+    }
+
+    public synchronized void setOverrideDefaults(Map<String,Object> overrideDefaults) {
+        this.overrideDefaults = overrideDefaults;
         resetData();
     }
 
@@ -193,6 +214,14 @@ public abstract class Entry implements ToZJSONObject {
 
         Object v;
 
+        if (overrideDefaults != null) {
+            v = overrideDefaults.get(name);
+            if (v != null) return v;
+
+            v = getValueByRealAttrName(name, overrideDefaults);
+            if (v != null) return v;
+        }
+
         // check defaults
         if (mDefaults != null) {
             v = mDefaults.get(name);
@@ -211,7 +240,6 @@ public abstract class Entry implements ToZJSONObject {
             if (v != null) return v;
 
         }
-
         return null;
     }
 
@@ -300,6 +328,11 @@ public abstract class Entry implements ToZJSONObject {
 
             // override with currently set
             attrs.putAll(mAttrs);
+
+            // override with overrides if set
+            if (overrideDefaults != null) {
+                attrs.putAll(overrideDefaults);
+            }
             return attrs;
         } else {
             return mAttrs;
@@ -572,6 +605,7 @@ public abstract class Entry implements ToZJSONObject {
         //return Collections.unmodifiableMap(defaults);
     }
 
+    @Override
     public synchronized String toString() {
         return String.format("[%s]", getClass().getName());
         /*
@@ -584,6 +618,7 @@ public abstract class Entry implements ToZJSONObject {
                    */
     }
 
+    @Override
     public ZJSONObject toZJSONObject() throws JSONException {
             return toZJSONObject(null, true);
     }

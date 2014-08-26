@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -38,8 +40,8 @@ import com.zimbra.soap.json.jackson.annotate.ZimbraJsonArrayForWrapper;
 
 // JsonPropertyOrder added to make sure JaxbToJsonTest.bug65572_BooleanAndXmlElements passes
 @XmlAccessorType(XmlAccessType.NONE)
-@XmlType(propOrder = {"tests", "actions"})
-@JsonPropertyOrder({ "name", "active", "tests", "actions" })
+@XmlType(propOrder = {"tests", "actions","child"})
+@JsonPropertyOrder({ "name", "active", "tests", "actions","child" })
 public final class FilterRule {
 
     /**
@@ -78,7 +80,15 @@ public final class FilterRule {
         @XmlElement(name=MailConstants.E_ACTION_NOTIFY /* actionNotify */, type=FilterAction.NotifyAction.class),
         @XmlElement(name=MailConstants.E_ACTION_STOP /* actionStop */, type=FilterAction.StopAction.class)
     })
-    private final List<FilterAction> actions = Lists.newArrayList();
+    // in nested rule case, actions could be null.
+    private List<FilterAction> actions;
+    
+    // For Nested Rule
+    /**
+     * @zm-api-field-description Nested Rule
+     */
+    @XmlElement(name=MailConstants.E_NESTED_RULE /* nestedRule */)
+    private NestedRule child;
 
     /**
      * no-argument constructor wanted by JAXB
@@ -91,12 +101,14 @@ public final class FilterRule {
     public FilterRule(String name, boolean active) {
         this.name = name;
         this.active = ZmBoolean.fromBool(active);
+        this.actions = null;
     }
 
     public FilterRule(String name, FilterTests tests, boolean active) {
         this.name = name;
         this.tests = tests;
         this.active = ZmBoolean.fromBool(active);
+        this.actions = null;
     }
 
     public static FilterRule createForNameFilterTestsAndActiveSetting(String name, FilterTests tests, boolean active) {
@@ -108,13 +120,22 @@ public final class FilterRule {
     }
 
     public void setFilterActions(Collection<FilterAction> list) {
-        actions.clear();
         if (list != null) {
+            if(actions == null){
+                actions=Lists.newArrayList();
+            }else{
+                actions.clear();
+            }
             actions.addAll(list);
+        } else { // re-initialise actions
+            actions = null;
         }
     }
 
     public FilterRule addFilterAction(FilterAction action) {
+        if(actions == null){
+           actions=Lists.newArrayList();
+        }
         actions.add(action);
         return this;
     }
@@ -132,11 +153,28 @@ public final class FilterRule {
     }
 
     public List<FilterAction> getFilterActions() {
+        // there must be no actions.size()==0 case. This is for just in case.
+        if(actions == null || actions.size() == 0) {
+            return null;
+        }
         return Collections.unmodifiableList(actions);
     }
 
     public int getActionCount() {
+        if(actions == null){
+            return 0;
+        }        
         return actions.size();
+    }
+    
+    // For Nested Rule
+    public NestedRule getChild() {
+        return child;
+    }
+    
+    // For Nested Rule
+    public void setChild(NestedRule nestedRule) {
+        child = nestedRule;
     }
 
     @Override
@@ -146,6 +184,7 @@ public final class FilterRule {
             .add("active", active)
             .add("tests", tests)
             .add("actions", actions)
+            .add("child", child)
             .toString();
     }
 }

@@ -23,6 +23,9 @@
         <DataTemplate DataType="{x:Type ViewModel:ConfigViewModelU}">
             <View:ConfigViewU />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type ViewModel:ConfigViewModelZU}">
+            <View:ConfigViewZU />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type ViewModel:ConfigViewModelUDest}">
             <View:ConfigViewUDest />
         </DataTemplate>

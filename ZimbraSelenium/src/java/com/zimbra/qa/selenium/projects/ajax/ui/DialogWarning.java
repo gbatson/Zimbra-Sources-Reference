@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
@@ -20,6 +22,7 @@ import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
 
@@ -36,11 +39,10 @@ public class DialogWarning extends AbsDialog {
 
 	public static class DialogWarningID {
 		
-
+		public static final DialogWarningID ZmMsgDialog = new DialogWarningID("ZmMsgDialog");
 		public static final DialogWarningID SaveCurrentMessageAsDraft = new DialogWarningID("YesNoCancel");
-
 		public static final DialogWarningID SaveTaskChangeMessage = new DialogWarningID("YesNoCancel");
-		
+		public static final DialogWarningID SaveChanges = new DialogWarningID("YesNoCancel");
 		public static final DialogWarningID SendLink = new DialogWarningID("css=div[class=DwtConfirmDialog]");
 		public static final DialogWarningID DeleteTagWarningMessage = new DialogWarningID("YesNoMsgDialog");
 		public static final DialogWarningID EmptyFolderWarningMessage = new DialogWarningID("OkCancel");
@@ -48,23 +50,25 @@ public class DialogWarning extends AbsDialog {
 		public static final DialogWarningID CancelCreateContact = new DialogWarningID("YesNoCancel");
 		public static final DialogWarningID PermanentlyDeleteTheItem = new DialogWarningID("OkCancel");
 		public static final DialogWarningID PermanentlyRemoveTheAttachment = new DialogWarningID("YesNoMsgDialog");
-		
+		public static final DialogWarningID DeleteItemWithinRetentionPeriod = new DialogWarningID("OkCancel");
 		public static final DialogWarningID DeleteAppointment = new DialogWarningID("YesNo");
+		
+		public static final DialogWarningID ComposeOptionsChangeWarning = new DialogWarningID("OkCancel");
 
 		// See bug: http://bugzilla.zimbra.com/show_bug.cgi?id=63353
-		public static final DialogWarningID SelectedTimeIsInPast = new DialogWarningID("ShowDelayPastDialog");
+		// In main, the dialog id is <div id='OkCancel' .../>
+		// In 8.x, the dialog id is <div id='ShowDelayPastDialog' .../>
+		// public static final DialogWarningID SelectedTimeIsInPast = new DialogWarningID("ShowDelayPastDialog");
+		public static final DialogWarningID SelectedTimeIsInPast = new DialogWarningID("OkCancel");
 		
 		// See http://bugzilla.zimbra.com/show_bug.cgi?id=64081
 		public static final DialogWarningID SendReadReceipt = new DialogWarningID("YesNoMsgDialog");;
-
 		public static final DialogWarningID QuickCommandConfirmDelete = new DialogWarningID("ZmQuickCommandConfirmation1");
-
 		public static final DialogWarningID PreferencesSaveChanges = new DialogWarningID("YesNoCancel");
-		public static final DialogWarningID SwitchingToTextWillDiscardHtmlFormatting = new DialogWarningID("css=div[class='DwtMsgDialog']");
-
+		public static final DialogWarningID SwitchingToTextWillDiscardHtmlFormatting = new DialogWarningID("css=td[id$='_formatWarning_title']");
 		public static final DialogWarningID SmsVerificationCodeSent = new DialogWarningID("ZmMsgDialog");
-
 		public static final DialogWarningID ZmAcceptShare = new DialogWarningID("ZmAcceptShare");
+	   	public static final DialogWarningID ConflictResource = new DialogWarningID("RESC_CONFLICT_DLG");
 
 		protected String Id;
 		public DialogWarningID(String id) {
@@ -123,7 +127,7 @@ public class DialogWarning extends AbsDialog {
 
 		if ( button == Button.B_YES ) {
 
-			locator = buttonsTableLocator + " td[id^='Yes_'] td[id$='_title']";
+			locator = buttonsTableLocator + " td[id$='_button5_title']";
 
 			if(MyDivId.contains("css=div[class=DwtConfirmDialog]")){
 				page = 	new FormMailNew(this.MyApplication);
@@ -132,17 +136,25 @@ public class DialogWarning extends AbsDialog {
 
 		} else if ( button == Button.B_NO ) {
 
-			locator = buttonsTableLocator + " td[id^='No_'] td[id$='_title']";
+			locator = buttonsTableLocator + " td[id$='_button4_title']";
 
 		} else if ( button == Button.B_CANCEL ) {
 
-			locator = buttonsTableLocator + " td[id^='Cancel_'] td[id$='_title']";
+			locator = buttonsTableLocator + " td[id$='_button1_title']";
 
 		} else if (button == Button.B_OK) {
 
-			locator = buttonsTableLocator + " td[id^='OK_'] td[id$='_title']";
+			locator = buttonsTableLocator + " td[id$='_button2_title']";
 
-		} else {
+		}else if (button == Button.B_SAVE_WITH_CONFLICT) {
+
+			locator = "css= div[id^='RESC_CONFLICT_DLG_button'] td[id^='RESC_CONFLICT_DLG_']:contains('Save')";
+
+		}else if (button == Button.B_CANCEL_CONFLICT) {
+
+			locator = "css= div[id^='RESC_CONFLICT_DLG_button'] td[id^='RESC_CONFLICT_DLG_']:contains('Cancel')";
+
+		}  else {
 			throw new HarnessException("no logic defined for button "+ button);
 		}
 
@@ -166,6 +178,10 @@ public class DialogWarning extends AbsDialog {
 			page.zWaitForActive();
 
 		}
+		
+		// This dialog might send message(s), so wait for the queue
+		Stafpostqueue sp = new Stafpostqueue();
+		sp.waitForPostqueue();
 
 		return (page);
 	}

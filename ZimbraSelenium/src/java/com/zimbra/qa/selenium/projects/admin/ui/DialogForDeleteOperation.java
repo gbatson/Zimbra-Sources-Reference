@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
@@ -21,23 +23,22 @@ import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.projects.admin.ui.FormEditResource.Locators;
 
 public class DialogForDeleteOperation extends AbsDialog {
 
 	public static class Locators {
 		public static final String YES_BUTTON="zdlg__MSG__GLOBAL__confirm2btn_button5_title";
 		public static final String NO_BUTTON="zdlg__MSG__GLOBAL__confirm2btn_button4_title";
-		public static final String OK_BUTTON="zdlg__UNDEFINE1_button2_title";
+		public static final String OK_BUTTON="css=td#zdlg__UNDEFINE";
 	}
-	
+
 	public DialogForDeleteOperation(AbsApplication application, AbsTab page) {
 		super(application, page);
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override
 	public String myPageName() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -48,16 +49,21 @@ public class DialogForDeleteOperation extends AbsDialog {
 		tracer.trace("Click dialog button " + button);
 		if ( button == null )
 			throw new HarnessException("button cannot be null");
-	
+
 		String locator = null;
-		AbsPage page = null; 
+		AbsPage page = null;
 
 		if (button == Button.B_YES) {
 			locator = Locators.YES_BUTTON;
 		} else if (button == Button.B_NO) {
 			locator = Locators.NO_BUTTON;
 		} else if (button == Button.B_OK) {
-			locator = Locators.OK_BUTTON;
+			for(int i=0;i<=10;i++) {
+				if(sIsElementPresent(Locators.OK_BUTTON+i+"_button2_title")) {
+					locator=Locators.OK_BUTTON+i+"_button2_title";
+					break;
+				}
+			}
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
 		}
@@ -78,17 +84,17 @@ public class DialogForDeleteOperation extends AbsDialog {
 		// "]");
 
 		this.zClickAt(locator,"0,0");
-		SleepUtil.sleepMedium();
+		SleepUtil.sleepLong();
 
 		// If the app is busy, wait for it to become active
 		//this.zWaitForBusyOverlay();
-		
+
 		// If page was specified, make sure it is active
 		if ( page != null ) {
-			
+
 			// This function (default) throws an exception if never active
 			page.zWaitForActive();
-			
+
 		}
 
 		return (page);
@@ -96,13 +102,11 @@ public class DialogForDeleteOperation extends AbsDialog {
 
 	@Override
 	public String zGetDisplayedText(String locator) throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		// TODO Auto-generated method stub
 		return false;
 	}
 

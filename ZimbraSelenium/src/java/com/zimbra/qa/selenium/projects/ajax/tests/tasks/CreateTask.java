@@ -1,36 +1,35 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
 
-import java.util.HashMap;
-import org.testng.annotations.Test;
+import java.util.*;
 
-import com.zimbra.qa.selenium.framework.items.MailItem;
-import com.zimbra.qa.selenium.framework.items.TaskItem;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
-import com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew;
-import com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew.Field;
+import org.testng.annotations.*;
+
+import com.zimbra.common.soap.*;
+import com.zimbra.qa.selenium.framework.items.*;
+import com.zimbra.qa.selenium.framework.items.FolderItem.*;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.projects.ajax.core.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.FormTaskNew.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.tasks.PageTasks.Locators;
 
 public class CreateTask extends AjaxCommonTest {
 
@@ -195,5 +194,147 @@ public class CreateTask extends AjaxCommonTest {
 		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
 		ZAssert.assertEquals(task.getName(), subject, "Verify task subject");
 	}
+	
+	@Test(	description = "Create Simple task with attachment through RestUtil - verify through GUI",
+			groups = { "smoke" })
+			public void CreateTask_06() throws HarnessException {
+
+		String subject = "task" + ZimbraSeleniumProperties.getUniqueString();
+		
+		
+		ZimbraAccount account = app.zGetActiveAccount();
+		FolderItem taskFolder = FolderItem.importFromSOAP(account,SystemFolder.Tasks);
+
+		// Create file item
+		String filePath = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/Files/Basic01/BasicExcel2007.xlsx";
+		// Upload file to server through RestUtil
+		String attachmentId = account.uploadFile(filePath);		
+		
+
+		app.zGetActiveAccount().soapSend(
+				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+				"<m >" +
+				"<inv>" +
+				"<comp name='"+ subject +"'>" +
+				"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+				"</comp>" +
+				"</inv>" +
+				"<su>"+ subject +"</su>" +
+				"<mp ct='text/plain'>" +
+				"<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+				"</mp>" +
+				"<attach aid='"+attachmentId+"'>"+
+				"</attach>"+
+				"</m>" +
+		"</CreateTaskRequest>");
+
+		
+
+		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
+		ZAssert.assertNotNull(task, "Verify the task is created");
+
+		// Refresh the tasks view
+		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
+
+		// Select the item
+		app.zPageTasks.zListItem(Action.A_LEFTCLICK, subject);
+		ZAssert.assertTrue(app.zPageTasks.sIsElementPresent(Locators.zAttachmentsLabel),"Verify Attachments: label");
+		
+	}
+	
+	@Test(	description = "Create Simple task  with attachment through RestUtil - verify through soap",
+			groups = { "smoke" })
+			public void CreateTask_07() throws HarnessException {
+
+		String subject = "task" + ZimbraSeleniumProperties.getUniqueString();
+		
+		
+		ZimbraAccount account = app.zGetActiveAccount();
+		FolderItem taskFolder = FolderItem.importFromSOAP(account,SystemFolder.Tasks);
+
+		// Create file item
+		String filePath = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/Files/Basic01/BasicExcel2007.xlsx";
+		FileItem file = new FileItem(filePath);
+		String fileName = file.getName();
+		
+		// Upload file to server through RestUtil
+		String attachmentId = account.uploadFile(filePath);		
+		
+
+		app.zGetActiveAccount().soapSend(
+				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
+				"<m >" +
+				"<inv>" +
+				"<comp name='"+ subject +"'>" +
+				"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+				"</comp>" +
+				"</inv>" +
+				"<su>"+ subject +"</su>" +
+				"<mp ct='text/plain'>" +
+				"<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+				"</mp>" +
+				"<attach aid='"+attachmentId+"'>"+
+				"</attach>"+
+				"</m>" +
+		"</CreateTaskRequest>");
+
+		
+
+		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
+		ZAssert.assertNotNull(task, "Verify the task is created");
+		
+		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);		
+		account.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='task' >"
+				+ "<query>" + subject + "</query>" + "</SearchRequest>");
+		
+		String invId = account.soapSelectValue("//mail:SearchResponse/mail:task", "invId");
+		
+		account.soapSend("<GetMsgRequest xmlns='urn:zimbraMail'>"
+				+ "<m id='" + invId + "' />" + "</GetMsgRequest>");
+		
+		Element getMsgResponse = account.soapSelectNode("//mail:GetMsgResponse", 1);
+		Element m = ZimbraAccount.SoapClient.selectNode(getMsgResponse,"//mail:mp[@s='9055']");
+		ZAssert.assertEquals(m.getAttribute("filename", null), fileName, "Verify file name through SOAP");
+				
+	}
+
+	@DataProvider(name = "DataProvidePriorities")
+	public Object[][] DataProvidePriorities() {
+	  return new Object[][] {
+			  new Object[] { Button.O_PRIORITY_HIGH, "1" },
+			  new Object[] { Button.O_PRIORITY_LOW, "9" },
+			  new Object[] { Button.O_PRIORITY_NORMAL, "5" }
+	  };
+	}
+
+	@Test(	description = "Create a task with different priorities high/normal/low",
+			groups = { "functional" },
+			dataProvider = "DataProvidePriorities")
+	public void CreateTask_10(Button option, String verify) throws HarnessException {
+		
+		//-- DATA
+		
+		String subject = "task" + ZimbraSeleniumProperties.getUniqueString();
+		String body = "taskbody"+ ZimbraSeleniumProperties.getUniqueString();		
+		
+		// Click NEW button
+		FormTaskNew form = (FormTaskNew) app.zPageTasks.zToolbarPressButton(Button.B_NEW);
+
+		// Fill out the resulting form
+		form.zFillField(Field.Subject, subject);
+		form.zFillField(Field.Body, body);
+
+		// Change the priority
+		form.zToolbarPressPulldown(Button.B_PRIORITY, option);
+		
+		form.zSubmit();
+		
+		//-- VERIFICATION
+		
+		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
+		ZAssert.assertStringContains(task.gPriority, verify, "Verify the correct priority was sent");
+
+	}
+
 
 }

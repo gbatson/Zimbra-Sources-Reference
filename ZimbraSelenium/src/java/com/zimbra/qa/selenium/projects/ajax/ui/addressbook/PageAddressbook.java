@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package  com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
@@ -39,9 +41,9 @@ public class PageAddressbook extends AbsTab {
 		public static final ContextMenuItem CONTACT_NEW_EMAIL = new ContextMenuItem("POPUP_NEW_MESSAGE","New Email","div[class*='ImgNewMessage']",":contains('nm')");  	
     
 		//TODO: contact group: "Edit Group" instead of "Edit Contact"
-		public static final ContextMenuItem CONTACT_EDIT = new ContextMenuItem("POPUP_CONTACT","Edit Contact","div[class*='ImgEdit']","");	
-		public static final ContextMenuItem CONTACT_FORWARD = new ContextMenuItem("POPUP_SEND_CONTACTS_IN_EMAIL","Forward Contact","div[class*='ImgMsgStatusSent']","");	
-	
+		public static final ContextMenuItem CONTACT_EDIT = new ContextMenuItem("POPUP_CONTACT","Edit Contact","","");	
+		public static final ContextMenuItem CONTACT_FORWARD = new ContextMenuItem("POPUP_SEND_CONTACTS_IN_EMAIL","Forward Contact","","");	
+		
 		//TODO: contact group: "Tag Group" instead of "Tag Contact"
 		public static final ContextMenuItem CONTACT_TAG = new ContextMenuItem("POPUP_TAG_MENU","Tag Contact","div[class*='ImgTag']"," div[class='ImgCascade']");	
 		public static final ContextMenuItem CONTACT_DELETE = new ContextMenuItem("POPUP_DELETE","Delete","div[class*='ImgDelete']",":contains('Del')");
@@ -209,14 +211,14 @@ public class PageAddressbook extends AbsTab {
 		
         //assume that this is a list view
 		String listLocator = "div[id='zv__CNS-main']";		
-		String rowLocator  = "div[id^='zli__CNS-main__']";
+		String rowLocator  = "li[id^='zli__CNS-main__']";
 	    String noResultLocator = "td.NoResults";		
 		String fileAsLocator = " td[id^=zlif__CNS-main__][id$=__fileas]";
 		
 		//actually this is a search view
 		if (zIsInSearchView()) {
 			listLocator= "div[id=zv__CNS-SR-Contacts-1]";	
-		   	rowLocator= "div[id^=zli__CNS-SR-Contacts-1__]";
+		   	rowLocator= "li[id^=zli__CNS-SR-Contacts-1__]";
 		   	fileAsLocator=" td[id^=zlif__CNS-SR-Contacts-1__][id$=__fileas]";
 		}
 
@@ -225,19 +227,19 @@ public class PageAddressbook extends AbsTab {
            return false;
 		}
 		
-		if (!this.sIsElementPresent("css=" + listLocator + ">" + rowLocator)) {
-			throw new HarnessException("css=" + listLocator + ">" + rowLocator + " not present");
+		if (!this.sIsElementPresent("css=" + listLocator + " " + rowLocator)) {
+			throw new HarnessException("css=" + listLocator + " " + rowLocator + " not present");
 		}
 		
 		//Get the number of contacts (String) 
-		int count = this.sGetCssCount("css=" + listLocator + ">" + rowLocator);
+		int count = this.sGetCssCount("css=" + listLocator + " " + rowLocator);
 		
 		logger.info(myPageName() + " zIsContactDisplayed: number of contacts: "+ count);
 
 		// Get each contact's data from the table list
 		for (int i = 1; i <= count && !isContactFound; i++) {
-			String commonLocator = "css=" + listLocator + ">div:nth-child(" + i +")";
-
+			String commonLocator = "css=" + listLocator + " li:nth-child(" + i +")";
+														
 			String contactType = getContactType(commonLocator);
 		    
 			String contactDisplayedLocator = commonLocator + fileAsLocator;
@@ -265,14 +267,14 @@ public class PageAddressbook extends AbsTab {
 
 		//assume that this is a list view
 		String listLocator = "div[id='zv__CNS-main']";		
-		String rowLocator  = "div[id^='zli__CNS-main__']";
+		String rowLocator  = "li[id^='zli__CNS-main__']";
         String fileAsLocator = " td[id^=zlif__CNS-main__][id$=__fileas]";
         String noResultLocator = " td.NoResults";
         
 		//actually this is a search view
 		if (zIsInSearchView()) {
 			listLocator= "div[id=zv__CNS-SR-Contacts-1]";	
-		   	rowLocator= "div[id^=zli__CNS-SR-Contacts-1__]";
+		   	rowLocator= "li[id^=zli__CNS-SR-Contacts-1__]";
 		   	fileAsLocator=" td[id^=zlif__CNS-SR-Contacts-1__][id$=__fileas]";
 		}
 
@@ -281,17 +283,17 @@ public class PageAddressbook extends AbsTab {
 			return list;
 		}
 		
-		if (!this.sIsElementPresent("css=" + listLocator + ">" + rowLocator)) {
-			throw new HarnessException("css=" + listLocator + ">" + rowLocator + " not present");
+		if (!this.sIsElementPresent("css=" + listLocator + " " + rowLocator)) {
+			throw new HarnessException("css=" + listLocator + " " + rowLocator + " not present");
 		}
 
-	    int count = this.sGetCssCount("css=" + listLocator + ">" + rowLocator);
+	    int count = this.sGetCssCount("css=" + listLocator + " " + rowLocator);
 		
 		logger.info(myPageName() + " zListGetContacts: number of contacts: "+ count);
 
 		// Get each contact's data from the table list
 		for (int i = 1; i <= count; i++) {
-			String commonLocator = "css=" + listLocator + ">div:nth-child(" + i +")";
+			String commonLocator = "css=" + listLocator + " li:nth-child(" + i +")";
 						
 		    if (sIsElementPresent(commonLocator + " div[class*=" + contactType + "]")) {
 				
@@ -332,18 +334,18 @@ public class PageAddressbook extends AbsTab {
 			throw new HarnessException("Contact List is not present "+ "id='zv__CNS-main'");
 
 		//Get the number of contacts (String) 
-		int count = this.sGetCssCount("css=div[id='zv__CNS-main']>div[id^=zli__CNS-main__]");
+		int count = this.sGetCssCount("css=div[id='zv__CNS-main'] li[id^=zli__CNS-main__]");
 		
 		logger.info(myPageName() + " zListGetContacts: number of contacts: "+ count);
 
 		// Get each contact's data from the table list
 		for (int i = 1; i <= count; i++) {
-			String commonLocator = "css=div[id='zv__CNS-main'] div:nth-child("+ i +")";
+			String commonLocator = "css=div[id='zv__CNS-main'] li:nth-child("+ i +")";
 
 			String contactType = getContactType(commonLocator);
 		    
 			ContactItem ci=null;
-			String contactDisplayedLocator = commonLocator + " td[id^=zlif__CNS-main__][id$=__fileas]";
+			String contactDisplayedLocator = commonLocator + " div[id^=zlif__CNS-main__][id$=__fileas]";
 			String fileAs = sGetText(contactDisplayedLocator);
 		    logger.info(" found " + fileAs);
 		    
@@ -511,7 +513,7 @@ public class PageAddressbook extends AbsTab {
 			zKeyDown("77");
 			zWaitForBusyOverlay();
 			page.zWaitForActive();
-			return (page);				
+			return (page);
 		} 
 		else if ( shortcut == Shortcut.S_ASSISTANT ) {			
 			page = new DialogAssistant(MyApplication, ((AppAjaxClient) MyApplication).zPageAddressbook);
@@ -874,22 +876,22 @@ public class PageAddressbook extends AbsTab {
 	private String getContactLocator(String contact) throws HarnessException {
 		//assume that this is a list view
 		String listLocator = "div[id='zv__CNS-main']";		
-		String rowLocator  = "div[id^='zli__CNS-main__']";
+		String rowLocator  = "li[id^='zli__CNS-main__']";
 	    		
 		String contactLocator = null;
 		
 		//actually this is a search view
 		if (zIsInSearchView()) {
-			listLocator= "div[id=zv__CNS-SR-Contacts-1]";	
-		   	rowLocator= "div[id^=zli__CNS-SR-Contacts-1__]";
+			listLocator= "div[id=zv__CNS-SR-1]";	
+		   	rowLocator= "li[id^=zli__CNS-SR-1__]";
 		}
 		
-		if (!this.sIsElementPresent("css=" + listLocator + ">" + rowLocator)) {
-			throw new HarnessException("css=" + listLocator + ">" + rowLocator + " not present");
+		if (!this.sIsElementPresent("css=" + listLocator + " " + rowLocator)) {
+			throw new HarnessException("css=" + listLocator + " " + rowLocator + " not present");
 		}
 		
 		//Get the number of contacts (String) 
-	    int count = this.sGetCssCount("css=" + listLocator + ">" + rowLocator);
+	    int count = this.sGetCssCount("css=" + listLocator + " " + rowLocator);
 		logger.debug(myPageName() + " zListItem: number of contacts: "+ count);
 
 		if ( count == 0 )
@@ -898,7 +900,7 @@ public class PageAddressbook extends AbsTab {
 		// Get each contact's data from the table list
 		for (int i = 1; i<=count; i++) { 
 
-			String itemLocator = "css=" + listLocator + ">div:nth-child(" + i +")";
+			String itemLocator = "css=" + listLocator + " li:nth-child(" + i +")";
 			if ( !this.sIsElementPresent(itemLocator) ) {
 				throw new HarnessException("unable to locate item " + itemLocator);
 			}
@@ -908,12 +910,11 @@ public class PageAddressbook extends AbsTab {
 
 			// Log this item to the debug output
 			LogManager.getLogger("projects").info("zListItem: found contact "+ displayAs);
-
-			if ( displayAs != null ) {
-				if ( displayAs.toLowerCase().contains(contact.toLowerCase()) ) {
+			if (displayAs != null) {
+				if (displayAs.toLowerCase().contains(contact.toLowerCase())) {
 					// Found the item!
-				   contactLocator = itemLocator;
-				   break;
+					contactLocator = itemLocator;
+					break;
 				}
 			}
 
@@ -930,7 +931,7 @@ public class PageAddressbook extends AbsTab {
     //get selected contacts locators
 	private ArrayList<String> getSelectedContactLocator() throws HarnessException {
 		String listLocator = "div#zv__CNS-main";				
-		String rowLocator = "div[id^='zli__CNS-main__']";
+		String rowLocator = "li[id^='zli__CNS-main__']";
 		
 		
 	    ArrayList<String> arrayList = new ArrayList<String>();
@@ -942,7 +943,7 @@ public class PageAddressbook extends AbsTab {
 		    return arrayList; //an empty arraylist
 			
 		//Get the number of contacts (String) 
-		int count = sGetCssCount("css=" + listLocator + ">" + rowLocator);
+		int count = sGetCssCount("css=" + listLocator + " " + rowLocator);
 
 		logger.debug(myPageName() + " getSelectedContactLocator: number of contacts: "+ count);
 
@@ -951,7 +952,7 @@ public class PageAddressbook extends AbsTab {
 
 		// Get each contact's data from the table list
 		for (int i = 1; i<=count; i++) {
-			String itemLocator = "css=" + listLocator + " div:nth-child(" + i +")";
+			String itemLocator = "css=" + listLocator + " li:nth-child(" + i +")";
         			
 			if ( !sIsElementPresent(itemLocator) ) {
 				logger.info("reach the end of list - unable to locate item " + itemLocator);
@@ -1008,7 +1009,8 @@ public class PageAddressbook extends AbsTab {
 				if (subOption == Button.O_NEW_CONTACTGROUP) {
 					cmi= CONTEXT_MENU.CONTACT_GROUP;
 					sub_cmi= CONTEXT_SUB_MENU.CONTACT_SUB_NEW_CONTACT_GROUP;
-					page = new DialogNewContactGroup(MyApplication, this);
+					//page= new SimpleFormContactGroupNew(MyApplication);
+					page = new DialogNewContactGroup((AppAjaxClient)MyApplication, this);
 				}				
 			}
 			else if (option == Button.B_SEARCH) {
@@ -1036,7 +1038,7 @@ public class PageAddressbook extends AbsTab {
 			
 			
 			if (zIsInSearchView()) {
-				locator = "css=div[id^=zm__Contacts__DWT]";
+				locator = "css=div[id^=zm__Contacts]";
 			} else {
 				locator = "css=div#zm__Contacts";
 			}	
@@ -1282,12 +1284,9 @@ public class PageAddressbook extends AbsTab {
 			
 			}
 			else if (option == Button.B_CONTACTGROUP) {
-				if (zIsInSearchView()) {
-					optionLocator = "css=div[id^=zm__Contacts__DWT] div[id^='CONTACTGROUP_MENU'] td[id$='_title']";
-				} else {
-					optionLocator = "css=div#zm__Contacts div[id^='CONTACTGROUP_MENU'] td[id$='_title']";
-				}	
 				
+				optionLocator = "css=div#zm__Contacts div[id^='CONTACTGROUP_MENU'] td[id$='_title']";
+
 				if ( item instanceof ContactGroupItem) {
 					itemLocator = "css=div[id^='CONTACTGROUP_MENU'] td[id$='_title']:contains('"+ item.getName() +"')";
 				}				
@@ -1387,6 +1386,8 @@ public class PageAddressbook extends AbsTab {
 	    	
 		    if (option == Button.B_NEW) {
 		    	locator = "css=div#zm__Contacts tr[id^="+ cmi.locator +"]";			    		
+		    }else if (option == Button.B_FORWARD) {
+		    	locator = "css=div#zm__Contacts tr[id^="+ cmi.locator +"]";	
 		    }
 			
 			//locator = "id="+ id;
@@ -1456,10 +1457,11 @@ public class PageAddressbook extends AbsTab {
 			
 			
 			//get the checkbox locator
-			contactLocator=contactLocator + " div.ImgCheckboxUnchecked";
+			contactLocator=contactLocator + " div[id$=__se]>div.ImgCheckboxUnchecked";
 					
 			//check the box			
-			zClick(contactLocator);
+			//zClick(contactLocator);
+			zClickAt(contactLocator,"0,0"); 
 			
 			//zWaitForBusyOverlay();
 						
@@ -1542,6 +1544,6 @@ public class PageAddressbook extends AbsTab {
 	}
 	
 	private boolean zIsInSearchView() throws HarnessException {
-		return zIsVisiblePerPosition("css=div#z_filterPanel__SR-Contacts-1",0,0);		 
+		return zIsVisiblePerPosition("css=div#z_filterPanel__SR-1",0,0);		 
 	}
 }

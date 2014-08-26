@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -32,7 +34,9 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.index.query.ConjQuery;
+import com.zimbra.cs.index.query.InQuery;
 import com.zimbra.cs.index.query.Query;
+import com.zimbra.cs.index.query.Query.Modifier;
 import com.zimbra.cs.index.query.SubQuery;
 import com.zimbra.cs.index.query.parser.QueryParser;
 import com.zimbra.cs.mailbox.CalendarItem;
@@ -181,6 +185,10 @@ public final class ZimbraQuery {
                 nodes.add(subNode);
             }
 
+            public List<Node> getNodes() {
+                return nodes;
+            }
+
             @Override
             public String toString() {
                 StringBuilder buff = bool ? new StringBuilder() : new StringBuilder(" NOT ");
@@ -232,6 +240,23 @@ public final class ZimbraQuery {
             @Override
             Node simplify() {
                 return this;
+            }
+
+            public Query getQuery() {
+                return query;
+            }
+
+            @Override
+            public void invert() {
+                if (query instanceof InQuery) {
+                    if (query.getModifier() == Modifier.MINUS) {
+                        query.setModifier(Modifier.NONE);
+                    } else {
+                        query.setModifier(Modifier.MINUS);
+                    }
+                } else {
+                    super.invert();
+                }
             }
 
             @Override
@@ -578,14 +603,12 @@ public final class ZimbraQuery {
                 // search similar to : 'in:"trash" (inid:565 OR is:local)'
                 // where 565 is the folder ID for a shared folder.  We don't want to end up doing a search for items
                 // that are both in "trash" and NOT in "trash"...
-                for (Query q : clauses) {
-                    if (q.toString().equalsIgnoreCase("Q(IN:Trash)")) {
-                        includeTrash = true;
-                    }
-                    if (q.toString().equalsIgnoreCase("Q(IN:Junk)")) {
+                    if (parseTreeIncludesFolder(parseTree, Mailbox.ID_FOLDER_SPAM)) {
                         includeSpam = true;
                     }
-                }
+                    if (parseTreeIncludesFolder(parseTree, Mailbox.ID_FOLDER_TRASH)) {
+                        includeTrash = true;
+                    }
             }
             if (!includeTrash || !includeSpam) {
                 List<QueryOperation> toAdd = new ArrayList<QueryOperation>();
@@ -698,6 +721,25 @@ public final class ZimbraQuery {
         operation = union.optimize(mailbox);
 
         ZimbraLog.search.debug("COMPILED=%s", operation);
+    }
+
+    private boolean parseTreeIncludesFolder(ZimbraQuery.ParseTree.Node node, int folderId) {
+        if (node instanceof ParseTree.OperatorNode) {
+            for (ParseTree.Node subNode: ((ParseTree.OperatorNode) node).getNodes()) {
+                if (parseTreeIncludesFolder(subNode, folderId)) {
+                    return true;
+                }
+            }
+        } else if (node instanceof ParseTree.ThingNode) {
+            Query query = ((ParseTree.ThingNode) node).getQuery();
+            if (query instanceof InQuery) {
+                Folder folder = ((InQuery) query).getFolder();
+                return folder != null? folder.getId() == folderId && query.getModifier() != Modifier.MINUS: false;
+            } else {
+                return false;
+            }
+        }
+        return false;
     }
 
     public SearchParams getParams() {

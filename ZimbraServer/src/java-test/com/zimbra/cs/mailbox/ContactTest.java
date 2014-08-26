@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox;
@@ -46,6 +48,7 @@ import com.zimbra.cs.db.DbUtil;
 import com.zimbra.cs.mailbox.Contact.Attachment;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedContact;
+import com.zimbra.cs.service.formatter.VCard;
 import com.zimbra.cs.util.JMSession;
 
 /**
@@ -114,6 +117,26 @@ public final class ContactTest {
                 mbox.getId(), contact.getId()).getString(1));
 
         conn.closeQuietly();
+    }
+
+    /**
+     * Bug 77746 Test that VCARD formatting escapes ';' and ',' chars which are part of name components
+     */
+    @Test
+    public void semiColonAndCommaInName() throws Exception {
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        Map<String, Object> fields = new HashMap<String, Object>();
+        fields.put(ContactConstants.A_lastName, "Last");
+        fields.put(ContactConstants.A_firstName, "First ; SemiColon");
+        fields.put(ContactConstants.A_middleName, "Middle , Comma");
+        fields.put(ContactConstants.A_namePrefix, "Ms.");
+        Contact contact = mbox.createContact(null, new ParsedContact(fields), Mailbox.ID_FOLDER_CONTACTS, null);
+
+        VCard vcard = VCard.formatContact(contact);
+        String vcardAsString = vcard.getFormatted();
+        String expectedPattern = "N:Last;First \\; SemiColon;Middle \\, Comma;Ms.;";
+        String assertMsg = String.format("Vcard\n%s\nshould contain string [%s]", vcardAsString, expectedPattern);
+        Assert.assertTrue(assertMsg, vcardAsString.contains(expectedPattern));
     }
 
     @Test

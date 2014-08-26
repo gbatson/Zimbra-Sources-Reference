@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.soap.account;
@@ -54,6 +56,7 @@ import com.zimbra.common.soap.Element.JSONElement;
 import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.HeaderConstants;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.SoapParseException;
 import com.zimbra.common.soap.W3cDomUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.soap.JaxbUtil;
@@ -79,6 +82,7 @@ import com.zimbra.soap.mail.message.ConvActionRequest;
 import com.zimbra.soap.mail.message.DeleteDataSourceRequest;
 import com.zimbra.soap.mail.message.GetContactsRequest;
 import com.zimbra.soap.mail.message.ImportContactsRequest;
+import com.zimbra.soap.mail.message.SearchConvRequest;
 import com.zimbra.soap.mail.message.WaitSetRequest;
 import com.zimbra.soap.mail.type.ActionSelector;
 import com.zimbra.soap.mail.type.ContactActionSelector;
@@ -91,6 +95,7 @@ import com.zimbra.soap.mail.type.Pop3DataSourceNameOrId;
 import com.zimbra.soap.mail.type.RetentionPolicy;
 import com.zimbra.soap.type.KeyValuePair;
 import com.zimbra.soap.type.WaitSetAddSpec;
+import com.zimbra.soap.type.WantRecipsSetting;
 import com.zimbra.soap.util.JaxbElementInfo;
 import com.zimbra.soap.util.JaxbInfo;
 import com.zimbra.soap.util.JaxbNodeInfo;
@@ -154,11 +159,30 @@ public class JaxbToElementTest {
         return getInfoRespJaxb;
     }
 
+    /**
+     * Bored with re-removing license block from test comparison XML - so make test tolerant to it.
+     */
+    public static String stripXmlCommentsOut(String str) throws IOException {
+        int commentIndex = str.indexOf("<!--");
+        if (commentIndex == -1) {
+            return str;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(str.substring(0, commentIndex));
+        str = str.substring(commentIndex + 4);
+        int endCommentIndex = str.indexOf("-->");
+        if (endCommentIndex != -1) {
+            sb.append(str.substring(endCommentIndex + 4));
+        }
+        return stripXmlCommentsOut(sb.toString());
+    }
+
     public static String getTestInfoResponseXml() throws IOException {
         if (getInfoResponseXml == null) {
             InputStream is = JaxbToElementTest.class.getResourceAsStream(
                     "GetInfoResponse.xml");
             getInfoResponseXml = streamToString(is, Charsets.UTF_8);
+            getInfoResponseXml = stripXmlCommentsOut(getInfoResponseXml);
         }
         return getInfoResponseXml;
     }
@@ -235,6 +259,128 @@ public class JaxbToElementTest {
             GetInfoResponse getInfoResp = JaxbUtil.elementToJaxb(getInfoRespElem);
             Assert.assertEquals("Account name", "user1@tarka.local", getInfoResp.getAccountName());
         }
+    }
+
+    private static String searchConvJson =
+        "{\n" +
+        "    \"SearchConvRequest\": {\n" +
+        "      \"includeTagDeleted\": false,\n" +
+        "      \"calExpandInstStart\": -1,\n" +
+        "      \"calExpandInstEnd\": -1,\n" +
+        "      \"query\": \"(((INID:\\\"9bce02cf-9d9a-4d15-b95e-e1495b75770e:2\\\") CONV:\\\"9bce02cf-9d9a-4d15-b95e-e1495b75770e:363\\\" ))\",\n" +
+        "      \"types\": \"message\",\n" +
+        "      \"sortBy\": \"dateDesc\",\n" +
+        "      \"fetch\": \"9bce02cf-9d9a-4d15-b95e-e1495b75770e:446\",\n" +
+        "      \"read\": true,\n" +
+        "      \"max\": 250000,\n" +
+        "      \"html\": true,\n" +
+        "      \"neuter\": true,\n" +
+        /* "      \"recip\": false,\n" + */
+        "%%VALUE%%" +
+        "      \"locale\": [{\n" +
+        "          \"_content\": \"en_US\"\n" +
+        "        }],\n" +
+        "      \"prefetch\": true,\n" +
+        "      \"resultMode\": \"NORMAL\",\n" +
+        "      \"estimateSize\": false,\n" +
+        "      \"field\": \"content:\",\n" +
+        "      \"limit\": 250,\n" +
+        "      \"offset\": 0,\n" +
+        "      \"inDumpster\": false,\n" +
+        "      \"nest\": false,\n" +
+        "      \"cid\": \"9bce02cf-9d9a-4d15-b95e-e1495b75770e:363\",\n" +
+        "      \"_jsns\": \"urn:zimbraMail\"\n" +
+        "    }\n" +
+        "}\n";
+
+    private static String searchConvXml =
+        "<SearchConvRequest\n" +
+        "        includeTagDeleted=\"false\"\n" +
+        "        calExpandInstStart=\"-1\"\n" +
+        "        calExpandInstEnd=\"-1\"\n" +
+        "        types=\"message\"\n" +
+        "        sortBy=\"dateDesc\"\n" +
+        "        fetch=\"9bce02cf-9d9a-4d15-b95e-e1495b75770e:446\"\n" +
+        "        read=\"true\"\n" +
+        "        max=\"250000\"\n" +
+        "        html=\"true\"\n" +
+        "        neuter=\"true\"\n" +
+        "%%VALUE%%" +
+        "        prefetch=\"true\"\n" +
+        "        resultMode=\"NORMAL\"\n" +
+        "        field=\"content:\"\n" +
+        "        limit=\"250\"\n" +
+        "        offset=\"0\"\n" +
+        "        inDumpster=\"false\"\n" +
+        "        nest=\"false\"\n" +
+        "        cid=\"9bce02cf-9d9a-4d15-b95e-e1495b75770e:363\"\n" +
+        "        xmlns=\"urn:zimbraMail\">\n" +
+        "    <query>(((INID:\"9bce02cf-9d9a-4d15-b95e-e1495b75770e:2\") CONV:\"9bce02cf-9d9a-4d15-b95e-e1495b75770e:363\" ))</query>\n" +
+        "    <locale>en_US</locale>\n" +
+        "</SearchConvRequest>\n";
+
+    private static Element getElementForEnvelopedJSON(String json) {
+        Element envelope = null;
+        try {
+            envelope = Element.parseJSON(json);
+        } catch (SoapParseException e) {
+            Assert.fail(String.format("Parse from JSON to Element failed - %s", e.getMessage()));
+        }
+        Assert.assertNotNull("Envelope element from parse from JSON", envelope);
+        Element inner =  envelope.listElements().get(0);
+        Assert.assertNotNull("element inside envelope element from parse from JSON", inner);
+        return inner;
+    }
+
+    private void doJsonSearchConvRecipCheck(String recipValue, WantRecipsSetting expected) throws ServiceException {
+        Element elem = getElementForEnvelopedJSON(searchConvJson.replace("%%VALUE%%", recipValue));
+        SearchConvRequest req = JaxbUtil.elementToJaxb(elem);
+        Assert.assertEquals(String.format("recips:%s should map to %s", recipValue, expected),
+                expected, req.getWantRecipients());
+    }
+
+    private void doXmlSearchConvRecipCheck(String recipValue, WantRecipsSetting expected) throws ServiceException {
+        Element elem = null;
+        String xmlStr = searchConvXml.replace("%%VALUE%%", recipValue);
+        elem = Element.parseXML(xmlStr);
+        SearchConvRequest req = JaxbUtil.elementToJaxb(elem);
+        Assert.assertEquals(String.format("recips=%s should map to %s", recipValue, expected),
+                expected, req.getWantRecipients());
+    }
+
+    private String jsonRecipWithValue(String value) {
+        return String.format("\"recip\": %s,\n", value);
+    }
+
+    private String xmlRecipWithValue(String value) {
+        return String.format("recip=\"%s\"\n", value);
+    }
+
+    @Test
+    public void searchConvJsonToJaxbRecipHandling() throws Exception {
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("false"), WantRecipsSetting.PUT_SENDERS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("true"), WantRecipsSetting.PUT_RECIPIENTS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("0"), WantRecipsSetting.PUT_SENDERS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("1"), WantRecipsSetting.PUT_RECIPIENTS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("2"), WantRecipsSetting.PUT_BOTH);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("\"0\""), WantRecipsSetting.PUT_SENDERS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("\"1\""), WantRecipsSetting.PUT_RECIPIENTS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("\"2\""), WantRecipsSetting.PUT_BOTH);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("invalid"), WantRecipsSetting.PUT_SENDERS);
+        doJsonSearchConvRecipCheck(jsonRecipWithValue("3"), WantRecipsSetting.PUT_SENDERS);
+        doJsonSearchConvRecipCheck("", WantRecipsSetting.PUT_SENDERS);
+    }
+
+    @Test
+    public void searchConvXmlToJaxbRecipHandling() throws Exception {
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("false"), WantRecipsSetting.PUT_SENDERS);
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("true"), WantRecipsSetting.PUT_RECIPIENTS);
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("0"), WantRecipsSetting.PUT_SENDERS);
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("1"), WantRecipsSetting.PUT_RECIPIENTS);
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("2"), WantRecipsSetting.PUT_BOTH);
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("invalid"), WantRecipsSetting.PUT_SENDERS);
+        doXmlSearchConvRecipCheck(xmlRecipWithValue("3"), WantRecipsSetting.PUT_SENDERS);
+        doXmlSearchConvRecipCheck("", WantRecipsSetting.PUT_SENDERS);
     }
 
     /**

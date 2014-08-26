@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
@@ -86,11 +92,14 @@ com_zimbra_socialFacebook.prototype._loadFacebookAccountHandleResponse = functio
 	account.name = response.name;
 	account.id = response.id;
 
-	this.zimlet.preferences.hideAddFBInfoDlg();
-	var msgDialog = appCtxt.getMsgDialog();
-	var msg = this.zimlet.getMessage("accountAddedSuccessfully");
-	msgDialog.setMessage(msg, DwtMessageDialog.INFO_STYLE);
-	msgDialog.popup();
+	var addFBdlg = this.zimlet.preferences.getAddFBInfoDlg();
+	if (addFBdlg && addFBdlg.isPoppedUp()) { //might not be popped up if this comes from the error case in _getStreamCallback
+		this.zimlet.preferences.hideAddFBInfoDlg();
+		var msgDialog = appCtxt.getMsgDialog();
+		var msg = this.zimlet.getMessage("accountAddedSuccessfully");
+		msgDialog.setMessage(msg, DwtMessageDialog.INFO_STYLE);
+		msgDialog.popup();
+	}
 
 	account.at = FB.getAuthResponse().accessToken;
 	this.updateFacebookAccountFromObj(account);
@@ -397,11 +406,11 @@ function (tableId, response) {
 	}
 	if(posts) {
 		this.zimlet.createCardView({tableId:tableId, items:posts, type:"FACEBOOK"});
-	} else if(jsonObj.error){
+	}
+	else if (jsonObj.error || jsonObj.error_code){
+		this.loginToFB(true); //try to refresh the access token if app is authorized (or not logged in to facebook). Then the user can click "retry" and it might work.
+		jsonObj.error = jsonObj.error || jsonObj.error_code;
 		this.zimlet.createCardView({tableId:tableId, items:jsonObj, type:"FACEBOOK"});
-	}else if(jsonObj.error_code && jsonObj.error_code != ""){
-		jsonObj.error = jsonObj.error_code;
-		this.zimlet.createCardView({tableId:tableId, items:jsonObj,  type:"FACEBOOK"});
 	}
 };
 
@@ -442,14 +451,14 @@ function (args) {
 
 
 com_zimbra_socialFacebook.prototype.loginToFB =
-function () {
+function (abortIfNotAuthorized) {
 
 	var that = this;
 	FB.getLoginStatus(function (response) {
 		if (response.status === 'connected') {
 			that._loadFacebookAccount();
 		}
-		else {
+		else if (!abortIfNotAuthorized || response.status !== 'not_authorized') {
 			//user is either logged in but not authorized, or not logged in. Anyway do the same - try to log in and authorize the user.
 			that._doLoginToFB();
 		}

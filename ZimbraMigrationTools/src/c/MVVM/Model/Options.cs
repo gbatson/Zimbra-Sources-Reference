@@ -126,6 +126,19 @@ public class AdvancedImportOptions
         get { return m_MaxRetries; }
         set { m_MaxRetries = value; }
     }
+
+    private bool m_IsPublicFolders;
+    public bool IsPublicFolders
+    {
+        get { return m_IsPublicFolders; }
+        set { m_IsPublicFolders = value; }
+    }
+    private bool m_IsZDesktop;
+    public bool IsZDesktop
+    {
+        get { return m_IsZDesktop; }
+        set { m_IsZDesktop = value; }
+    }
 }
 
 public class Folder

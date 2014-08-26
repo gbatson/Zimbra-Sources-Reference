@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
@@ -34,22 +36,22 @@ import org.apache.commons.codec.net.QuotedPrintableCodec;
 import org.json.JSONException;
 
 import com.google.common.base.Strings;
+import com.zimbra.common.mailbox.ContactConstants;
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.DateUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.Contact.Attachment;
 import com.zimbra.cs.mailbox.Contact.DerefGroupMembersOption;
 import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.util.Zimbra;
-import com.zimbra.common.mailbox.ContactConstants;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.DateUtil;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.mime.MimeConstants;
 
 public class VCard {
 
     public String uid;
     public String fn;
-    public String formatted;
+    private final String formatted;
     public Map<String, String> fields;
     public List<Attachment> attachments;
 
@@ -105,7 +107,7 @@ public class VCard {
     private static class VCardProperty {
         private String group;
         private String name;
-        private Set<String> params = new HashSet<String>();
+        private final Set<String> params = new HashSet<String>();
         private String charset;
         private Encoding encoding = Encoding.NONE;
         private String value;
@@ -186,13 +188,13 @@ public class VCard {
         String getGroup() {
             return group;
         }
-        
+
         String getValue() {
             // if it's a 2.1 vCard, decode the property value if necessary
             try {
                 if (encoding == Encoding.B) {
                     byte[] encoded = value.getBytes();
-                    if (Base64.isArrayByteBase64(encoded))
+                    if (Base64.isBase64(encoded))
                         value = new String(Base64.decodeBase64(encoded), charset);
                 } else if (encoding == Encoding.Q) {
                     value = new QuotedPrintableCodec(charset).decode(value);
@@ -205,7 +207,7 @@ public class VCard {
         byte[] getDecoded() {
             byte[] encoded = value.getBytes();
             try {
-                if (encoding == Encoding.B && Base64.isArrayByteBase64(encoded))
+                if (encoding == Encoding.B && Base64.isBase64(encoded))
                     encoded = Base64.decodeBase64(encoded);
                 encoding = Encoding.NONE;
             } catch (Exception ignored) { }
@@ -222,7 +224,7 @@ public class VCard {
 
         VCardProperty vcprop = new VCardProperty();
         int depth = 0;
-        int cardstart = 0; 
+        int cardstart = 0;
         String uid = null;
         for (int start, pos = 0, limit = vcard.length(); pos < limit;) {
             // unfold the next line in the vcard
@@ -307,7 +309,7 @@ public class VCard {
                         }
                         fields.put(ContactConstants.A_vCardXProps, Contact.encodeXProps(newMap));
                     }
-                    
+
                     // finished a vCard; add to list if non-empty
                     if (!fields.isEmpty()) {
                         Contact.normalizeFileAs(fields);
@@ -346,7 +348,9 @@ public class VCard {
             // decode the property's value and assign to the appropriate contact field(s)
             if (name.equals("FN"))             addField(ContactConstants.A_fullName, vcfDecode(value), "altFullName", 2, fields);
             else if (name.equals("N"))         decodeStructured(value, NAME_FIELDS, fields);
-            else if (name.equals("NICKNAME"))  addField(ContactConstants.A_nickname, vcfDecode(value), "altNickName", 2, fields);
+            else if (name.equals("NICKNAME"))  // TODO: VCARD 4 NICKNAME is multi-valued (COMMA separated)
+                                               //       It is treated as a single value here
+                                               addField(ContactConstants.A_nickname, vcfDecode(value), "altNickName", 2, fields);
             else if (name.equals("PHOTO"))     fields.put(ContactConstants.A_image, vcfDecode(value)); // Assumption: Do not want multiple photos.
             else if (name.equals("BDAY"))      addField(ContactConstants.A_birthday, vcfDecode(value), null, 2, fields);
             else if (name.equals("ADR"))       decodeAddress(value, vcprop, fields);
@@ -580,7 +584,7 @@ public class VCard {
     public static VCard formatContact(Contact con) {
         return formatContact(con, null, false);
     }
-    
+
     public static VCard formatContact(Contact con, Collection<String> vcattrs, boolean includeXProps) {
         return formatContact(con, vcattrs, includeXProps, true);
     }
@@ -616,12 +620,19 @@ public class VCard {
         }
 
         if (vcattrs == null || vcattrs.contains("N")) {
-            String n = vcfEncode(fields.get(ContactConstants.A_lastName)) + ';' +
-            vcfEncode(fields.get(ContactConstants.A_firstName)) + ';' +
-            vcfEncode(fields.get(ContactConstants.A_middleName)) + ';' +
-            vcfEncode(fields.get(ContactConstants.A_namePrefix)) + ';' +
-            vcfEncode(fields.get(ContactConstants.A_nameSuffix));
+            StringBuilder nSb = new StringBuilder();
+            nSb.append(vcfEncode(fields.get(ContactConstants.A_lastName))).append(';')
+                .append(vcfEncode(fields.get(ContactConstants.A_firstName))).append(';')
+                .append(vcfEncode(fields.get(ContactConstants.A_middleName))).append(';')
+                .append(vcfEncode(fields.get(ContactConstants.A_namePrefix))).append(';')
+                .append(vcfEncode(fields.get(ContactConstants.A_nameSuffix)));
+            String n = nSb.toString();
             // N is mandatory according to  RFC 2426 Section 1, so include it even if all components are empty
+            // In fact, clients like Mac OS X Mavericks Contacts will just have blank names if it is blank,
+            // so, try to avoid that.
+            if (";;;;".equals(n)) {
+                n = vcfEncode(fn) + ";;;;";
+            }
             sb.append("N:").append(n).append("\r\n");
         }
 
@@ -662,7 +673,7 @@ public class VCard {
             encodePhone(sb, "work,fax", ContactConstants.A_workFax, 2, fields);
             encodePhone(sb, "work,voice", ContactConstants.A_workPhone, 2, fields);
         }
-        
+
         if (vcattrs == null || vcattrs.contains("EMAIL")) {
             encodeField(sb, "EMAIL;TYPE=internet", ContactConstants.A_email, false, 2, fields);
             encodeField(sb, "EMAIL;TYPE=internet", "workEmail", true, 1, fields);
@@ -719,7 +730,7 @@ public class VCard {
                 }
             }
         }
-        
+
         if (vcattrs == null || vcattrs.contains("KEY")) {
             String smimeCert = fields.get(ContactConstants.A_userSMIMECertificate);
             if (smimeCert == null) {
@@ -783,14 +794,14 @@ public class VCard {
             return uid;
         return con.getMailbox().getAccountId() + ":" + con.getId();
     }
-    
+
     public static String getUrl(Contact con) {
         String url = con.get(ContactConstants.A_vCardURL);
         if (url != null)
             return url.replaceAll("/", "//");
         return getUid(con).replaceAll("/", "//");
     }
-    
+
     private static void encodeField(StringBuilder sb, String name, String value) {
         if (sb == null || name == null || value == null)
             return;
@@ -798,10 +809,10 @@ public class VCard {
     }
 
     private static void encodeField(StringBuilder sb, String name, String firstKey, boolean skipFirstKey, int firstSuffix, Map<String, String> fields) {
-        
+
         if (sb == null || name == null)
             return;
-        
+
         String value;
         if (!skipFirstKey) {
             value= fields.get(firstKey);
@@ -854,11 +865,11 @@ public class VCard {
             }
         }
     }
-    
+
     private static void encodePhone(StringBuilder sb, String type, String firstKey, int firstSuffix, Map<String, String> fields) {
         if (sb == null || type == null)
             return;
-        
+
         String phone = fields.get(firstKey);
         if (phone == null)
             return;
@@ -880,13 +891,26 @@ public class VCard {
     private static String vcfEncode(String value) {
         return vcfEncode(value, false);
     }
+
+    /**
+     * Encode a value of a property for use in VCARD.
+     * @param value <table>
+     * <tr><td>Property with multiple values separated by COMMA characters</td>
+     *     <td>Use this method to get the encoding separately for each individual value.</td></tr>
+     * <tr><td>Property with multiple fields separated by SEMICOLON characters</td>
+     *     <td>Use this method to get the encoding separately for each individual field.</td></tr>
+     * <tr><td>Property with single value</td>
+     *     <td>Use this method to get the whole value.</td></tr>
+     * </table>
+     * @param newlineToComma Set true if new lines in {@code value} should be replaced with ","
+     */
     private static String vcfEncode(String value, boolean newlineToComma) {
         if (value == null || value.equals(""))
             return "";
         StringBuilder sb = new StringBuilder();
         for (int i = 0, len = value.length(); i < len; i++) {
             char c = value.charAt(i);
-            if (c == '\\' || c == ',')
+            if (c == '\\' || c == ',' || c == ';')
                 sb.append('\\').append(c);
             else if (c == '\n')
                 sb.append(newlineToComma ? "," : "\\N");
@@ -896,6 +920,9 @@ public class VCard {
         return sb.toString();
     }
 
+    public String getFormatted() {
+        return formatted;
+    }
 
     public static void main(String args[]) throws ServiceException {
         parseVCard("BEGIN:VCARD\r\n\r\nFN\n :dr. john doe\nADR;HOME;WORK:;;Hambone Ltd.\\N5 Main St.;Charlotte;NC;24243\nEMAIL:foo@bar.con\nEMAIL:bar@goo.com\nN:doe;john;\\;\\\\;dr.;;;;\nEND:VCARD\n");

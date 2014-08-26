@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.bugs;
@@ -20,7 +22,6 @@ import java.util.*;
 
 import org.testng.annotations.Test;
 
-import com.zimbra.common.soap.Element;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -93,9 +94,9 @@ public class ContactGroup extends AjaxCommonTest  {
 		ZAssert.assertTrue(found, "Verify contact " + contact.getName() + " populated");
 
 		// Try to close out the window
-		//formGroup.zToolbarPressButton(Button.B_CONTACTGROUP_ADD_ADDRESS);
+		formGroup.zToolbarPressButton(Button.B_CONTACTGROUP_ADD_ADDRESS);
 		
-		//group137756059578165formGroup.zToolbarPressButton(Button.B_SAVE);
+		formGroup.zToolbarPressButton(Button.B_SAVE);
 		
 
 		
@@ -139,115 +140,69 @@ public class ContactGroup extends AjaxCommonTest  {
 
    	}
 	
-	//Due to the bug 77968 the New Contact Group Context menu is disabled for GAL search result
 	@Test( description="create a new contact group from GAL search result",
-		   groups= { "deprecated"  } )
+		   groups= { "functional"  } )
 	public void Bug66623_AddingAGALToAContactGroup() throws HarnessException{
-		String email=ZimbraAccount.AccountB().EmailAddress.substring(0,ZimbraAccount.AccountB().EmailAddress.indexOf('@'));
-		
+		String email=ZimbraAccount.AccountA().EmailAddress.substring(0,ZimbraAccount.AccountA().EmailAddress.indexOf('@'));
+
 		// search for a GAL
 		app.zPageSearch.zToolbarPressPulldown(Button.B_SEARCHTYPE, Button.O_SEARCHTYPE_GAL); 		
 		app.zPageSearch.zAddSearchQuery(email);	
 		app.zPageSearch.zToolbarPressButton(Button.B_SEARCH);		
-					
-	 
+
+
 		//Right click and select New Contact Group
-	 	 SimpleFormContactGroupNew simpleFormGroup = (SimpleFormContactGroupNew) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_CONTACTGROUP, Button.O_NEW_CONTACTGROUP , email);     
-	
-	 	//Create a contact item
-	 	ContactItem contactItem = new ContactItem(email);
-	 	contactItem.email = ZimbraAccount.AccountB().EmailAddress;
-	 	
-	 	//Create contact group 
-		 ContactGroupItem newGroup = new ContactGroupItem("group_" + ZimbraSeleniumProperties.getUniqueString().substring(8));
-		 
-		 //Add the member to the group	 
-		 newGroup.addDListMember(contactItem);
-	
-		 
-	 	//fill in group name 
-		simpleFormGroup.zFill(newGroup);
-		   
-		//click Save
-		simpleFormGroup.zSubmit(); 
-		
+		//Create contact group 
+		ContactGroupItem newGroup = new ContactGroupItem("group_" + ZimbraSeleniumProperties.getUniqueString().substring(8));
+
+		// Right click on the contact
+		DialogNewContactGroup dialog = (DialogNewContactGroup) app.zPageAddressbook.zListItem(
+				Action.A_RIGHTCLICK, 
+				Button.B_CONTACTGROUP, 
+				Button.O_NEW_CONTACTGROUP, 
+				email);
+
+		//fill in group name 
+		dialog.zEnterGroupName(newGroup.getName());
+		//Save
+		dialog.zClickButton(Button.B_OK);
+
+		//Create a contact item
+		ContactItem contactItem = new ContactItem(email);
+		contactItem.email = ZimbraAccount.AccountA().EmailAddress;	 
+
+		//Add the member to the group	 
+		newGroup.addDListMember(contactItem);
+
 		//verify toasted message 'group created'  
-        String expectedMsg ="Group Created";
-        ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(),
-        		        expectedMsg , "Verify toast message '" + expectedMsg + "'");
-    
-	    
-        
+		String expectedMsg ="Group Created";
+		ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(),
+				expectedMsg , "Verify toast message '" + expectedMsg + "'");
 
-        //click "Contacts" folder
+		//click "Contacts" folder
 		FolderItem folder= FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Contacts);
-	    app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, folder);
-		
-	    //verify group name is displayed		        
-			List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
-			boolean isFileAsEqual=false;
-			for (ContactItem ci : contacts) {
-				if (ci.fileAs.equals(ci.fileAs)) {
-		            isFileAsEqual = true;	
-					break;
-				}
-			}
-		ZAssert.assertTrue(isFileAsEqual, "Verify group name (" + newGroup.fileAs + ") displayed");
 
-	    //verify the location is System folder "Contacts"
+		app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, folder);
+
+		//verify group name is displayed		        
+		List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
+		boolean isFileAsEqual=false;
+		for (ContactItem ci : contacts) {
+			if (ci.fileAs.equals(ci.fileAs)) {
+				isFileAsEqual = true;	
+				break;
+			}
+		}
+		ZAssert.assertTrue(isFileAsEqual, "Verify group name (" + newGroup.fileAs + ") displayed");
+		//ContactGroupItem actual = ContactGroupItem.importFromSOAP(app.zGetActiveAccount(), "#nickname:"+ groupName);
+		ContactGroupItem actual = ContactGroupItem.importFromSOAP(app.zGetActiveAccount(), "#nickname:"+ newGroup.getName());
+		ZAssert.assertNotNull(actual, "Verify the group stil exists");
+
+		//verify the location is System folder "Contacts"
 		ZAssert.assertEquals(app.zPageAddressbook.sGetText("css=td.companyFolder"), SystemFolder.Contacts.getName(), "Verify location (folder) is " + SystemFolder.Contacts.getName());
 		
 	}
+	     
+	
 
-	//Due to the bug 77968 GAL search result can be added from Context Menu to the existing Contact Group, but not to the New Contact Group
-	@Test( description="Add GAL search result from Context Menu to the existing Contact Group",
-			   groups= { "functional"  } )
-		public void Bug77968_AddGALSearchToExistingContactGroup() throws HarnessException{
-		//-- Data
-		ZimbraAccount account = app.zGetActiveAccount(); 
-		ZimbraAccount accountB = ZimbraAccount.AccountB(); 
-		String galName = accountB.EmailAddress.substring(0,accountB.EmailAddress.indexOf('@'));
-		String groupName = "g" + ZimbraSeleniumProperties.getUniqueString().substring(4);
-		String member1 = "m" + ZimbraSeleniumProperties.getUniqueString() + "@example.com";
-		String member2 = "m" + ZimbraSeleniumProperties.getUniqueString() + "@example.com";
-				
-		//-- GUI
-		// Refresh the addressbook
-		app.zPageAddressbook.zRefresh();
-				
-		// open New Contact group form
-		FormContactGroupNew form = (FormContactGroupNew)app.zPageAddressbook.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_CONTACTGROUP);
-		    
-		// fill in group name and email addresses
-		//form.zFillField(Field.GroupName, groupName);
-		String locator = "css=div[class*=ZmContactView][style*='100px'] input[id*=_groupName]";
-		form.sType(locator,"");
-		form.sType(locator,groupName);
-		form.zFillField(Field.FreeFormAddress, member1);
-		form.zFillField(Field.FreeFormAddress, member2);
-		form.zSubmit();
-		SleepUtil.sleepSmall();
-		ContactGroupItem groupItem = ContactGroupItem.importFromSOAP(account, groupName);
-		// search for a GAL
-		app.zPageSearch.zToolbarPressPulldown(Button.B_SEARCHTYPE, Button.O_SEARCHTYPE_GAL); 		
-		app.zPageSearch.zAddSearchQuery(galName);	
-		app.zPageSearch.zToolbarPressButton(Button.B_SEARCH);		
-		//due to the bug 77968 the New Contact Group Context menu is disabled and the GAL search result can be added only to the exiting contact group
-		app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_CONTACTGROUP, groupItem, galName);
-		// Verify the contact group contains the GAL member
-		ContactGroupItem.importFromSOAP(account, groupName);
-		boolean found = false;
-		Element[] members = account.soapSelectNodes("//mail:cn//mail:m");
-		for (Element e : members) {
-			String type = e.getAttribute("type", "notset");
-			if ( type.equals("G") ){
-				String value = e.getAttribute("value", "notset");			
-				if ( value.contains(galName) ) {
-					found = true;
-					break;
-				}
-			}
-		}
-		ZAssert.assertTrue(found, "Verify the contact group conatins the GAL member");
-	}
 }

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.core;
@@ -113,36 +115,50 @@ public class ClientSession {
 	 */
 	public WebDriver webDriver() {
 		if (webDriver == null) {			
-			if(ZimbraSeleniumProperties.getStringProperty("browser").contains("iexplore")){	
+			if(ZimbraSeleniumProperties.getCalculatedBrowser().contains("iexplore")){	
 				DesiredCapabilities desiredCapabilities = DesiredCapabilities.internetExplorer();
 				//desiredCapabilities.setCapability(InternetExplorerDriver.INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
+				//desiredCapabilities.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);
+				//System.getenv("webdriver.ie.driver");System.getProperty("webdriver.ie.driver");
 				desiredCapabilities.setCapability("ignoreProtectedModeSettings", true);
+				String iedriverPath = null;
+				if(System.getProperty("webdriver.ie.driver")==null){
+					if((iedriverPath = ZimbraSeleniumProperties.getStringProperty("iedriver.path"))!=null
+							||(iedriverPath = System.getenv("webdriver.ie.driver"))!=null){
+						System.setProperty("webdriver.ie.driver",iedriverPath);
+					}
+				}
+				
 				webDriver = new InternetExplorerDriver(desiredCapabilities);	
 			}
-			else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("googlechrome")){
+			else if(ZimbraSeleniumProperties.getCalculatedBrowser().contains("googlechrome")){
 				//DesiredCapabilities caps = DesiredCapabilities.chrome();
 				//caps.setJavascriptEnabled(true);
 				//caps.setCapability("chrome.binary", "path/to/chrome.exe");
 				//System.setProperty("webdriver.chrome.driver","/path/to/chromedriver.exe");
 				//ChromeDriver driver = new ChromeDriver(caps);
-				
+				//System.getenv("webdriver.chrome.driver");System.getProperty("webdriver.chrome.driver");
 				ChromeOptions options = new ChromeOptions();
 				String chromedriverPath = null;
-				if((chromedriverPath = ZimbraSeleniumProperties.getStringProperty("chromedriver.path"))!=null){
-					System.setProperty("webdriver.chrome.driver",chromedriverPath);
+				if(System.getProperty("webdriver.chrome.driver")==null){
+					if((chromedriverPath = ZimbraSeleniumProperties.getStringProperty("chromedriver.path"))!=null
+							||(chromedriverPath = System.getenv("webdriver.chrome.driver"))!=null){
+						System.setProperty("webdriver.chrome.driver",chromedriverPath);
+					}
 				}
+
 				webDriver = new ChromeDriver(options);
 				//webDriver = new ChromeDriver();
-			} else if (ZimbraSeleniumProperties.getStringProperty("browser").contains("firefox")){
+			} else if (ZimbraSeleniumProperties.getCalculatedBrowser().contains("firefox")){
 				FirefoxProfile profile = new FirefoxProfile();
 				//Proxy proxy = new Proxy();
-				//proxy.setHttpProxy("proxy.server.com:3128");
+				//proxy.setHttpProxy("proxy.zimbra.com:3128");
 				//profile.setProxyPreferences(proxy);
 				//profile.addExtension(....);
 				profile.setEnableNativeEvents(false);
 				webDriver = new FirefoxDriver(profile);
 				//webDriver = new FirefoxDriver();					
-			} else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("remoteff")){
+			} else if(ZimbraSeleniumProperties.getCalculatedBrowser().contains("remoteff")){
 				try {
 					DesiredCapabilities desiredCapabilities = new DesiredCapabilities();
 					desiredCapabilities.setBrowserName(DesiredCapabilities.firefox().getBrowserName());
@@ -154,7 +170,7 @@ public class ClientSession {
 				} catch (Exception ex) {
 					logger.error(ex);
 				}
-			}else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("remotechrome")){
+			}else if(ZimbraSeleniumProperties.getCalculatedBrowser().contains("remotechrome")){
 				try {
 					DesiredCapabilities desiredCapabilities = DesiredCapabilities.chrome();
 					desiredCapabilities.setJavascriptEnabled(true);
@@ -162,7 +178,7 @@ public class ClientSession {
 				} catch (Exception ex) {
 						logger.error(ex);					
 				}					
-			}else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("remoteie")){
+			}else if(ZimbraSeleniumProperties.getCalculatedBrowser().contains("remoteie")){
 				try {
 					DesiredCapabilities desiredCapabilities = DesiredCapabilities.internetExplorer();
 					desiredCapabilities.setJavascriptEnabled(true);

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -65,6 +67,7 @@ import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.httpclient.URLUtil;
 import com.zimbra.cs.service.AuthProvider;
+import com.zimbra.cs.servlet.util.AuthUtil;
 import com.zimbra.cs.util.Zimbra;
 
 /**
@@ -78,7 +81,6 @@ public class ZimbraServlet extends HttpServlet {
 
     private static final String PARAM_ALLOWED_PORTS  = "allowed.ports";
 
-    protected static final String WWW_AUTHENTICATE_HEADER = "WWW-Authenticate";
     public static final String QP_ZAUTHTOKEN = "zauthtoken";
 
     protected String getRealmHeader(String realm)  {
@@ -244,7 +246,7 @@ public class ZimbraServlet extends HttpServlet {
                 return null;
             }
 
-            if (authToken.isExpired()) {
+            if (authToken.isExpired() || !authToken.isRegistered()) {
                 if (!doNotSendHttpError)
                     resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "authtoken expired");
                 return null;
@@ -266,6 +268,9 @@ public class ZimbraServlet extends HttpServlet {
 
             if (authToken.isExpired())
                 return null;
+            
+            if (!authToken.isRegistered())
+                return null;
 
             return authToken;
         } catch (AuthTokenException e) {
@@ -286,7 +291,12 @@ public class ZimbraServlet extends HttpServlet {
 
     public static void proxyServletRequest(HttpServletRequest req, HttpServletResponse resp, Server server, AuthToken authToken)
     throws IOException, ServiceException {
-        proxyServletRequest(req, resp, server, HttpUtil.getFullRequestURL(req), authToken);
+        String uri = req.getRequestURI();
+        String qs = req.getQueryString();
+        if (qs != null) {
+            uri += '?' + qs;
+        }
+        proxyServletRequest(req, resp, server, uri, authToken);
     }
 
     public static void proxyServletRequest(HttpServletRequest req, HttpServletResponse resp, Server server, String uri, AuthToken authToken)
@@ -297,6 +307,7 @@ public class ZimbraServlet extends HttpServlet {
         }
         HttpMethod method;
         String url = getProxyUrl(req, server, uri);
+        mLog.debug("Proxy URL = %s", url);
         if (req.getMethod().equalsIgnoreCase("GET")) {
             method = new GetMethod(url.toString());
         } else if (req.getMethod().equalsIgnoreCase("POST") || req.getMethod().equalsIgnoreCase("PUT")) {
@@ -309,9 +320,9 @@ public class ZimbraServlet extends HttpServlet {
         }
         HttpState state = new HttpState();
         String hostname = method.getURI().getHost();
-        if (authToken != null)
+        if (authToken != null) {
             authToken.encode(state, false, hostname);
-
+        }
         try {
             proxyServletRequest(req, resp, method, state);
         } finally {
@@ -415,12 +426,12 @@ public class ZimbraServlet extends HttpServlet {
         if (!AuthProvider.allowBasicAuth(req, this))
             return null;
 
-        String auth = req.getHeader("Authorization");
+        String auth = req.getHeader(AuthUtil.HTTP_AUTH_HEADER);
 
         // TODO: more liberal parsing of Authorization value...
         if (auth == null || !auth.startsWith("Basic ")) {
             if (sendChallenge) {
-                resp.addHeader(WWW_AUTHENTICATE_HEADER, getRealmHeader(req, null));
+                resp.addHeader(AuthUtil.WWW_AUTHENTICATE_HEADER, getRealmHeader(req, null));
                 ZimbraLog.dav.debug("calling sendError [%s] 'must authenticate'", HttpServletResponse.SC_UNAUTHORIZED);
                 resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "must authenticate");
             }
@@ -456,7 +467,7 @@ public class ZimbraServlet extends HttpServlet {
         Account acct = prov.get(AccountBy.name, user);
         if (acct == null) {
             if (sendChallenge) {
-                resp.addHeader(WWW_AUTHENTICATE_HEADER, getRealmHeader(req, null));
+                resp.addHeader(AuthUtil.WWW_AUTHENTICATE_HEADER, getRealmHeader(req, null));
                 ZimbraLog.dav.debug("calling sendError [%s] 'invalid username/password'",
                         HttpServletResponse.SC_UNAUTHORIZED);
                 resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid username/password");
@@ -473,7 +484,7 @@ public class ZimbraServlet extends HttpServlet {
             prov.authAccount(acct, pass, AuthContext.Protocol.http_basic, authCtxt);
         } catch (ServiceException se) {
             if (sendChallenge) {
-                resp.addHeader(WWW_AUTHENTICATE_HEADER, getRealmHeader(req, prov.getDomain(acct)));
+                resp.addHeader(AuthUtil.WWW_AUTHENTICATE_HEADER, getRealmHeader(req, prov.getDomain(acct)));
                 ZimbraLog.dav.debug("calling sendError [%s] 'invalid username/password'",
                         HttpServletResponse.SC_UNAUTHORIZED);
                 resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid username/password");

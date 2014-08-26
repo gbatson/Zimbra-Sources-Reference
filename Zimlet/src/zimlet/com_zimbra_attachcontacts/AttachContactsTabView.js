@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -164,6 +170,7 @@ function() {
 
 };
 
+
 AttachContactsTabView.prototype._handleItemSelect =
 function(ev) {
 	if (AjxEnv.isIE) {
@@ -173,13 +180,13 @@ function(ev) {
 	dwtev.setFromDhtmlEvent(ev);
 	var rowEl = dwtev.target;
 	var rowWasClicked = true;
-	if(rowEl.className == "ImgCheckboxunChecked" || rowEl.className == "ImgCheckboxChecked") {
+	if(rowEl.className == "ImgCheckboxUnchecked" || rowEl.className == "ImgCheckboxChecked") {
 		 rowWasClicked = false;
 	}
-	while (rowEl && (rowEl.id.indexOf("attachContactsZimlet_row_") == -1)) {
+	while (!Dwt.hasClass(rowEl, 'AttachContactRow') && rowEl.id != this._folderListId) {
 		rowEl = rowEl.parentNode;
 	}
-	if(!rowEl) {
+	if(rowEl.id == this._folderListId) {
 		return;
 	}
 	this._resetRowSelection(rowWasClicked);
@@ -188,7 +195,7 @@ function(ev) {
 	var checkboxEl = document.getElementById("attachContactsZimlet_checkbox_"+itemId);
 
 	if(checkboxEl && !rowWasClicked) {
-		if(checkboxEl.className == "ImgCheckboxunChecked") {
+		if(checkboxEl.className == "ImgCheckboxUnchecked") {
 			this._setCheckBoxSelection(checkboxEl, true);
 		} else if(checkboxEl.className == "ImgCheckboxChecked" ) {
 			this._setCheckBoxSelection(checkboxEl, false);
@@ -205,6 +212,8 @@ function(ev) {
 			this._selectedItemIds[itemId] = true;
 		}
 	}
+
+    this._selectionChanged();
 };
 
 AttachContactsTabView.prototype._resetRowSelection =
@@ -232,7 +241,7 @@ function(checkboxEl, selected) {
 		return;
 	}
 	if(!selected) {
-		checkboxEl.className =  "ImgCheckboxunChecked";
+		checkboxEl.className =  "ImgCheckboxUnchecked";
 	} else {
 		checkboxEl.className = "ImgCheckboxChecked";
 	}
@@ -372,7 +381,7 @@ function(items) {
 
 				html[idx++] = "<td width='1px'><div  id='";
                 html[idx++] = chkId;
-                html[idx++] = "' class='ImgCheckboxunChecked'></div></td>";
+                html[idx++] = "' class='ImgCheckboxUnchecked'></div></td>";
 
 
                 html[idx++] = "<td width='1px'>";
@@ -396,7 +405,24 @@ function(items) {
 	
 	Dwt.setInnerHtml(Dwt.byId(this._folderListId), html.join(""));
 
+	this._selectionChanged();
 };
+
+/**
+ * Notify listeners that the selected items changed.
+*/
+AttachContactsTabView.prototype._selectionChanged =
+function() {
+    if (this.isListenerRegistered(DwtEvent.SELECTION)) {
+        var selEv = new DwtSelectionEvent(true);
+        selEv.button = DwtMouseEvent.LEFT;
+        selEv.target = this;
+        selEv.item = null;
+        selEv.detail = DwtListView.ITEM_SELECTED;
+        selEv.ersatz = true;
+        this.notifyListeners(DwtEvent.SELECTION, selEv);
+    }
+}
 
 AttachContactsTabView.prototype._getFirstWorkingAttr =
 function(item, desiredAttrs) {
@@ -443,6 +469,19 @@ function() {
 	}
 	return selectedIds;
 };
+
+/**
+ * Get the amount of selected items.
+*/
+AttachContactsTabView.prototype.getSelectionCount =
+function() {
+	var n = 0;
+	for (var id in this._selectedItemIds) {
+		n += this._selectedItemIds[id];
+	}
+	return n;
+}
+
 
 /**
  * Inserts contacts

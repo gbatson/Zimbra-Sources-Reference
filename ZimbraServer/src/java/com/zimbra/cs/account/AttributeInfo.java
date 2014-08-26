@@ -1,20 +1,23 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.account;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,15 +43,15 @@ public class AttributeInfo {
     private static Pattern ID_PATTERN =
         Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
-    //yyyyMMddHHmmssZ
-    private static Pattern GENTIME_PATTERN = Pattern.compile("^\\d{14}[zZ]$");
+    //yyyyMMddHHmmssZ or yyyyMMddHHmmss.SSSZ
+    private static Pattern GENTIME_PATTERN = Pattern.compile("^\\d{14}(\\.\\d{1,3})?[zZ]$");
 
     private static Pattern DURATION_PATTERN = Pattern.compile("^\\d+([hmsd]|ms)?$");
-    
+
     public static String DURATION_PATTERN_DOC =
-        "Must be in valid duration format: {digits}{time-unit}.  " + 
-        "digits: 0-9, time-unit: [hmsd]|ms.  " + 
-        "h - hours, m - minutes, s - seconds, d - days, ms - milliseconds.  " + 
+        "Must be in valid duration format: {digits}{time-unit}.  " +
+        "digits: 0-9, time-unit: [hmsd]|ms.  " +
+        "h - hours, m - minutes, s - seconds, d - days, ms - milliseconds.  " +
         "If time unit is not specified, the default is s(seconds).";
 
     /** attribute name */
@@ -107,7 +110,7 @@ public class AttributeInfo {
 
     private List<AttributeServerType> mRequiresRestart;
 
-    private Version mSince;
+    private List<Version> mSince;
 
     private Version mDeprecatedSince;
 
@@ -150,7 +153,7 @@ public class AttributeInfo {
             List<String> globalConfigValues, List<String> defaultCOSValues,
             List<String> defaultExternalCOSValues, List<String> globalConfigValuesUpgrade,
             List<String> defaultCOSValuesUpgrade, String description, List<AttributeServerType> requiresRestart,
-            Version since, Version deprecatedSince) {
+            List<Version> since, Version deprecatedSince) {
         mName = attrName;
         mImmutable = immutable;
         mCallback = callback;
@@ -172,6 +175,10 @@ public class AttributeInfo {
         mDescription = description;
         mRequiresRestart = requiresRestart;
         mSince = since;
+        if (mSince != null && mSince.size() > 1) {
+            //just in case someone specifies order incorrectly
+            Collections.sort(mSince);
+        }
         mDeprecatedSince = deprecatedSince;
 
         mMin = parseLong(attrName, AttributeManager.A_MIN, min, Long.MIN_VALUE);
@@ -285,7 +292,7 @@ public class AttributeInfo {
             for (int i=0; i < values.length; i++)
                 checkValue(values[i], checkImmutable, attrsToModify);
         }
-        
+
         if (isDeprecated() && !DebugConfig.allowModifyingDeprecatedAttributes) {
             throw ServiceException.FAILURE("modifying deprecated attribute is not allowed: " + mName, null);
         }
@@ -310,7 +317,7 @@ public class AttributeInfo {
             else
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be TRUE or FALSE", null);
         case TYPE_BINARY:
-        case TYPE_CERTIFICATE:    
+        case TYPE_CERTIFICATE:
             byte[] binary = ByteUtil.decodeLDAPBase64(value);
             if (binary.length > mMax)
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+binary.length+") larger than max allowed: "+mMax, null);
@@ -350,7 +357,7 @@ public class AttributeInfo {
             if (GENTIME_PATTERN.matcher(value).matches())
                 return;
             else
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid generalized time: yyyyMMddHHmmssZ", null);
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid generalized time: yyyyMMddHHmmssZ or yyyyMMddHHmmss.SSSZ", null);
         case TYPE_ID:
             // For bug 21776 we check format for id only if the Provisioning class mandates
             // that all attributes of type id must be an UUID.
@@ -471,7 +478,7 @@ public class AttributeInfo {
     public String getDescription() {
         if (AttributeType.TYPE_DURATION == getType())
             return mDescription + ".  " + DURATION_PATTERN_DOC;
-        else    
+        else
             return mDescription;
     }
 
@@ -535,16 +542,16 @@ public class AttributeInfo {
         return mRequiresRestart;
     }
 
-    public Version getSince() {
+    public List<Version> getSince() {
         return mSince;
     }
 
     public Version getDeprecatedSince() {
         return mDeprecatedSince;
     }
-    
+
     public boolean isDeprecated() {
-        return getDeprecatedSince() != null; 
+        return getDeprecatedSince() != null;
     }
 
     /**

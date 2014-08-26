@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
@@ -46,6 +48,7 @@ public class PageManageAccounts extends AbsTab {
 		public static final String MANAGE="Manage";
 		public static final String ACCOUNT="Accounts";
 		public static final String NEW_MENU="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgNewAccount']";
+		public static final String NEW_ADMIN_USER="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDomainAdminUser']";
 		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
 		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgEdit']";
 		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON="css=div[id^='zm__ACLV__MENU_POP'] div[class='ImgDelete']";
@@ -142,9 +145,9 @@ public class PageManageAccounts extends AbsTab {
 			locator = accountLocator + " td[id^='account_data_emailaddress']";
 
 
-			if(this.sIsElementPresent(locator)) 
+			if(this.sIsElementPresent(locator))
 			{
-				if(this.sGetText(locator).trim().equalsIgnoreCase(item)) 
+				if(this.sGetText(locator).trim().equalsIgnoreCase(item))
 				{
 					if(action == Action.A_LEFTCLICK) {
 						zClick(locator);
@@ -163,14 +166,12 @@ public class PageManageAccounts extends AbsTab {
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;	
+		return null;
 	}
 
 	@Override
@@ -216,7 +217,7 @@ public class PageManageAccounts extends AbsTab {
 			locator=Locators.RIGHT_CLICK_MENU_EDIT_BUTTON;
 
 			page = new FormEditAccount(this.MyApplication);
-		} 
+		}
 		else {
 			throw new HarnessException("no logic defined for button "+ button);
 		}
@@ -270,6 +271,11 @@ public class PageManageAccounts extends AbsTab {
 				page = new WizardCreateAccount(this);
 
 				// FALL THROUGH
+
+			}else if(option == Button.O_NEW_ADMIN) {
+				optionLocator = Locators.NEW_ADMIN_USER;
+
+				page = new WizardCreateAdminAccount(this);
 
 			} else if(option == Button.O_EDIT) {
 				optionLocator = Locators.EDIT_BUTTON;
@@ -329,8 +335,8 @@ public class PageManageAccounts extends AbsTab {
 	/**
 	 * Return a list of all accounts in the current view
 	 * @return
-	 * @throws HarnessException 
-	 * @throws HarnessException 
+	 * @throws HarnessException
+	 * @throws HarnessException
 	 */
 	public List<AccountItem> zListGetAccounts() throws HarnessException {
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -48,35 +50,19 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testIdAndType }
+     * Create an instance of {@link testOpValue }
      * 
      */
-    public testIdAndType createtestIdAndType() {
-        return new testIdAndType();
+    public testOpValue createtestOpValue() {
+        return new testOpValue();
     }
 
     /**
-     * Create an instance of {@link testGranteeChooser }
+     * Create an instance of {@link testUrlAndValue }
      * 
      */
-    public testGranteeChooser createtestGranteeChooser() {
-        return new testGranteeChooser();
-    }
-
-    /**
-     * Create an instance of {@link testContactAttr }
-     * 
-     */
-    public testContactAttr createtestContactAttr() {
-        return new testContactAttr();
-    }
-
-    /**
-     * Create an instance of {@link testDataSources }
-     * 
-     */
-    public testDataSources createtestDataSources() {
-        return new testDataSources();
+    public testUrlAndValue createtestUrlAndValue() {
+        return new testUrlAndValue();
     }
 
     /**
@@ -88,11 +74,35 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testAccountSelector }
+     * Create an instance of {@link testKeyValuePair }
      * 
      */
-    public testAccountSelector createtestAccountSelector() {
-        return new testAccountSelector();
+    public testKeyValuePair createtestKeyValuePair() {
+        return new testKeyValuePair();
+    }
+
+    /**
+     * Create an instance of {@link testSectionAttr }
+     * 
+     */
+    public testSectionAttr createtestSectionAttr() {
+        return new testSectionAttr();
+    }
+
+    /**
+     * Create an instance of {@link testId }
+     * 
+     */
+    public testId createtestId() {
+        return new testId();
+    }
+
+    /**
+     * Create an instance of {@link testAttributeName }
+     * 
+     */
+    public testAttributeName createtestAttributeName() {
+        return new testAttributeName();
     }
 
     /**
@@ -104,19 +114,83 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testNamedValue }
+     * Create an instance of {@link testDataSources }
      * 
      */
-    public testNamedValue createtestNamedValue() {
-        return new testNamedValue();
+    public testDataSources createtestDataSources() {
+        return new testDataSources();
     }
 
     /**
-     * Create an instance of {@link testAttributeName }
+     * Create an instance of {@link testHeaderContext }
      * 
      */
-    public testAttributeName createtestAttributeName() {
-        return new testAttributeName();
+    public testHeaderContext createtestHeaderContext() {
+        return new testHeaderContext();
+    }
+
+    /**
+     * Create an instance of {@link testWildcardExpansionQueryInfo }
+     * 
+     */
+    public testWildcardExpansionQueryInfo createtestWildcardExpansionQueryInfo() {
+        return new testWildcardExpansionQueryInfo();
+    }
+
+    /**
+     * Create an instance of {@link testGranteeChooser }
+     * 
+     */
+    public testGranteeChooser createtestGranteeChooser() {
+        return new testGranteeChooser();
+    }
+
+    /**
+     * Create an instance of {@link testTzOnsetInfo }
+     * 
+     */
+    public testTzOnsetInfo createtestTzOnsetInfo() {
+        return new testTzOnsetInfo();
+    }
+
+    /**
+     * Create an instance of {@link testContactAttr }
+     * 
+     */
+    public testContactAttr createtestContactAttr() {
+        return new testContactAttr();
+    }
+
+    /**
+     * Create an instance of {@link testCursorInfo }
+     * 
+     */
+    public testCursorInfo createtestCursorInfo() {
+        return new testCursorInfo();
+    }
+
+    /**
+     * Create an instance of {@link testWaitSetAddSpec }
+     * 
+     */
+    public testWaitSetAddSpec createtestWaitSetAddSpec() {
+        return new testWaitSetAddSpec();
+    }
+
+    /**
+     * Create an instance of {@link testIdAndType }
+     * 
+     */
+    public testIdAndType createtestIdAndType() {
+        return new testIdAndType();
+    }
+
+    /**
+     * Create an instance of {@link testAccountSelector }
+     * 
+     */
+    public testAccountSelector createtestAccountSelector() {
+        return new testAccountSelector();
     }
 
     /**
@@ -136,83 +210,11 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link testSectionAttr }
+     * Create an instance of {@link testNamedValue }
      * 
      */
-    public testSectionAttr createtestSectionAttr() {
-        return new testSectionAttr();
-    }
-
-    /**
-     * Create an instance of {@link testHeaderContext }
-     * 
-     */
-    public testHeaderContext createtestHeaderContext() {
-        return new testHeaderContext();
-    }
-
-    /**
-     * Create an instance of {@link testOpValue }
-     * 
-     */
-    public testOpValue createtestOpValue() {
-        return new testOpValue();
-    }
-
-    /**
-     * Create an instance of {@link testId }
-     * 
-     */
-    public testId createtestId() {
-        return new testId();
-    }
-
-    /**
-     * Create an instance of {@link testTzOnsetInfo }
-     * 
-     */
-    public testTzOnsetInfo createtestTzOnsetInfo() {
-        return new testTzOnsetInfo();
-    }
-
-    /**
-     * Create an instance of {@link testUrlAndValue }
-     * 
-     */
-    public testUrlAndValue createtestUrlAndValue() {
-        return new testUrlAndValue();
-    }
-
-    /**
-     * Create an instance of {@link testCursorInfo }
-     * 
-     */
-    public testCursorInfo createtestCursorInfo() {
-        return new testCursorInfo();
-    }
-
-    /**
-     * Create an instance of {@link testKeyValuePair }
-     * 
-     */
-    public testKeyValuePair createtestKeyValuePair() {
-        return new testKeyValuePair();
-    }
-
-    /**
-     * Create an instance of {@link testWaitSetAddSpec }
-     * 
-     */
-    public testWaitSetAddSpec createtestWaitSetAddSpec() {
-        return new testWaitSetAddSpec();
-    }
-
-    /**
-     * Create an instance of {@link testWildcardExpansionQueryInfo }
-     * 
-     */
-    public testWildcardExpansionQueryInfo createtestWildcardExpansionQueryInfo() {
-        return new testWildcardExpansionQueryInfo();
+    public testNamedValue createtestNamedValue() {
+        return new testNamedValue();
     }
 
     /**

@@ -109,6 +109,8 @@ public class MigrationOptions
     public long LangID;
     public Int32 MaxRetries;
     public string DateFilterItem;
+    public bool IsPublicFolders;
+    public bool IsZDesktop;
     
 }
 
@@ -265,12 +267,23 @@ public class CSMigrationWrapper
 
     private bool SkipFolder(MigrationOptions options, List<string> skipList, dynamic folder) {
         // Note that Rules and OOO do not apply here
+
+
+        if (folder.Id == (int)ZimbraFolders.Junk &&
+            (options.ItemsAndFolders.ToString().Contains("Junk")))
+        {
+            return false;
+        }
+
+
         if ((folder.Id == (int)ZimbraFolders.Calendar &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Calendar)) ||
             (folder.Id == (int)ZimbraFolders.Contacts &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Contacts)) ||
             (folder.Id == (int)ZimbraFolders.Junk &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Junk)) ||
+            (folder.Id == (int)ZimbraFolders.Junk &&
+            !options.ItemsAndFolders.ToString().Contains("Junk")) ||
             (folder.Id == (int)ZimbraFolders.Sent &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Sent)) ||
             (folder.Id == (int)ZimbraFolders.Tasks &&
@@ -286,6 +299,7 @@ public class CSMigrationWrapper
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Tasks)) ||
             (folder.ContainerClass == "IPF.Note" &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Mail)) ||
+             
             (folder.ContainerClass == "" &&     // if no container class, assume IPF.Note
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Mail)))
         {
@@ -565,6 +579,25 @@ public class CSMigrationWrapper
                                                 bool bRet = dict.Remove("tags");
                                                 dict.Add("tags", tagsNumstrs);
                                             }
+                                            if (options.IsZDesktop)
+                                            {
+                                                //ZDPST
+
+                                                string Fpath = folder.FolderPath;
+
+                                                if (Fpath.Contains("MAPIRoot"))
+                                                {
+
+                                                    //path = Fpath.Replace("MAPIRoot", "PSTData");
+                                                    Log.info("CSmigrationwrapper in ProcessItems Zimbrad Dekstop file paths");
+                                                    string Zdpath = Acct.AccountID.Substring(Acct.AccountID.LastIndexOf('\\') +1);
+
+                                                    path = Fpath.Replace("MAPIRoot", Zdpath);
+                                                }
+                                                dict.Add("folderId", path);
+                                            }
+                                            
+                                            else
                                             dict.Add("folderId", folder.FolderPath);
                                             try
                                             {
@@ -1334,9 +1367,15 @@ public class CSMigrationWrapper
 
         Log.init(Path.GetTempPath() + "migration.log", level);  // might have gotten a new level from options
         InitLogFile(accountName, level);
+        bool Zdesktop = options.IsZDesktop;
+
         try
         {
-            value = user.Init(isServer ? "host" : "", Acct.AccountID, accountName);
+            bool IsPublic = options.IsPublicFolders;
+            if(IsPublic)
+                value = user.Init("", Acct.ProfileName, accountName, 1);
+            else
+                value = user.Init(isServer ? "host" : "", Acct.AccountID, accountName, 0);
         }
         catch (Exception e)
         {
@@ -1353,8 +1392,16 @@ public class CSMigrationWrapper
         if (value.Length > 0)
         {
             Acct.IsValid = false;
-            Log.err("Unable to initialize", accountName, value +"or verify if source mailbox exists.");
-            Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
+            if (value.Contains("Outlook"))
+            {
+                Log.err("Unable to initialize", accountName, value);
+                Acct.LastProblemInfo = new ProblemInfo(accountName, value, ProblemInfo.TYPE_ERR);
+            }
+            else
+            {
+                Log.err("Unable to initialize", accountName, value + "or verify if source mailbox exists.");
+                Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
+            }
             Acct.TotalErrors++;
             //Acct.TotalErrors = Acct.MaxErrorCount;
             return;
@@ -1442,70 +1489,172 @@ public class CSMigrationWrapper
                 Log.err("Exception in Add tags :",e.Message);
             }
         }
-        
-        foreach (dynamic folder in folders)
+
+        if (!Zdesktop)
         {
-            Log.info("Folder Name : ", folder.Name);
-            Log.info("Folder Path : ", folder.FolderPath);
-            Log.info("Folder ID : ", folder.Id);
-            string path = "";
-
-            if (options.IsMaintainenceMode)
+           
+            foreach (dynamic folder in folders)
             {
-                Log.err("Cancelling migration -- Mailbox is in maintainence  mode.try back later");
-                return;
-            }
+                Log.info("Folder Name : ", folder.Name);
+                Log.info("Folder Path : ", folder.FolderPath);
+                Log.info("Folder ID : ", folder.Id);
+                string path = "";
 
-
-            if (options.MaxErrorCnt > 0)
-            {
-                if (Acct.TotalErrors > options.MaxErrorCnt)
+                if (options.IsMaintainenceMode)
                 {
-                    Log.err("Cancelling migration -- error threshold reached");
+                    Log.err("Cancelling migration -- Mailbox is in maintainence  mode.try back later");
                     return;
                 }
-            }
 
-            if (SkipFolder(options, skipList, folder))
-            {
-                Log.info("Skipping folder", folder.Name);
-                continue;
-            }
-            Log.info("Processing folder", folder.Name);
-            if ((folder.Id == 0) || ((folder.id == 1) && (folder.ItemCount > 0))) //1=ZM_ROOT and itemscount>0
-            { 
-                string ViewType = GetFolderViewType(folder.ContainerClass);
-                try
-                {
 
-                    int stat = api.CreateFolder(folder.FolderPath, ViewType);
-                }
-                catch (Exception e)
+                if (options.MaxErrorCnt > 0)
                 {
-                    Log.err("Exception in api.CreateFolder in Startmigration ", e.Message);
+                    if (Acct.TotalErrors > options.MaxErrorCnt)
+                    {
+                        Log.err("Cancelling migration -- error threshold reached");
+                        return;
+                    }
                 }
 
-                path = folder.FolderPath;
-            }
-            if (folder.ItemCount == 0)
-            {
-                Log.info("Skipping empty folder", folder.Name);
-                continue;
-            }
-            // Set FolderName at the end, since we trigger results on that, so we need all the values set
-            Acct.migrationFolder.TotalCountOfItems = folder.ItemCount;
-            Acct.migrationFolder.CurrentCountOfItems = 0;
-            Acct.migrationFolder.FolderView = folder.ContainerClass;
-            Acct.migrationFolder.FolderName = folder.Name;
-            if (folder.Id == (int)ZimbraFolders.Trash)
-            {
-                path = "/MAPIRoot/Deleted Items";   // FBS EXCHANGE SPECIFIC HACK !!!
-            }
-            if (!isPreview)
-            {
-                ProcessItems(Acct, isServer, user, folder, api, path, options);
 
+                if (SkipFolder(options, skipList, folder))
+                {
+                    Log.info("Skipping folder", folder.Name);
+                    continue;
+                }
                 
+                Log.info("Processing folder", folder.Name);
+                if (folder.Id == 0)
+                {
+                    string ViewType = GetFolderViewType(folder.ContainerClass);
+                    try
+                    {
+                        
+                          int stat = api.CreateFolder(folder.FolderPath, ViewType);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.err("Exception in api.CreateFolder in Startmigration ", e.Message);
+                    }
+
+                    path = folder.FolderPath;
+                    // path = Fpath;
+                }
+                if (folder.ItemCount == 0)
+                {
+                    Log.info("Skipping empty folder", folder.Name);
+                    continue;
+                }
+                // Set FolderName at the end, since we trigger results on that, so we need all the values set
+                Acct.migrationFolder.TotalCountOfItems = folder.ItemCount;
+                Acct.migrationFolder.CurrentCountOfItems = 0;
+                Acct.migrationFolder.FolderView = folder.ContainerClass;
+                Acct.migrationFolder.FolderName = folder.Name;
+                if (folder.Id == (int)ZimbraFolders.Trash)
+                {
+                    path = "/MAPIRoot/Deleted Items";   // FBS EXCHANGE SPECIFIC HACK !!!
+                }
+                if (!isPreview)
+                {
+                    ProcessItems(Acct, isServer, user, folder, api, path, options);
+
+
+                }
+            }
+        }
+        else
+        {
+            ////ZD changes
+            //string Upath = "/MAPIRoot/PSTData";
+            string ZDname="";
+            if (Acct.AccountID.Contains(".pst"))
+            {
+                 //ZDname = Acct.AccountID.Substring(0, Acct.AccountID.IndexOf(".pst"));
+                Log.info("CSmigrationwrapper in startmigration Zimbrad Dekstop file paths");
+                ZDname = Acct.AccountID.Substring(Acct.AccountID.LastIndexOf('\\') +1);
+
+               // int j = ZDname.LastIndexOf('\\');
+                //ZDname = ZDname.Substring(j+1);
+
+
+                string Upath = "/MAPIRoot/" + ZDname;
+                int stat01 = api.CreateFolder(Upath, "");
+            }
+
+            foreach (dynamic folder in folders)
+            {
+                Log.info("Folder Name : ", folder.Name);
+                Log.info("Folder Path : ", folder.FolderPath);
+                Log.info("Folder ID : ", folder.Id);
+                string path = "";
+
+                if (options.IsMaintainenceMode)
+                {
+                    Log.err("Cancelling migration -- Mailbox is in maintainence  mode.try back later");
+                    return;
+                }
+
+
+                if (options.MaxErrorCnt > 0)
+                {
+                    if (Acct.TotalErrors > options.MaxErrorCnt)
+                    {
+                        Log.err("Cancelling migration -- error threshold reached");
+                        return;
+                    }
+                }
+
+
+                if (SkipFolder(options, skipList, folder))
+                {
+                    Log.info("Skipping folder", folder.Name);
+                    continue;
+                }
+                string Fpath = folder.FolderPath;
+
+                if (Fpath.Contains("MAPIRoot"))
+                {
+
+                    //path = Fpath.Replace("MAPIRoot", "PSTData");
+                    path = Fpath.Replace("MAPIRoot", ZDname);
+                }
+                Log.info("Processing folder", folder.Name);
+                //if (folder.Id == 0)
+                {
+                    string ViewType = GetFolderViewType(folder.ContainerClass);
+                    try
+                    {
+                        int stat = api.CreateFolderForZD(path, ViewType);
+                        //  int stat = api.CreateFolder(folder.FolderPath, ViewType);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.err("Exception in api.CreateFolder in Startmigration ", e.Message);
+                    }
+
+                    //path = folder.FolderPath;
+                    // path = Fpath;
+                }
+                if (folder.ItemCount == 0)
+                {
+                    Log.info("Skipping empty folder", folder.Name);
+                    continue;
+                }
+                // Set FolderName at the end, since we trigger results on that, so we need all the values set
+                Acct.migrationFolder.TotalCountOfItems = folder.ItemCount;
+                Acct.migrationFolder.CurrentCountOfItems = 0;
+                Acct.migrationFolder.FolderView = folder.ContainerClass;
+                Acct.migrationFolder.FolderName = folder.Name;
+                if (folder.Id == (int)ZimbraFolders.Trash)
+                {
+                    path = "/MAPIRoot/Deleted Items";   // FBS EXCHANGE SPECIFIC HACK !!!
+                }
+                if (!isPreview)
+                {
+                    ProcessItems(Acct, isServer, user, folder, api, path, options);
+
+
+                }
             }
         }
 

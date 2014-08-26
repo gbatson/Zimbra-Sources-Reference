@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
@@ -49,6 +51,7 @@ import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.SetUtil;
 import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.Version;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager.ObjectClassInfo;
 import com.zimbra.cs.account.ldap.LdapProv;
@@ -62,9 +65,9 @@ public class AttributeManagerUtil {
 
     // multi-line continuation prefix chars
     private static final String ML_CONT_PREFIX = "  ";
-    
-    private AttributeManager attrMgr;
-    
+
+    private final AttributeManager attrMgr;
+
     static {
         options.addOption("h", "help", false, "display this  usage info");
         options.addOption("o", "output", true, "output file (default it to generate output to stdout)");
@@ -92,8 +95,8 @@ public class AttributeManagerUtil {
         fopt.setArgs(Option.UNLIMITED_VALUES);
         options.addOption(fopt);
     }
-    
-    private enum Action { 
+
+    private enum Action {
         dump,
         generateDefaultCOSLdif,
         generateDefaultExternalCOSLdif,
@@ -105,7 +108,7 @@ public class AttributeManagerUtil {
         generateSchemaLdif,
         listAttrs
     }
-    
+
     static class CLOptions {
 
         private static String get(String key, String defaultValue) {
@@ -132,7 +135,7 @@ public class AttributeManagerUtil {
             return get(entry + ".id", defaultValue);
         }
     }
-    
+
     private AttributeManagerUtil(AttributeManager am) {
         attrMgr = am;
     }
@@ -140,15 +143,15 @@ public class AttributeManagerUtil {
     private Map<String, AttributeInfo> getAttrs() {
         return attrMgr.getAttrs();
     }
-    
+
     private Map<String, ObjectClassInfo> getOCs() {
         return attrMgr.getOCs();
     }
-    
+
     private Map<Integer,String> getGroupMap() {
         return attrMgr.getGroupMap();
     }
-    
+
     private Map<Integer,String> getOCGroupMap() {
         return attrMgr.getOCGroupMap();
     }
@@ -156,7 +159,7 @@ public class AttributeManagerUtil {
     private String doNotModifyDisclaimer(String prefix) {
         return FileGenUtil.genDoNotModifyDisclaimer(prefix, AttributeManagerUtil.class.getSimpleName(), CLOptions.buildVersion());
     }
-    
+
     private void generateDefaultCOSLdif(PrintWriter pw) {
         pw.println(doNotModifyDisclaimer("#"));
         pw.println("#");
@@ -233,7 +236,7 @@ public class AttributeManagerUtil {
         pw.println("#");
         pw.println("# LDAP entry that contains initial default Zimbra global config.");
         pw.println("#");
-        
+
         String baseDn = CLOptions.getBaseDn("config");
         pw.println("dn: cn=config," + baseDn);
         pw.println("objectclass: organizationalRole");
@@ -255,7 +258,7 @@ public class AttributeManagerUtil {
             pw.println(o);
         }
     }
-    
+
 
     private List<AttributeInfo> getAttrList(int groupId) {
         List<AttributeInfo> list = new ArrayList<AttributeInfo>(getAttrs().size());
@@ -269,6 +272,7 @@ public class AttributeManagerUtil {
 
     private void sortAttrsByOID(List<AttributeInfo> list) {
         Collections.sort(list, new Comparator<AttributeInfo>() {
+            @Override
             public int compare(AttributeInfo a1, AttributeInfo b1) {
                 return a1.getId() - b1.getId();
             }
@@ -277,6 +281,7 @@ public class AttributeManagerUtil {
 
     private void sortAttrsByName(List<AttributeInfo> list) {
         Collections.sort(list, new Comparator<AttributeInfo>() {
+            @Override
             public int compare(AttributeInfo a1, AttributeInfo b1) {
                 return a1.getName().compareTo(b1.getName());
             }
@@ -295,6 +300,7 @@ public class AttributeManagerUtil {
 
     private void sortOCsByOID(List<ObjectClassInfo> list) {
         Collections.sort(list, new Comparator<ObjectClassInfo>() {
+            @Override
             public int compare(ObjectClassInfo oc1, ObjectClassInfo oc2) {
                 return oc1.getId() - oc2.getId();
             }
@@ -303,6 +309,7 @@ public class AttributeManagerUtil {
 
     private void sortOCsByName(List<ObjectClassInfo> list) {
         Collections.sort(list, new Comparator<ObjectClassInfo>() {
+            @Override
             public int compare(ObjectClassInfo oc1, ObjectClassInfo oc2) {
                 return oc1.getName().compareTo(oc2.getName());
             }
@@ -322,14 +329,14 @@ public class AttributeManagerUtil {
         }
         return sb.toString();
     }
-    
+
 
     // escape QQ and QS for rfc4512 dstring(http://www.ietf.org/rfc/rfc4512.txt 4.1.  Schema Definitions)
     private String rfc4512Dstring(String unescaped) {
         String escaped = unescaped.replace("\\", "\\5C").replace("'", "\\27");
         return escaped;
     }
-    
+
     private void buildSchemaBanner(StringBuilder BANNER) {
 
         BANNER.append(doNotModifyDisclaimer("#"));
@@ -351,7 +358,7 @@ public class AttributeManagerUtil {
         ZIMBRA_ROOT_OIDS.append(prefix + "ZimbraRoot 1.3.6.1.4.1.19348\n");
         ZIMBRA_ROOT_OIDS.append(prefix + "ZimbraLDAP ZimbraRoot:2\n");
     }
-   
+
     private void buildAttrDef(StringBuilder ATTRIBUTE_DEFINITIONS, AttributeInfo ai) {
         String lengthSuffix;
 
@@ -359,30 +366,30 @@ public class AttributeManagerUtil {
         String substr = null;
         String equality = null;
         String ordering = null;
-        
+
         switch (ai.getType()) {
         case TYPE_BOOLEAN:
             syntax = "1.3.6.1.4.1.1466.115.121.1.7";
             equality = "booleanMatch";
             break;
         case TYPE_BINARY:
-            // cannot use the binary syntax because it cannot support adding/deleting individual values 
+            // cannot use the binary syntax because it cannot support adding/deleting individual values
             // in a multi-valued attrs, only replacement(i.e. replace all values) is supported.
-            // 
-            // when a value is added to a multi-valued attr, or when an attempt is made to delete a 
-            // specific value, will get "no equality matching rule" error from LDAP server, because 
+            //
+            // when a value is added to a multi-valued attr, or when an attempt is made to delete a
+            // specific value, will get "no equality matching rule" error from LDAP server, because
             // there is no equality matching for 1.3.6.1.4.1.1466.115.121.1.5
-            // 
-            // Note: 1.3.6.1.4.1.1466.115.121.1.5 attrs, like userSMIMECertificate, when included in 
+            //
+            // Note: 1.3.6.1.4.1.1466.115.121.1.5 attrs, like userSMIMECertificate, when included in
             //       the zimbra schema, are declared as type="binary" in zimbra-attrs.xml.
             //       Handling for the two (1.3.6.1.4.1.1466.115.121.1.5 and 1.3.6.1.4.1.1466.115.121.1.40)
             //       are *exactly the same* in ZCS.  They are:
-            //       - transferred as binary on the wire, by setting the JNDI "java.naming.ldap.attributes.binary" 
+            //       - transferred as binary on the wire, by setting the JNDI "java.naming.ldap.attributes.binary"
             //         environment property
             //       - stored as base64 encoded string in ZCS memory
             //       - Entry.getAttr(String name) returns the base64 encoded value
             //       - Entry.getBinaryAttr(String name) returns the base64 decoded value
-            //   
+            //
             /*
             lengthSuffix = "";
             if (ai.getMax() != Long.MAX_VALUE) {
@@ -391,8 +398,8 @@ public class AttributeManagerUtil {
             syntax = "1.3.6.1.4.1.1466.115.121.1.5" + lengthSuffix;
             break;
             */
-            
-            // the same as octet string 
+
+            // the same as octet string
             lengthSuffix = "";
             if (ai.getMax() != Long.MAX_VALUE) {
                 lengthSuffix = "{" + ai.getMax() + "}";
@@ -503,17 +510,17 @@ public class AttributeManagerUtil {
         default:
             throw new RuntimeException("unknown type encountered!");
         }
-        
+
         ATTRIBUTE_DEFINITIONS.append("( " + ai.getName() + "\n");
         ATTRIBUTE_DEFINITIONS.append(ML_CONT_PREFIX + "NAME ( '" + ai.getName() + "' )\n");
         ATTRIBUTE_DEFINITIONS.append(ML_CONT_PREFIX + "DESC '" + rfc4512Dstring(ai.getDescription()) + "'\n");
 
         ATTRIBUTE_DEFINITIONS.append(ML_CONT_PREFIX + "SYNTAX " + syntax);
-        
+
         if (equality != null) {
             ATTRIBUTE_DEFINITIONS.append("\n" + ML_CONT_PREFIX + "EQUALITY " + equality);
         }
-        
+
         if (substr != null) {
             ATTRIBUTE_DEFINITIONS.append("\n" + ML_CONT_PREFIX + "SUBSTR " + substr);
         }
@@ -637,7 +644,7 @@ public class AttributeManagerUtil {
         }
         value.append(ML_CONT_PREFIX);
     }
-    
+
     /**
      * This methods uses xml for generating objectclass OIDs and definitions
      */
@@ -794,11 +801,11 @@ public class AttributeManagerUtil {
 
     private void generateMessageProperties(String outFile) throws IOException {
         StringBuilder result = new StringBuilder();
-        
+
         result.append(doNotModifyDisclaimer("#"));
         result.append("# Zimbra LDAP attributes." + "\n");
         result.append("# \n");
-        
+
         List<String> attrs = new ArrayList<String>(getAttrs().keySet());
         Collections.sort(attrs);
 
@@ -810,7 +817,7 @@ public class AttributeManagerUtil {
                 result.append(ai.getName() + " = " + text + "\n");
             }
         }
-        
+
         FileGenUtil.replaceFile(outFile, result.toString());
     }
 
@@ -897,7 +904,7 @@ public class AttributeManagerUtil {
         }
         result.append(String.format("    }%n"));
     }
-    
+
     /**
     *
     * @param pw
@@ -930,7 +937,7 @@ public class AttributeManagerUtil {
 
            switch (ai.getType()) {
                case TYPE_BINARY:
-               case TYPE_CERTIFICATE:    
+               case TYPE_CERTIFICATE:
                case TYPE_DURATION:
                case TYPE_GENTIME:
                case TYPE_ENUM:
@@ -1034,7 +1041,7 @@ public class AttributeManagerUtil {
                javaDocReturns = String.format(", or %s if unset", defaultValue);
                break;
            case TYPE_BINARY:
-           case TYPE_CERTIFICATE:    
+           case TYPE_CERTIFICATE:
                defaultValue = "null";
                javaType = "byte[]";
                javaBody = String.format("return getBinaryAttr(Provisioning.A_%s);", name);
@@ -1130,11 +1137,26 @@ public class AttributeManagerUtil {
        result.append(String.format("     * @return %s%s%n", name, javaDocReturns));
        if (ai.getSince() != null) {
            result.append("     *\n");
-           result.append(String.format("     * @since ZCS %s%n", ai.getSince().toString()));
+           result.append(String.format("     * @since ZCS %s%n", versionListAsString(ai.getSince())));
        }
        result.append("     */\n");
        result.append(String.format("    @ZAttr(id=%d)%n", ai.getId()));
        result.append(String.format("    public %s %s() {%n        %s%n    }%n", javaType, methodName, javaBody));
+   }
+
+   private static String versionListAsString(List<Version> versions) {
+       if (versions == null || versions.size() == 0) {
+           return "";
+       } else if (versions.size() == 1) {
+           return versions.iterator().next().toString();
+       } else {
+           StringBuilder sb = new StringBuilder();
+           for (Version version : versions) {
+               sb.append(version.toString()).append(",");
+           }
+           sb.setLength(sb.length() - 1);
+           return sb.toString();
+       }
    }
 
    private static enum SetterType { set, add, unset, remove }
@@ -1164,7 +1186,7 @@ public class AttributeManagerUtil {
                putParam = String.format("%s ? Provisioning.TRUE : Provisioning.FALSE", name);
                break;
            case TYPE_BINARY:
-           case TYPE_CERTIFICATE:    
+           case TYPE_CERTIFICATE:
                javaType = "byte[]";
                putParam = String.format("%s==null ? \"\" : ByteUtil.encodeLDAPBase64(%s)", name, name);
                break;
@@ -1241,7 +1263,7 @@ public class AttributeManagerUtil {
        }
        if (ai.getSince() != null) {
            result.append("     *\n");
-           result.append(String.format("     * @since ZCS %s%n", ai.getSince().toString()));
+           result.append(String.format("     * @since ZCS %s%n", versionListAsString(ai.getSince())));
        }
        result.append("     */\n");
        result.append(String.format("    @ZAttr(id=%d)%n", ai.getId()));
@@ -1265,7 +1287,7 @@ public class AttributeManagerUtil {
 
        result.append(String.format("    }%n"));
     }
-   
+
 
    /**
     *
@@ -1298,7 +1320,7 @@ public class AttributeManagerUtil {
            }
            if (ai.getSince() != null) {
                result.append("     *\n");
-               result.append(String.format("     * @since ZCS %s%n", ai.getSince().toString()));
+               result.append(String.format("     * @since ZCS %s%n", versionListAsString(ai.getSince())));
            }
            result.append("     */\n");
            result.append(String.format("    @ZAttr(id=%d)%n", ai.getId()));
@@ -1309,7 +1331,7 @@ public class AttributeManagerUtil {
        FileGenUtil.replaceJavaFile(javaFile, result.toString());
 
     }
-    
+
     private static void usage(String errmsg) {
         if (errmsg != null) {
             logger.error(errmsg);
@@ -1338,7 +1360,7 @@ public class AttributeManagerUtil {
         }
         return cl;
     }
-    
+
     public static void main(String[] args) throws IOException, ServiceException {
         CliUtil.toolSetup();
         CommandLine cl = parseArgs(args);
@@ -1369,14 +1391,14 @@ public class AttributeManagerUtil {
         PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, "utf8")));
 
         AttributeManagerUtil amu = new AttributeManagerUtil(am);
-        
+
         switch (action) {
         case dump:
             LdapProv.getInst().dumpLdapSchema(pw);
             break;
         case generateDefaultCOSLdif:
             amu.generateDefaultCOSLdif(pw);
-            break;        
+            break;
         case generateDefaultExternalCOSLdif:
             amu.generateDefaultExternalCOSLdif(pw);
             break;
@@ -1391,7 +1413,7 @@ public class AttributeManagerUtil {
                 usage("no schema template specified");
             }
             amu.generateLdapSchema(pw, cl.getOptionValue('t'));
-            break;  
+            break;
         case generateMessageProperties:
             amu.generateMessageProperties(cl.getOptionValue('r'));
             break;

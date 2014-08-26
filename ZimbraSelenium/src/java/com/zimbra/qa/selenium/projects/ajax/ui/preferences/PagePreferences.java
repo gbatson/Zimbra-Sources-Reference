@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -32,6 +34,7 @@ import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.DialogWarningID;
  * @author Matt Rhoades
  *
  */
+@SuppressWarnings("unused")
 public class PagePreferences extends AbsTab {
 
 	
@@ -46,7 +49,21 @@ public class PagePreferences extends AbsTab {
 		public static final String zSaveChangesNo = "id=DWT242_title";
 		public static final String zSaveChangesCancel = "id=DWT243_title";
 		
-
+		// Calendar
+		public static final String zCustomWorkHours = "css=td[id$='_CAL_WORKING_HOURS_CUSTOM'] input[name$='_normalCustom']";
+		public static final String zCustomizeButton = "css=td[id$='_CAL_CUSTOM_WORK_HOURS'] td[id$='_title']:contains('Customize')";
+		public static final String zSundayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_0'] input[id$='_input']";
+		public static final String zMondayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_1'] input[id$='_input']";
+		public static final String zTuesdayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_2'] input[id$='_input']";
+		public static final String zWednesdayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_3'] input[id$='_input']";
+		public static final String zThursdayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_4'] input[id$='_input']";
+		public static final String zFridayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_5'] input[id$='_input']";
+		public static final String zSaturdayCustomWorkHour = "css=div[class='DwtDialog'] td[id$='_CAL_WORKING_DAY_6'] input[id$='_input']";
+		public static final String zOKButtonCustomDialog = "css=div[class='DwtDialog'] td[id$='_button2_title']";
+		public static final String zCancelButtonCustomDialog = "css=div[class='DwtDialog'] td[id$='_button1_title']";
+		public static final String zYesButtonWarningDialog = "css=div[id='YesNoMsgDialog'] td[id='YesNoMsgDialog_button5_title']";
+		public static final String zNoButtonWarningDialog = "css=div[id='YesNoMsgDialog'] td[id='YesNoMsgDialog_button4_title']";
+	
 	}
 	
 	
@@ -292,6 +309,11 @@ public class PagePreferences extends AbsTab {
 			locator = "css=div[id='zb__FRV__ADD_FILTER_RULE'] td[id$='_title']";
 			page = new DialogEditFilter(MyApplication,((AppAjaxClient) MyApplication).zPagePreferences);
 	
+		} else if ( button == Button.B_ACTIVITY_STREAM_SETTINGS ) {
+
+			locator = "css=div[id$='_ACTIVITY_STREAM_BUTTON'] td[id$='_title']";
+			page = new DialogActivityStream(MyApplication,((AppAjaxClient) MyApplication).zPagePreferences);
+
 		} else if ( button == Button.B_NEW_QUICK_COMMAND ) {
 			
 			locator = "css=div[id='zb__QCV__ADD_QUICK_COMMAND'] td[id$='_title']";
@@ -341,7 +363,144 @@ public class PagePreferences extends AbsTab {
 
 		throw new HarnessException("implement me!");
 	}
+	
+	public void zSelectRadioButton (Button option) throws HarnessException {
+		
+		if ( option == null )
+			throw new HarnessException("Option cannot be null!");
+		
+		String locator = null;
+		AbsPage page = null;
+		
+		if ( option == Button.R_CUSTOM_WORK_HOURS ) {
+			
+			locator = Locators.zCustomWorkHours;
+			page = null;
+			
+		} else {
+			throw new HarnessException("no logic defined for option "+ option);
+		}
 
+		if ( locator == null ) {
+			throw new HarnessException("locator was null for option "+ option);
+		}
+		
+		this.sClickAt(locator, "");
+		this.zWaitForBusyOverlay();
+		
+	}
+	
+	public AbsPage zPressButton(Button button) throws HarnessException {
+		logger.info(myPageName() + " zPressButton("+ button +")");
+		
+		tracer.trace("Click button "+ button);
+
+		if ( button == null )
+			throw new HarnessException("Button cannot be null!");
+		
+		String locator = null;
+		AbsPage page = null;
+		
+		if ( button == Button.B_CUSTOMIZE ) {
+			
+			locator = Locators.zCustomizeButton;
+			page = null;
+		
+		} else if ( button == Button.B_OK ) {
+			
+			locator = Locators.zOKButtonCustomDialog;
+			page = null;
+		
+		} else if ( button == Button.B_CANCEL ) {
+			
+			locator = Locators.zCancelButtonCustomDialog;
+			page = null;
+			
+		} else {
+			throw new HarnessException("no logic defined for button "+ button);
+		}
+
+		if ( locator == null ) {
+			throw new HarnessException("locator was null for button "+ button);
+		}
+		
+		// Make sure the button exists
+		if ( !this.sIsElementPresent(locator) )
+			throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
+		
+		// Click it
+		this.zClick(locator);
+		
+		this.zWaitForBusyOverlay();
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+			page.zWaitForBusyOverlay();
+		}
+
+		return (page);
+	}
+	
+	public void zCheckboxSet(Button checkbox, boolean status) throws HarnessException {
+		
+		logger.info(myPageName() + " zPressButton("+ checkbox +")");
+		
+		tracer.trace("Click button "+ checkbox);
+
+		if ( checkbox == null )
+			throw new HarnessException("Button cannot be null!");
+		
+		String locator = null;
+		
+		if ( checkbox == Button.C_SUNDAY_WORK_HOUR ) {
+			
+			locator = Locators.zSundayCustomWorkHour;
+		
+		} else if ( checkbox == Button.C_MONDAY_WORK_HOUR ) {
+			
+			locator = Locators.zMondayCustomWorkHour;
+			
+		} else if ( checkbox == Button.C_TUESDAY_WORK_HOUR ) {
+			
+			locator = Locators.zTuesdayCustomWorkHour;
+			
+		} else if ( checkbox == Button.C_WEDNESDAY_WORK_HOUR) {
+					
+			locator = Locators.zWednesdayCustomWorkHour;
+					
+		} else if ( checkbox == Button.C_THURSDAY_WORK_HOUR ) {
+			
+			locator = Locators.zThursdayCustomWorkHour;
+			
+		} else if ( checkbox == Button.C_FRIDAY_WORK_HOUR ) {
+			
+			locator = Locators.zFridayCustomWorkHour;
+			
+		} else if ( checkbox == Button.C_SATURDAY_WORK_HOUR ) {
+			
+			locator = Locators.zSaturdayCustomWorkHour;
+	
+		} else {
+			throw new HarnessException("no logic defined for checkbox "+ checkbox);
+		}
+
+		if ( locator == null ) {
+			throw new HarnessException("locator was null for checkbox "+ checkbox);
+		}
+		
+		// Make sure the button exists
+		if ( !this.sIsElementPresent(locator) )
+			throw new HarnessException("Button is not present checkbox="+ locator +" button="+ checkbox);
+	
+		if ( status == true ) {
+			this.sCheck(locator);
+		} else {
+			this.sUncheck(locator);
+		}
+		
+		this.zWaitForBusyOverlay();
+
+	}
 
 	public static class ShareItem {
 		public String name = null;

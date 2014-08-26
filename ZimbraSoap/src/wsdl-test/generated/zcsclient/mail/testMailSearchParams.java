@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -58,9 +60,10 @@ import generated.zcsclient.zm.testCursorInfo;
  *       &lt;attribute name="html" type="{http://www.w3.org/2001/XMLSchema}boolean" />
  *       &lt;attribute name="needExp" type="{http://www.w3.org/2001/XMLSchema}boolean" />
  *       &lt;attribute name="neuter" type="{http://www.w3.org/2001/XMLSchema}boolean" />
- *       &lt;attribute name="recip" type="{http://www.w3.org/2001/XMLSchema}boolean" />
+ *       &lt;attribute name="recip" type="{http://www.w3.org/2001/XMLSchema}int" />
  *       &lt;attribute name="prefetch" type="{http://www.w3.org/2001/XMLSchema}boolean" />
  *       &lt;attribute name="resultMode" type="{http://www.w3.org/2001/XMLSchema}string" />
+ *       &lt;attribute name="fullConversation" type="{http://www.w3.org/2001/XMLSchema}boolean" />
  *       &lt;attribute name="field" type="{http://www.w3.org/2001/XMLSchema}string" />
  *       &lt;attribute name="limit" type="{http://www.w3.org/2001/XMLSchema}int" />
  *       &lt;attribute name="offset" type="{http://www.w3.org/2001/XMLSchema}int" />
@@ -123,11 +126,13 @@ public class testMailSearchParams {
     @XmlAttribute(name = "neuter")
     protected Boolean neuter;
     @XmlAttribute(name = "recip")
-    protected Boolean recip;
+    protected Integer recip;
     @XmlAttribute(name = "prefetch")
     protected Boolean prefetch;
     @XmlAttribute(name = "resultMode")
     protected String resultMode;
+    @XmlAttribute(name = "fullConversation")
+    protected Boolean fullConversation;
     @XmlAttribute(name = "field")
     protected String field;
     @XmlAttribute(name = "limit")
@@ -649,10 +654,10 @@ public class testMailSearchParams {
      * 
      * @return
      *     possible object is
-     *     {@link Boolean }
+     *     {@link Integer }
      *     
      */
-    public Boolean isRecip() {
+    public Integer getRecip() {
         return recip;
     }
 
@@ -661,10 +666,10 @@ public class testMailSearchParams {
      * 
      * @param value
      *     allowed object is
-     *     {@link Boolean }
+     *     {@link Integer }
      *     
      */
-    public void setRecip(Boolean value) {
+    public void setRecip(Integer value) {
         this.recip = value;
     }
 
@@ -714,6 +719,30 @@ public class testMailSearchParams {
      */
     public void setResultMode(String value) {
         this.resultMode = value;
+    }
+
+    /**
+     * Gets the value of the fullConversation property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Boolean }
+     *     
+     */
+    public Boolean isFullConversation() {
+        return fullConversation;
+    }
+
+    /**
+     * Sets the value of the fullConversation property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     *     
+     */
+    public void setFullConversation(Boolean value) {
+        this.fullConversation = value;
     }
 
     /**

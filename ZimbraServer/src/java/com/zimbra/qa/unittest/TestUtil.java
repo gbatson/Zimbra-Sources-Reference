@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -75,9 +77,11 @@ import com.zimbra.client.ZMessage.ZMimePart;
 import com.zimbra.client.ZMountpoint;
 import com.zimbra.client.ZSearchHit;
 import com.zimbra.client.ZSearchParams;
+import com.zimbra.client.ZSearchResult;
 import com.zimbra.client.ZTag;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DistributionListBy;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.lmtp.LmtpClient;
 import com.zimbra.common.localconfig.LC;
@@ -98,6 +102,7 @@ import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.DataSource;
+import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
@@ -230,6 +235,19 @@ extends Assert {
         return mbox.addMessage(null, pm, dopt, null);
     }
 
+    public static Message addMessage(Mailbox mbox, ParsedMessage pm)
+    throws Exception {
+        DeliveryOptions dopt = new DeliveryOptions().setFolderId( Mailbox.ID_FOLDER_INBOX).setFlags(Flag.BITMASK_UNREAD);
+        return mbox.addMessage(null, pm, dopt, null);
+    }
+
+    public static Message addMessage(Mailbox mbox, String recipient, String sender, String subject, String body, long timestamp)
+    throws Exception {
+        String message = getTestMessage(subject, recipient, sender, body, new Date(timestamp));
+        ParsedMessage pm = new ParsedMessage(message.getBytes(), timestamp, false);
+        return addMessage(mbox, pm);
+    }
+
     public static String getTestMessage(String subject)
     throws ServiceException, MessagingException, IOException {
         return new MessageBuilder().withSubject(subject).create();
@@ -239,6 +257,12 @@ extends Assert {
     throws ServiceException, MessagingException, IOException {
         return new MessageBuilder().withSubject(subject).withToRecipient(recipient)
             .withFrom(sender).withDate(date).create();
+    }
+
+    public static String getTestMessage(String subject, String recipient, String sender, String body, Date date)
+    throws ServiceException, MessagingException, IOException {
+        return new MessageBuilder().withSubject(subject).withToRecipient(recipient)
+            .withFrom(sender).withDate(date).withBody(body).create();
     }
 
     static String addDomainIfNecessary(String user)
@@ -257,6 +281,12 @@ extends Assert {
     public static boolean addMessageLmtp(String subject, String[] recipients, String sender)
     throws Exception {
         String message = getTestMessage(subject, recipients[0], sender, null);
+        return addMessageLmtp(recipients, sender, message);
+    }
+
+    public static boolean addMessageLmtp(String subject, String[] recipients, String sender, String body)
+    throws Exception {
+        String message = getTestMessage(subject, recipients[0], sender, body, null);
         return addMessageLmtp(recipients, sender, message);
     }
 
@@ -392,16 +422,31 @@ extends Assert {
 
     public static List<ZMessage> search(ZMailbox mbox, String query)
     throws ServiceException {
-        List<ZMessage> msgs = new ArrayList<ZMessage>();
         ZSearchParams params = new ZSearchParams(query);
         params.setTypes(ZSearchParams.TYPE_MESSAGE);
 
+        return search(mbox, params);
+    }
+
+    public static List<ZMessage> search(ZMailbox mbox, ZSearchParams params)
+    throws ServiceException {
+        List<ZMessage> msgs = new ArrayList<ZMessage>();
         for (ZSearchHit hit : mbox.search(params).getHits()) {
             ZGetMessageParams msgParams = new ZGetMessageParams();
             msgParams.setId(hit.getId());
             msgs.add(mbox.getMessage(msgParams));
         }
         return msgs;
+    }
+
+    public static List<String> searchMessageIds(ZMailbox mbox, ZSearchParams params)
+    throws ServiceException {
+        List<String> msgsIds = new ArrayList<String>();
+        ZSearchResult results = mbox.search(params);
+        for (ZSearchHit hit :results.getHits()) {
+            msgsIds.add(hit.getId());
+        }
+        return msgsIds;
     }
 
     /**
@@ -450,7 +495,7 @@ extends Assert {
 
     public static ZMessage waitForMessage(ZMailbox mbox, String query)
     throws Exception {
-        for (int i = 1; i <= 20; i++) {
+        for (int i = 1; i <= 100; i++) {
             List<ZMessage> msgs = search(mbox, query);
             if (msgs.size() == 1) {
                 return msgs.get(0);
@@ -458,7 +503,7 @@ extends Assert {
             if (msgs.size() > 1) {
                 Assert.fail("Unexpected number of messages (" + msgs.size() + ") returned by query '" + query + "'");
             }
-            Thread.sleep(500);
+            Thread.sleep(100);
         }
         Assert.fail("Message for query '" + query + "' never arrived.  Either the MTA is not running or the test failed.");
         return null;
@@ -618,9 +663,47 @@ extends Assert {
      */
     public static Account createAccount(String username)
     throws ServiceException {
+        return createAccount(username, null);
+    }
+
+    /**
+     * Creates an account for the given username, with
+     * password set to {@link #DEFAULT_PASSWORD}.
+     */
+    public static Account createAccount(String username, Map<String, Object> attrs)
+    throws ServiceException {
         Provisioning prov = Provisioning.getInstance();
         String address = getAddress(username);
-        return prov.createAccount(address, DEFAULT_PASSWORD, null);
+        return prov.createAccount(address, DEFAULT_PASSWORD, attrs);
+    }
+
+    /**
+     * Creates a DL with a given address
+     */
+    public static DistributionList createDistributionList(String dlName)
+    throws ServiceException {
+        Provisioning prov = Provisioning.getInstance();
+        String address = getAddress(dlName);
+        Map<String, Object> attrs = new HashMap<String, Object>();
+        return prov.createDistributionList(address, attrs);
+    }
+
+    /**
+     * Deletes the specified DL.
+     */
+    public static void deleteDistributionList(String listName)
+    throws ServiceException {
+        Provisioning prov = Provisioning.getInstance();
+
+        // If this code is running on the server, call SoapProvisioning explicitly
+        // so that both the account and mailbox are deleted.
+        if (!(prov instanceof SoapProvisioning)) {
+            prov = newSoapProvisioning();
+        }
+        DistributionList dl = prov.get(DistributionListBy.name, getAddress(listName));
+        if (dl != null) {
+            prov.deleteDistributionList(dl.getId());
+        }
     }
 
     /**
@@ -761,6 +844,11 @@ extends Assert {
 
     public static ZFolder createFolder(ZMailbox mbox, String path)
     throws ServiceException {
+        return createFolder(mbox, path, ZFolder.View.message);
+    }
+
+    public static ZFolder createFolder(ZMailbox mbox, String path, ZFolder.View view)
+    throws ServiceException {
         String parentId = Integer.toString(Mailbox.ID_FOLDER_USER_ROOT);
         String name = null;
         int idxLastSlash = path.lastIndexOf('/');
@@ -780,7 +868,7 @@ extends Assert {
             parentId = parent.getId();
         }
 
-        return mbox.createFolder(parentId, name, ZFolder.View.message, null, null, null);
+        return mbox.createFolder(parentId, name, view, null, null, null);
     }
 
     public static ZFolder createFolder(ZMailbox mbox, String parentId, String folderName)
@@ -894,6 +982,26 @@ extends Assert {
         return transport;
     }
 
+
+    /**
+     * Returns an authenticated transport for the <tt>zimbra</tt> account.
+     */
+    public static SoapTransport getAdminSoapTransport(String adminName, String adminPassword)
+    throws SoapFaultException, IOException, ServiceException {
+        SoapHttpTransport transport = new SoapHttpTransport(getAdminSoapUrl());
+
+        // Create auth element
+        Element auth = new XMLElement(AdminConstants.AUTH_REQUEST);
+        auth.addElement(AdminConstants.E_NAME).setText(adminName);
+        auth.addElement(AdminConstants.E_PASSWORD).setText(adminPassword);
+
+        // Authenticate and get auth token
+        Element response = transport.invoke(auth);
+        String authToken = response.getElement(AccountConstants.E_AUTH_TOKEN).getText();
+        transport.setAuthToken(authToken);
+        return transport;
+    }
+
     /**
      * Assert the message contains the given sub-message, ignoring newlines.  Used
      * for comparing equality of two messages, when one had <tt>Return-Path</tt> or
@@ -914,7 +1022,7 @@ extends Assert {
             }
         }
 
-        String context = String.format("Could not find '%s' in message:\n", firstLine, message);
+        String context = String.format("Could not find '%s' in message:\n%s", firstLine, message);
         assertTrue(context, foundFirstLine);
 
         while(true) {

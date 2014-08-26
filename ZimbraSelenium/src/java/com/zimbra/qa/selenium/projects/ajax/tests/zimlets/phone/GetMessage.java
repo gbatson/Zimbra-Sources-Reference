@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.zimlets.phone;
@@ -19,6 +21,7 @@ import java.util.*;
 
 import org.testng.annotations.*;
 
+import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
@@ -275,5 +278,45 @@ public class GetMessage extends AjaxCommonTest {
 
 	}
 
+	@Bugs(ids = "73264")
+	@Test(	description = "Receive a mail with an unformated number string - should not match",
+			groups = { "functional", "matt" })
+	public void GetMessage_06() throws HarnessException {
+		
+		// Create the message data to be sent
+		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
+		String phonenumber = "16504755345";
+		String body = "text " + System.getProperty("line.separator") + phonenumber + System.getProperty("line.separator") + "text"+ ZimbraSeleniumProperties.getUniqueString() + System.getProperty("line.separator") ;
+		
+		// Send the message from AccountA to the ZWC user
+		ZimbraAccount.AccountA().soapSend(
+					"<SendMsgRequest xmlns='urn:zimbraMail'>" +
+						"<m>" +
+							"<e t='t' a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+							"<su>"+ subject +"</su>" +
+							"<mp ct='text/plain'>" +
+								"<content>"+ body +"</content>" +
+							"</mp>" +
+						"</m>" +
+					"</SendMsgRequest>");
+
+		// Click Get Mail button
+		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+
+		// Get all the messages in the inbox
+		DisplayMail display = (DisplayMail) app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		
+		// Wait for a bit so the zimlet can take affect
+		SleepUtil.sleep(5000);
+		
+		// Get the HTML of the body
+		HtmlElement bodyElement = display.zGetMailPropertyAsHtml(Field.Body);
+		
+		// Verify that the phone zimlet has been applied
+		// <a href="callto:1-877-486-9273" onclick="window.top.Com_Zimbra_Phone.unsetOnbeforeunload()">1-877-486-9273</a>
+		HtmlElement.evaluate(bodyElement, "//a[@href='callto:16504755345']", null, (String)null, 0);
+
+
+	}
 
 }

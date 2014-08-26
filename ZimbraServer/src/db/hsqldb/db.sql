@@ -1,15 +1,17 @@
 --
 -- ***** BEGIN LICENSE BLOCK *****
 -- Zimbra Collaboration Suite Server
--- Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+-- Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
 -- 
--- The contents of this file are subject to the Zimbra Public License
--- Version 1.4 ("License"); you may not use this file except in
--- compliance with the License.  You may obtain a copy of the License at
--- http://www.zimbra.com/license.
+-- This program is free software: you can redistribute it and/or modify it under
+-- the terms of the GNU General Public License as published by the Free Software Foundation,
+-- version 2 of the License.
 -- 
--- Software distributed under the License is distributed on an "AS IS"
--- basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+-- This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+-- without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+-- See the GNU General Public License for more details.
+-- You should have received a copy of the GNU General Public License along with this program.
+-- If not, see <http://www.gnu.org/licenses/>.
 -- ***** END LICENSE BLOCK *****
 --
 
@@ -89,6 +91,7 @@ CREATE TABLE mailbox (
    highest_indexed     VARCHAR(21), -- deprecated
    version             VARCHAR(16),
    last_purge_at       INTEGER DEFAULT 0 NOT NULL,
+   itemcache_checkpoint       INTEGER DEFAULT 0 NOT NULL,
    
    CONSTRAINT i_account_id UNIQUE (account_id),
    CONSTRAINT fk_mailbox_index_volume_id FOREIGN KEY (index_volume_id) REFERENCES volume(id)
@@ -195,3 +198,12 @@ CREATE TABLE pending_acl_push (
    PRIMARY KEY (mailbox_id, item_id, date),
    CONSTRAINT fk_pending_acl_push_mailbox_id FOREIGN KEY (mailbox_id) REFERENCES mailbox(id) ON DELETE CASCADE
 );
+
+
+CREATE TABLE current_sessions (
+	id				INTEGER NOT NULL,
+	server_id		VARCHAR(127) NOT NULL,
+	PRIMARY KEY (id, server_id)
+); 
+
+

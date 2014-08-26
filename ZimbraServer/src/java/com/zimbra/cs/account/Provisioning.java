@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
@@ -49,6 +51,7 @@ import com.zimbra.cs.gal.GalSearchParams;
 import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 import com.zimbra.cs.mime.MimeTypeInfo;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.Zimbra;
 import com.zimbra.soap.admin.type.CacheEntryType;
 import com.zimbra.soap.admin.type.CmdRightsInfo;
 import com.zimbra.soap.admin.type.CountObjectsType;
@@ -364,6 +367,20 @@ public abstract class Provisioning extends ZAttrProvisioning {
     }
 
     /**
+     * Replace sensitive strings like passwords with "VALUE-BLOCKED"
+     */
+    public static Object sanitizedAttrValue(String name, Object realValue) {
+        // Never return password.
+        if (name.equalsIgnoreCase(Provisioning.A_userPassword) ||
+            name.equalsIgnoreCase(Provisioning.A_zimbraDataSourcePassword) ||
+            name.equalsIgnoreCase(Provisioning.A_zimbraFreebusyExchangeAuthPassword) ||
+            name.equalsIgnoreCase(Provisioning.A_zimbraUCPassword)) {
+            return "VALUE-BLOCKED";
+        }
+        return realValue;
+    }
+
+    /**
      * reload/refresh the entry.
      *
      * (LdapProvisioning will reload the entry from the master)
@@ -468,6 +485,26 @@ public abstract class Provisioning extends ZAttrProvisioning {
                 }
         }
         return cos;
+    }
+
+    /**
+     * @return the AlwaysOnCluster object for this server, or null if server has no AlwaysOnCluster
+     *
+     * @throws ServiceException
+     */
+    public AlwaysOnCluster getAlwaysOnCluster(Server server) throws ServiceException {
+        // CACHE. If we get reloaded from LDAP, cached data is cleared
+        AlwaysOnCluster aoc = (AlwaysOnCluster) server.getCachedData(EntryCacheDataKey.SERVER_ALWAYSONCLUSTER);
+        if (aoc == null) {
+            String id = server.getAlwaysOnClusterId();
+            if (id != null) {
+                aoc = get(Key.AlwaysOnClusterBy.id, id);
+            }
+            if (aoc != null) {
+                server.setCachedData(EntryCacheDataKey.SERVER_ALWAYSONCLUSTER, aoc);
+            }
+        }
+        return aoc;
     }
 
     /**
@@ -1118,6 +1155,10 @@ public abstract class Provisioning extends ZAttrProvisioning {
      */
     public static final int SO_NO_ACCOUNT_DEFAULTS = 0x200;            // do not set defaults and secondary defaults in makeAccount
     public static final int SO_NO_ACCOUNT_SECONDARY_DEFAULTS = 0x400;  // do not set secondary defaults in makeAccount
+    public static final String SERVICE_WEBCLIENT = "zimbra";
+    public static final String SERVICE_ADMINCLIENT = "zimbraAdmin";
+    public static final String SERVICE_ZIMLET = "zimlet";
+    public static final String SERVICE_MAILCLIENT = "service";
 
     public abstract List<Account> getAllAdminAccounts()  throws ServiceException;
 
@@ -1364,10 +1405,53 @@ public abstract class Provisioning extends ZAttrProvisioning {
 
     public abstract Server getLocalServer() throws ServiceException;
 
+    public static final class Reasons {
+        StringBuilder sb = new StringBuilder();
+        public void addReason(String reason) {
+            if (0 < sb.length()) {
+                sb.append('\n');
+            }
+            sb.append(reason);
+        }
+        public String getReason() {
+            return sb.toString();
+        }
+    }
+
     public static boolean onLocalServer(Account account) throws ServiceException {
+        return onLocalServer(account, null);
+    }
+
+    public static boolean onLocalServer(Account account, Reasons reasons) throws ServiceException {
         String target    = account.getAttr(Provisioning.A_zimbraMailHost);
         String localhost = getInstance().getLocalServer().getAttr(Provisioning.A_zimbraServiceHostname);
-        return (target != null && target.equalsIgnoreCase(localhost));
+        boolean isLocal = (target != null && target.equalsIgnoreCase(localhost));
+        boolean onLocalSvr =  (isLocal || isAlwaysOn(account));
+        if (!onLocalSvr && reasons != null) {
+            reasons.addReason(String.format("onLocalSvr=%b isLocal=%b target=%s localhost=%s account=%s",
+                    onLocalSvr, isLocal, target, localhost, account.getName()));
+        }
+        return onLocalSvr;
+    }
+
+    private static boolean isAlwaysOn(Account account) throws ServiceException {
+        return isAlwaysOn(account, null);
+    }
+
+    private static boolean isAlwaysOn(Account account, Reasons reasons) throws ServiceException {
+        String localServerClusterId = Zimbra.getAlwaysOnClusterId();
+        Server server = Provisioning.getInstance().getServer(account);
+        String accountHostingServerClusterId = null;
+        if (server != null) {
+            accountHostingServerClusterId = server.getAlwaysOnClusterId();
+        }
+        boolean isAlwaysOn = (server != null) && localServerClusterId != null &&
+                accountHostingServerClusterId != null && localServerClusterId.equals(accountHostingServerClusterId);
+        if (!isAlwaysOn && reasons != null) {
+            reasons.addReason(String.format("isAlwaysOn=%b server=%s localServerClusterId=%s account=%s",
+                    isAlwaysOn, server, localServerClusterId, account.getName()));
+        }
+        return isAlwaysOn;
     }
 
     public static boolean onLocalServer(Group group) throws ServiceException {
@@ -1388,7 +1472,98 @@ public abstract class Provisioning extends ZAttrProvisioning {
 
     public abstract List<Server> getAllServers(String service)  throws ServiceException;
 
+    public abstract List<Server> getAllServers(String service, String clusterId) throws ServiceException;
+
+    public List<Server> getAllWebClientServers() throws ServiceException {
+        List<Server> mailboxservers = getAllServers(Provisioning.SERVICE_MAILBOX);
+        List<Server> webclientservers = getAllServers(Provisioning.SERVICE_WEBCLIENT);
+
+        for (Server server : mailboxservers) {
+            String version = server.getAttr(Provisioning.A_zimbraServerVersion, null);
+            // We get all pre 8.5 servers first (ones which don't have the zimbraServerVersion set)
+            if (version != null) {
+                continue;
+            }
+            // Add it to the list of 8.5+ webclient servers and return this list
+            webclientservers.add(server);
+        }
+
+        return webclientservers;
+    }
+
+    public List<Server> getAllAdminClientServers() throws ServiceException {
+        List<Server> mailboxservers = getAllServers(Provisioning.SERVICE_MAILBOX);
+        List<Server> adminclientservers = getAllServers(Provisioning.SERVICE_ADMINCLIENT);
+
+        for (Server server : mailboxservers) {
+            String version = server.getAttr(Provisioning.A_zimbraServerVersion, null);
+            // We get all pre 8.5 servers first (ones which don't have the zimbraServerVersion set)
+            if (version != null) {
+                continue;
+            }
+            // Add it to the list of 8.5+ adminclient servers and return this list
+            adminclientservers.add(server);
+        }
+
+        return adminclientservers;
+    }
+
+    public List<Server> getAllZimletServers() throws ServiceException {
+        List<Server> mailboxservers = getAllServers(Provisioning.SERVICE_MAILBOX);
+        List<Server> zimletservers = getAllServers(Provisioning.SERVICE_ZIMLET);
+
+        for (Server server : mailboxservers) {
+            String version = server.getAttr(Provisioning.A_zimbraServerVersion, null);
+            // We get all pre 8.5 servers first (ones which don't have the zimbraServerVersion set)
+            if (version != null) {
+                continue;
+            }
+            // Add it to the list of 8.5+ zimlet servers and return this list
+            zimletservers.add(server);
+        }
+
+        return zimletservers;
+    }
+
+    public List<Server> getAllDeployableZimletServers() throws ServiceException
+    {
+        List<Server> deployableservers = new ArrayList<Server>();
+
+        for (Server server : getAllZimletServers()) {
+            if (server.isLocalServer() || server.hasMailClientService()) {
+                deployableservers.add(server);
+            }
+        }
+
+        return deployableservers;
+    }
+
+    public List<Server> getAllMailClientServers() throws ServiceException {
+        List<Server> mailboxservers = getAllServers(Provisioning.SERVICE_MAILBOX);
+        List<Server> mailclientservers = getAllServers(Provisioning.SERVICE_MAILCLIENT);
+
+        for (Server server : mailboxservers) {
+            String version = server.getAttr(Provisioning.A_zimbraServerVersion, null);
+            // We get all pre 8.5 servers first (ones which don't have the zimbraServerVersion set)
+            if (version != null) {
+                continue;
+            }
+            // Add it to the list of 8.5+ mailclient servers and return this list
+            mailclientservers.add(server);
+        }
+
+        return mailclientservers;
+    }
+
     public abstract void deleteServer(String zimbraId) throws ServiceException;
+
+    /*
+     * AlwaysOnCluster
+     */
+    public abstract AlwaysOnCluster createAlwaysOnCluster(String name, Map<String, Object> attrs) throws ServiceException;
+    public abstract AlwaysOnCluster get(Key.AlwaysOnClusterBy keyname, String key) throws ServiceException;
+    public abstract void deleteAlwaysOnCluster(String zimbraId) throws ServiceException;
+    public abstract List<AlwaysOnCluster> getAllAlwaysOnClusters()  throws ServiceException;
 
     /*
      * UC service
@@ -2376,6 +2551,4 @@ public abstract class Provisioning extends ZAttrProvisioning {
             validator.refresh();
         }
     }
-
-
 }

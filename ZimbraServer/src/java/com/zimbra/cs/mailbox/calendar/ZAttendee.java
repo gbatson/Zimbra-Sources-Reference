@@ -1,32 +1,34 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.mailbox.calendar;
 
 import java.util.List;
 
-import com.zimbra.cs.account.IDNUtil;
-import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.service.mail.ToXML;
 import com.zimbra.common.calendar.CalendarUtil;
 import com.zimbra.common.calendar.ZCalendar.ICalTok;
 import com.zimbra.common.calendar.ZCalendar.ZParameter;
 import com.zimbra.common.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.StringUtil;
-import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.StringUtil;
+import com.zimbra.cs.account.IDNUtil;
+import com.zimbra.cs.mailbox.Metadata;
+import com.zimbra.cs.service.mail.ToXML;
 import com.zimbra.soap.mail.type.CalendarAttendee;
 
 public class ZAttendee extends CalendarUser {
@@ -53,7 +55,7 @@ public class ZAttendee extends CalendarUser {
         if (cutype != null && !IcalXmlStrMap.sCUTypeMap.validXml(cutype)) {
             cutype = IcalXmlStrMap.sCUTypeMap.toXml(cutype);
         }
-        mCUType = cutype; 
+        mCUType = cutype;
     }
 
     public boolean hasRole() { return !StringUtil.isNullOrEmpty(mRole); }
@@ -62,16 +64,16 @@ public class ZAttendee extends CalendarUser {
         if (role != null && !IcalXmlStrMap.sRoleMap.validXml(role)) {
             role = IcalXmlStrMap.sRoleMap.toXml(role);
         }
-        mRole = role; 
+        mRole = role;
     }
 
     public boolean hasPartStat() { return !StringUtil.isNullOrEmpty(mPartStat); }
     public String getPartStat() { return mPartStat != null ? mPartStat : ""; }
-    public void setPartStat(String partStat) { 
+    public void setPartStat(String partStat) {
         if (partStat != null && !IcalXmlStrMap.sPartStatMap.validXml(partStat)) {
             partStat = IcalXmlStrMap.sPartStatMap.toXml(partStat);
         }
-        mPartStat = partStat; 
+        mPartStat = partStat;
     }
 
     public boolean hasRsvp() { return mRsvp != null; }
@@ -186,10 +188,12 @@ public class ZAttendee extends CalendarUser {
         return meta;
     }
 
+    @Override
     protected ICalTok getPropertyName() {
         return ICalTok.ATTENDEE;
     }
 
+    @Override
     protected void setProperty(ZProperty prop) throws ServiceException {
         super.setProperty(prop);
         if (hasCUType())
@@ -198,8 +202,13 @@ public class ZAttendee extends CalendarUser {
             prop.addParameter(new ZParameter(ICalTok.ROLE, IcalXmlStrMap.sRoleMap.toIcal(getRole())));
         if (hasPartStat())
             prop.addParameter(new ZParameter(ICalTok.PARTSTAT, IcalXmlStrMap.sPartStatMap.toIcal(getPartStat())));
-        if (hasRsvp())
-            prop.addParameter(new ZParameter(ICalTok.RSVP, getRsvp()));
+        if (hasRsvp()) {
+            // Apple Mac Calendar thinks a reply is still required if RSVP is set.  Suppress this if the PARTSTAT
+            // isn't NEEDS-ACTION
+            if (IcalXmlStrMap.PARTSTAT_NEEDS_ACTION.equals(getPartStat())) {
+                prop.addParameter(new ZParameter(ICalTok.RSVP, getRsvp()));
+            }
+        }
         if (hasMember())
             prop.addParameter(new ZParameter(ICalTok.MEMBER, "MAILTO:" + getMember()));
         if (hasDelegatedTo())
@@ -208,6 +217,7 @@ public class ZAttendee extends CalendarUser {
             prop.addParameter(new ZParameter(ICalTok.DELEGATED_FROM, "MAILTO:" + getDelegatedFrom()));
     }
 
+    @Override
     protected StringBuilder addToStringBuilder(StringBuilder sb) {
         if (hasCUType()) {
             if (sb.length() > 0) sb.append(';');

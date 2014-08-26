@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -18,6 +20,7 @@
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
 
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +31,7 @@ import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 
 
 
@@ -120,12 +124,12 @@ public class DialogShareFind extends AbsDialog {
 		
 		// To activate the Search button, need to focus/click
 		this.sFocus(locator);
-		this.zClick(locator);
+		this.zClickAt(locator, "");
 		this.zKeyboard.zTypeCharacters(email);
 		if (!(sGetValue(locator).equalsIgnoreCase(email))) {
 			this.sType(locator, email);
 		}
-		
+		this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_HOME); // to enable search button because it remains disabled
 		this.zWaitForBusyOverlay();
 
 	}
@@ -159,7 +163,7 @@ public class DialogShareFind extends AbsDialog {
 		String rowLocator = top + ">div";
 		int count = this.sGetCssCount(rowLocator);
 		for (int i = 1; i <= count; i++ ) {
-			String itemLocator = rowLocator + ":nth-of-type("+ i +")";
+			String itemLocator = rowLocator + ":nth-child("+ i +")";
 			
 			String foldername = this.sGetText(itemLocator + " td[id$='_textCell']");
 			items.add(foldername);
@@ -289,10 +293,12 @@ public class DialogShareFind extends AbsDialog {
 			throw new HarnessException("Locator "+ locator +" not present");
 		}
 		
-		this.zClick(locator);
+		this.sClickAt(locator, "");
 		
 		zWaitForBusyOverlay();
-
+		
+		SleepUtil.sleepLong();
+		
 		return (page);
 	}
 

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.mountpoints.viewer;
@@ -20,7 +22,7 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.PrefGroupMailByMessageTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogError;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 
 public class FlagMail extends PrefGroupMailByMessageTest {
@@ -75,7 +77,6 @@ public class FlagMail extends PrefGroupMailByMessageTest {
             	+		"</m>"
 				+	"</AddMsgRequest>");
 		
-		MailItem mail = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
 
 		
 		// Mount it
@@ -89,29 +90,41 @@ public class FlagMail extends PrefGroupMailByMessageTest {
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
 				
-		// Click on the mountpoint
-		app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, mountpoint);
+		try {
+			
+			// Click on the mountpoint
+			app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, mountpoint);
+	
+			// Select the item
+			app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+			
+			// Flag the item
+			app.zPageMail.zListItem(Action.A_MAIL_FLAG, subject);
+	
+			
+			// https://bugzilla.zimbra.com/show_bug.cgi?id=73696#c9
+			// A "Permission Denied" error popup *might* occur
+			DialogError dialog = app.zPageMain.zGetErrorDialog(DialogError.DialogErrorID.Zimbra);
+			ZAssert.assertNotNull(dialog, "Verify the PERM DENIED Error Dialog is created");
+			boolean active = dialog.zIsActive();
+			
+			if ( active ) {
+				// To make sure the client doesn't get confused, close the dialog before
+				// doing verification
+				dialog.zClickButton(Button.B_OK);
+			}
+			
+			ZAssert.assertFalse(active, "Verify the PERM DENIED Error Dialog is not active");
+		
+		} finally {
+			
+			// Select the inbox
+			app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, FolderItem.importFromSOAP(app.zGetActiveAccount(), FolderItem.SystemFolder.Inbox));
 
-		// Select the item
-		app.zPageMail.zListItem(Action.A_LEFTCLICK, mail.dSubject);
-		
-		// Flag the item
-		app.zPageMail.zListItem(Action.A_MAIL_FLAG, mail.dSubject);
-
-		
-		// A "Permission Denied" error popup should occur
-		DialogError dialog = app.zPageMain.zGetErrorDialog(DialogError.DialogErrorID.Zimbra);
-		ZAssert.assertNotNull(dialog, "Verify the PERM DENIED Error Dialog is created");
-		ZAssert.assertTrue(dialog.zIsActive(), "Verify the PERM DENIED Error Dialog is active");
-		
-		// Close the dialog
-		dialog.zClickButton(Button.B_OK);
-		
-		// Sync any changes
-		
+		}
 
 		// Make sure the server does not show "flagged" for the owner
-		mail = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
+		MailItem mail = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
 		ZAssert.assertStringDoesNotContain(mail.getFlags(), "f", "Verify the message is not flagged in the server");
 
 		
@@ -159,7 +172,6 @@ public class FlagMail extends PrefGroupMailByMessageTest {
             	+		"</m>"
 				+	"</AddMsgRequest>");
 		
-		MailItem mail = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
 
 		// Mount it
 		app.zGetActiveAccount().soapSend(
@@ -172,29 +184,140 @@ public class FlagMail extends PrefGroupMailByMessageTest {
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
 				
-		// Click on the mountpoint
-		app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, mountpoint);
+		try {
 
-		// Select the item
-		app.zPageMail.zListItem(Action.A_LEFTCLICK, mail.dSubject);
+			// Click on the mountpoint
+			app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, mountpoint);
+	
+			// Select the item
+			app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+			
+			// Flag the item
+			app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_MARKFLAG);
+			
+			// https://bugzilla.zimbra.com/show_bug.cgi?id=73696#c9
+			// A "Permission Denied" error popup *might* occur
+			DialogError dialog = app.zPageMain.zGetErrorDialog(DialogError.DialogErrorID.Zimbra);
+			ZAssert.assertNotNull(dialog, "Verify the PERM DENIED Error Dialog is created");
+			boolean active = dialog.zIsActive();
+			
+			if ( active ) {
+				// To make sure the client doesn't get confused, close the dialog before
+				// doing verification
+				dialog.zClickButton(Button.B_OK);
+			}
+			
+			ZAssert.assertFalse(active, "Verify the PERM DENIED Error Dialog is not active");
+			
 		
-		// Flag the item
-		app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_MARKFLAG);
-		
-		// A "Permission Denied" error popup should occur
-		DialogError dialog = app.zPageMain.zGetErrorDialog(DialogError.DialogErrorID.Zimbra);
-		ZAssert.assertNotNull(dialog, "Verify the PERM DENIED Error Dialog is created");
-		ZAssert.assertTrue(dialog.zIsActive(), "Verify the PERM DENIED Error Dialog is active");
-		
-		// Close the dialog
-		dialog.zClickButton(Button.B_OK);
+		} finally {
+			
+			// Select the inbox
+			app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, FolderItem.importFromSOAP(app.zGetActiveAccount(), FolderItem.SystemFolder.Inbox));
 
-		
-		
+		}
 		
 		// Make sure the server does not show "flagged" for the owner
-		mail = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
+		MailItem mail = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
 		ZAssert.assertStringDoesNotContain(mail.getFlags(), "f", "Verify the message is not flagged in the server");
+
+		
+	}
+
+	@Test(	description = "Verify Permission Denied toaster on Flag a shared mail (read-only share)",
+			groups = { "functional" })
+	public void FlagMail_03() throws HarnessException {
+		String foldername = "folder" + ZimbraSeleniumProperties.getUniqueString();
+		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
+		String mountpointname = "mountpoint" + ZimbraSeleniumProperties.getUniqueString();
+		
+		FolderItem inbox = FolderItem.importFromSOAP(ZimbraAccount.AccountA(), FolderItem.SystemFolder.Inbox);
+		
+		// Create a folder to share
+		ZimbraAccount.AccountA().soapSend(
+					"<CreateFolderRequest xmlns='urn:zimbraMail'>"
+				+		"<folder name='" + foldername + "' l='" + inbox.getId() + "'/>"
+				+	"</CreateFolderRequest>");
+		
+		FolderItem folder = FolderItem.importFromSOAP(ZimbraAccount.AccountA(), foldername);
+		
+		// Share it
+		ZimbraAccount.AccountA().soapSend(
+					"<FolderActionRequest xmlns='urn:zimbraMail'>"
+				+		"<action id='"+ folder.getId() +"' op='grant'>"
+				+			"<grant d='"+ app.zGetActiveAccount().EmailAddress +"' gt='usr' perm='r'/>"
+				+		"</action>"
+				+	"</FolderActionRequest>");
+		
+		// Add a message to it
+		ZimbraAccount.AccountA().soapSend(
+					"<AddMsgRequest xmlns='urn:zimbraMail'>"
+        		+		"<m l='"+ folder.getId() +"' >"
+            	+			"<content>From: foo@foo.com\n"
+            	+				"To: foo@foo.com \n"
+            	+				"Subject: "+ subject +"\n"
+            	+				"MIME-Version: 1.0 \n"
+            	+				"Content-Type: text/plain; charset=utf-8 \n"
+            	+				"Content-Transfer-Encoding: 7bit\n"
+            	+				"\n"
+            	+				"simple text string in the body\n"
+            	+			"</content>"
+            	+		"</m>"
+				+	"</AddMsgRequest>");
+		
+
+		
+		// Mount it
+		app.zGetActiveAccount().soapSend(
+					"<CreateMountpointRequest xmlns='urn:zimbraMail'>"
+				+		"<link l='1' name='"+ mountpointname +"'  rid='"+ folder.getId() +"' zid='"+ ZimbraAccount.AccountA().ZimbraId +"'/>"
+				+	"</CreateMountpointRequest>");
+		
+		FolderMountpointItem mountpoint = FolderMountpointItem.importFromSOAP(app.zGetActiveAccount(), mountpointname);
+
+		// Click Get Mail button
+		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+				
+		try {
+			
+			// Click on the mountpoint
+			app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, mountpoint);
+	
+			// Select the item
+			app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+			
+			// Make sure any existing toaster is closed
+			Toaster toaster = app.zPageMain.zGetToaster();		
+			toaster.zWaitForClose();
+			
+			// Flag the item
+			app.zPageMail.zListItem(Action.A_MAIL_FLAG, subject);
+	
+			// Wait for the toaster
+			toaster.zWaitForActive();
+			ZAssert.assertEquals(toaster.zGetToastMessage(), "Permission denied.", "Verify the toaster shows");	// TODO: I18N
+
+			
+			// https://bugzilla.zimbra.com/show_bug.cgi?id=73696#c9
+			// A "Permission Denied" error popup *might* occur
+			DialogError dialog = app.zPageMain.zGetErrorDialog(DialogError.DialogErrorID.Zimbra);
+			ZAssert.assertNotNull(dialog, "Verify the PERM DENIED Error Dialog is created");
+			boolean active = dialog.zIsActive();
+			
+			if ( active ) {
+				// To make sure the client doesn't get confused, close the dialog before
+				// doing verification
+				dialog.zClickButton(Button.B_OK);
+			}
+			
+		
+		} finally {
+			
+			// Select the inbox
+			app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, FolderItem.importFromSOAP(app.zGetActiveAccount(), FolderItem.SystemFolder.Inbox));
+
+		}
+
 
 		
 	}

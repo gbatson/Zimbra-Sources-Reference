@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
@@ -21,7 +23,6 @@ import org.testng.annotations.Test;
 
 
 import com.zimbra.qa.selenium.framework.core.Bugs;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.TaskItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
@@ -101,11 +102,12 @@ public class EditHtmlTask extends AjaxCommonTest{
 		// Click edit
 		FormTaskNew taskedit = (FormTaskNew) app.zPageTasks.zToolbarPressButton(Button.B_EDIT);
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load 
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}else{
-			SleepUtil.sleepMedium();
-		}
+		//}else{
+		//	SleepUtil.sleepMedium();
+		//}
 		//Fill new subject in subject field
 		taskedit.zFillField(Field.Subject, editSubject);
 		taskedit.zFillField(Field.HtmlBody, editTaskHtmlbody);
@@ -313,20 +315,16 @@ public class EditHtmlTask extends AjaxCommonTest{
 		FormTaskNew taskedit = (FormTaskNew) app.zPageTasks.zToolbarPressButton(Button.B_EDIT);
 		
 		//Reason:With "?dev=1&debug=0", Tinymce editor in HTML mode takes more time to load 
-		if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
+		//removing incompatible to webdriver refernece
+		//if(ClientSessionFactory.session().selenium().getEval("window.tinyMCE").equalsIgnoreCase("null")){
 			SleepUtil.sleepVeryLong();
-		}else{
-			SleepUtil.sleepMedium();
-		}
+		//}else{
+		//	SleepUtil.sleepMedium();
+		//}
 		DialogWarning dialogWarning = (DialogWarning)  taskedit.zToolbarPressPulldown(Button.B_OPTIONS, Button.O_OPTION_FORMAT_AS_TEXT);
 		ZAssert.assertNotNull(dialogWarning, "Verify the dialog is returned");
-		
-		logger.info(dialogWarning.zGetWarningContent());
-		//Verify title Warning and content "Do you want to save changes?"
-	   // String text="Warning";
-	   // ZAssert.assertEquals(text,dialogWarning.zGetWarningTitle()," Verify title is " + text);
-	   String text = "Switching to text will discard all HTML formatting. Continue?";
-	   ZAssert.assertEquals(text,dialogWarning.zGetWarningContent()," Verify content is " + text);	
+		String text = "Switching to text will discard all HTML formatting. Continue?";
+		ZAssert.assertEquals(text,dialogWarning.zGetWarningContent()," Verify content is " + text);	
 
 	}
 

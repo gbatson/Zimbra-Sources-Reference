@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.framework.ui;
@@ -33,7 +35,7 @@ public abstract class AbsToaster extends AbsSeleniumObject {
 		
 		public static final String ToastTextLocatorCSS   = ToastDivContainerCSS + " div[id='z_toast_text']";
 
-		public static final String ToastUndoLocatorCSS = ToastDivContainerCSS + " div[id='z_toast_text'] a";
+		public static final String ToastUndoLocatorCSS = ToastDivContainerCSS + " a.undo";
 		
 
 	}
@@ -67,8 +69,13 @@ public abstract class AbsToaster extends AbsSeleniumObject {
     	text=sGetText(Locators.ToastTextLocatorCSS);
     	    
     	//make the toasted message invisible if it contains "Undo" link
-    	sKeyPressNative(String.valueOf(KeyEvent.VK_ESCAPE));
-    	    	
+    	/* Reason for adding If condition:
+    	 * For some cases like Signature Toaster(Bug_78058)
+    	 * unnecessary warning dialog gets appeared every time after pressing Escape key
+    	 */
+    	if (sIsElementPresent(Locators.ToastUndoLocatorCSS)) {
+			sKeyPressNative(String.valueOf(KeyEvent.VK_ESCAPE));
+		}    	    	
     	zWaitForElementInvisible(Locators.ToastTextLocatorCSS);
 		return text;					
 	}
@@ -83,15 +90,6 @@ public abstract class AbsToaster extends AbsSeleniumObject {
 		sClick(Locators.ToastUndoLocatorCSS);
 		zWaitForBusyOverlay();
 	}
-	
-    public boolean isContainedText(String text) throws HarnessException {
-    	return zGetToastMessage().contains(text);    
-    }
-    
-    public boolean isContainedLink(String innerText) throws HarnessException {
-    	//TODO fill in later
-    	throw new HarnessException("fill in later");
-    }
 	
     public boolean zIsActive() throws HarnessException {        
     	return zIsVisiblePerPosition(Locators.ToastDivContainerCSS,0,0);
@@ -148,9 +146,6 @@ public abstract class AbsToaster extends AbsSeleniumObject {
 		throw new HarnessException("Toaster never closed");
 	}
 	
-    public boolean clickLink(String innerText) throws HarnessException {
-    	throw new HarnessException("fill in later");
-    }
     
 
 

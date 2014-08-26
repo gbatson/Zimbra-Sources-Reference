@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.accesscontrol;
@@ -22,11 +24,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.SetUtil;
-
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AlwaysOnCluster;
 import com.zimbra.cs.account.AttributeClass;
 import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.CalendarResource;
@@ -39,14 +43,12 @@ import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.UCService;
-import com.zimbra.common.account.Key;
-import com.zimbra.common.account.Key.AccountBy;
-import com.zimbra.cs.account.ldap.LdapDIT;
-import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
+import com.zimbra.cs.account.ldap.LdapDIT;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.soap.admin.type.EffectiveRightsTargetSelector;
 import com.zimbra.soap.type.TargetBy;
 
@@ -61,6 +63,7 @@ public enum TargetType {
     group(true,         true,    AttributeClass.group,            com.zimbra.soap.type.TargetType.group,         "DynamicGroup"),     // dynamic group
     domain(true,        false,   AttributeClass.domain,           com.zimbra.soap.type.TargetType.domain,        "Domain"),
     server(true,        false,   AttributeClass.server,           com.zimbra.soap.type.TargetType.server,        "Server"),
+    alwaysoncluster(true, false, AttributeClass.alwaysOnCluster, com.zimbra.soap.type.TargetType.alwaysoncluster,"AlwaysOnCluster"),
     ucservice(true,     false,   AttributeClass.ucService,        com.zimbra.soap.type.TargetType.ucservice,     "UCService"),
     xmppcomponent(true, false,   AttributeClass.xmppComponent,    com.zimbra.soap.type.TargetType.xmppcomponent, "XMPPComponent"),
     zimlet(true,        false,   AttributeClass.zimletEntry,      com.zimbra.soap.type.TargetType.zimlet,        "Zimlet"),
@@ -148,6 +151,9 @@ public enum TargetType {
         TargetType.server.setInheritedByTargetTypes(
                 new TargetType[]{server});
 
+        TargetType.alwaysoncluster.setInheritedByTargetTypes(
+                new TargetType[]{alwaysoncluster});
+
         TargetType.ucservice.setInheritedByTargetTypes(
                 new TargetType[]{ucservice});
 
@@ -168,6 +174,7 @@ public enum TargetType {
                                  group,
                                  domain,
                                  server,
+                                 alwaysoncluster,
                                  ucservice,
                                  xmppcomponent,
                                  zimlet,
@@ -368,6 +375,12 @@ public enum TargetType {
                 throw AccountServiceException.NO_SUCH_SERVER(target);
             }
             break;
+        case alwaysoncluster:
+            targetEntry = prov.get(Key.AlwaysOnClusterBy.fromString(targetBy.name()), target);
+            if (targetEntry == null && mustFind) {
+                throw AccountServiceException.NO_SUCH_ALWAYSONCLUSTER(target);
+            }
+            break;
         case ucservice:
             targetEntry = prov.get(Key.UCServiceBy.fromString(targetBy.name()), target);
             if (targetEntry == null && mustFind) {
@@ -428,6 +441,8 @@ public enum TargetType {
             return TargetType.group;
         else if (target instanceof Server)
             return TargetType.server;
+        else if (target instanceof AlwaysOnCluster)
+            return TargetType.alwaysoncluster;
         else if (target instanceof UCService)
             return TargetType.ucservice;
         else if (target instanceof Config)
@@ -515,6 +530,9 @@ public enum TargetType {
             break;
         case server:
             base = dit.serverBaseDN();
+            break;
+        case alwaysoncluster:
+            base = dit.alwaysOnClusterBaseDN();
             break;
         case ucservice:
             base = dit.ucServiceBaseDN();

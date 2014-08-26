@@ -1,33 +1,36 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.util.yauth;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Constants;
 
 /**
@@ -76,7 +79,7 @@ public class RawAuth implements Auth {
     // Maximum number of milliseconds between current time and expiration
     // time before cookie is considered no longer valid.
     private static final long EXPIRATION_LIMIT = 60 * 1000; // 1 minute
-    
+
     public static String getToken(String appId, String user, String pass)
         throws AuthenticationException, IOException {
         debug("Sending getToken request: appId = %s, user = %s", appId, user);
@@ -101,23 +104,27 @@ public class RawAuth implements Auth {
     private RawAuth(String appId) {
         this.appId = appId;
     }
-    
+
+    @Override
     public String getAppId() {
         return appId;
     }
 
+    @Override
     public String getCookie() {
         return cookie;
     }
-    
+
+    @Override
     public String getWSSID() {
         return wssId;
     }
 
+    @Override
     public boolean isExpired() {
         return System.currentTimeMillis() + EXPIRATION_LIMIT > expiration;
     }
-    
+
     private void authenticate(String token)
         throws AuthenticationException, IOException {
         Response res = doGet(GET_AUTH, new NameValuePair(APPID, appId),
@@ -169,18 +176,23 @@ public class RawAuth implements Auth {
         Response(GetMethod method) throws IOException {
             debug("Response status: %s", method.getStatusLine());
             attributes = new HashMap<String, String>();
-            InputStream is = method.getResponseBodyAsStream();
-            BufferedReader br = new BufferedReader(
-                new InputStreamReader(is, method.getResponseCharSet()));
-            String line;
-            while ((line = br.readLine()) != null) {
-                debug("Response line: %s", line);
-                int i = line.indexOf('=');
-                if (i != -1) {
-                    String name = line.substring(0, i);
-                    String value = line.substring(i + 1);
-                    attributes.put(name.toLowerCase(), value);
-                }
+            InputStream is = null;
+            try {
+                is = method.getResponseBodyAsStream();
+	            BufferedReader br = new BufferedReader(
+	                new InputStreamReader(is, method.getResponseCharSet()));
+	            String line;
+	            while ((line = br.readLine()) != null) {
+	                debug("Response line: %s", line);
+	                int i = line.indexOf('=');
+	                if (i != -1) {
+	                    String name = line.substring(0, i);
+	                    String value = line.substring(i + 1);
+	                    attributes.put(name.toLowerCase(), value);
+	                }
+	            }
+            } finally {
+                ByteUtil.closeStream(is);
             }
         }
 
@@ -191,7 +203,7 @@ public class RawAuth implements Auth {
             }
             return value;
         }
-        
+
         String getField(String name) {
             String s = attributes.get(name.toLowerCase());
             if (s != null) {
@@ -204,6 +216,7 @@ public class RawAuth implements Auth {
         }
     }
 
+    @Override
     public String toString() {
         if (DEBUG) {
             return String.format("{appid=%s,cookie=%s,wssId=%s,expiration=%d}",

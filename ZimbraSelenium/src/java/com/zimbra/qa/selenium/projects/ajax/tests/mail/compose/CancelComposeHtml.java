@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.compose;
@@ -18,13 +20,11 @@ import java.util.List;
 
 import org.testng.annotations.Test;
 
-import com.zimbra.qa.selenium.framework.items.MailItem;
+import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.AbsDialog;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.PrefGroupMailByMessageTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
@@ -45,7 +45,7 @@ public class CancelComposeHtml extends PrefGroupMailByMessageTest {
 	
 	@Test(	description = "Verify message dialog, when cancel a html draft (body filled)",
 			groups = { "functional" })
-	public void CancelComposeHtml_01() throws HarnessException {
+	public void CancelComposeHtml_B_01() throws HarnessException {
 		
 		
 		// Create the message data to be sent
@@ -59,14 +59,9 @@ public class CancelComposeHtml extends PrefGroupMailByMessageTest {
 		
 		
 		// Fill out the form with the data
-		//mailform.zFillField(Field.Body, body);
+		mailform.zFillField(Field.Body, body);
 		
-		/* TODO: ... debugging to be moved to mailform class*/
-		String bodyLocator = "css=body[id=tinymce]";
-		boolean present = mailform.zWaitForElementPresent(bodyLocator, "30000");
-		ZAssert.assertTrue(present,"Verify the body field is available");
-		mailform.sClickAt(bodyLocator,"");
-		mailform.zTypeFormattedText("css=iframe[id*=ifr]", body);
+
 		
 		// Cancel the message
 		// A warning dialog should appear regarding losing changes
@@ -91,9 +86,10 @@ public class CancelComposeHtml extends PrefGroupMailByMessageTest {
 	
 	@Test(	description = "Cancel html composed mail using keyboard shortcut 'Escape'",
 			groups = { "functional" })
-	public void CancelComposeHtml_02() throws HarnessException {
+	public void CancelComposeHtml_A_02() throws HarnessException {
 		
 		Shortcut shortcut = Shortcut.S_ESCAPE;
+
 		// Create the message data to be sent
 		String body = "body" + ZimbraSeleniumProperties.getUniqueString();
 		String Subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
@@ -106,14 +102,7 @@ public class CancelComposeHtml extends PrefGroupMailByMessageTest {
 		
 		// Fill out the form with the data
 		mailform.zFillField(Field.Subject, Subject);
-		//mailform.zFillField(Field.Body, body);
-		
-		/* TODO: ... debugging to be moved to mailform class*/
-		String bodyLocator = "css=body[id=tinymce]";
-		boolean present = mailform.zWaitForElementPresent(bodyLocator, "30000");
-		ZAssert.assertTrue(present,"Verify the body field is available");
-		mailform.sClickAt(bodyLocator,"");
-		mailform.zTypeFormattedText("css=iframe[id*=ifr]", body);
+		mailform.zFillField(Field.Body, body);		
 		
 		DialogWarning warning =(DialogWarning)app.zPageMail.zKeyboardShortcut(shortcut);
 		ZAssert.assertNotNull(warning, "Verify the dialog is opened");
@@ -125,7 +114,7 @@ public class CancelComposeHtml extends PrefGroupMailByMessageTest {
 		
 		MailItem found = null;
 		for (MailItem m : messages) {
-			logger.info("Subject: looking for "+Subject +" found: "+ m.gSubject);
+			logger.info("Subject: looking for "+ Subject +" found: "+ m.gSubject);
 			if ( Subject.equals(m.gSubject) ) {
 				found = m;
 				break;

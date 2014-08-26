@@ -1,15 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
@@ -506,7 +512,7 @@ function() {
 	html[i++] = "<DIV>";
 	html[i++] = "<TABLE class='SForce_table'  width='100%'><TR><TD style='font-weight:bold'>Salesforce User Name:</TD><TD><INPUT type='text' id='sforce_logindlg_userNamefield' /></TD></TR>";
 	html[i++] = "<TR><TD  style='font-weight:bold'>Password + SecurityToken*:</TD><TD><INPUT type='password' id='sforce_logindlg_passwordfield' /></TD></TR>";
-	html[i++] = "<TR><TD style='font-weight:bold'>Ignore emails with following domain(s):<br/><label style=\"font-size: 10px; color: gray;\">(Saperate multiple domains by comma)</label></TD><TD><INPUT type='text' id='sforce_logindlg_ignoreDomainsfield' /></TD></TR>";
+	html[i++] = "<TR><TD style='font-weight:bold'>Ignore emails with following domain(s):<br/><label style=\"font-size: 10px; color: gray;\">(Separate multiple domains by comma)</label></TD><TD><INPUT type='text' id='sforce_logindlg_ignoreDomainsfield' /></TD></TR>";
 	html[i++] = "<TR><TD style='font-weight:bold'>Salesforce API URL:</TD><TD><INPUT type='text' id='sforce_logindlg_apiURL' /></TD></TR>";
 
 	html[i++] = "</TABLE></DIV><BR/>";
@@ -620,10 +626,20 @@ function() {
 //Salesforce Bar related(START)
 //-------------------------------------------------------------------------------------------
 Com_Zimbra_SForce.prototype.onMsgView =
-function(msg) {
+function(msg, oldMsg, msgView) {
+	this._handleMsgSelection(msg, oldMsg, msgView);
+};
+
+Com_Zimbra_SForce.prototype.onConvView =
+function(msg, oldMsg, msgView) {
+	this._handleMsgSelection(msg, oldMsg, msgView);
+};
+
+Com_Zimbra_SForce.prototype._handleMsgSelection =
+function(msg, oldMsg, msgView) {
 	this._initializeSalesForceForThisMsg(msg);
 	if (this.user && this.user != "" && this.passwd && this.passwd != "") {
-		this.noteDropped(msg, true);
+		this.noteDropped(msg, true, msgView);
 	}
 };
 
@@ -646,13 +662,12 @@ function(msg) {
 };
 
 Com_Zimbra_SForce.prototype._addSForceBar =
-function(recordsObj) {
+function(recordsObj, msgView) {
 	this._parseAndSetRecordsObj(recordsObj);
-	var viewId = appCtxt.getCurrentViewId();
-	if (viewId == "CLV" && appCtxt.getSettings().getSetting("READING_PANE_LOCATION").value == "off") {
-		setTimeout(AjxCallback.simpleClosure(this._do_addSForceBar, this, "CV"), 1000);
+	if (appCtxt.getCurrentViewType() === ZmId.VIEW_CONVLIST && appCtxt.getSettings().getSetting("READING_PANE_LOCATION").value === "off") {
+		setTimeout(AjxCallback.simpleClosure(this._do_addSForceBar, this, [msgView]), 1000);
 	} else {
-		this._do_addSForceBar(viewId);
+		this._do_addSForceBar(msgView);
 	}
 };
 
@@ -681,17 +696,20 @@ function(recordsObj) {
 };
 
 Com_Zimbra_SForce.prototype._do_addSForceBar =
-function(viewId) {
+function(msgView) {
 	if (this.sforce_logindlg_sbarShowOnlyOnResult && this.allRecords.length == 0 && !this._force_show_salesforceBar) {
 		return;
 	}
 
-	var viewType = appCtxt.getViewTypeFromId(viewId);
-	if (viewType != ZmId.VIEW_MSG) {
-		var infoBar = document.getElementById(["zv__MSG__",viewId,"_infoBar"].join(""));
-	} else {
-		var infoBar = document.getElementById(["zv__",viewId,"__MSG_infoBar"].join(""));
+	if (!msgView) {
+		return;
 	}
+	if (msgView._mode === ZmId.VIEW_CONV2 || msgView._mode === ZmId.VIEW_CONVLIST) {
+		var infoBar = document.getElementById(msgView._viewId + "__header");
+	} else {
+		infoBar = document.getElementById(msgView._hdrTableId);
+	}
+
 	if (!infoBar) {
 		return;
 	}
@@ -738,7 +756,7 @@ function(viewId) {
 			}
 			doc.innerHTML = [contacts,andStr,leads," found"].join("");
 			doc.style.color = "#0033FF";
-			doc.style.fontWeight = "bold";
+			//doc.style.fontWeight = "bold";
 		} else {
 			doc.innerHTML = "";
 		}
@@ -785,12 +803,11 @@ function() {
 	if (!this._sforceImage_14) {
 		this._sforceImage_14 = ["<img  height=14px width=14px src=\"", this.getResource("img/sforce.gif") , "\"  />"].join("");
 	}
-	html[i++] = "<DIV class='overviewHeader'>";
-	html[i++] = "<table cellpadding=0 cellspacing=0 width=100%><tr><td width='500'>";
+	html[i++] = "<div><table width=100%><tr><td width='500'>";
 	html[i++] = ["<div style='cursor:pointer' id='sforce_bar_mainHandler'><table cellpadding=0 cellspacing=0><tr><td width=2px></td>",
 		"<td width=11px><div id='sforce_expandCollapseIconDiv' class='ImgHeaderCollapsed'></div></td><td width=2px></td>",
 		"<td>",this._sforceImage_14,"</td>",
-		"<td width=2px></td><td width='100'><label style='font-weight:bold;color:rgb(45, 45, 45);cursor:pointer'>Salesforce Bar</label></td>",
+		"<td width=2px></td><td width='100'><label style='color:rgb(45, 45, 45);cursor:pointer'>Salesforce Bar</label></td>",
 		"<td id='sforce_bar_msgCell'></td></tr></table></div></td>"].join("");
 	html[i++] = "<td>";
 	html[i++] = "<div id='sforce_bar_generalToolbar' style='display:none'>";
@@ -1656,7 +1673,7 @@ function(colName, ConProps) {
 //--------------------------------------------------------------------------------------------------------
 //Notes dropped... (START)
 //--------------------------------------------------------------------------------------------------------
-Com_Zimbra_SForce.prototype.noteDropped = function(note, showInBar) {
+Com_Zimbra_SForce.prototype. noteDropped = function(note, showInBar, msgView) {
 	if (!note) {
 		return;
 	}
@@ -1681,24 +1698,24 @@ Com_Zimbra_SForce.prototype.noteDropped = function(note, showInBar) {
 			//"(Select id,subject from ActivityHistories) ",
 			" from contact c where Email='", this._emailsForCurrentNote.join("' or Email='"), "'"].join("");
 
-		var callback = new AjxCallback(this, this._queryForLeadDetails, [showInBar]);
+		var callback = new AjxCallback(this, this._queryForLeadDetails, [showInBar, msgView]);
 		this.query(q, 10, callback);
 	}
 };
 
 Com_Zimbra_SForce.prototype._queryForLeadDetails =
-function (showInBar, zimlet, cRecords) {
+function (showInBar, msgView, zimlet, cRecords) {
 	var q = ["Select l.Id, l.Name,l.Title,l.Email,l.Phone,l.Company,l.Status,l.Street,l.State,l.PostalCode,l.Country, l.NumberOfEmployees,l.Website from Lead l where Email='", this._emailsForCurrentNote.join("' or Email='"), "'"].join("");
 
 	//var callback = new AjxCallback(this, this._handleAddNotesRecords, [showInBar]);
-	var callback = new AjxCallback(this, this._mergeLeadAndContactRecords, [showInBar, cRecords]);
+	var callback = new AjxCallback(this, this._mergeLeadAndContactRecords, [showInBar, cRecords, msgView]);
 	this.query(q, 10, callback);
 };
 
 Com_Zimbra_SForce.prototype._mergeLeadAndContactRecords =
-function (showInBar, cRecords, zimlet, lRecords) {
+function (showInBar, cRecords, msgView, zimlet, lRecords) {
 	var recordsObj = {cRecords:cRecords, lRecords:lRecords}
-	this._handleAddNotesRecords(showInBar, this, {cRecords:cRecords, lRecords:lRecords});
+	this._handleAddNotesRecords(showInBar, this, {cRecords:cRecords, lRecords:lRecords}, msgView);
 };
 
 Com_Zimbra_SForce.prototype._getValidAddressesForCurrentNote =
@@ -1776,13 +1793,13 @@ function(email) {
 };
 
 Com_Zimbra_SForce.prototype._handleAddNotesRecords =
-function(showInBar, zimlet, recordsObj) {
+function(showInBar, zimlet, recordsObj, msgView) {
 	if (!showInBar) {
 		this._parseAndSetRecordsObj(recordsObj);
 		this._setRecordsToNotesDlg();
 		this._setAddNotesHandlers();
 	} else {
-		this._addSForceBar(recordsObj);
+		this._addSForceBar(recordsObj, msgView);
 	}
 };
 
@@ -2492,18 +2509,21 @@ Com_Zimbra_SForce.prototype._initComposeSFToolbar = function(toolbar, controller
 };
 
 Com_Zimbra_SForce.prototype._sendAddSForce = function(ev) {
-	var msg = this._composeView.getMsg();
 	this._send();
+};
+
+Com_Zimbra_SForce.prototype.onSendMsgSuccess = function(controller, msg) {
 	if (msg == undefined) {
 		appCtxt.getAppController().setStatusMsg("Sorry, could not grab email", ZmStatusView.LEVEL_WARNING);
 		return;
 	}
-	this._sforce._initializeSalesForceForThisMsg(msg);
-	if (this._sforce.user && this._sforce.user != "" && this._sforce.passwd && this._sforce.passwd != "") {
-		this._sforce.noteDropped(msg);
+	this._initializeSalesForceForThisMsg(msg);
+	if (this.user && this.user != "" && this.passwd && this.passwd != "") {
+		this.noteDropped(msg);
 	}
 	//this._sforce.noteDropped(msg);
 };
+
 //--------------------------------------------------------------------------------------------------------
 // Toolbar related..(END)
 //--------------------------------------------------------------------------------------------------------

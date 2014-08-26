@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -62,7 +64,7 @@ public final class RuleManager {
     private static final String OUTGOING_FILTER_RULES_CACHE_KEY =
         RuleManager.class.getSimpleName() + ".OUTGOING_FILTER_RULES_CACHE";
 
-    private static final SieveFactory SIEVE_FACTORY = createSieveFactory();
+    private static SieveFactory SIEVE_FACTORY = createSieveFactory();
 
     private RuleManager() {
     }
@@ -71,40 +73,18 @@ public final class RuleManager {
         // Initialize custom jSieve extensions
         ConfigurationManager mgr;
         try {
-            mgr = new ConfigurationManager();
+            mgr = new ZimbraConfigurationManager();
         } catch (SieveException e) {
             ZimbraLog.filter.error("Unable to initialize mail filtering extensions.", e);
             return null;
         }
 
         Map<String, String> commandMap = mgr.getCommandMap();
-        commandMap.put("disabled_if", com.zimbra.cs.filter.jsieve.DisabledIf.class.getName());
-        commandMap.put("tag", com.zimbra.cs.filter.jsieve.Tag.class.getName());
-        commandMap.put("flag", com.zimbra.cs.filter.jsieve.Flag.class.getName());
-        commandMap.put("reply", com.zimbra.cs.filter.jsieve.Reply.class.getName());
-        commandMap.put("notify", com.zimbra.cs.filter.jsieve.Notify.class.getName());
-        commandMap.put("discard", com.zimbra.cs.filter.jsieve.Discard.class.getName());
+        commandMap.putAll(JsieveConfigMapHandler.getCommandMap());
 
         Map<String, String> testMap = mgr.getTestMap();
-        testMap.put("date", com.zimbra.cs.filter.jsieve.DateTest.class.getName());
-        testMap.put("body", com.zimbra.cs.filter.jsieve.BodyTest.class.getName());
-        testMap.put("attachment", com.zimbra.cs.filter.jsieve.AttachmentTest.class.getName());
-        testMap.put("addressbook", com.zimbra.cs.filter.jsieve.AddressBookTest.class.getName());
-        testMap.put("contact_ranking", com.zimbra.cs.filter.jsieve.ContactRankingTest.class.getName());
-        testMap.put("me", com.zimbra.cs.filter.jsieve.MeTest.class.getName());
-        testMap.put("invite", com.zimbra.cs.filter.jsieve.InviteTest.class.getName());
-        testMap.put("mime_header", com.zimbra.cs.filter.jsieve.MimeHeaderTest.class.getName());
-        testMap.put("current_time", com.zimbra.cs.filter.jsieve.CurrentTimeTest.class.getName());
-        testMap.put("current_day_of_week", com.zimbra.cs.filter.jsieve.CurrentDayOfWeekTest.class.getName());
-        testMap.put("conversation", com.zimbra.cs.filter.jsieve.ConversationTest.class.getName());
-        testMap.put("facebook", com.zimbra.cs.filter.jsieve.FacebookTest.class.getName());
-        testMap.put("linkedin", com.zimbra.cs.filter.jsieve.LinkedInTest.class.getName());
-        testMap.put("socialcast", com.zimbra.cs.filter.jsieve.SocialcastTest.class.getName());
-        testMap.put("twitter", com.zimbra.cs.filter.jsieve.TwitterTest.class.getName());
-        testMap.put("list", com.zimbra.cs.filter.jsieve.ListTest.class.getName());
-        testMap.put("bulk", com.zimbra.cs.filter.jsieve.BulkTest.class.getName());
-        testMap.put("importance", com.zimbra.cs.filter.jsieve.ImportanceTest.class.getName());
-        testMap.put("flagged", com.zimbra.cs.filter.jsieve.FlaggedTest.class.getName());
+        testMap.putAll(JsieveConfigMapHandler.getTestMap());
+
         return mgr.build();
     }
 

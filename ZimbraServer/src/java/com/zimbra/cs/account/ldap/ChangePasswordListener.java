@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.ldap;
@@ -139,6 +141,21 @@ public abstract class ChangePasswordListener {
         if (ctxts.mExternalListener != null)
             ctxts.mExternalListener.postModify(acct, newPassword, ctxts.mExternalCtxt);
     }
+
+    public static void invokeOnException(Account acct, String newPassword,
+            ChangePasswordListenerContext ctxts, ServiceException exceptionThrown) {
+
+        // invoke internal listeners
+        for (Map.Entry<InternalChangePasswordListenerId, ChangePasswordListener> listener : mInternalListeners.entrySet()) {
+            InternalChangePasswordListenerId listenerEnum = listener.getKey();
+            ChangePasswordListener listenerInstance = listener.getValue();
+            Map<String, Object> context = ctxts.mInternalCtxts.get(listenerEnum);
+            listenerInstance.onException(acct, newPassword, context, exceptionThrown);
+        }
+
+        if (ctxts.mExternalListener != null)
+            ctxts.mExternalListener.onException(acct, newPassword, ctxts.mExternalCtxt, exceptionThrown);
+    }
     
     /**
      * Called before password(userPassword) and applicable(e.g. zimbraPasswordHistory, zimbraPasswordModifiedTime) 
@@ -164,7 +181,20 @@ public abstract class ChangePasswordListener {
      * @param context place to stash data between invocations of pre/postModify
      */
     public abstract void postModify(Account acct, String newPassword, Map context);
-            
+
+    /**
+     * called when modifyAttrs() throws ServiceException.
+     * After onException() get executed for all internal listeners, onException() for external listener is called.
+     * should not throw any exceptions for preventing to skip onException() for external listener.
+     * The exception instance which modifyAttrs() originally throws is rethrown after onException() gets executed.
+     *
+     * @param USER_ACCOUNT account object being modified
+     * @param newPassword Clear-text new password
+     * @param context place to stash data between invocations of pre/postModify
+     * @param ServiceException original exception thrown by modifyAttrs
+     */
+    public void onException(Account acct, String newPassword, Map context, ServiceException exceptionThrown) {}
+
     static class DummyChangePasswordListener extends ChangePasswordListener {
             
         public void preModify(Account acct, String newPassword, Map context, Map<String, Object> attrsToModify) throws ServiceException {

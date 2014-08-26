@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.common.mime.shim;
@@ -204,7 +206,6 @@ public class JavaMailMimeMultipart extends MimeMultipart implements JavaMailShim
     @Override
     public synchronized boolean isComplete() throws MessagingException {
         if (ZPARSER) {
-            // TODO Auto-generated method stub
             return super.isComplete();
         } else {
             return super.isComplete();
@@ -302,9 +303,10 @@ public class JavaMailMimeMultipart extends MimeMultipart implements JavaMailShim
             // need to parse the data source ourselves so that our offsets match up with the stream
             com.zimbra.common.mime.MimeHeaderBlock headers = new com.zimbra.common.mime.MimeHeaderBlock(ctype);
             InputStream is = null;
+            com.zimbra.common.mime.MimeParserInputStream mpis = null;
             try {
                 is = mpds.getInputStream();
-                com.zimbra.common.mime.MimeParserInputStream mpis = new com.zimbra.common.mime.MimeParserInputStream(is, headers).setSource(mpds);
+                mpis = new com.zimbra.common.mime.MimeParserInputStream(is, headers).setSource(mpds);
                 JavaMailMimeBodyPart.writeTo(mpis, null);
                 com.zimbra.common.mime.MimePart mp = mpis.getPart();
                 if (mp instanceof com.zimbra.common.mime.MimeMultipart) {
@@ -317,6 +319,7 @@ public class JavaMailMimeMultipart extends MimeMultipart implements JavaMailShim
                 throw new MessagingException("error reading multipart data source", ioe);
             } finally {
                 ByteUtil.closeStream(is);
+                ByteUtil.closeStream(mpis);
             }
         } else {
             super.setMultipartDataSource(mpds);

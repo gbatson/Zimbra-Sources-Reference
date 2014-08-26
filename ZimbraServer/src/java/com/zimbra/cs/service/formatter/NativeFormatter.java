@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
@@ -54,6 +56,7 @@ import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.convert.ConversionUnsupportedException;
 import com.zimbra.cs.extension.ExtensionUtil;
 import com.zimbra.cs.html.BrowserDefang;
 import com.zimbra.cs.html.DefangFactory;
@@ -196,6 +199,7 @@ public final class NativeFormatter extends Formatter {
     }
 
     private static final String HTML_VIEW = "html";
+    private static final String TEXT_VIEW = "text";
 
     private void handleMessagePart(UserServletContext context, MimePart mp, MailItem item) throws IOException, MessagingException, ServletException {
         if (mp == null) {
@@ -220,6 +224,12 @@ public final class NativeFormatter extends Formatter {
             if (browser == HttpUtil.Browser.IE && contentType.length() > 80)
                 contentType = shortContentType;
 
+            // useful for show original of message attachment
+            boolean simpleText = (context.hasView() && context.getView().equals(TEXT_VIEW) &&
+                    MimeConstants.CT_MESSAGE_RFC822.equals(contentType));
+            if (simpleText) {
+                contentType = MimeConstants.CT_TEXT_PLAIN;
+            }
             boolean html = checkGlobalOverride(Provisioning.A_zimbraAttachmentsViewInHtmlOnly,
                     context.getAuthAccount()) || (context.hasView() && context.getView().equals(HTML_VIEW));
             InputStream in = null;
@@ -230,9 +240,12 @@ public final class NativeFormatter extends Formatter {
 
                     // If this is an image that exceeds the max size, resize it.  Don't resize
                     // gigantic images because ImageIO reads image content into memory.
-                    if (context.hasMaxWidth() && (Mime.getSize(mp) < LC.max_image_size_to_resize.intValue())) {
+                    if ((context.hasMaxWidth() || context.hasMaxHeight()) &&
+                        (Mime.getSize(mp) < LC.max_image_size_to_resize.intValue())) {
                         try {
-                            data = getResizedImageData(mp, context.getMaxWidth());
+                            data =
+                                getResizedImageData(mp, context.getMaxWidth(),
+                                                    context.getMaxHeight());
                         } catch (Exception e) {
                             log.info("Unable to resize image.  Returning original content.", e);
                         }
@@ -252,7 +265,13 @@ public final class NativeFormatter extends Formatter {
                         size = enc == null || enc.equals("7bit") || enc.equals("8bit") || enc.equals("binary") ? mp.getSize() : 0;
                     }
                     String defaultCharset = context.targetAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null);
-                    sendbackOriginalDoc(in, contentType, defaultCharset, Mime.getFilename(mp), mp.getDescription(), size, context.req, context.resp);
+                    if (simpleText) {
+                        sendbackBinaryData(context.req, context.resp, in, contentType, Part.INLINE,
+                                null /* filename */, size, true);
+                    } else {
+                        sendbackOriginalDoc(in, contentType, defaultCharset, Mime.getFilename(mp), mp.getDescription(),
+                                size, context.req, context.resp);
+                    }
                 } else {
                     in = mp.getInputStream();
                     handleConversion(context, in, Mime.getFilename(mp), contentType, item.getDigest(), mp.getSize());
@@ -269,11 +288,17 @@ public final class NativeFormatter extends Formatter {
      * image width is smaller than {@code maxWidth} or resizing is not supported,
      * returns {@code null}.
      */
-    private static byte[] getResizedImageData(MimePart mp, int maxWidth)
+    private static byte[] getResizedImageData(MimePart mp, Integer maxWidth, Integer maxHeight)
     throws IOException, MessagingException {
         ImageReader reader = null;
         ImageWriter writer = null;
         InputStream in = null;
+
+        if (maxWidth == null)
+            maxWidth = LC.max_image_size_to_resize.intValue();
+
+        if (maxHeight == null)
+            maxHeight = LC.max_image_size_to_resize.intValue();
 
         try {
             // Get ImageReader for stream content.
@@ -287,8 +312,11 @@ public final class NativeFormatter extends Formatter {
             in = mp.getInputStream();
             reader.setInput(new MemoryCacheImageInputStream(in));
             BufferedImage img = reader.read(0);
-            if (img.getWidth() <= maxWidth) {
-                log.debug("Image width %d is less than max %d.  Not resizing.", img.getWidth(), maxWidth);
+            int width = img.getWidth(), height = img.getHeight();
+
+            if (width <= maxWidth && height <= maxHeight) {
+                log.debug("Image %dx%d is less than max %dx%d.  Not resizing.",
+                          width, height, maxWidth, maxHeight);
                 return null;
             }
 
@@ -298,8 +326,15 @@ public final class NativeFormatter extends Formatter {
                 log.debug("No ImageWriter available.");
                 return null;
             }
-            int height = (int) ((double) maxWidth / (double) img.getWidth() * img.getHeight());
-            BufferedImage small = ImageUtil.resize(img, maxWidth, height);
+
+            double ratio =
+                Math.min((double) maxWidth / width,
+                         (double) maxHeight / height);
+
+            width *= ratio;
+            height *= ratio;
+
+            BufferedImage small = ImageUtil.resize(img, width, height);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             writer.setOutput(new MemoryCacheImageOutputStream(out));
             writer.write(small);
@@ -324,9 +359,19 @@ public final class NativeFormatter extends Formatter {
 
         doc = (version > 0 ? (Document)doc.getMailbox().getItemRevision(context.opContext, doc.getId(), doc.getType(), version) : doc);
         InputStream is = doc.getContentStream();
-        // If the view is html and the convertd extension is deployed
-        if (HTML_VIEW.equals(context.getView()) && ExtensionUtil.getExtension("convertd") != null && !(contentType != null && contentType.startsWith(MimeConstants.CT_TEXT_HTML))) {
-            handleConversion(context, is, doc.getName(), doc.getContentType(), doc.getDigest(), doc.getSize());
+        if (HTML_VIEW.equals(context.getView()) && !(contentType != null && contentType.startsWith(MimeConstants.CT_TEXT_HTML))) {
+            if (ExtensionUtil.getExtension("convertd") != null) {
+                // If the requested view is html, but the requested content is not, use convertd extension when deployed
+                handleConversion(context, is, doc.getName(), doc.getContentType(), doc.getDigest(), doc.getSize());
+            } else {
+                // If the requested view is html, but the content is not, respond with a conversion error, so that
+                // either an error page, or page invoking an error callback handler can be shown
+                try {
+                    updateClient(context, new ConversionUnsupportedException(String.format("Native format cannot be displayed inline: %s", contentType)));
+                } catch (UserServletException e) {
+                    throw new ServletException(e.getLocalizedMessage(), e);
+                }
+            }
         } else {
             String defaultCharset = context.targetAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null);
             boolean neuter = doc.getAccount().getBooleanAttr(Provisioning.A_zimbraNotebookSanitizeHtml, true);
@@ -515,13 +560,16 @@ public final class NativeFormatter extends Formatter {
         { '<', 'S', 'C', 'R', 'I', 'P', 'T' }
     };
 
-    public static void sendbackBinaryData(HttpServletRequest req,
-                                          HttpServletResponse resp,
-                                          InputStream in,
-                                          String contentType,
-                                          String disposition,
-                                          String filename,
-                                          long size) throws IOException {
+    public static void sendbackBinaryData(HttpServletRequest req, HttpServletResponse resp, InputStream in,
+                                          String contentType, String disposition, String filename, long size)
+    throws IOException {
+        sendbackBinaryData(req, resp, in, contentType, disposition, filename, size, false);
+    }
+
+    public static void sendbackBinaryData(HttpServletRequest req, HttpServletResponse resp, InputStream in,
+                                          String contentType, String disposition, String filename,
+                                          long size, boolean ignoreContentDisposition)
+    throws IOException {
         resp.setContentType(contentType);
         if (disposition == null) {
             String disp = req.getParameter(UserServlet.QP_DISP);
@@ -563,8 +611,10 @@ public final class NativeFormatter extends Formatter {
             if (bytesRead > 0)
                 pis.unread(buf, 0, bytesRead);
         }
-        String cd = HttpUtil.createContentDisposition(req, disposition, filename == null ? "unknown" : filename);
-        resp.addHeader("Content-Disposition", cd);
+        if (!ignoreContentDisposition) {
+            String cd = HttpUtil.createContentDisposition(req, disposition, filename == null ? "unknown" : filename);
+            resp.addHeader("Content-Disposition", cd);
+        }
         if (size > 0)
             resp.setContentLength((int)size);
         ByteUtil.copy(pis, true, resp.getOutputStream(), false);

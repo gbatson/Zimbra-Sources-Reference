@@ -1,20 +1,27 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2008, 2009, 2010, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at: http://www.zimbra.com/license
+ * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
+ * have been added to cover use of software over a computer network and provide for limited attribution 
+ * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Software distributed under the License is distributed on an "AS IS" basis, 
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing rights and limitations under the License. 
+ * The Original Code is Zimbra Open Source Web Client. 
+ * The Initial Developer of the Original Code is Zimbra, Inc. 
+ * All portions of the code are Copyright (C) 2007, 2008, 2009, 2010, 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
  * ***** END LICENSE BLOCK *****
  */
 
 function Com_Zimbra_YMEmoticons() {
 	this.re = Com_Zimbra_YMEmoticons.REGEXP;
+    this.reCaseSensitive = Com_Zimbra_YMEmoticons.REGEXP_CASE_SENSITIVE;
 	this.hash = Com_Zimbra_YMEmoticons.SMILEYS;
 	this._isEnabled = true;
 };
@@ -65,9 +72,9 @@ function(msg, manager) {
 
 Com_Zimbra_YMEmoticons.prototype.match =
 function(line, startIndex) {
-	this.re.lastIndex = startIndex;
-	var m = this.re.exec(line);
-	//var m = line.match(this.re);
+    this.re.lastIndex = this.reCaseSensitive.lastIndex = startIndex;
+    var m =  this.re.exec(line) || this.reCaseSensitive.exec(line) ;
+
 	if (m) {
 		m.context = this.hash[m[1].toLowerCase()];
 		// preload
@@ -172,7 +179,7 @@ function() {
 	this._preferenceView = new DwtComposite(this.getShell());
 	this._preferenceView.getHtmlElement().style.overflow = "auto";
 	this._preferenceView.getHtmlElement().innerHTML = this._createPrefView();
-	this._preferenceDialog = this._createDialog({title:"Yahoo! Emoticons Preferences", view:this._preferenceView, standardButtons:[DwtDialog.OK_BUTTON]});
+	this._preferenceDialog = this._createDialog({title: "Yahoo! Emoticons Preferences", view: this._preferenceView, standardButtons: [DwtDialog.OK_BUTTON], id: "YahooEmoticonsPrefs"});
 	this._preferenceDialog.setButtonListener(DwtDialog.OK_BUTTON, new AjxListener(this, this._okPreferenceBtnListener));
 
 	if (!this.enableInMail) {

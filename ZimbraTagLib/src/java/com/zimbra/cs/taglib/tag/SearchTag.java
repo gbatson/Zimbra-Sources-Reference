@@ -1,20 +1,23 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.taglib.tag;
 
-import com.google.common.collect.MapMaker;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.taglib.bean.ZSearchResultBean;
 import com.zimbra.client.ZMailbox;
@@ -27,7 +30,6 @@ import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspTagException;
 import javax.servlet.jsp.PageContext;
 import java.io.IOException;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -129,7 +131,7 @@ public final class SearchTag extends ZimbraSimpleTag {
             ZSearchResult searchResults = mConvId == null ? mbox.search(params) : mbox.searchConversation(mConvId, params);
 
             if (mSearchContext != 0) {
-                SearchContext sc = getSearchContextCache(jctxt).get(mSearchContext);
+                SearchContext sc = getSearchContextCache(jctxt).getIfPresent(mSearchContext);
                 if (sc == null) mSearchContext = 0;
                 else sc.setSearchResult(searchResults);
             }
@@ -145,13 +147,13 @@ public final class SearchTag extends ZimbraSimpleTag {
         }
     }
 
-    private static Map<Long, SearchContext> getSearchContextCache(PageContext ctxt) {
+    private static Cache<Long, SearchContext> getSearchContextCache(PageContext ctxt) {
         synchronized (ctxt.getSession()) {
             @SuppressWarnings("unchecked")
-            Map<Long, SearchContext> cache = (Map<Long, SearchContext>) ctxt.getAttribute(CACHE_ATTR,
-                    PageContext.SESSION_SCOPE);
+            Cache<Long, SearchContext> cache =
+                    (Cache<Long, SearchContext>) ctxt.getAttribute(CACHE_ATTR, PageContext.SESSION_SCOPE);
             if (cache == null) {
-                cache = new MapMaker().concurrencyLevel(1).maximumSize(CACHE_SIZE).makeMap();
+                cache = CacheBuilder.newBuilder().maximumSize(CACHE_SIZE).concurrencyLevel(1).build();
                 ctxt.setAttribute(CACHE_ATTR, cache, PageContext.SESSION_SCOPE);
             }
             return cache;
@@ -160,7 +162,7 @@ public final class SearchTag extends ZimbraSimpleTag {
 
     private static long putSearchContext(PageContext ctxt, ZSearchResult result) {
         long id = ID_GEN.getAndIncrement();
-        Map<Long, SearchContext> cache = getSearchContextCache(ctxt);
+        Cache<Long, SearchContext> cache = getSearchContextCache(ctxt);
         SearchContext sc = new SearchContext();
         sc.setSearchResult(result);
         cache.put(id, sc);

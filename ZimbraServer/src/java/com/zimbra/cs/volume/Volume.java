@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.volume;
@@ -20,8 +22,10 @@ import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.store.IncomingDirectory;
+import com.zimbra.cs.util.Zimbra;
 import com.zimbra.soap.admin.type.VolumeInfo;
 
 /**
@@ -167,11 +171,12 @@ public final class Volume {
             return this;
         }
 
-        public Builder setPath(String path, boolean normalize) throws VolumeServiceException {
+        public Builder setPath(String path, boolean normalize) throws VolumeServiceException, ServiceException {
             if (normalize) {
                 path = volume.normalizePath(path);
                 VolumeManager.getInstance().validatePath(path);
             }
+            //volume.rootPath = getConfiguredRootPath(path);
             volume.rootPath = path;
             return this;
         }
@@ -314,30 +319,62 @@ public final class Volume {
         return new VolumeMetadata(metadata);
     }
 
-    public static String getAbsolutePath(String path) {
-        return LC.zimbra_relative_volume_path.booleanValue() ? LC.zimbra_home.value() + File.separator + path : path;
+    public static String getAbsolutePath(String path) throws ServiceException {
+        //return LC.zimbra_relative_volume_path.booleanValue() ? LC.zimbra_home.value() + File.separator + getConfiguredRootPath(path) : path;
+    	return LC.zimbra_relative_volume_path.booleanValue() ? LC.zimbra_home.value() + File.separator + path : path;
+    }
+    
+    public static String getConfiguredServerID() throws ServiceException
+    {
+        StringBuilder finalPath = new StringBuilder();
+        if (Zimbra.isAlwaysOn())
+        {
+        	String alwaysOnServerClusterId = Zimbra.getAlwaysOnClusterId();
+        	String localServerId = Provisioning.getInstance().getLocalServer().getId();
+        	if (alwaysOnServerClusterId != null)
+        	{
+        		finalPath.append(alwaysOnServerClusterId);
+        	}
+        	else
+        	{
+        		finalPath.append(localServerId);
+        	}
+        }
+        else
+        {
+        	String localServerId = Provisioning.getInstance().getLocalServer().getId();
+        	finalPath.append(localServerId);
+        }
+        return finalPath.toString();
     }
 
-    private StringBuilder getMailboxDir(int mboxId, String subdir) {
+    private StringBuilder getMailboxDir(int mboxId, String subdir) throws ServiceException {
         StringBuilder result = new StringBuilder();
         int dir = (mboxId >> mboxBits) & mboxGroupBitmask;
-        result.append(rootPath).append(File.separator).append(dir).append(File.separator).append(mboxId);
+        
+        result.append(rootPath).append(File.separator);
+
+        if (Provisioning.getInstance().getLocalServer().isConfiguredServerIDForBlobDirEnabled())
+        	result.append(getConfiguredServerID()).append(File.separator);
+
+        result.append(dir).append(File.separator).append(mboxId);
+        
         if (subdir != null) {
             result.append(File.separator).append(subdir);
         }
         return result;
     }
 
-    public String getMailboxDir(int mboxId, short type) {
+    public String getMailboxDir(int mboxId, short type) throws ServiceException {
         return getMailboxDir(mboxId, type == TYPE_INDEX ? SUBDIR_INDEX : SUBDIR_MESSAGE).toString();
     }
 
-    public String getBlobDir(int mboxId, int itemId) {
+    public String getBlobDir(int mboxId, int itemId) throws ServiceException {
         long dir = (itemId >> fileBits) & fileGroupBitmask;
         return getMailboxDir(mboxId, SUBDIR_MESSAGE).append(File.separator).append(dir).toString();
     }
 
-    public String getMessageRootDir(int mboxId) {
+    public String getMessageRootDir(int mboxId) throws ServiceException {
         return getMailboxDir(mboxId, null).toString();
     }
 

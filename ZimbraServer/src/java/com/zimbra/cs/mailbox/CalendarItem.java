@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -102,6 +104,7 @@ import com.zimbra.cs.store.StagedBlob;
 import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 import com.zimbra.cs.util.JMSession;
+import com.zimbra.soap.mail.type.CalendarReply;
 
 /**
  * An APPOINTMENT consists of one or more INVITES in the same series -- ie that
@@ -168,7 +171,11 @@ public abstract class CalendarItem extends MailItem {
     }
 
     protected CalendarItem(Mailbox mbox, UnderlyingData data) throws ServiceException {
-        super(mbox, data);
+        this(mbox, data, false);
+    }
+
+    protected CalendarItem(Mailbox mbox, UnderlyingData data, boolean skipCache) throws ServiceException {
+        super(mbox, data, skipCache);
         if (mData.type != Type.APPOINTMENT.toByte() && mData.type != Type.TASK.toByte()) {
             throw new IllegalArgumentException();
         }
@@ -524,7 +531,8 @@ public abstract class CalendarItem extends MailItem {
         CalendarItem item = type == Type.APPOINTMENT ? new Appointment(mbox, data) : new Task(mbox, data);
         Invite defInvite = item.getDefaultInviteOrNull();
         if (defInvite != null) {
-            Collection<Instance> instances = item.expandInstances(0, Long.MAX_VALUE, false);
+            Collection<Instance> instances =
+                    item.expandInstances(CalendarUtils.MICROSOFT_EPOC_START_MS_SINCE_EPOC, Long.MAX_VALUE, false);
             if (instances.isEmpty()) {
                 ZimbraLog.calendar.info("CalendarItem has effectively zero instances: id=%d, folderId=%d, subject=\"%s\", UID=%s ",
                         data.id, folder.getId(), firstInvite.isPublic() ? firstInvite.getName() : "(private)", firstInvite.getUid());
@@ -647,6 +655,29 @@ public abstract class CalendarItem extends MailItem {
         }
     }
 
+    /**
+     * Diagnostic code to flag when odd RECURRENCE-ID is used
+     */
+    private void checkRecurIdIsSensible(RecurId recurId) throws ServiceException {
+        Collection<Instance> instancesNear = instancesNear(recurId);
+        if (instancesNear.isEmpty()) {
+            ZimbraLog.calendar.warn(
+                    "WARNING:RECURRENCE-ID %s, does not match any pre-existing instances.",
+                    recurId.toString());
+
+        } else if (!instanceMatches(recurId, instancesNear)) {
+            ICalTimeZone exdateTZ = recurId.getDt().getTimeZone();
+            StringBuilder sb = new StringBuilder();
+            for (Instance instance: instancesNear) {
+                long dtStart = instance.getStart();
+                sb.append(" ").append(ParsedDateTime.fromUTCTime(dtStart, exdateTZ));
+            }
+            ZimbraLog.calendar.warn(
+                "WARNING:RECURRENCE-ID %s, does not match any pre-existing instances.  Nearby times:%s",
+                recurId.toString(), sb.toString());
+        }
+    }
+
     private boolean updateRecurrence(long nextAlarm) throws ServiceException {
         long startTime, endTime;
 
@@ -676,6 +707,7 @@ public abstract class CalendarItem extends MailItem {
                         method.equals(ICalTok.PUBLISH.toString())) {
                         assert (cur.hasRecurId());
                         if (cur.hasRecurId() && cur.getStartTime() != null) {
+                            checkRecurIdIsSensible(cur.getRecurId());
                             Recurrence.ExceptionRule exceptRule = null;
                             IRecurrence curRule = cur.getRecurrence();
                             if (curRule != null && curRule instanceof Recurrence.ExceptionRule) {
@@ -924,9 +956,8 @@ public abstract class CalendarItem extends MailItem {
             if (ZimbraLog.calendar.isDebugEnabled()) {
                 long elapsed = System.currentTimeMillis() - startTime;
                 ZimbraLog.calendar.debug(
-                        "RECURRENCE EXPANSION for appt/task " + getId() +
-                        ": start=" + start + ", end=" + end +
-                        "; took " + elapsed + "ms");
+                        "RECURRENCE EXPANSION for appt/task %s: start=%s, end=%s; took %sms.  %s instances",
+                        getId(), start, end, elapsed, instances.size());
             }
         } else {
             // Calendar item has no recurrence.  The basic case is a simple, non-recurring appointment
@@ -1350,6 +1381,15 @@ public abstract class CalendarItem extends MailItem {
             }
         }
         return defInv;
+    }
+
+    public Invite getInviteByMailItem(int mailItemId) {
+        for (Invite cur : mInvites) {
+            if(cur.getMailItemId() == mailItemId) {
+                return cur;
+            }
+        }
+        return null;
     }
 
     public Invite getDefaultInviteOrNull() {
@@ -2743,6 +2783,28 @@ public abstract class CalendarItem extends MailItem {
             ZAttendee at = metaAttendee != null ? new ZAttendee(metaAttendee) : null;
             ReplyInfo ri = new ReplyInfo(at, seq, dtstamp, recurId);
             return ri;
+        }
+
+        public CalendarReply toJAXB() {
+            ZAttendee attendee = getAttendee();
+            CalendarReply jaxb = new CalendarReply(getSeq(), getDtStamp(), attendee.getAddress());
+            if (attendee.hasSentBy()) {
+                jaxb.setSentBy(attendee.getSentBy());
+            }
+            if (attendee.hasPartStat()) {
+                jaxb.setPartStat(attendee.getPartStat());
+            }
+            RecurId rid = getRecurId();
+            if (rid != null) {
+                jaxb.setRecurrenceRangeType(rid.getRange());
+                ParsedDateTime dateTime = rid.getDt();
+                jaxb.setRecurrenceId(dateTime.getDateTimePartString(false));
+                if (dateTime.hasTime()) {
+                    jaxb.setTimezone(dateTime.getTZName());
+                    jaxb.setRecurIdZ(rid.getDtZ());
+                }
+            }
+            return jaxb;
         }
 
         @Override

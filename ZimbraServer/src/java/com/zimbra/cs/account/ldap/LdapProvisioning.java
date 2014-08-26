@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -66,6 +68,7 @@ import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AccountServiceException.AuthFailedServiceException;
 import com.zimbra.cs.account.Alias;
 import com.zimbra.cs.account.AliasedEntry;
+import com.zimbra.cs.account.AlwaysOnCluster;
 import com.zimbra.cs.account.AttributeClass;
 import com.zimbra.cs.account.AttributeInfo;
 import com.zimbra.cs.account.AttributeManager;
@@ -129,6 +132,7 @@ import com.zimbra.cs.account.gal.GalUtil;
 import com.zimbra.cs.account.krb5.Krb5Principal;
 import com.zimbra.cs.account.ldap.entry.LdapAccount;
 import com.zimbra.cs.account.ldap.entry.LdapAlias;
+import com.zimbra.cs.account.ldap.entry.LdapAlwaysOnCluster;
 import com.zimbra.cs.account.ldap.entry.LdapCalendarResource;
 import com.zimbra.cs.account.ldap.entry.LdapConfig;
 import com.zimbra.cs.account.ldap.entry.LdapCos;
@@ -226,6 +230,7 @@ public class LdapProvisioning extends LdapProv {
     private final INamedEntryCache<Group> groupCache;
     private final IMimeTypeCache mimeTypeCache;
     private final INamedEntryCache<Server> serverCache;
+    private final INamedEntryCache<AlwaysOnCluster> alwaysOnClusterCache;
     private final INamedEntryCache<UCService> ucServiceCache;
     private final INamedEntryCache<ShareLocator> shareLocatorCache;
     private final INamedEntryCache<XMPPComponent> xmppComponentCache;
@@ -280,6 +285,7 @@ public class LdapProvisioning extends LdapProv {
         shareLocatorCache = cache.shareLocatorCache();
         xmppComponentCache = cache.xmppComponentCache();
         zimletCache = cache.zimletCache();
+        alwaysOnClusterCache = cache.alwaysOnClusterCache();
 
         setDIT();
         setHelper(new ZLdapHelper(this));
@@ -544,6 +550,7 @@ public class LdapProvisioning extends LdapProv {
 
             Map<String,Object> defaults = null;
             Map<String,Object> secondaryDefaults = null;
+            Map<String,Object> overrideDefaults = null;
 
             if (entry instanceof Account) {
                 //
@@ -579,12 +586,16 @@ public class LdapProvisioning extends LdapProv {
                 defaults = getConfig().getDomainDefaults();
             } else if (entry instanceof Server) {
                 defaults = getConfig().getServerDefaults();
+                AlwaysOnCluster aoc = getAlwaysOnCluster((Server) entry);
+                if (aoc != null) {
+                    overrideDefaults = aoc.getServerOverrides();
+                }
             }
 
             if (defaults == null && secondaryDefaults == null)
                 entry.setAttrs(attrs);
             else
-                entry.setAttrs(attrs, defaults, secondaryDefaults);
+                entry.setAttrs(attrs, defaults, secondaryDefaults, overrideDefaults);
 
             extendLifeInCacheOrFlush(entry);
 
@@ -608,6 +619,8 @@ public class LdapProvisioning extends LdapProv {
             xmppComponentCache.replace((XMPPComponent)entry);
         } else if (entry instanceof LdapZimlet) {
             zimletCache.replace((LdapZimlet)entry);
+        } else if (entry instanceof LdapAlwaysOnCluster) {
+            alwaysOnClusterCache.replace((AlwaysOnCluster) entry);
         } else if (entry instanceof Group) {
             /*
              * DLs returned by Provisioning.get(DistributionListBy) and
@@ -1255,7 +1268,7 @@ public class LdapProvisioning extends LdapProv {
             if (acct == null) {
                 throw ServiceException.FAILURE(
                         "unable to get account after creating LDAP account entry: " +
-                        emailAddress + ", check ldap log for possible BDB deadlock", null);
+                        emailAddress + ", check ldap log for possible error", null);
             }
 
             AttributeManager.getInstance().postModify(acctAttrs, acct, callbackContext);
@@ -1375,7 +1388,7 @@ public class LdapProvisioning extends LdapProv {
     private boolean addDefaultMailHost(ZMutableEntry entry, Server server, boolean setMailTransport)
     throws ServiceException {
         String serviceHostname = server.getAttr(Provisioning.A_zimbraServiceHostname);
-        if (server.hasMailboxService() && serviceHostname != null) {
+        if (server.hasMailClientService() && serviceHostname != null) {
             setMailHost(entry,  server, setMailTransport);
             return true;
         }
@@ -1432,12 +1445,12 @@ public class LdapProvisioning extends LdapProv {
             if (s != null) {
                 String mailHost = s.getAttr(Provisioning.A_zimbraServiceHostname);
                 if (mailHost != null) {
-                    if (s.hasMailboxService()) {
+                    if (s.hasMailClientService()) {
                         setMailHost(entry, s, setMailTransport);
                         return mailHost;
                     } else {
                         ZimbraLog.account.warn("cos("+cosName+") mailHostPool server(" +
-                                s.getName()+") is not enabled for mailbox service");
+                                s.getName()+") is not a mailclient server with service webapp enabled");
                     }
                 } else {
                     ZimbraLog.account.warn("cos("+cosName+") mailHostPool server(" +
@@ -3643,6 +3656,36 @@ public class LdapProvisioning extends LdapProv {
         return s;
     }
 
+    private AlwaysOnCluster getAlwaysOnClusterByQuery(ZLdapFilter filter, ZLdapContext initZlc)
+    throws ServiceException {
+        try {
+            ZSearchResultEntry sr = helper.searchForEntry(mDIT.alwaysOnClusterBaseDN(), filter, initZlc, false);
+            if (sr != null) {
+                return new LdapAlwaysOnCluster(sr.getDN(), sr.getAttributes(), null, this);
+            }
+        } catch (LdapMultipleEntriesMatchedException e) {
+            throw AccountServiceException.MULTIPLE_ENTRIES_MATCHED("getAlwaysOnClusterByQuery", e);
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to lookup alwaysOnCluster via query: "+
+                    filter.toFilterString() + " message:" + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    private AlwaysOnCluster getAlwaysOnClusterById(String zimbraId, ZLdapContext zlc, boolean nocache)
+    throws ServiceException {
+        if (zimbraId == null)
+            return null;
+        AlwaysOnCluster c = null;
+        if (!nocache)
+            c = alwaysOnClusterCache.getById(zimbraId);
+        if (c == null) {
+            c = getAlwaysOnClusterByQuery(filterFactory.alwaysOnClusterById(zimbraId), zlc);
+            alwaysOnClusterCache.put(c);
+        }
+        return c;
+    }
+
     private ShareLocator getShareLocatorByQuery(ZLdapFilter filter, ZLdapContext initZlc)
     throws ServiceException {
         try {
@@ -3722,9 +3765,33 @@ public class LdapProvisioning extends LdapProv {
         }
     }
 
+    private AlwaysOnCluster getAlwaysOnClusterByNameInternal(String name) throws ServiceException {
+        return getAlwaysOnClusterByName(name, false);
+    }
+
+    private AlwaysOnCluster getAlwaysOnClusterByName(String name, boolean nocache) throws ServiceException {
+        if (!nocache) {
+            AlwaysOnCluster c = alwaysOnClusterCache.getByName(name);
+            if (c != null)
+                return c;
+        }
+
+        try {
+            String dn = mDIT.alwaysOnClusterNameToDN(name);
+            ZAttributes attrs = helper.getAttributes(LdapUsage.GET_ALWAYSONCLUSTER, dn);
+            LdapAlwaysOnCluster c = new LdapAlwaysOnCluster(dn, attrs, null, this);
+            alwaysOnClusterCache.put(c);
+            return c;
+        } catch (LdapEntryNotFoundException e) {
+            return null;
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to lookup alwaysOnCluster by name: "+name+" message: "+e.getMessage(), e);
+        }
+    }
+
     @Override
     public List<Server> getAllServers() throws ServiceException {
-        return getAllServers(null);
+        return getAllServers((String)null);
     }
 
     @Override
@@ -3758,6 +3825,118 @@ public class LdapProvisioning extends LdapProv {
             serverCache.put(result, true);
         Collections.sort(result);
         return result;
+    }
+
+    @Override
+    public List<Server> getAllServers(String service, String clusterId) throws ServiceException {
+        List<Server> result = new ArrayList<Server>();
+
+        ZLdapFilter filter = filterFactory.serverByServiceAndAlwaysOnCluster(service, clusterId);
+
+        try {
+            Map<String, Object> serverDefaults = getConfig().getServerDefaults();
+
+            ZSearchResultEnumeration ne = helper.searchDir(mDIT.serverBaseDN(),
+                    filter, ZSearchControls.SEARCH_CTLS_SUBTREE());
+            while (ne.hasMore()) {
+                ZSearchResultEntry sr = ne.next();
+                LdapServer s = new LdapServer(sr.getDN(), sr.getAttributes(),
+                        serverDefaults, this);
+                result.add(s);
+            }
+            ne.close();
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to list all servers by cluster id", e);
+        }
+
+        Collections.sort(result);
+        return result;
+    }
+
+    @Override
+    public AlwaysOnCluster createAlwaysOnCluster(String name, Map<String, Object> clusterAttrs)
+    throws ServiceException {
+        name = name.toLowerCase().trim();
+
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
+        AttributeManager.getInstance().preModify(clusterAttrs, null, callbackContext, true);
+
+        ZLdapContext zlc = null;
+        try {
+            zlc = LdapClient.getContext(LdapServerType.MASTER, LdapUsage.CREATE_SERVER);
+
+            ZMutableEntry entry = LdapClient.createMutableEntry();
+            entry.mapToAttrs(clusterAttrs);
+
+            Set<String> ocs = LdapObjectClass.getAlwaysOnClusterObjectClasses(this);
+            entry.addAttr(A_objectClass, ocs);
+
+            String zimbraIdStr = LdapUtil.generateUUID();
+            entry.setAttr(A_zimbraId, zimbraIdStr);
+            entry.setAttr(A_zimbraCreateTimestamp, DateUtil.toGeneralizedTime(new Date()));
+            entry.setAttr(A_cn, name);
+            String dn = mDIT.alwaysOnClusterNameToDN(name);
+            entry.setDN(dn);
+            zlc.createEntry(entry);
+
+            AlwaysOnCluster cluster = getAlwaysOnClusterById(zimbraIdStr, zlc, true);
+            AttributeManager.getInstance().postModify(clusterAttrs, cluster, callbackContext);
+            return cluster;
+
+        } catch (LdapEntryAlreadyExistException nabe) {
+            throw AccountServiceException.ALWAYSONCLUSTER_EXISTS(name);
+        } catch (LdapException e) {
+            throw e;
+        } catch (AccountServiceException e) {
+            throw e;
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to create akwaysOnCluster: " + name, e);
+        } finally {
+            LdapClient.closeContext(zlc);
+        }
+    }
+
+    @Override
+    public List<AlwaysOnCluster> getAllAlwaysOnClusters() throws ServiceException {
+        List<AlwaysOnCluster> result = new ArrayList<AlwaysOnCluster>();
+
+        ZLdapFilter filter = filterFactory.allAlwaysOnClusters();
+
+        try {
+
+            ZSearchResultEnumeration ne = helper.searchDir(mDIT.alwaysOnClusterBaseDN(),
+                    filter, ZSearchControls.SEARCH_CTLS_SUBTREE());
+            while (ne.hasMore()) {
+                ZSearchResultEntry sr = ne.next();
+                LdapAlwaysOnCluster c = new LdapAlwaysOnCluster(sr.getDN(), sr.getAttributes(),
+                        null, this);
+                result.add(c);
+            }
+            ne.close();
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to list all alwaysOnClusters", e);
+        }
+
+        if (result.size() > 0)
+            alwaysOnClusterCache.put(result, true);
+        Collections.sort(result);
+        return result;
+    }
+
+    private AlwaysOnCluster getAlwaysOnClusterByIdInternal(String zimbraId) throws ServiceException {
+        return getAlwaysOnClusterById(zimbraId, null, false);
+    }
+
+    @Override
+    public AlwaysOnCluster get(Key.AlwaysOnClusterBy keyType, String key) throws ServiceException {
+        switch(keyType) {
+            case id:
+                return getAlwaysOnClusterByIdInternal(key);
+            case name:
+                return getAlwaysOnClusterByNameInternal(key);
+            default:
+                    return null;
+        }
     }
 
     private List<Cos> searchCOS(ZLdapFilter filter, ZLdapContext initZlc)
@@ -3848,6 +4027,24 @@ public class LdapProvisioning extends LdapProv {
             serverCache.remove(server);
         } catch (ServiceException e) {
             throw ServiceException.FAILURE("unable to purge server: "+zimbraId, e);
+        } finally {
+            LdapClient.closeContext(zlc);
+        }
+    }
+
+    @Override
+    public void deleteAlwaysOnCluster(String zimbraId) throws ServiceException {
+        LdapAlwaysOnCluster cluster = (LdapAlwaysOnCluster) getAlwaysOnClusterByIdInternal(zimbraId);
+        if (cluster == null)
+            throw AccountServiceException.NO_SUCH_ALWAYSONCLUSTER(zimbraId);
+
+        ZLdapContext zlc = null;
+        try {
+            zlc = LdapClient.getContext(LdapServerType.MASTER, LdapUsage.DELETE_ALWAYSONCLUSTER);
+            zlc.deleteEntry(cluster.getDN());
+            alwaysOnClusterCache.remove(cluster);
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to purge alwaysOnCluster: "+zimbraId, e);
         } finally {
             LdapClient.closeContext(zlc);
         }
@@ -5109,23 +5306,26 @@ public class LdapProvisioning extends LdapProv {
     private void verifyPassword(Account acct, String password, AuthMechanism authMech,
             Map<String, Object> authCtxt)
     throws ServiceException {
-
-        LdapLockoutPolicy lockoutPolicy = new LdapLockoutPolicy(this, acct);
-        try {
+        synchronized (acct) {
+            LdapLockoutPolicy lockoutPolicy = new LdapLockoutPolicy(this, acct);
             if (lockoutPolicy.isLockedOut()) {
+                try {
+                    verifyPasswordInternal(acct, password, authMech, authCtxt);
+                } catch (ServiceException e) {
+                    lockoutPolicy.failedLogin();
+                }
                 throw AuthFailedServiceException.AUTH_FAILED(acct.getName(),
                         AuthMechanism.namePassedIn(authCtxt), "account lockout");
             }
-
-            // attempt to verify the password
-            verifyPasswordInternal(acct, password, authMech, authCtxt);
-
-            lockoutPolicy.successfulLogin();
-        } catch (AccountServiceException e) {
-            // TODO: only consider it failed if exception was due to password-mismatch
-            lockoutPolicy.failedLogin();
-            // re-throw original exception
-            throw e;
+            try {
+                // attempt to verify the password
+                verifyPasswordInternal(acct, password, authMech, authCtxt);
+                lockoutPolicy.successfulLogin();
+            } catch (AccountServiceException e) {
+                lockoutPolicy.failedLogin();
+                // re-throw original exception
+                throw e;
+            }
         }
     }
 
@@ -5187,8 +5387,15 @@ public class LdapProvisioning extends LdapProv {
             int sepIndex = history[i].indexOf(':');
             if (sepIndex != -1)  {
                 String encoded = history[i].substring(sepIndex+1);
-                if (PasswordUtil.SSHA.verifySSHA(encoded, newPassword))
-                    throw AccountServiceException.PASSWORD_RECENTLY_USED();
+                if (PasswordUtil.SSHA.isSSHA(encoded)) {
+                    if (PasswordUtil.SSHA.verifySSHA(encoded, newPassword))
+                        throw AccountServiceException.PASSWORD_RECENTLY_USED();
+                } else if (PasswordUtil.SSHA512.isSSHA512(encoded)) {
+                    if (PasswordUtil.SSHA512.verifySSHA512(encoded, newPassword))
+                        throw AccountServiceException.PASSWORD_RECENTLY_USED();
+                } else {
+                    ZimbraLog.account.debug("password hash neither SSHA nor SSHA512; ignored for password history");
+                }
             }
         }
     }
@@ -5436,7 +5643,7 @@ public class LdapProvisioning extends LdapProv {
 
         if (userPassword == null) {
             checkPasswordStrength(newPassword, null, cos, entry);
-            userPassword = PasswordUtil.SSHA.generateSSHA(newPassword, null);
+            userPassword = PasswordUtil.SSHA512.generateSSHA512(newPassword, null);
         }
         entry.setAttr(Provisioning.A_userPassword, userPassword);
         entry.setAttr(Provisioning.A_zimbraPasswordModifiedTime, DateUtil.toGeneralizedTime(new Date()));
@@ -5483,7 +5690,7 @@ public class LdapProvisioning extends LdapProv {
             return;
         }
 
-        String encodedPassword = PasswordUtil.SSHA.generateSSHA(newPassword, null);
+        String encodedPassword = PasswordUtil.SSHA512.generateSSHA512(newPassword, null);
 
         // unset it so it doesn't take up space...
         if (mustChange)
@@ -5499,8 +5706,13 @@ public class LdapProvisioning extends LdapProv {
         ChangePasswordListener.ChangePasswordListenerContext ctxts = new ChangePasswordListener.ChangePasswordListenerContext();
         ChangePasswordListener.invokePreModify(acct, newPassword, ctxts, attrs);
 
-        // modify the password
-        modifyAttrs(acct, attrs);
+        try{
+            // modify the password
+            modifyAttrs(acct, attrs);
+        } catch(ServiceException se){
+            ChangePasswordListener.invokeOnException(acct, newPassword, ctxts, se);
+            throw se;
+        }
 
         ChangePasswordListener.invokePostModify(acct, newPassword, ctxts);
     }
@@ -7146,6 +7358,19 @@ public class LdapProvisioning extends LdapProv {
 
         boolean setAsDefault = false;
         List<Signature> existing = getAllSignatures(account);
+
+        // If the signature id is supplied with the request, check that it
+        // is not associated with an existing signature
+        String signatureId = (String)signatureAttrs.get(Provisioning.A_zimbraSignatureId);
+        if (signatureId != null) {
+           for (Signature signature : existing) {
+               if (signatureId.equals(signature.getAttr(Provisioning.A_zimbraSignatureId))) {
+                   throw AccountServiceException.SIGNATURE_EXISTS(signatureId);
+               }
+           }
+        }
+
+
         int numSigs = existing.size();
         if (numSigs >= account.getLongAttr(A_zimbraSignatureMaxNumEntries, 20))
             throw AccountServiceException.TOO_MANY_SIGNATURES();
@@ -7161,7 +7386,7 @@ public class LdapProvisioning extends LdapProv {
         AttributeManager.getInstance().preModify(signatureAttrs, null,
                 callbackContext, checkImmutable);
 
-        String signatureId = (String)signatureAttrs.get(Provisioning.A_zimbraSignatureId);
+
         if (signatureId == null) {
             signatureId = LdapUtil.generateUUID();
             signatureAttrs.put(Provisioning.A_zimbraSignatureId, signatureId);
@@ -7997,6 +8222,7 @@ public class LdapProvisioning extends LdapProv {
             flushCache(CacheEntryType.domain, null);
             flushCache(CacheEntryType.mime, null);
             flushCache(CacheEntryType.server, null);
+            flushCache(CacheEntryType.alwaysOnCluster, null);
             flushCache(CacheEntryType.zimlet, null);
             break;
         case account:
@@ -8097,6 +8323,17 @@ public class LdapProvisioning extends LdapProv {
                 }
             } else
                 serverCache.clear();
+            return;
+        case alwaysOnCluster:
+            if (entries != null) {
+                for (CacheEntry entry : entries) {
+                    Key.AlwaysOnClusterBy clusterBy = Key.AlwaysOnClusterBy.id;
+                    AlwaysOnCluster cluster = get(clusterBy, entry.mEntryIdentity);
+                    if (cluster != null)
+                        reload(cluster, false);
+                }
+            } else
+                alwaysOnClusterCache.clear();
             return;
         case zimlet:
             if (entries != null) {

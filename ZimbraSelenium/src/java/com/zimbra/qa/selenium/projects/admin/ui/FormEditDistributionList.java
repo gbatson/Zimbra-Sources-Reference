@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
@@ -31,16 +33,16 @@ public class FormEditDistributionList extends AbsForm {
 		public static final String PREFERENCES="Preferences";
 		public static final String ACL="ACL";
 	}
-	
+
 	public static class Locators {
-		public static final String NAME_TEXT_BOX="css=input.admin_xform_name_input";
+		public static final String NAME_TEXT_BOX="css=input#ztabv__UNDEFINE_";
 		public static final String SAVE_BUTTON="css=td[id^='zb__ZaCurrentAppBar__SAVE']";
 		public static final String CLOSE_BUTTON="css=td[id^='zb__ZaCurrentAppBar__CLOSE']";
 	}
 
 	public FormEditDistributionList(AbsApplication application) {
 		super(application);
-		
+
 		logger.info("new " + myPageName());
 
 	}
@@ -52,19 +54,19 @@ public class FormEditDistributionList extends AbsForm {
 		if ( !MyApplication.zIsLoaded() )
 			throw new HarnessException("Admin Console application is not active!");
 
-		
+
 		boolean present = sIsElementPresent("");
 		if ( !present ) {
 			return (false);
 		}
-		
+
 		String attrs = sGetAttribute("");
 		if ( !attrs.contains("ZSelected") ) {
 			return (false);
 		}
 
 		return (true);
-		
+
 	}
 
 	@Override
@@ -74,8 +76,6 @@ public class FormEditDistributionList extends AbsForm {
 
 	@Override
 	public void zFill(IItem item) throws HarnessException {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
@@ -83,12 +83,19 @@ public class FormEditDistributionList extends AbsForm {
 		sClickAt(Locators.SAVE_BUTTON,"");
 		sClickAt(Locators.CLOSE_BUTTON,"");
 	}
-	
+
 	public void zClickTreeItem(String treeItem) throws HarnessException {
 		sClickAt("css=td:contains('" + treeItem + "')", "");
 	}
-	
+
 	public void setName(String name) throws HarnessException {
-		sType(Locators.NAME_TEXT_BOX, name);
+		for(int i=10;i>=2;i--) {
+			if(sIsElementPresent(Locators.NAME_TEXT_BOX+i+"_name_2")) {
+				sType(Locators.NAME_TEXT_BOX+i+"_name_2", name);
+				return;
+			}
+		}
+		sType(Locators.NAME_TEXT_BOX+"name_2", name);
+		}
 	}
-}
+

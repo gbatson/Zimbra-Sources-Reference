@@ -1,18 +1,22 @@
  /*
   * ***** BEGIN LICENSE BLOCK *****
   * Zimbra Collaboration Suite Server
-  * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+  * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
   * 
-  * The contents of this file are subject to the Zimbra Public License
-  * Version 1.4 ("License"); you may not use this file except in
-  * compliance with the License.  You may obtain a copy of the License at
-  * http://www.zimbra.com/license.
+  * This program is free software: you can redistribute it and/or modify it under
+  * the terms of the GNU General Public License as published by the Free Software Foundation,
+  * version 2 of the License.
   * 
-  * Software distributed under the License is distributed on an "AS IS"
-  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  * See the GNU General Public License for more details.
+  * You should have received a copy of the GNU General Public License along with this program.
+  * If not, see <http://www.gnu.org/licenses/>.
   * ***** END LICENSE BLOCK *****
   */
 package com.zimbra.cs.html;
+
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,6 +31,7 @@ import org.junit.Test;
 
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedMessage;
@@ -414,6 +419,72 @@ public class DefangFilterTest {
 
     }
 
+    @Test
+    public void testBug73874() throws Exception {
+        String fileName = "bug_73874.txt";
+        InputStream htmlStream = getHtmlBody(fileName);
+        String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
+            true);
+
+        // and make sure we have the the complete URL for
+        Assert.assertTrue(result
+          .contains("https://wiki.tomsawyer.com/download/thumbnails/27132023/Screen+Shot+2012-05-02+at+08.08.12+AM.png?" +
+                "version=1&modificationDate=1335967057000"));
+
+        // case where base URL does not have a trailing '/'
+        String html = "<html><head><base href=\"https://wiki.tomsawyer.com\"/>"
+            + "</head><body>"
+            + "<img  width=\"100\"  src=\"/download/thumbnails/27132023/Screen+Shot+"
+            + "2012-05-02+at+08.08.12+AM.png?version=3D1&modificationDate=3D1335967057"
+            + "000\"/></body></html>";
+        htmlStream = new ByteArrayInputStream(html.getBytes());
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("https://wiki.tomsawyer.com/download/thumbnails/27132023/Screen+Shot+2012-05-02+at+08.08.12+AM.png?"
+                    + "version=3D1&modificationDate=3D1335967057"));
+
+        // case where base URL has a trailing '/'
+        html = "<html><head><base href=\"https://wiki.tomsawyer.com/\" />"
+            + "</head><body>"
+            + "<img  width=\"100\"  src=\"download/thumbnails/27132023/Screen+Shot+"
+            + "2012-05-02+at+08.08.12+AM.png?version=3D1&modificationDate=3D1335967057"
+            + "000\"/></body></html>";
+        htmlStream = new ByteArrayInputStream(html.getBytes());
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("https://wiki.tomsawyer.com/download/thumbnails/27132023/Screen+Shot+2012-05-02+at+08.08.12+AM.png?"
+                    + "version=3D1&modificationDate=3D1335967057"));
+
+       // case where base URL has a single parameter'/'
+        html = "<html><head><base href=\"https://wiki.tomsawyer.com/\" />"
+            + "</head><body>"
+            + "<img  width=\"100\"  src=\"download/thumbnails/27132023/Screen+Shot+"
+            + "2012-05-02+at+08.08.12+AM.png?version=3D1\"/></body></html>";
+        htmlStream = new ByteArrayInputStream(html.getBytes());
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("https://wiki.tomsawyer.com/download/thumbnails/27132023/Screen+Shot+2012-05-02+at+08.08.12+AM.png?"
+                    + "version=3D1"));
+
+     // case where base URL no parameters
+        html = "<html><head><base href=\"https://wiki.tomsawyer.com/\" />"
+            + "</head><body>"
+            + "<img  width=\"100\"  src=\"download/thumbnails/27132023/Screen+Shot+"
+            + "2012-05-02+at+08.08.12+AM.png\"/></body></html>";
+        htmlStream = new ByteArrayInputStream(html.getBytes());
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("https://wiki.tomsawyer.com/download/thumbnails/27132023/Screen+Shot+2012-05-02+at+08.08.12+AM.png"));
+
+     // case where relative URL is invalidsomething like.pngxxx.gif
+        html = "<html><head><base href=\"https://wiki.tomsawyer.com/\" />"
+            + "</head><body>"
+            + "<img  width=\"100\"  src=\"download/thumbnails/27132023/Screen+Shot.pngTest.gif\"/></body></html>";
+        htmlStream = new ByteArrayInputStream(html.getBytes());
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertTrue(!result
+                .contains("https://wiki.tomsawyer.com/download/thumbnails/27132023/Screen+Shot+2012-05-02+at+08.08.12+AM.png"));
+    }
 
 
     @Test
@@ -421,31 +492,41 @@ public class DefangFilterTest {
 
         String html = "<html><head></head><body><a target=\"_blank\" href=\"Neptune.gif\"></a></body></html>";
         InputStream htmlStream = new ByteArrayInputStream(html.getBytes());
-        String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
-            true);
-        Assert.assertTrue(result.contains("<a target=\"_blank\" href=\"Neptune.gif\"></a>"));
+        String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML)
+                .defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("<a target=\"_blank\" href=\"Neptune.gif\"></a>"));
+
 
         html = "<html><body>My pictures <a href=\"javascript:document.write('%3C%61%20%68%72%65%66%3D%22%6A%61%76%"
             + "61%73%63%72%69%70%74%3A%61%6C%65%72%74%28%31%29%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%61%6C%65%"
             + "72%74%28%5C%22%70%30%77%6E%5C%22%29%3E%4D%6F%75%73%65%20%6F%76%65%72%20%68%65%72%65%3C%2F%61%3E')\">here</a></body></html>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
-        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
-        Assert.assertTrue(result.contains("JAVASCRIPT-BLOCKED"));
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML)
+                .defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("JAVASCRIPT-BLOCKED"));
 
         html =  "<html><head></head><body><a target=\"_blank\" href=\"Neptune.txt\"></a></body></html>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
-        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
-        Assert.assertTrue(result.contains("<a target=\"_blank\" href=\"Neptune.txt\"></a>"));
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML)
+                .defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("<a target=\"_blank\" href=\"Neptune.txt\"></a>"));
 
         html =  "<html><head></head><body><a target=\"_blank\" href=\"Neptune.pptx\"></a></body></html>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
-        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
-        Assert.assertTrue(result.contains("<a target=\"_blank\" href=\"Neptune.pptx\"></a>"));
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML)
+                .defang(htmlStream, true);
+        Assert.assertTrue(result
+                .contains("<a target=\"_blank\" href=\"Neptune.pptx\"></a>"));
 
         html = "<li><a href=\"poc.zip?view=html&archseq=0\">\"/><script>alert(1);</script>AAAAAAAAAA</a></li>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
-        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
-        Assert.assertTrue(!result.contains("<script>"));
+        result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML)
+                .defang(htmlStream, true);
+        Assert.assertTrue(!result
+                .contains("<script>"));
     }
 
 
@@ -839,8 +920,9 @@ public class DefangFilterTest {
         Assert.assertTrue(result.contains("p { color : #f00; }"));
         Assert.assertTrue(!result.contains("import3.css"));
     }
-    
-    
+
+
+
     @Test
     public void testBug85478() throws Exception {
         String html = "<a href=\"data:text/html;base64,PHNjcmlwdD5hbGVydCgiSGVsbG8hIik7PC9zY3JpcHQ+\" "
@@ -855,48 +937,66 @@ public class DefangFilterTest {
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAErkJggg=="));
-        
+
         html = "<a target=_blank href=\"data:text/html,<script>alert(opener.document.body.innerHTML)</script>\">"
         		+" clickme in Opera/FF</a>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("DATAURI-BLOCKED"));
-        
+
         html = "<a target=_blank href=\"data.html\"> Data fIle</a>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("data.html"));
-        
+
         html = "<a href=\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAErkJggg==\" />Bug</a>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("DATAURI-BLOCKED"));
-        
+
         html = "<img src=\"data:image/jpeg;base64,/9j/4AAAAAxITGlubwIQAABtbnRyUkdCI\"><br>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("data:image/jpeg;base64,/9j/4AAAAAxITGlubwIQAABtbnRyUkdCI"));
-        
+
         html = "<img src=\"DaTa:image/jpeg;base64,/9j/4AAAAAxITGlubwIQAABtbnRyUkdCI\"><br>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("DaTa:image/jpeg;base64,/9j/4AAAAAxITGlubwIQAABtbnRyUkdCI"));
-        
-        
+
+
         html = "<a href=\"DATA:;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAErkJggg==\" />Bug</a>";
         htmlStream = new ByteArrayInputStream(html.getBytes());
         result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream,
             true);
         Assert.assertTrue(result.contains("DATAURI-BLOCKED"));
-        
+
     }
-    
-    
-    
-   
+
+    @Test
+    public void testBug88360() throws Exception {
+        String fileName = "bug_88360.txt";
+        InputStream inputStream = new FileInputStream(EMAIL_BASE_DIR + fileName);
+        try {
+            String result = DefangFactory.getDefanger(
+                MimeConstants.CT_TEXT_HTML).defang(inputStream, true);
+            Assert.assertFalse(StringUtil.isAsciiString(result));
+        } catch (Exception e) {
+            fail("Should not throw exception." + e.getMessage());
+        }
+
+        String html = "<style type=\"text/css\">  @import 'import3.css'; p { color : #f00; }"
+            + "灻扵楬</style>";
+        InputStream htmlStream = new ByteArrayInputStream(html.getBytes());
+        String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML)
+            .defang(htmlStream, true);
+        Assert.assertFalse(StringUtil.isAsciiString(result));
+        Assert.assertTrue(result.contains("p { color : #f00; }"));
+        Assert.assertTrue(!result.contains("import3.css"));
+    }
 }

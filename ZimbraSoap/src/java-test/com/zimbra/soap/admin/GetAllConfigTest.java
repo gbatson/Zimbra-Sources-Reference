@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.soap.admin;
@@ -18,7 +20,6 @@ import java.io.InputStream;
 import java.util.List;
 
 import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
@@ -27,6 +28,9 @@ import org.apache.log4j.Level;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.KeyValuePair;
 import com.zimbra.soap.admin.message.GetAllConfigResponse;
 import com.zimbra.soap.admin.type.Attr;
 
@@ -42,7 +46,6 @@ public class GetAllConfigTest {
     private static final Logger LOG = Logger.getLogger(GetAllConfigTest.class);
     
     private static Unmarshaller unmarshaller;
-    private static Marshaller marshaller;
 
     static {
         BasicConfigurator.configure();
@@ -54,19 +57,21 @@ public class GetAllConfigTest {
     public static void init() throws Exception {
         JAXBContext jaxb = JAXBContext.newInstance(GetAllConfigResponse.class);
         unmarshaller = jaxb.createUnmarshaller();
-        marshaller = jaxb.createMarshaller();
     }
 
     @Test
     public void unmarshallGetAllConfigResponseTest()
     throws Exception {
-        InputStream is = 
-                getClass().getResourceAsStream(
-                        "GetAllConfigResponse.xml");
-        GetAllConfigResponse resp =
-            (GetAllConfigResponse) unmarshaller.unmarshal(is);
+        InputStream is = getClass().getResourceAsStream("GetAllConfigResponse.xml");
+        Element elem = Element.parseXML(is);
+        List<KeyValuePair> kvps = elem.listKeyValuePairs();
+        is.close();
+        is = getClass().getResourceAsStream("GetAllConfigResponse.xml");
+        GetAllConfigResponse resp = (GetAllConfigResponse) unmarshaller.unmarshal(is);
         Assert.assertNotNull("Response", resp);
         List<Attr> attrs = resp.getAttrs();
-        Assert.assertEquals("Number of attrs", 407, attrs.size());
+        LOG.info("unmarshallGetAllConfigResponseTest:KVPS from elem=" + kvps.size() + " from jaxb=" + attrs.size());
+        Assert.assertTrue("Have some attrs", attrs.size() > 20);
+        Assert.assertEquals("Number of attrs from elem and from jaxb agree", kvps.size(), attrs.size());
     }
 }

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.unittest.prov.ldap;
@@ -38,6 +40,7 @@ import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.AlwaysOnCluster;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Config;
@@ -100,7 +103,7 @@ public class TestACLAll extends LdapTest {
             }
         }
 
-        private Object granteeType;
+        private final Object granteeType;
 
         static TestGranteeType get(GranteeType gt) {
             for (TestGranteeType testGranteeType : TEST_GRANTEE_TYPES) {
@@ -284,6 +287,10 @@ public class TestACLAll extends LdapTest {
         return "server-" + nextSeq();
     }
 
+    private String alwaysOnClusterName() {
+        return "alwaysOnCluster-" + nextSeq();
+    }
+
     private String ucServiceName() {
         return "ucservice-" + nextSeq();
     }
@@ -425,6 +432,10 @@ public class TestACLAll extends LdapTest {
         return provUtil.createServer(serverName());
     }
 
+    private AlwaysOnCluster createAlwaysOnCluster() throws Exception {
+        return provUtil.createAlwaysOnCluster(alwaysOnClusterName());
+    }
+
     private UCService createUCService() throws Exception {
         return provUtil.createUCService(ucServiceName());
     }
@@ -495,6 +506,7 @@ public class TestACLAll extends LdapTest {
             }
         case group:
         case server:
+        case alwaysoncluster:
         case ucservice:
         case xmppcomponent:
         case zimlet:
@@ -542,6 +554,10 @@ public class TestACLAll extends LdapTest {
                 break;
             case server:
                 validTypes.add(TargetType.server);
+                validTypes.add(TargetType.global);
+                break;
+            case alwaysoncluster:
+                validTypes.add(TargetType.alwaysoncluster);
                 validTypes.add(TargetType.global);
                 break;
             case ucservice:
@@ -895,6 +911,10 @@ public class TestACLAll extends LdapTest {
             grantedOnTarget = createServer();
             targetName = ((Server)grantedOnTarget).getName();
             break;
+        case alwaysoncluster:
+            grantedOnTarget = createAlwaysOnCluster();
+            targetName = ((AlwaysOnCluster)grantedOnTarget).getName();
+            break;
         case ucservice:
             grantedOnTarget = createUCService();
             targetName = ((UCService)grantedOnTarget).getName();
@@ -1009,6 +1029,9 @@ public class TestACLAll extends LdapTest {
                 inheritableTypes.add(TargetType.global);
                 break;
             case server:
+                inheritableTypes.add(TargetType.global);
+                break;
+            case alwaysoncluster:
                 inheritableTypes.add(TargetType.global);
                 break;
             case ucservice:
@@ -1271,6 +1294,16 @@ public class TestACLAll extends LdapTest {
                 badTargets.add(createServer());
             } else if (grantedOnTargetType == TargetType.global) {
                 goodTargets.add(createServer());
+            } else {
+                badTargets.add(grantedOnTarget);
+            }
+            break;
+        case alwaysoncluster:
+            if (grantedOnTargetType == TargetType.alwaysoncluster) {
+                goodTargets.add(grantedOnTarget);
+                badTargets.add(createAlwaysOnCluster());
+            } else if (grantedOnTargetType == TargetType.global) {
+                goodTargets.add(createAlwaysOnCluster());
             } else {
                 badTargets.add(grantedOnTarget);
             }

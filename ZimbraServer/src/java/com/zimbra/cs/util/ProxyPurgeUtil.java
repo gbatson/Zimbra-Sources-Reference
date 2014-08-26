@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -33,6 +35,7 @@ import com.zimbra.cs.account.ldap.LdapProvisioning;
 import com.zimbra.cs.ldap.LdapClient;
 import com.zimbra.cs.ldap.LdapServerType;
 import com.zimbra.cs.ldap.LdapUsage;
+import com.zimbra.cs.ldap.ZLdapContext;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
@@ -259,20 +262,25 @@ public class ProxyPurgeUtil
                 // get domain alias from the given the domain
                 // this logic works for for all cases account=addr@<alias domain> or alias-name@<alias domain>
                 if (prov instanceof LdapProvisioning) {
-                    List<String> aliasDomainIds = ((LdapProvisioning) prov).getEmptyAliasDomainIds(LdapClient.getContext(LdapServerType.MASTER, LdapUsage.GET_DOMAIN), d, false);
-                    if (aliasDomainIds != null) {
-                        for (String aliasDomainId : aliasDomainIds) {
-                            String aliasDomain = prov.getDomainById(aliasDomainId).getDomainName();
-                            for (String userName : uids) {
-                                routes.add("route:proto=http;user=" + userName + "@" + aliasDomain);
-                                routes.add("route:proto=imap;user=" + userName + "@" + aliasDomain);
-                                routes.add("route:proto=pop3;user=" + userName + "@" + aliasDomain);
-                                routes.add("route:proto=httpssl;user=" + userName + "@" + aliasDomain);
-                                routes.add("route:proto=imapssl;user=" + userName + "@" + aliasDomain);
-                                routes.add("route:proto=pop3ssl;user=" + userName + "@" + aliasDomain);
-                                routes.add("alias:user=" + userName + ";ip=" + aliasDomain);
+                    ZLdapContext ldpCtx = LdapClient.getContext(LdapServerType.MASTER, LdapUsage.GET_DOMAIN);
+                    try {
+                        List<String> aliasDomainIds = ((LdapProvisioning) prov).getEmptyAliasDomainIds(ldpCtx, d, false);
+                        if (aliasDomainIds != null) {
+                            for (String aliasDomainId : aliasDomainIds) {
+                                String aliasDomain = prov.getDomainById(aliasDomainId).getDomainName();
+                                for (String userName : uids) {
+                                    routes.add("route:proto=http;user=" + userName + "@" + aliasDomain);
+                                    routes.add("route:proto=imap;user=" + userName + "@" + aliasDomain);
+                                    routes.add("route:proto=pop3;user=" + userName + "@" + aliasDomain);
+                                    routes.add("route:proto=httpssl;user=" + userName + "@" + aliasDomain);
+                                    routes.add("route:proto=imapssl;user=" + userName + "@" + aliasDomain);
+                                    routes.add("route:proto=pop3ssl;user=" + userName + "@" + aliasDomain);
+                                    routes.add("alias:user=" + userName + ";ip=" + aliasDomain);
+                                }
                             }
                         }
+                    } finally {
+                        LdapClient.closeContext(ldpCtx);
                     }
                 }
 

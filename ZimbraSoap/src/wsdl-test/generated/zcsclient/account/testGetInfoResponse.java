@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -54,6 +56,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="pref" type="{urn:zimbraAccount}pref" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -65,6 +68,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="attr" type="{urn:zimbraAccount}attr" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -76,6 +80,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="zimlet" type="{urn:zimbraAccount}accountZimletInfo" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -87,6 +92,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="prop" type="{urn:zimbraAccount}prop" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -98,6 +104,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="identity" type="{urn:zimbraAccount}identity" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -109,6 +116,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element ref="{urn:zimbraAccount}signature" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -140,6 +148,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="childAccount" type="{urn:zimbraAccount}childAccount" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -151,6 +160,7 @@ import javax.xml.bind.annotation.XmlType;
  *                 &lt;sequence>
  *                   &lt;element name="targets" type="{urn:zimbraAccount}discoverRightsInfo" maxOccurs="unbounded" minOccurs="0"/>
  *                 &lt;/sequence>
+ *                 &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
  *               &lt;/restriction>
  *             &lt;/complexContent>
  *           &lt;/complexType>
@@ -885,6 +895,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="attr" type="{urn:zimbraAccount}attr" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -899,6 +910,8 @@ public class testGetInfoResponse {
     public static class Attrs {
 
         protected List<testAttr> attr;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the attr property.
@@ -929,6 +942,30 @@ public class testGetInfoResponse {
             return this.attr;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -944,6 +981,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="childAccount" type="{urn:zimbraAccount}childAccount" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -958,6 +996,8 @@ public class testGetInfoResponse {
     public static class ChildAccounts {
 
         protected List<testChildAccount> childAccount;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the childAccount property.
@@ -986,6 +1026,30 @@ public class testGetInfoResponse {
                 childAccount = new ArrayList<testChildAccount>();
             }
             return this.childAccount;
+        }
+
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
         }
 
     }
@@ -1026,14 +1090,14 @@ public class testGetInfoResponse {
     public static class DataSources {
 
         @XmlElements({
+            @XmlElement(name = "gal", type = testAccountGalDataSource.class),
             @XmlElement(name = "yab", type = testAccountYabDataSource.class),
             @XmlElement(name = "rss", type = testAccountRssDataSource.class),
+            @XmlElement(name = "caldav", type = testAccountCaldavDataSource.class),
             @XmlElement(name = "pop3", type = testAccountPop3DataSource.class),
-            @XmlElement(name = "cal", type = testAccountCalDataSource.class),
             @XmlElement(name = "imap", type = testAccountImapDataSource.class),
-            @XmlElement(name = "gal", type = testAccountGalDataSource.class),
             @XmlElement(name = "unknown", type = testAccountUnknownDataSource.class),
-            @XmlElement(name = "caldav", type = testAccountCaldavDataSource.class)
+            @XmlElement(name = "cal", type = testAccountCalDataSource.class)
         })
         protected List<testAccountDataSource> imapOrPop3OrCaldav;
 
@@ -1055,14 +1119,14 @@ public class testGetInfoResponse {
          * 
          * <p>
          * Objects of the following type(s) are allowed in the list
+         * {@link testAccountGalDataSource }
          * {@link testAccountYabDataSource }
          * {@link testAccountRssDataSource }
-         * {@link testAccountPop3DataSource }
-         * {@link testAccountCalDataSource }
-         * {@link testAccountImapDataSource }
-         * {@link testAccountGalDataSource }
-         * {@link testAccountUnknownDataSource }
          * {@link testAccountCaldavDataSource }
+         * {@link testAccountPop3DataSource }
+         * {@link testAccountImapDataSource }
+         * {@link testAccountUnknownDataSource }
+         * {@link testAccountCalDataSource }
          * 
          * 
          */
@@ -1088,6 +1152,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="identity" type="{urn:zimbraAccount}identity" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -1102,6 +1167,8 @@ public class testGetInfoResponse {
     public static class Identities {
 
         protected List<testIdentity> identity;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the identity property.
@@ -1132,6 +1199,30 @@ public class testGetInfoResponse {
             return this.identity;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -1147,6 +1238,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="pref" type="{urn:zimbraAccount}pref" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -1161,6 +1253,8 @@ public class testGetInfoResponse {
     public static class Prefs {
 
         protected List<testPref> pref;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the pref property.
@@ -1191,6 +1285,30 @@ public class testGetInfoResponse {
             return this.pref;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -1206,6 +1324,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="prop" type="{urn:zimbraAccount}prop" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -1220,6 +1339,8 @@ public class testGetInfoResponse {
     public static class Props {
 
         protected List<testProp> prop;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the prop property.
@@ -1250,6 +1371,30 @@ public class testGetInfoResponse {
             return this.prop;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -1265,6 +1410,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="targets" type="{urn:zimbraAccount}discoverRightsInfo" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -1279,6 +1425,8 @@ public class testGetInfoResponse {
     public static class Rights {
 
         protected List<testDiscoverRightsInfo> targets;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the targets property.
@@ -1309,6 +1457,30 @@ public class testGetInfoResponse {
             return this.targets;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -1324,6 +1496,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element ref="{urn:zimbraAccount}signature" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -1338,6 +1511,8 @@ public class testGetInfoResponse {
     public static class Signatures {
 
         protected List<testSignature> signature;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the signature property.
@@ -1368,6 +1543,30 @@ public class testGetInfoResponse {
             return this.signature;
         }
 
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
+        }
+
     }
 
 
@@ -1383,6 +1582,7 @@ public class testGetInfoResponse {
      *       &lt;sequence>
      *         &lt;element name="zimlet" type="{urn:zimbraAccount}accountZimletInfo" maxOccurs="unbounded" minOccurs="0"/>
      *       &lt;/sequence>
+     *       &lt;attribute name="unusedCodeGenHelper" type="{http://www.w3.org/2001/XMLSchema}string" />
      *     &lt;/restriction>
      *   &lt;/complexContent>
      * &lt;/complexType>
@@ -1397,6 +1597,8 @@ public class testGetInfoResponse {
     public static class Zimlets {
 
         protected List<testAccountZimletInfo> zimlet;
+        @XmlAttribute(name = "unusedCodeGenHelper")
+        protected String unusedCodeGenHelper;
 
         /**
          * Gets the value of the zimlet property.
@@ -1425,6 +1627,30 @@ public class testGetInfoResponse {
                 zimlet = new ArrayList<testAccountZimletInfo>();
             }
             return this.zimlet;
+        }
+
+        /**
+         * Gets the value of the unusedCodeGenHelper property.
+         * 
+         * @return
+         *     possible object is
+         *     {@link String }
+         *     
+         */
+        public String getUnusedCodeGenHelper() {
+            return unusedCodeGenHelper;
+        }
+
+        /**
+         * Sets the value of the unusedCodeGenHelper property.
+         * 
+         * @param value
+         *     allowed object is
+         *     {@link String }
+         *     
+         */
+        public void setUnusedCodeGenHelper(String value) {
+            this.unusedCodeGenHelper = value;
         }
 
     }

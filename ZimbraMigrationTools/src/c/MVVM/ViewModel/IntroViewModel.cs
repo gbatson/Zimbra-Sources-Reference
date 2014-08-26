@@ -24,6 +24,7 @@ public class IntroViewModel: BaseViewModel
     private bool m_isBrowser = false;
     private ConfigViewModelS m_configViewModelS;
     private ConfigViewModelU m_configViewModelU;
+    private ConfigViewModelZU m_configViewModelZU;
     private ConfigViewModelSDest m_configViewModelSDest;
     private ConfigViewModelUDest m_configViewModelUDest;
     private OptionsViewModel m_optionsViewModel;
@@ -38,6 +39,7 @@ public class IntroViewModel: BaseViewModel
         this.GetIntroLicenseCommand = new ActionCommand(this.GetIntroLicense, () => true);
         this.GetIntroUserMigCommand = new ActionCommand(this.GetIntroUserMig, () => true);
         this.GetIntroServerMigCommand = new ActionCommand(this.GetIntroServerMig, () => true);
+        this.GetIntroDesktopMigCommand = new ActionCommand(this.GetIntroDesktopMig, () => true);
         this.NextCommand = new ActionCommand(this.Next, () => true);
         Application.Current.Properties["sdp"] = shortDatePattern;
     }
@@ -57,6 +59,11 @@ public class IntroViewModel: BaseViewModel
         Process.Start(new ProcessStartInfo(urlString));
     }
     public ICommand GetIntroUserMigCommand {
+        get;
+        private set;
+    }
+    public ICommand GetIntroDesktopMigCommand
+    {
         get;
         private set;
     }
@@ -82,6 +89,35 @@ public class IntroViewModel: BaseViewModel
                 m_scheduleViewModel.SchedList.Clear();
             }
             m_optionsViewModel.OEnableRulesAndOOO = m_configViewModelU.Isprofile;
+            m_optionsViewModel.OEnableNext = !m_scheduleViewModel.IsComplete();
+        }
+    }
+
+    private void GetIntroDesktopMig()
+    {
+        BaseViewModel.isDesktop = true;
+        if (BaseViewModel.isServer)
+        {
+            for (int i = 6; i > 0; i--)
+            {
+                TheViews.RemoveAt(i);
+            }
+            BaseViewModel.isServer = false;
+            BaseViewModel.isDesktop = true;
+            IsUserMigration = false;
+            IsDesktopMigration = true;
+            IsServerMigration = false;
+            Application.Current.Properties["migrationmode"] = "user";
+            AddViews(m_isBrowser);
+            if (m_usersViewModel.UsersList.Count > 0)
+            {
+                m_usersViewModel.UsersList.Clear();
+            }
+            if (m_scheduleViewModel.SchedList.Count > 0)
+            {
+                m_scheduleViewModel.SchedList.Clear();
+            }
+            m_optionsViewModel.OEnableRulesAndOOO = m_configViewModelZU.Isprofile;
             m_optionsViewModel.OEnableNext = !m_scheduleViewModel.IsComplete();
         }
     }
@@ -127,66 +163,77 @@ public class IntroViewModel: BaseViewModel
             }
             Application.Current.Properties["mw"] = mw;
         }
-
-        // Get data to initialize the profile combo boxes
-        string[] profiles = mw.GetListofMapiProfiles();
-
-        // FBS bug 74917 -- 6/1/12
-        if (profiles == null)
+        if (!isDesktop)
         {
-            profiles = new string[1];
-            profiles[0] = "No profiles";
-        }
-        ////
+            // Get data to initialize the profile combo boxes
+            string[] profiles = mw.GetListofMapiProfiles();
 
-        if (profiles[0].IndexOf("No profiles") != -1)
-        {
-            string msg = "No Exchange profiles exist.  ";
-            if (isServer)
+            // FBS bug 74917 -- 6/1/12
+            if (profiles == null)
             {
-                msg += "Please enter the Exchange Server information manually.";
-                m_configViewModelS.Isprofile = false;
-                m_configViewModelS.IsmailServer = true;
+                profiles = new string[1];
+                profiles[0] = "No profiles";
+            }
+            ////
+
+            if (profiles[0].IndexOf("No profiles") != -1)
+            {
+                string msg = "No Exchange profiles exist.  ";
+                if (isServer)
+                {
+                    msg += "Please enter the Exchange Server information manually.";
+                    m_configViewModelS.Isprofile = false;
+                    m_configViewModelS.IsmailServer = true;
+                }
+                else
+                {
+                    msg += "Please enter a PST file.";
+                    m_configViewModelU.Isprofile = false;
+                    m_configViewModelU.IspST = true;
+                }
+                MessageBox.Show(msg, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Information);
+                m_configViewModelS.CSEnableNext = true;
             }
             else
             {
-                msg += "Please enter a PST file.";
-                m_configViewModelU.Isprofile = false;
-                m_configViewModelU.IspST = true;
+                // FBS bug 75936 -- 7/9/12
+                if (isServer)
+                {
+                    m_configViewModelS.ProfileList.Clear();
+                }
+                else
+                {
+                    m_configViewModelU.ProfileList.Clear();
+                }
+                ///////
+                foreach (string s in profiles)
+                {
+                    if (s.IndexOf("GetListofMapiProfiles Exception") != -1)
+                    {
+                        MessageBox.Show(s, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                    if (isServer)
+                        m_configViewModelS.ProfileList.Add(s);
+                    else
+                        m_configViewModelU.ProfileList.Add(s);
+                }
+                if (isServer)
+                    m_configViewModelS.CSEnableNext = (m_configViewModelS.ProfileList.Count > 0);
+                else
+                    m_configViewModelU.CSEnableNext = (m_configViewModelU.ProfileList.Count > 0);
             }
-            MessageBox.Show(msg, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Information);
-            m_configViewModelS.CSEnableNext = true;
+            lb.SelectedIndex = 1;
         }
         else
         {
-            // FBS bug 75936 -- 7/9/12
-            if (isServer)
-            {
-                m_configViewModelS.ProfileList.Clear();
-            }
-            else
-            {
-                m_configViewModelU.ProfileList.Clear();
-            }
-            ///////
-            foreach (string s in profiles)
-            {
-                if (s.IndexOf("GetListofMapiProfiles Exception") != -1)
-                {
-                    MessageBox.Show(s, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-                if (isServer)
-                    m_configViewModelS.ProfileList.Add(s);
-                else
-                    m_configViewModelU.ProfileList.Add(s);
-            }
-            if (isServer)
-                m_configViewModelS.CSEnableNext = (m_configViewModelS.ProfileList.Count > 0);
-            else
-                m_configViewModelU.CSEnableNext = (m_configViewModelU.ProfileList.Count > 0);
+            m_configViewModelZU.CSEnableNext = true;
+            m_configViewModelZU.Isprofile = false;
+            m_configViewModelZU.IspST = true;
+           
+            lb.SelectedIndex = 1;
+            
         }
-        lb.SelectedIndex = 1;
     }
     public string BuildNum {
         get { return m_intro.BuildNum; }
@@ -232,6 +279,18 @@ public class IntroViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("IsUserMigration"));
         }
     }
+    public bool IsDesktopMigration
+    {
+        get { return m_intro.IsDesktopMigration; }
+        set
+        {
+            if (value == m_intro.IsDesktopMigration)
+                return;
+            m_intro.IsDesktopMigration = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("IsDesktopMigration"));
+        }
+    }
     public string InstallDir {
         get;
         set;
@@ -245,6 +304,7 @@ public class IntroViewModel: BaseViewModel
         ViewModelPtrs[(int)ViewType.INTRO] = this;
         ViewModelPtrs[(int)ViewType.SVRSRC] = m_configViewModelS;
         ViewModelPtrs[(int)ViewType.USRSRC] = m_configViewModelU;
+        ViewModelPtrs[(int)ViewType.ZDSRC] = m_configViewModelZU;
         ViewModelPtrs[(int)ViewType.SVRDEST] = m_configViewModelSDest;
         ViewModelPtrs[(int)ViewType.USRDEST] = m_configViewModelUDest;
         ViewModelPtrs[(int)ViewType.OPTIONS] = m_optionsViewModel;
@@ -280,6 +340,16 @@ public class IntroViewModel: BaseViewModel
         m_configViewModelU.OutlookProfile = "";
         m_configViewModelU.PSTFile = "";
         m_configViewModelU.OutlookProfile = "";
+
+        m_configViewModelZU = new ConfigViewModelZU();
+        m_configViewModelZU.Name = "ConfigViewModelZU";
+        m_configViewModelZU.ViewTitle = "Source";
+        m_configViewModelZU.lb = lb;
+        m_configViewModelZU.isBrowser = isBrowser;
+        m_configViewModelZU.OutlookProfile = "";
+        m_configViewModelZU.PSTFile = "";
+        m_configViewModelZU.OutlookProfile = "";
+
 
         m_configViewModelSDest = new ConfigViewModelSDest();
         m_configViewModelSDest.Name = "ConfigViewModelSDest";
@@ -378,6 +448,22 @@ public class IntroViewModel: BaseViewModel
             m_optionsViewModel.DateFormatLabelContent = "(" + shortDatePattern + ")";
             m_scheduleViewModel.DateFormatLabelContent2 = "(" + shortDatePattern + ")";
             m_optionsViewModel.ImportNextButtonContent = "Next >";
+        }
+        else if (BaseViewModel.isDesktop)
+        {
+         
+            BaseViewModel.isServer = false;
+            BaseViewModel.isDesktop = true;
+            IsUserMigration = false;
+            IsDesktopMigration = true;
+            IsServerMigration = false;
+            TheViews.Add(m_configViewModelZU);
+            TheViews.Add(m_configViewModelUDest);
+            TheViews.Add(m_optionsViewModel);
+            TheViews.Add(m_resultsViewModel);
+            m_optionsViewModel.DateFormatLabelContent = "(" + shortDatePattern + ")";
+            m_optionsViewModel.ImportNextButtonContent = "Migrate";
+        
         }
         else
         {

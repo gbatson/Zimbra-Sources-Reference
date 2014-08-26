@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.performance;
@@ -50,16 +52,17 @@ public class ZmContactsApp_InList_BasicContact1 extends AjaxCommonTest {
    @Test(description = "Measure the time to load address book page with 1 contact item",
          groups = {"performance"}, dataProvider = "DataProvider_LoadingApp_1Contact")
    public void ZmContactsApp_01(String logMessage) throws HarnessException {
-      ContactItem.createContactItem(app.zGetActiveAccount());
+	   ContactItem.createContactItem(app.zGetActiveAccount());
 
-      PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmContactsApp,
-            logMessage);
-      app.zPageAddressbook.zNavigateTo();
+	   PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmContactsApp,
+			   logMessage);
+	   //  app.zPageAddressbook.zNavigateTo();
+	   app.zPageAddressbook.zClickAt("css=td[id='zb__App__Contacts_title']","");
 
-      PerfMetrics.waitTimestamp(token);
+	   PerfMetrics.waitTimestamp(token);
 
-      // Wait for the app to load
-      app.zPageAddressbook.zWaitForActive();
+	   // Wait for the app to load
+	   app.zPageAddressbook.zWaitForActive();
    }
 
    @Test(description = "Measure the time to load address book page with 100 contact items",
@@ -78,7 +81,8 @@ public class ZmContactsApp_InList_BasicContact1 extends AjaxCommonTest {
 
       PerfToken token = PerfMetrics.startTimestamp(PerfKey.ZmContactsApp,
             "Load the Address Book app, 100 contacts in list");
-      app.zPageAddressbook.zNavigateTo();
+    //  app.zPageAddressbook.zNavigateTo();
+      app.zPageAddressbook.zClickAt("css=td[id='zb__App__Contacts_title']","");
 
       PerfMetrics.waitTimestamp(token);
 

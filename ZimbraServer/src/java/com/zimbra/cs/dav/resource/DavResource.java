@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.dav.resource;
@@ -38,6 +40,7 @@ import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
 
 import com.zimbra.common.account.Key;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.HttpUtil;
@@ -99,6 +102,9 @@ public abstract class DavResource {
         mDavCompliance.add(Compliance.addressbook);
         mDavCompliance.add(Compliance.extended_mkcol);
         if (isSchedulingEnabled()) {
+            if (isCalendarAutoSchedulingEnabled()) {
+                mDavCompliance.add(Compliance.calendar_auto_schedule);
+            }
             mDavCompliance.add(Compliance.calendar_schedule);
         }
 
@@ -227,7 +233,7 @@ public abstract class DavResource {
     protected void setLastModifiedDate(long ts) {
         Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
         cal.setTimeInMillis(ts);
-        setProperty(DavElements.P_GETLASTMODIFIED, DateUtil.toRFC822Date(cal));
+        setProperty(DavElements.P_GETLASTMODIFIED, DateUtil.toRFC1123Date(cal));
     }
 
     protected void addProperty(ResourceProperty prop) {
@@ -363,6 +369,12 @@ public abstract class DavResource {
         } catch (ServiceException se) {
             return false;
         }
+    }
+
+    public static boolean isCalendarAutoSchedulingEnabled() {
+        /** TODO: Replace with a Config key when caldav-auto-schedule fully working in a way similar to how
+                        Provisioning.A_zimbraCalendarCalDavDisableScheduling is treated */
+        return DebugConfig.enableExperimentalCaldavAutoSchedule;
     }
 
 }

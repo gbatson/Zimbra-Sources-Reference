@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -20,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+
+import org.apache.commons.codec.Charsets;
 
 import com.google.common.base.Strings;
 import com.zimbra.common.service.ServiceException;
@@ -58,6 +62,7 @@ public final class Metadata {
     public static final String FN_MIME_TYPE        = "ct";
     public static final String FN_DRAFT            = "d";
     public static final String FN_DISABLE_ACTIVESYNC = "das";
+    public static final String FN_WEB_OFFLINE_SYNC_DAYS = "wosd";
     public static final String FN_DESCRIPTION      = "de";
     public static final String FN_DESC_ENABLED     = "dee";
     public static final String FN_REPLY_ORIG       = "do";
@@ -118,27 +123,52 @@ public final class Metadata {
     public static final String FN_ELIDED           = "X";
     public static final String FN_EXTRA_DATA       = "xd";
 
+    private final Integer associatedItemId;
+
     Map<Object, Object> map;
 
     public Metadata() {
+        associatedItemId = null;
         map = new TreeMap<Object, Object>();
     }
 
     public Metadata(Map<?, ?> map) {
+        associatedItemId = null;
         this.map = new TreeMap<Object, Object>(map);
     }
 
     public Metadata(String encoded) throws MailServiceException {
+        this(encoded, (Integer) null);
+    }
+
+    public Metadata(String encoded, Integer associatedItemId) throws MailServiceException {
+        this.associatedItemId = associatedItemId;
         if (Strings.isNullOrEmpty(encoded)) {
             map = new HashMap<Object, Object>();
             return;
         }
         try {
-            map = BEncoding.decode(encoded);
-            return;
+            try {
+                map = (Map) BEncoding.decode(encoded);
+                return;
+            } catch (BEncodingException be) {
+                // Bug 87718 in some instances, it appears that an encoded string is getting corrupted by being
+                // treated at some point as if the bytes were ISO-8859-1 instead of UTF-8.  Try again with this reversed.
+                // If this works, the internal lengths will have gotten corrected, so there is a fair chance this has
+                // correctly identified what happened.
+                if (be.getCause() != null && be.getCause() instanceof NumberFormatException) {
+                    String fixedUpEncoded = new String(encoded.getBytes(Charsets.ISO_8859_1), Charsets.UTF_8);
+                    try {
+                        map = (Map) BEncoding.decode(fixedUpEncoded);
+                        return;
+                    } catch (Exception e) {
+                    }
+                }
+                throw be;
+            }
         } catch (BEncodingException e) {
             try {
-                map = BlobMetaData.decodeRecursive(encoded);
+                map = BlobMetaData.decodeRecursive(encoded, associatedItemId);
                 return;
             } catch (BlobMetaDataEncodingException e1) {
             }

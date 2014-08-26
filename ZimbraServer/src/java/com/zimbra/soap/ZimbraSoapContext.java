@@ -1,20 +1,24 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.soap;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -27,17 +31,25 @@ import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.HeaderConstants;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
+import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.ShareInfoData;
+import com.zimbra.cs.account.accesscontrol.Rights;
+import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mailbox.acl.AclPushSerializer;
 import com.zimbra.cs.service.AuthProvider;
+import com.zimbra.cs.servlet.continuation.ResumeContinuationListener;
 import com.zimbra.cs.session.Session;
 import com.zimbra.cs.session.SessionCache;
 import com.zimbra.cs.session.SoapSession;
@@ -128,7 +140,7 @@ public final class ZimbraSoapContext {
     private boolean mUnqualifiedItemIds;
     private boolean mWaitForNotifications;
     private boolean mCanceledWaitForNotifications = false;
-    private Continuation mContinuation;  // used for blocking requests
+    private ResumeContinuationListener continuationResume;  // used for blocking requests
 
     private ProxyTarget mProxyTarget;
     private boolean mIsProxyRequest;
@@ -138,6 +150,7 @@ public final class ZimbraSoapContext {
     private String mUserAgent;
     private String mRequestIP;
     private String mVia;
+    private String soapRequestId;
 
     //zdsync: for parsing locally constructed soap requests
     public ZimbraSoapContext(AuthToken authToken, String accountId,
@@ -164,6 +177,7 @@ public final class ZimbraSoapContext {
         mHopCount = hopCount;
 
         mUserAgent = mRequestIP = mVia = null;
+        soapRequestId = null;
     }
 
     /**
@@ -212,6 +226,7 @@ public final class ZimbraSoapContext {
         mUserAgent = zsc.mUserAgent;
         mRequestIP = zsc.mRequestIP;
         mVia = zsc.mVia;
+        soapRequestId = zsc.soapRequestId;
 
         mRawAuthToken = authToken == null? zsc.mRawAuthToken : authToken.toZAuthToken();
         mAuthToken = authToken == null? zsc.mAuthToken : authToken;
@@ -237,9 +252,10 @@ public final class ZimbraSoapContext {
      * {@link Element} from the SOAP header.
      *
      * @param ctxt {@code <context>} Element (can be null if not present in request)
+     * @param requestName - The SOAP request name - may be null
      * @param context The engine context, which might contain the auth token
      * @param requestProtocol  The SOAP protocol used for the request */
-    public ZimbraSoapContext(Element ctxt, Map<String, Object> context,
+    public ZimbraSoapContext(Element ctxt, QName requestName, Map<String, Object> context,
             SoapProtocol requestProtocol) throws ServiceException {
 
         if (ctxt != null && !ctxt.getQName().equals(HeaderConstants.CONTEXT))
@@ -261,7 +277,7 @@ public final class ZimbraSoapContext {
         try {
             mAuthToken = AuthProvider.getAuthToken(ctxt, context);
             if (mAuthToken != null) {
-                if (mAuthToken.isExpired()) {
+                if (mAuthToken.isExpired() || !mAuthToken.isRegistered()) {
                     boolean voidOnExpired = false;
 
                     if (ctxt != null) {
@@ -311,6 +327,7 @@ public final class ZimbraSoapContext {
                 }
 
                 mRequestedAccountId = account.getId();
+                validateDelegatedAccess(account, requestName, value);
             } else if (key.equals(HeaderConstants.BY_ID)) {
                 if (mAuthToken == null) {
                     throw ServiceException.AUTH_REQUIRED();
@@ -325,6 +342,7 @@ public final class ZimbraSoapContext {
                 }
 
                 mRequestedAccountId = value;
+                validateDelegatedAccess(account, requestName, value);
             } else {
                 throw ServiceException.INVALID_REQUEST("unknown value for by: " + key, null);
             }
@@ -419,9 +437,161 @@ public final class ZimbraSoapContext {
             if (via != null) {
                 mVia = via.getText();
             }
+            if (this.soapRequestId == null) {
+                Element reqId = ctxt.getOptionalElement(HeaderConstants.E_SOAP_ID);
+                if (null != reqId) {
+                    this.soapRequestId = reqId.getText();
+                }
+            }
         }
 
         mRequestIP = (String) context.get(SoapEngine.REQUEST_IP);
+    }
+
+    /**
+     * Some requests need to always return valid looking output in able to provide consistent behavior between
+     * requests against non-existent accounts and those which don't allow access to the requested data.
+     * For instance FreeBusy requests.
+     * Ideally, this would be a method in DocumentHandler; although would take a bit more plumbing since handler object
+     * isn't available until after soap context is created. Probably OK for now; but something to consider if we have
+     * to do this for other requests
+     * @param requestName - The SOAP request name - may be null
+     */
+    private boolean handlesAccountHarvesting(QName requestName) {
+        if (requestName == null) {
+            return false;
+        }
+        if (requestName.equals(MailConstants.GET_FREE_BUSY_REQUEST)) {
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Validate delegation rights. Request for delegated access requires a grant on at least one object in the target account or admin login rights.
+     * @param targetAccount - Account which requested is targeted for
+     * @param requestedKey - The key sent in request which mapped to target account. Passed in so error only reports back what was requested (i.e. can't harvest accountId if you only know the email or vice-versa)
+     * @param requestName - The SOAP request name - may be null
+     * @throws ServiceException
+     */
+    private void validateDelegatedAccess(Account targetAccount, QName requestName, String requestedKey)
+    throws ServiceException {
+
+        if (!isDelegatedRequest()) {
+            return;
+        }
+
+        if (handlesAccountHarvesting(requestName)) {
+            return;
+        }
+
+        //if delegated one of the following MUST be true
+        //1. authed account is an admin AND has admin rights for the target
+        //2. authed account has been granted access (i.e. login) to the target account
+        //3. target account has shared at least one item with authed account or enclosing group/cos/domain
+        //4. target account has granted sendAs or sendOnBehalfOf right to authed account
+
+        Account authAccount = null;
+        boolean isAdmin = AuthToken.isAnyAdmin(mAuthToken);
+
+        if (!GuestAccount.GUID_PUBLIC.equals(mAuthToken.getAccountId())) {
+            authAccount = mAuthToken.getAccount();
+            if (isAdmin && AccessManager.getInstance().canAccessAccount(mAuthToken, targetAccount, true)) {
+                //case 1 - admin
+                return;
+            }
+
+            if (AccessManager.getInstance().canAccessAccount(mAuthToken, targetAccount, false)) {
+                //case 2 - access rights
+                return;
+            }
+        }
+
+        String externalEmail = null;
+        if (authAccount != null && authAccount.getBooleanAttr(Provisioning.A_zimbraIsExternalVirtualAccount, false)) {
+            externalEmail = authAccount.getAttr(Provisioning.A_zimbraExternalUserMailAddress, externalEmail);
+        }
+
+        Provisioning prov = Provisioning.getInstance();
+
+        //case 3 - shared items
+        boolean needRecheck = false;
+        do {
+            String[] sharedItems = targetAccount.getSharedItem();
+            Set<String> groupIds = null;
+            for (String sharedItem : sharedItems) {
+                ShareInfoData shareData = AclPushSerializer.deserialize(sharedItem);
+                switch (shareData.getGranteeTypeCode()) {
+                    case ACL.GRANTEE_USER:
+                        if (authAccount != null && authAccount.getId().equals(shareData.getGranteeId())) {
+                            return;
+                        }
+                        break;
+                    case ACL.GRANTEE_GUEST:
+                        if (shareData.getGranteeId().equals(externalEmail)) {
+                            return;
+                        }
+                        break;
+                    case ACL.GRANTEE_PUBLIC:
+                        return;
+                    case ACL.GRANTEE_GROUP:
+                        if (authAccount != null) {
+                            if (groupIds == null) {
+                                groupIds = new HashSet<String>();
+                            }
+                            groupIds.add(shareData.getGranteeId());
+                        }
+                        break;
+                    case ACL.GRANTEE_AUTHUSER:
+                        if (authAccount != null) {
+                            return;
+                        }
+                        break;
+                    case ACL.GRANTEE_DOMAIN:
+                        if (authAccount != null && authAccount.getDomainId() != null
+                                && authAccount.getDomainId().equals(shareData.getGranteeId())) {
+                            return;
+                        }
+                        break;
+                    case ACL.GRANTEE_COS:
+                        if (authAccount != null && authAccount.getCOSId() != null
+                                && authAccount.getCOSId().equals(shareData.getGranteeId())) {
+                            return;
+                        }
+                        break;
+                    case ACL.GRANTEE_KEY:
+                        if (authAccount instanceof GuestAccount && mAuthToken.getAccessKey() != null) {
+                            return;
+                        }
+                        break;
+                 }
+            }
+
+            if (groupIds != null) {
+                for (String groupId : groupIds) {
+                    if (prov.inACLGroup(authAccount, groupId)) {
+                        return;
+                    }
+                }
+            }
+
+            if (needRecheck) {
+                break;
+            } else if (!Provisioning.onLocalServer(targetAccount)) {
+                //if target on different server we might not have up-to-date shared item list
+                //reload and check one more time to be sure
+                prov.reload(targetAccount);
+                needRecheck = true;
+            }
+        } while (needRecheck);
+
+        //case 4 - sendAs/sendOnBehalfOf
+        AccessManager accessMgr = AccessManager.getInstance();
+        if (accessMgr.canDo(authAccount, targetAccount, Rights.User.R_sendAs, isAdmin) ||
+                accessMgr.canDo(authAccount, targetAccount, Rights.User.R_sendOnBehalfOf, isAdmin)) {
+            return;
+        }
+
+        throw ServiceException.DEFEND_ACCOUNT_HARVEST(requestedKey);
     }
 
     /** Records in this context that we've traversed a mountpoint to get here.
@@ -544,7 +714,7 @@ public final class ZimbraSoapContext {
 
     public boolean beginWaitForNotifications(Continuation continuation, boolean includeDelegates) throws ServiceException {
         mWaitForNotifications = true;
-        mContinuation = continuation;
+        continuationResume = new ResumeContinuationListener(continuation);
 
         Session session = SessionCache.lookup(mSessionInfo.sessionId, mAuthTokenAccountId);
         if (!(session instanceof SoapSession))
@@ -560,13 +730,15 @@ public final class ZimbraSoapContext {
         }
     }
 
+    public void suspendAndUndispatch(long timeout) {
+        continuationResume.suspendAndUndispatch(timeout);
+    }
+
     /** Called by the Session object if a new notification comes in. */
     synchronized public void signalNotification(boolean canceled) {
         mWaitForNotifications = false;
         mCanceledWaitForNotifications = canceled;
-        if (mContinuation.isSuspended()) {
-            mContinuation.resume();
-        }
+        continuationResume.resumeIfSuspended();
     }
 
     synchronized public boolean isCanceledWaitForNotifications() {
@@ -600,7 +772,7 @@ public final class ZimbraSoapContext {
             mRawAuthToken.encodeSoapCtxt(ctxt);
         }
         if (mResponseProtocol != mRequestProtocol) {
-            ctxt.addElement(HeaderConstants.E_FORMAT).addAttribute(HeaderConstants.A_TYPE,
+            ctxt.addNonUniqueElement(HeaderConstants.E_FORMAT).addAttribute(HeaderConstants.A_TYPE,
                     mResponseProtocol == SoapProtocol.SoapJS ?
                             HeaderConstants.TYPE_JAVASCRIPT : HeaderConstants.TYPE_XML);
         }
@@ -615,7 +787,7 @@ public final class ZimbraSoapContext {
         }
 
         if (!excludeAccountDetails) {
-            Element eAcct = ctxt.addElement(HeaderConstants.E_ACCOUNT).addAttribute(
+            Element eAcct = ctxt.addNonUniqueElement(HeaderConstants.E_ACCOUNT).addAttribute(
                                             HeaderConstants.A_MOUNTPOINT, mMountpointTraversed);
             if (mRequestedAccountId != null && !mRequestedAccountId.equalsIgnoreCase(mAuthTokenAccountId)) {
                 eAcct.addAttribute(HeaderConstants.A_BY, HeaderConstants.BY_ID).setText(mRequestedAccountId);
@@ -629,6 +801,9 @@ public final class ZimbraSoapContext {
         ua.addAttribute(HeaderConstants.A_NAME, SoapTransport.DEFAULT_USER_AGENT_NAME);
         ua.addAttribute(HeaderConstants.A_VERSION, BuildInfo.VERSION);
         ctxt.addUniqueElement(HeaderConstants.E_VIA).setText(getNextVia());
+        if (null != soapRequestId) {
+            ctxt.addUniqueElement(HeaderConstants.E_SOAP_ID).setText(soapRequestId);
+        }
         return ctxt;
     }
 
@@ -744,6 +919,14 @@ public final class ZimbraSoapContext {
 
     public String getRequestIP() {
         return mRequestIP;
+    }
+
+    public String getSoapRequestId() {
+        return soapRequestId;
+    }
+
+    public void setSoapRequestId(String soapId) {
+        soapRequestId = soapId;
     }
 
     /**

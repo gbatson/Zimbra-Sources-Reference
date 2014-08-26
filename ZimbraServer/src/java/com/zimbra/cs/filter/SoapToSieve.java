@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.filter;
@@ -32,6 +34,7 @@ import com.zimbra.soap.mail.type.FilterAction;
 import com.zimbra.soap.mail.type.FilterRule;
 import com.zimbra.soap.mail.type.FilterTest;
 import com.zimbra.soap.mail.type.FilterTests;
+import com.zimbra.soap.mail.type.NestedRule;
 
 public final class SoapToSieve {
 
@@ -84,11 +87,27 @@ public final class SoapToSieve {
         Joiner.on(",\n  ").appendTo(buffer, index2test.values());
         buffer.append(") {\n");
 
+        // Handle nested rule
+        NestedRule child = rule.getChild();
+        if(child!=null){
+            // first nested block's indent is "    "
+            String nestedRuleBlock = handleNest("    ", child);
+            buffer.append(nestedRuleBlock);
+        }
+
         // Handle actions
         Map<Integer, String> index2action = new TreeMap<Integer, String>(); // sort by index
         List<FilterAction> filterActions = rule.getFilterActions();
-        if (filterActions.isEmpty()) {
-            throw ServiceException.INVALID_REQUEST("Missing action", null);
+        if ( filterActions == null) {   // if there is no action in this rule, filterActions is supposed to be null.
+            if (child == null) {
+                // If there is no more nested rule, there should be at least one action.
+                throw ServiceException.INVALID_REQUEST("Missing action", null);
+            } else {
+                // If there is no action in this rule and there have been no exception thrown so far,
+                // then there should be one in nested rules. So just close "if" block here.
+                buffer.append("}\n");
+                return;
+            }
         }
         for (FilterAction action : filterActions) {
             String result = handleAction(action);
@@ -101,6 +120,72 @@ public final class SoapToSieve {
         }
         buffer.append("}\n");
     }
+
+    // Constructing nested rule block with base indents which is for entire block.
+    private String handleNest(String baseIndents, NestedRule currentNestedRule) throws ServiceException {
+
+        StringBuilder nestedIfBlock = new StringBuilder();
+        nestedIfBlock.append(baseIndents);
+
+        Sieve.Condition childCondition =
+                Sieve.Condition.fromString(currentNestedRule.getFilterTests().getCondition());
+        if (childCondition == null) {
+            childCondition = Sieve.Condition.allof;
+        }
+
+        // assuming no disabled_if for child tests so far
+        nestedIfBlock.append("if ");
+        nestedIfBlock.append(childCondition).append(" (");
+
+        // Handle tests
+        Map<Integer, String> index2childTest = new TreeMap<Integer, String>(); // sort by index
+        for (FilterTest childTest : currentNestedRule.getFilterTests().getTests()) {
+            String childResult = handleTest(childTest);
+            if (childResult != null) {
+                FilterUtil.addToMap(index2childTest, childTest.getIndex(), childResult);
+            }
+        }
+        Joiner.on(",\n  "+baseIndents).appendTo(nestedIfBlock, index2childTest.values());
+        nestedIfBlock.append(") {\n");
+
+        // Handle nest
+        if(currentNestedRule.getChild() != null){
+            nestedIfBlock.append(handleNest(baseIndents + "    ", currentNestedRule.getChild()));
+        }
+
+        // Handle actions
+        Map<Integer, String> index2childAction = new TreeMap<Integer, String>(); // sort by index
+        List<FilterAction> childActions = currentNestedRule.getFilterActions();
+        if (childActions == null) { // if there is no action in this rule, childActions is supposed to be null.
+            if (currentNestedRule.getChild() == null) {
+                // If there is no more nested rule, there should be at least one action.
+                throw ServiceException.INVALID_REQUEST("Missing action", null);
+            } else {
+                // If there is no action in this rule and there have been no exception thrown,
+                // then there should be one in nested rules. So just close "if" block here.
+                nestedIfBlock.append(baseIndents);
+                nestedIfBlock.append("}\n");
+
+                return nestedIfBlock.toString();
+            }
+        }
+        for (FilterAction childAction : childActions) {
+            String childResult = handleAction(childAction);
+            if (childResult != null) {
+                FilterUtil.addToMap(index2childAction, childAction.getIndex(), childResult);
+            }
+        }
+        for (String childAction : index2childAction.values()) {
+            nestedIfBlock.append(baseIndents);
+            nestedIfBlock.append("    ").append(childAction).append(";\n");
+        }
+
+        nestedIfBlock.append(baseIndents);
+        nestedIfBlock.append("}\n");
+
+        return nestedIfBlock.toString();
+    }
+
 
     private String handleTest(FilterTest test) throws ServiceException {
         String snippet = null;
@@ -195,6 +280,12 @@ public final class SoapToSieve {
             snippet = "socialcast";
         } else if (test instanceof FilterTest.TwitterTest) {
             snippet = "twitter";
+        } else if (test instanceof FilterTest.CommunityRequestsTest) {
+            snippet = "community_requests";
+        } else if (test instanceof FilterTest.CommunityContentTest) {
+            snippet = "community_content";
+        } else if (test instanceof FilterTest.CommunityConnectionsTest) {
+            snippet = "community_connections";
         } else if (test instanceof FilterTest.ListTest) {
             snippet = "list";
         } else if (test instanceof FilterTest.BulkTest) {

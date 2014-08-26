@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.zimlet;
@@ -17,11 +19,11 @@ package com.zimbra.cs.zimlet;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.MapMaker;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
@@ -34,17 +36,17 @@ import com.zimbra.soap.account.type.Prop;
  *
  */
 public final class ZimletUserProperties {
-    private static final ConcurrentMap<String, ZimletUserProperties> CACHE =
-        new MapMaker().maximumSize(1024).expireAfterAccess(30, TimeUnit.MINUTES).makeMap();
+    private static final Cache<String, ZimletUserProperties> CACHE =
+        CacheBuilder.newBuilder().maximumSize(1024).expireAfterAccess(30, TimeUnit.MINUTES).build();
 
     private final Set<Prop> properties = new HashSet<Prop>(); // guarded by ZimletUserProperties.this
 
     public static ZimletUserProperties getProperties(Account account) {
         String key = account.getId();
-        ZimletUserProperties prop = CACHE.get(key);
+        ZimletUserProperties prop = CACHE.getIfPresent(key);
         if (prop == null) {
             prop = new ZimletUserProperties(account);
-            CACHE.putIfAbsent(key, prop);
+            CACHE.put(key, prop);
         }
         return prop;
     }

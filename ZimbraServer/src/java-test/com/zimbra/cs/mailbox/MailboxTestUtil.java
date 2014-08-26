@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 
@@ -26,8 +28,13 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
 
+import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.httpclient.HttpStatus;
+import org.apache.commons.httpclient.methods.DeleteMethod;
+import org.apache.commons.io.FileUtils;
+
 import com.google.common.base.Strings;
-import com.google.common.io.Files;
 import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.ContentDisposition;
@@ -41,6 +48,9 @@ import com.zimbra.cs.account.MockProvisioning;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.db.HSQLDB;
+import com.zimbra.cs.index.IndexStore;
+import com.zimbra.cs.index.elasticsearch.ElasticSearchConnector;
+import com.zimbra.cs.index.elasticsearch.ElasticSearchIndex;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedMessage;
@@ -111,7 +121,7 @@ public final class MailboxTestUtil {
         HSQLDB.createDatabase(zimbraServerDir, OctopusInstance);
 
         MailboxManager.setInstance(null);
-        MailboxIndex.setIndexStoreFactory("lucene");
+        IndexStore.setFactory(LC.zimbra_class_index_store_factory.value());
 
         LC.zimbra_class_store.setDefault(storeManagerClass.getName());
         StoreManager.getInstance().startup();
@@ -125,7 +135,7 @@ public final class MailboxTestUtil {
         HSQLDB.createDatabase(zimbraServerDir, false);
 
         MailboxManager.setInstance(null);
-        MailboxIndex.setIndexStoreFactory("lucene");
+        IndexStore.setFactory(LC.zimbra_class_index_store_factory.value());
 
         LC.zimbra_class_store.setDefault(storeManagerClass.getName());
         StoreManager.getInstance().startup();
@@ -165,7 +175,7 @@ public final class MailboxTestUtil {
 
     private static void deleteDirContents(File dir, int recurCount) throws IOException {
         try {
-            Files.deleteDirectoryContents(dir);
+            FileUtils.deleteDirectory(dir);
         } catch (IOException ioe) {
             if (recurCount > 10) {
                 throw new IOException("Gave up after multiple IOExceptions", ioe);
@@ -180,6 +190,37 @@ public final class MailboxTestUtil {
             deleteDirContents(dir, recurCount+1);
         }
 
+    }
+
+    public static void cleanupIndexStore(Mailbox mbox) {
+        IndexStore index = mbox.index.getIndexStore();
+        if (index instanceof ElasticSearchIndex) {
+            String key = mbox.getAccountId();
+            String indexUrl = String.format("%s%s/", LC.zimbra_index_elasticsearch_url_base.value(), key);
+            HttpMethod method = new DeleteMethod(indexUrl);
+            try {
+                ElasticSearchConnector connector = new ElasticSearchConnector();
+                int statusCode = connector.executeMethod(method);
+                if (statusCode == HttpStatus.SC_OK) {
+                    boolean ok = connector.getBooleanAtJsonPath(new String[] {"ok"}, false);
+                    boolean acknowledged = connector.getBooleanAtJsonPath(new String[] {"acknowledged"}, false);
+                    if (!ok || !acknowledged) {
+                        ZimbraLog.index.debug("Delete index status ok=%b acknowledged=%b", ok, acknowledged);
+                    }
+                } else {
+                    String error = connector.getStringAtJsonPath(new String[] {"error"});
+                    if (error != null && error.startsWith("IndexMissingException")) {
+                        ZimbraLog.index.debug("Unable to delete index for key=%s.  Index is missing", key);
+                    } else {
+                        ZimbraLog.index.error("Problem deleting index for key=%s error=%s", key, error);
+                    }
+                }
+            } catch (HttpException e) {
+                ZimbraLog.index.error("Problem Deleting index with key=" + key, e);
+            } catch (IOException e) {
+                ZimbraLog.index.error("Problem Deleting index with key=" + key, e);
+            }
+        }
     }
 
     public static void setFlag(Mailbox mbox, int itemId, Flag.FlagInfo flag) throws ServiceException {

@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -18,9 +20,7 @@
 package com.zimbra.qa.selenium.framework.items;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -105,6 +105,11 @@ public class MailItem implements IItem {
 	public String dFlags;
 	
 	/**
+	 * The tag names (tn attribute) associated with this mail (see soap.txt for details)
+	 */
+	public List<String> dTagNames;
+	
+	/**
 	 * The autoSaveTime associated with this draft) (see soap.txt for details)
 	 */
 	public String dAutoSendTime = null;
@@ -178,6 +183,13 @@ public class MailItem implements IItem {
 	
 	@Override
 	public String getName() {
+		return (getSubject());
+	}
+	
+	public String getSubject() {
+		if ( dSubject == null ) {
+			return (gSubject);
+		}
 		return (dSubject);
 	}
 	
@@ -228,6 +240,24 @@ public class MailItem implements IItem {
 		return (dFlags);
 	}
 	
+	/**
+	 * Add a list of tags to this message
+	 * @param tn - A list of tag names to add
+	 * @return the list of tag names
+	 */
+	public List<String> setTagNames(List<String> tn) {
+		dTagNames = tn;
+		return (dTagNames);
+	}
+	
+	/**
+	 * Get the list of tags on this message
+	 * @return the list of tag names
+	 */
+	public List<String> getTagNames() {
+		return (dTagNames);
+	}
+	
 	public String getAutoSendTime() {
 		return (dAutoSendTime);
 	}
@@ -269,6 +299,7 @@ public class MailItem implements IItem {
 			// Set the ID
 			mail.setId(m.getAttribute("id", null));
 			mail.setFlags(m.getAttribute("f", ""));
+			mail.setTagNames(Arrays.asList(m.getAttribute("tn", "").split(",")));
 			mail.setAutoSendTime(m.getAttribute("autoSendTime", null));
 
 			mail.dFolderId = m.getAttribute("l", null);
@@ -382,6 +413,13 @@ public class MailItem implements IItem {
 		if ( dFromRecipient != null ) {
 			sb.append(dFromRecipient.prettyPrint());
 		}
+		sb.append("tn: ");
+		if ( getTagNames() != null ) {
+			for ( String tn : getTagNames() ) {
+				sb.append(tn).append(", ");
+			}
+		}
+		sb.append("\n");
 		if ( (dAutoSendTime != null) && (dAutoSendTime.trim().length() != 0) ) {
 			sb.append("autoSaveTime: ");
 			sb.append(dAutoSendTime);

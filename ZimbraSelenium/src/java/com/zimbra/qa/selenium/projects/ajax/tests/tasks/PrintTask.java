@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.ajax.tests.tasks;
@@ -43,8 +45,6 @@ public class PrintTask extends AjaxCommonTest {
 		}};
 
 	}
-
-
 
 	@Test(	
 			description = "Print Task using RightClick -> Print and Verify Contents in Print view",
@@ -89,6 +89,10 @@ public class PrintTask extends AjaxCommonTest {
 				
 			// Right click the item, select Show Original
 			window = (SeparateWindowPrintPreview)app.zPageTasks.zListItem(Action.A_RIGHTCLICK, Button.O_PRINT_MENU, subject);
+			SleepUtil.sleepMedium();
+			
+			//Press esc from keyboard
+			app.zPageTasks.sKeyPressNative("27");
 			window.zWaitForActive();		// Make sure the window is there			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 
@@ -151,6 +155,10 @@ public class PrintTask extends AjaxCommonTest {
 			
 			//Press keyboard shortcut p
 			window = (SeparateWindowPrintPreview)app.zPageTasks.zKeyboardShortcut(Shortcut.S_PRINTTASK);
+			SleepUtil.sleepMedium();
+			
+			//Press esc from keyboard
+			app.zPageTasks.sKeyPressNative("27");
 			window.zWaitForActive();		// Make sure the window is there			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 
@@ -247,6 +255,10 @@ public class PrintTask extends AjaxCommonTest {
 			
 			//Pull down Print button and select Print Task folder.
 			window = (SeparateWindowPrintPreview)app.zPageTasks.zToolbarPressPulldown(Button.B_PRINT, Button.O_PRINT_TASKFOLDER);
+			SleepUtil.sleepMedium();
+			
+			//Press esc from keyboard
+			app.zPageTasks.sKeyPressNative("27");
 			window.zWaitForActive();		// Make sure the window is there			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 

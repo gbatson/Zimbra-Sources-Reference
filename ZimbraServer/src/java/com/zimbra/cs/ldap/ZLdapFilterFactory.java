@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.ldap;
@@ -69,6 +71,7 @@ public abstract class ZLdapFilterFactory extends ZLdapElement {
         ALL_NON_SYSTEM_ARCHIVING_ACCOUNTS(SINGLETON.allNonSystemArchivingAccounts()),
         ALL_NON_SYSTEM_INTERNAL_ACCOUNTS(SINGLETON.allNonSystemInternalAccounts()),
         ALL_SERVERS(SINGLETON.allServers()),
+        ALL_ALWAYSONCLUSTERS(SINGLETON.allAlwaysOnClusters()),
         ALL_UC_SERVICES(SINGLETON.allUCServices()),
         ALL_SIGNATURES(SINGLETON.allSignatures()),
         ALL_XMPP_COMPONENTS(SINGLETON.allXMPPComponents()),
@@ -125,6 +128,9 @@ public abstract class ZLdapFilterFactory extends ZLdapElement {
 
         SERVER_BY_ID(SINGLETON.serverById("{SERVER-ID}")),
         SERVER_BY_SERVICE(SINGLETON.serverByService("{SERVICE}")),
+        SERVER_BY_ALWAYSONCLUSTER(SINGLETON.serverByAlwaysOnCluster("{ALWAYSONCLUSTER-ID}")),
+        SERVERY_BY_SERVICE_AND_ALWAYSONCLUSTER(SINGLETON.serverByServiceAndAlwaysOnCluster("{SERVICE}", "{ALWAYSONCLUSTER-ID}")),
+        ALWAYSONCLUSTER_BY_ID(SINGLETON.alwaysOnClusterById("{ALWAYSONCLUSTER-ID}")),
         UC_SERVICE_BY_ID(SINGLETON.ucServiceById("{SERVER-ID}")),
         SHARE_LOCATOR_BY_ID(SINGLETON.shareLocatorById("{SHARE-LOCATOR-ID}")),
         SIGNATURE_BY_ID(SINGLETON.signatureById("{SIGNATURE-ID}")),
@@ -138,7 +144,8 @@ public abstract class ZLdapFilterFactory extends ZLdapElement {
         VELODROME_ALL_ACCOUNTS_BY_DOMAIN_AND_SERVER(SINGLETON.velodromeAllAccountsByDomainAndServer("{DOMAIN-NAME}", "{SERVER-SERVICE-HOSTNAME}")),
         VELODROME_ALL_ACCOUNTS_ONLY_BY_DOMAIN_AND_SERVER(SINGLETON.velodromeAllAccountsOnlyByDomainAndServer("{DOMAIN-NAME}", "{SERVER-SERVICE-HOSTNAME}")),
         VELODROME_ALL_CALENDAR_RESOURCES_BY_DOMAIN_AND_SERVER(SINGLETON.velodromeAllCalendarResourcesByDomainAndServer("{DOMAIN-NAME}", "{SERVER-SERVICE-HOSTNAME}")),
-
+        VELODROME_ALL_DISTRIBUTION_LISTS_BY_DOMAIN(SINGLETON.velodromeAllDistributionListsByDomain("{DOMAIN-NAME}")),
+        VELODROME_ALL_GROUPS_BY_DOMAIN(SINGLETON.velodromeAllGroupsByDomain("{DOMAIN-NAME}")),
 
         //
         // =====================================
@@ -430,6 +437,14 @@ public abstract class ZLdapFilterFactory extends ZLdapElement {
     public abstract ZLdapFilter allServers();
     public abstract ZLdapFilter serverById(String id);
     public abstract ZLdapFilter serverByService(String service);
+    public abstract ZLdapFilter serverByAlwaysOnCluster(String clusterId);
+    public abstract ZLdapFilter serverByServiceAndAlwaysOnCluster(String service, String clusterId);
+
+    /*
+     * alwaysOnCluster
+     */
+    public abstract ZLdapFilter allAlwaysOnClusters();
+    public abstract ZLdapFilter alwaysOnClusterById(String id);
 
     /*
      * UC service
@@ -478,6 +493,8 @@ public abstract class ZLdapFilterFactory extends ZLdapElement {
             String domainName, String serverServiceHostname);
     public abstract ZLdapFilter velodromeAllCalendarResourcesByDomainAndServer(
             String domainName, String serverServiceHostname);
+    public abstract ZLdapFilter velodromeAllDistributionListsByDomain(String domainName);
+    public abstract ZLdapFilter velodromeAllGroupsByDomain(String domainName);
 
 
     /*

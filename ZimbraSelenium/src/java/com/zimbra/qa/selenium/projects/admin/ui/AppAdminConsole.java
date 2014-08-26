@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
@@ -63,11 +65,20 @@ public class AppAdminConsole extends AbsApplication {
 	// Monitoring
 	public PageManageServerStatus		zPageManageServerStatus = null;
 	public PageManageServerStats		zPageManageServerStats = null;
+	public PageManageServerStatistics	zPageManageServerStatistics = null;
+	public PageManageAdvancedStatistics	zPageManageAdvancedStatistics = null;
+	public PageManageMessageCount		zPageManageMessageCount = null;
+	public PageManageMessageVolume		zPageManageMessageVolume = null;
+	public PageManageAntiSpamAnitVirusActivity	zPageManageAntispamAntiVirusActivity = null;
+	public PageManageMobileSyncStatistics	zPageManageMobileSyncStatistics = null;
+	public PageManageMailQueues			zPageManageMailQueues = null;
+	
 	
 	// Tools
-	public PageManageMailQueues			zPageManageMailQueues = null;
+	
 	public PageEditMailQueue			zPageEditMailQueue = null;
 	public PageManageAccountMigration	zPageManageAccountMigration = null;
+	public PageManageSearch				zPageManageSearch = null;
 	public PageManageCertificates		zPageManageCertificates = null;
 	public PageManageClientUpload		zPageManageClientUpload = null;
 	public PageEditCertificate			zPageEditCertificate = null;
@@ -175,6 +186,9 @@ public class AppAdminConsole extends AbsApplication {
 		zPageManageVoiceChatService = new PageManageVoiceChatService(this);
 		pages.put(zPageManageVoiceChatService.myPageName(), zPageManageVoiceChatService);
 
+		zPageManageSearch = new PageManageSearch(this);
+		pages.put(zPageManageSearch.myPageName(), zPageManageSearch);
+
 		
 		// Monitoring
 
@@ -183,6 +197,24 @@ public class AppAdminConsole extends AbsApplication {
 		
 		zPageManageServerStats = new PageManageServerStats(this);
 		pages.put(zPageManageServerStats.myPageName(), zPageManageServerStats);
+
+		zPageManageServerStatistics = new PageManageServerStatistics(this);
+		pages.put(zPageManageServerStatistics.myPageName(), zPageManageServerStatistics);
+
+		zPageManageAdvancedStatistics = new PageManageAdvancedStatistics(this);
+		pages.put(zPageManageAdvancedStatistics.myPageName(), zPageManageAdvancedStatistics);
+
+		zPageManageMessageCount = new PageManageMessageCount(this);
+		pages.put(zPageManageMessageCount.myPageName(), zPageManageMessageCount);
+
+		zPageManageMessageVolume = new PageManageMessageVolume(this);
+		pages.put(zPageManageMessageVolume.myPageName(), zPageManageMessageVolume);
+
+		zPageManageAntispamAntiVirusActivity = new PageManageAntiSpamAnitVirusActivity(this);
+		pages.put(zPageManageAntispamAntiVirusActivity.myPageName(), zPageManageAntispamAntiVirusActivity);
+
+		zPageManageMobileSyncStatistics = new PageManageMobileSyncStatistics(this);
+		pages.put(zPageManageMobileSyncStatistics.myPageName(), zPageManageMobileSyncStatistics);
 
 		
 		// Tools

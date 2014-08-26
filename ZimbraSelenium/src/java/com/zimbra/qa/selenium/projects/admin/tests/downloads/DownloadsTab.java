@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.qa.selenium.projects.admin.tests.downloads;
@@ -37,16 +39,16 @@ public class DownloadsTab extends AdminCommonTest {
 		"//a[contains(text(),'Zimbra Connector for Outlook Branding MSI')]", // TODO: need to add unique ID
 		
 		// Zimbra Connector(32bits) for Outlook
-		"//a[contains(text(),'Zimbra Connector(32bits) for Outlook')]", // TODO: need to add unique ID
+		"//a[contains(text(),'Zimbra Connector for Outlook (32bit)')]", // TODO: need to add unique ID
 		
 		// Zimbra Connector(64bits) for Outlook
-		"//a[contains(text(),'Zimbra Connector(64bits) for Outlook')]", // TODO: need to add unique ID
+		"//a[contains(text(),'Zimbra Connector for Outlook (64bit)')]", // TODO: need to add unique ID
 		
 		// (User Instructions )
-		"//a[contains(text(),'User Instructions')]", // TODO: need to add unique ID
+		//"//a[contains(text(),'User Instructions')]", // TODO: need to add unique ID
 
 		// Zimbra Connector for Apple iSync
-		"//a[contains(text(),'Zimbra Connector for Apple iSync')]", // TODO: need to add unique ID
+		"//a[contains(text(),'Legacy ZCS Migration Wizard for Exchange')]", // TODO: need to add unique ID
 		
 	};
 	
@@ -64,16 +66,20 @@ public class DownloadsTab extends AdminCommonTest {
 		// These links appear on both NETWORK and FOSS
 		
 		// ZCS Migration Wizard for Exchange
-		"//a[contains(text(),'ZCS Migration Wizard for Exchange')]", // TODO: need to add unique ID
+		"//a[contains(text(),'ZCS Migration Wizard for Exchange/PST (32bit)')]", // TODO: need to add unique ID
+		
+		// ZCS Migration Wizard for Exchange
+		"//a[contains(text(),'ZCS Migration Wizard for Exchange/PST (64bit)')]", // TODO: need to add unique ID
+
 
 		// ZCS Migration Wizard for Domino
 		"//a[contains(text(),'ZCS Migration Wizard for Domino')]", // TODO: need to add unique ID
 
 		// PST Import Wizard
-		"//a[contains(text(),'PST Import Wizard')]", // TODO: need to add unique ID
+		"//a[contains(text(),'Legacy PST Import Wizard')]", // TODO: need to add unique ID
 
 		// PST Import Wizard (User Instructions)
-		"//a[contains(text(),'User Instructions')]", // TODO: need to add unique ID
+		//"//a[contains(text(),'User Instructions')]", // TODO: need to add unique ID
 
 	};
 

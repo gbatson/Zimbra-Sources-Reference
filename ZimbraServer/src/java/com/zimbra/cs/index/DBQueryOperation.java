@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.index;
@@ -280,9 +282,12 @@ public class DBQueryOperation extends QueryOperation {
      * @param op Lucene query operation
      */
     void setLuceneQueryOperation(LuceneQueryOperation op) {
-        assert(luceneOp == null);
         allResultsQuery = false;
-        luceneOp = op;
+        if (luceneOp == null) {
+            luceneOp = op;
+        } else {
+            luceneOp.addClause(op.getQueryString(), op.getQuery(), true);
+        }
     }
 
     public void addItemIdClause(Mailbox mbox, ItemId itemId, boolean truth) {
@@ -729,9 +734,9 @@ public class DBQueryOperation extends QueryOperation {
                     // we have to get ALL of the lucene hits for these ids.  There can very likely be more
                     // hits from Lucene then there are DB id's, so we just ask for a large number.
                     while (hasMore) {
-                        luceneChunk = luceneOp.getNextResultsChunk(MAX_HITS_PER_CHUNK);
+                        luceneChunk = luceneOp.getNextResultsChunk(MAX_HITS_PER_CHUNK*3);
                         Set<Integer> indexIds = luceneChunk.getIndexIds();
-                        if (indexIds.size() < MAX_HITS_PER_CHUNK) {
+                        if (indexIds.size() < MAX_HITS_PER_CHUNK*3) {
                             hasMore = false;
                         }
                         for (int indexId : indexIds) {

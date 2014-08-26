@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 /**
@@ -457,7 +459,7 @@ public class PageBriefcase extends AbsTab {
 
 			if (option == Button.B_LAUNCH_IN_SEPARATE_WINDOW) {
 
-				optionLocator = "css=div[id=NEW_BRIEFCASE_WIN] td[id*=NEW_BRIEFCASE_WIN_title]:contains(Launch in a separate window)";
+				optionLocator = "css=div[id=NEW_BRIEFCASE_WIN] td[id*=NEW_BRIEFCASE_WIN_title]:contains(Launch in Separate Window)";
 
 				page = new DocumentBriefcaseOpen(this.MyApplication, item);
 
@@ -533,7 +535,7 @@ public class PageBriefcase extends AbsTab {
 		if (pulldownLocator != null) {
 
 			// Make sure the locator exists
-			if (!this.sIsElementPresent(pulldownLocator)) {
+			if (!this.zWaitForElementPresent(pulldownLocator,"3000")) {
 				throw new HarnessException("Button " + pulldown + " option "
 						+ option + " pulldownLocator " + pulldownLocator
 						+ " not present!");
@@ -883,7 +885,7 @@ public class PageBriefcase extends AbsTab {
 			for (int i = 1; i <= count; i++) {
 			    itemIndexLocator = itemLocator + "[position()=" + i + "]";
 			    if (sIsElementPresent(itemIndexLocator + "//*[contains(text(),'" + itemName + "')]")) {
-				checkBoxLocator = itemIndexLocator + "//td[contains(@id,'zlif__BDLV')]/div[contains(@class,'ImgCheckbox')]";
+				checkBoxLocator = itemIndexLocator + "//div[contains(@id,'zlif__BDLV')]/div[contains(@class,'ImgCheckbox')]";
 				break;
 			    }
 			}
@@ -1145,7 +1147,10 @@ public class PageBriefcase extends AbsTab {
 			}
 
 			// click on the option
-			this.zClickAt(optionLocator, "0,0");
+			//this.zClickAt(optionLocator, "0,0");
+			//optionLocator = "css=div[id=zm__Briefcase] div[id=TAG_MENU] tr[id=POPUP_TAG_MENU]>td[id^=TAG_MENU_dropdown]>div[class=ImgCascade]";
+			this.sMouseOver(optionLocator);
+
 
 			// Now the ContextMenu option is opened
 			// Click on the specified sub option
@@ -1404,7 +1409,7 @@ public class PageBriefcase extends AbsTab {
 			if (sIsElementPresent(itemLocator + ":nth-child(" + i
 					+ "):contains(" + itemName + ")")) {
 				lockIconLocator = itemLocator + ":nth-child(" + i
-						+ ")>table>tbody>tr>td>div[id^=zlif__BDLV][id$=__loid][class^=Img]";
+						+ ")>table>tbody>tr>td>div[id^=zlif__BDLV][id$=__loid]>[class^=Img]";
 				break;
 			}
 		}
@@ -1414,7 +1419,7 @@ public class PageBriefcase extends AbsTab {
 		} else {
 			String image = this.sGetAttribute(lockIconLocator + "@class");
 
-			if (image.equals("ImgPadLock"))
+			if (image.equalsIgnoreCase("ImgPadLock"))
 				present = true;
 		}
 

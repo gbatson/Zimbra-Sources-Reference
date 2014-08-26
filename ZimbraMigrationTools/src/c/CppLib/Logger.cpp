@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 #include "common.h"
@@ -115,24 +117,32 @@ bool Log::LogFile::unlock(void)
     return UnlockFileEx(fd, 0, 1, 0, &ov) == TRUE;
 }
 
-bool Log::LogFile::write(const wchar_t *buf, unsigned chars)
+bool Log::LogFile::write(const wchar_t *msg, unsigned chars)
 {
     DWORD out;
     char sbuf[1024];
     int sz;
 
     SetFilePointer(fd, 0, NULL, FILE_END);
-    if ((sz = WideCharToMultiByte(CP_UTF8, 0, buf, chars, sbuf, sizeof (sbuf), NULL, NULL)) > 0)
-    {
+    // Notes about WideCharToMultiByte:
+    // * chars is the number if characters, not the byte size of the msg
+    // * if the number of characters is specified, the output buffer is 
+    //   not null terminated
+
+    // Try to write a message which fits into sbuf
+    sz = WideCharToMultiByte(CP_UTF8, 0, msg, chars, sbuf, sizeof (sbuf), NULL, NULL);
+    if (sz > 0)
+	{
         WriteFile(fd, sbuf, sz, &out, NULL);
     }
     else
     {
-        sz = WideCharToMultiByte(CP_UTF8, 0, buf, chars, NULL, 0, NULL, NULL);
+        // Determine required size for the message
+        sz = WideCharToMultiByte(CP_UTF8, 0, msg, chars, NULL, 0, NULL, NULL);
 
-        char *s = new char[sz];
-
-        WideCharToMultiByte(CP_UTF8, 0, buf, chars, s, sz, NULL, NULL);
+        // Allocate a buffer and write to it
+        char *buf = new char[sz];
+        sz = WideCharToMultiByte(CP_UTF8, 0, msg, chars, buf, sz, NULL, NULL);
         WriteFile(fd, buf, sz, &out, NULL);
         delete[] buf;
     }

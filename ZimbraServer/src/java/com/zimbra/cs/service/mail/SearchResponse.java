@@ -1,19 +1,22 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.mail;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.zimbra.common.localconfig.LC;
@@ -51,6 +54,7 @@ import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.soap.DocumentHandler;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.mail.type.ConversationMsgHitInfo;
 import com.zimbra.soap.mail.type.MessageHitInfo;
 import com.zimbra.soap.util.JaxbInfo;
 
@@ -132,7 +136,13 @@ final class SearchResponse {
      * @param hit hit to append
      * @throws ServiceException error
      */
-    void add(ZimbraHit hit) throws ServiceException {
+    void add(ZimbraHit zimbraHit) throws ServiceException{
+		add(zimbraHit,false);
+		
+	}
+    /* We need to pass in a boolean signifying whether to expand the message or not (bug 75990)
+    */
+    void add(ZimbraHit hit, boolean expandMsg) throws ServiceException {
         Element el = null;
         if (params.getFetchMode() == SearchParams.Fetch.IDS) {
             if (hit instanceof ConversationHit) {
@@ -151,7 +161,7 @@ final class SearchResponse {
             if (hit instanceof ConversationHit) {
                 el = add((ConversationHit) hit);
             } else if (hit instanceof MessageHit) {
-                el = add((MessageHit) hit);
+                el = add((MessageHit) hit,expandMsg);
             } else if (hit instanceof MessagePartHit) {
                 el = add((MessagePartHit) hit);
             } else if (hit instanceof ContactHit) {
@@ -179,10 +189,10 @@ final class SearchResponse {
 
     private Element add(ConversationHit hit) throws ServiceException {
         if (params.getFetchMode() == SearchParams.Fetch.IDS) {
-            Element el = element.addElement(MailConstants.E_CONV);
+            Element el = element.addNonUniqueElement(MailConstants.E_CONV);
             for (MessageHit mhit : hit.getMessageHits()) {
-                el.addElement(MailConstants.E_MSG).addAttribute(
-                        MailConstants.A_ID, ifmt.formatItemId(mhit.getItemId()));
+                ConversationMsgHitInfo cMsgHit = new ConversationMsgHitInfo(ifmt.formatItemId(mhit.getItemId()));
+                cMsgHit.toElement(el);
             }
             return el;
         } else {
@@ -191,45 +201,44 @@ final class SearchResponse {
             Element el = ToXML.encodeConversationSummary(element, ifmt, octxt, conv,
                     mhit == null ? null : mhit.getMessage(), params.getWantRecipients());
 
-            for (MessageHit mh : hit.getMessageHits()) {
-                Message msg = mh.getMessage();
-                Element mel = el.addElement(MailConstants.E_MSG).addAttribute(
-                        MailConstants.A_ID, ifmt.formatItemId(msg));
-                // if it's a 1-message conversation,
-                // hand back the folder and size for the lone message
-                if (el.getAttributeLong(MailConstants.A_NUM, 0) == 1) {
-                    mel.addAttribute(MailConstants.A_SIZE, msg.getSize()).addAttribute(
-                            MailConstants.A_FOLDER, msg.getFolderId());
+            Collection<MessageHit> msgHits = hit.getMessageHits();
+            long numMsgs = el.getAttributeLong(MailConstants.A_NUM, 0);
+            if (!params.fullConversation() || numMsgs == msgHits.size()) {
+                for (MessageHit mh : msgHits) {
+                    Message msg = mh.getMessage();
+                    doConvMsgHit(el, msg, numMsgs);
                 }
-                if (msg.isDraft() && msg.getDraftAutoSendTime() != 0) {
-                    mel.addAttribute(MailConstants.A_AUTO_SEND_TIME, msg.getDraftAutoSendTime());
+            } else {
+                for (Message msg : conv.getMailbox().getMessagesByConversation(octxt, conv.getId(), SortBy.DATE_DESC,
+                        -1 /* limit */, false /* excludeSpamAndTrash */)) {
+                    doConvMsgHit(el, msg, numMsgs);
                 }
             }
             return el;
         }
     }
 
-    private boolean isInlineExpand(MessageHit hit) throws ServiceException {
-        if (expand == ExpandResults.FIRST) {
-            return size == 0;
-        } else if (expand == ExpandResults.ALL) {
-            return true;
-        } else if (expand == ExpandResults.HITS) {
-            return true;
-        } else if (expand == ExpandResults.UNREAD) {
-            return hit.getMessage().isUnread();
-        } else if (expand == ExpandResults.UNREAD_FIRST) {
-            return allRead ? size == 0 : hit.getMessage().isUnread();
-        } else {
-            return expand.matches(hit.getParsedItemID());
+    private Element doConvMsgHit(Element el, Message msg, long numMsgsInConv) {
+        // Folder ID useful when undoing a move to different folder, also determining whether in junk/trash
+        ConversationMsgHitInfo cMsgHit =
+                ConversationMsgHitInfo.fromIdAndFolderId(ifmt.formatItemId(msg),
+                    ifmt.formatItemId(new ItemId(msg.getMailbox().getAccountId(), msg.getFolderId())));
+        // if it's a 1-message conversation, hand back size for the lone message
+        if (numMsgsInConv == 1) {
+            cMsgHit.setSize(msg.getSize());
         }
+        if (msg.isDraft() && msg.getDraftAutoSendTime() != 0) {
+            cMsgHit.setAutoSendTime(msg.getDraftAutoSendTime());
+        }
+        cMsgHit.toElement(el);
+        return el;
     }
 
-    private Element add(MessageHit hit) throws ServiceException {
+    //for bug 75990, we are now passing an expandMsg boolean instead of calculating in isInLineExpand
+    private Element add(MessageHit hit, boolean expandMsg) throws ServiceException {
         Message msg = hit.getMessage();
-        boolean inline = isInlineExpand(hit);
         // for bug 7568, mark-as-read must happen before the response is encoded.
-        if (inline && msg.isUnread() && params.getMarkRead()) {
+        if (expandMsg && msg.isUnread() && params.getMarkRead()) {
             // Mark the message as READ
             try {
                 msg.getMailbox().alterTag(octxt, msg.getId(), msg.getType(), Flag.FlagInfo.UNREAD, false, null);
@@ -243,7 +252,7 @@ final class SearchResponse {
         }
 
         Element el;
-        if (inline) {
+        if (expandMsg) {
             el = ToXML.encodeMessageAsMP(element, ifmt, octxt, msg, null, params.getMaxInlinedLength(),
                     params.getWantHtml(), params.getNeuterImages(), params.getInlinedHeaders(), true,
                     params.getWantExpandGroupInfo(), LC.mime_encode_missing_blob.booleanValue());
@@ -321,7 +330,7 @@ final class SearchResponse {
         Account acct = DocumentHandler.getRequestedAccount(zsc);
         long rangeStart = params.getCalItemExpandStart();
         long rangeEnd = params.getCalItemExpandEnd();
-        if (rangeStart < 0 && rangeEnd < 0 && (item instanceof Appointment)) {
+        if (rangeStart == -1 && rangeEnd == -1 && (item instanceof Appointment)) {
             // If no time range was given, force first instance only. (bug 51267)
             rangeStart = item.getStartTime();
             rangeEnd = rangeStart + 1;
@@ -352,5 +361,7 @@ final class SearchResponse {
             }
         }
     }
+
+
 
 }

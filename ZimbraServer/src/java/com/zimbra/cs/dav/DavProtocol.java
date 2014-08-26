@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2012, 2013 Zimbra Software, LLC.
- *
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * Copyright (C) 2006, 2007, 2009, 2010, 2012, 2013, 2014 Zimbra, Inc.
+ * 
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.dav;
@@ -25,7 +27,7 @@ public class DavProtocol {
     public enum Compliance {
         one, two, three,
         update, bind, access_control,
-        calendar_access, calendar_schedule,
+        calendar_access, calendar_auto_schedule, calendar_schedule,
         version_control,
         addressbook, extended_mkcol,
         // Apple extensions
@@ -64,6 +66,9 @@ public class DavProtocol {
         sComplianceStrMap.put(Compliance.bind, "bind");
         sComplianceStrMap.put(Compliance.access_control, "access-control");
         sComplianceStrMap.put(Compliance.calendar_access, "calendar-access");
+        // RFC6638 Scheduling Extensions to CalDAV
+        sComplianceStrMap.put(Compliance.calendar_auto_schedule, "calendar-auto-schedule");
+        // draft-desruisseaux-caldav-sched-03 (legacy scheduling)
         sComplianceStrMap.put(Compliance.calendar_schedule, "calendar-schedule");
         sComplianceStrMap.put(Compliance.version_control, "version-control");
         sComplianceStrMap.put(Compliance.calendar_proxy, "calendar-proxy");
@@ -111,6 +116,7 @@ public class DavProtocol {
     public static final String HEADER_ETAG = "ETag";
     public static final String HEADER_USER_AGENT = "User-Agent";
     public static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding";
+    public static final String HEADER_RANGE = "RANGE";
 
     public static final String NO_CACHE = "no-cache";
 

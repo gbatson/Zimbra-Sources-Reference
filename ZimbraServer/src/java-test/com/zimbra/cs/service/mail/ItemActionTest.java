@@ -1,15 +1,17 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011, 2012, 2013 Zimbra Software, LLC.
+ * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.4 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software Foundation,
+ * version 2 of the License.
  * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.mail;
@@ -38,6 +40,7 @@ import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailSender;
+import com.zimbra.cs.mailbox.Tag;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
@@ -111,6 +114,7 @@ public class ItemActionTest {
 
         // trash one message in conversation
         ItemActionHelper.MOVE(null, mbox, SoapProtocol.Soap12, Collections.singletonList(draft.getId()), MailItem.Type.MESSAGE, tcon, iid);
+        draft = mbox.getMessageById(null, draft.getId());
         Assert.assertEquals(draft.getFolderId(), Mailbox.ID_FOLDER_TRASH);
 
         ItemActionHelper.HARD_DELETE(null, mbox, SoapProtocol.Soap12, Collections.singletonList(draft.getConversationId()), MailItem.Type.CONVERSATION, tcon);
@@ -149,6 +153,9 @@ public class ItemActionTest {
 
         // trash the conversation
         ItemActionHelper.MOVE(null, mbox, SoapProtocol.Soap12, Arrays.asList(parent.getId(), draft.getId(), draft2.getId()), MailItem.Type.MESSAGE, tcon, iid);
+        parent = mbox.getMessageById(null, parent.getId());
+        draft = mbox.getMessageById(null, draft.getId());
+        draft2 = mbox.getMessageById(null, draft2.getId());
         Assert.assertEquals(parent.getFolderId(), Mailbox.ID_FOLDER_TRASH);
         Assert.assertEquals(draft.getFolderId(), Mailbox.ID_FOLDER_TRASH);
         Assert.assertEquals(draft2.getFolderId(), Mailbox.ID_FOLDER_TRASH);
@@ -239,4 +246,59 @@ public class ItemActionTest {
         Assert.assertFalse("reply still read", msg2.isUnread());
         Assert.assertFalse("reply now unmuted", msg2.isTagged(Flag.FlagInfo.MUTED));
     }
+    
+    @Test
+    public void deleteAllTagKeepsStatusOfFlags() throws Exception {
+        //Bug 76781
+        Account acct = Provisioning.getInstance().get(Key.AccountBy.name, 
+            "test@zimbra.com");
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(acct);
+
+        acct.setMailThreadingAlgorithm(MailThreadingAlgorithm.subject);
+
+        // setup: add the root message
+        ParsedMessage pm = MailboxTestUtil.generateMessage("test subject");
+        DeliveryOptions dopt = new DeliveryOptions().setFolderId(
+            Mailbox.ID_FOLDER_INBOX);        
+        mbox.addMessage(null, pm, dopt, null);
+
+        // add additional messages for conversation
+        pm = MailboxTestUtil.generateMessage("Re: test subject");
+        int msgId = mbox.addMessage(null, pm, dopt, null).getId(); 
+        // set flag to unread for  this message
+        MailboxTestUtil.setFlag(mbox, msgId, Flag.FlagInfo.UNREAD);
+       
+        
+        MailItem item = mbox.getItemById(null, msgId, MailItem.Type.UNKNOWN);
+        // verify message unread flag is set
+        Assert.assertEquals("Verifying Unread flag is set.", Flag.BITMASK_UNREAD, 
+            item.getFlagBitmask());
+        
+        // add 2 tags
+        mbox.alterTag(null, msgId, MailItem.Type.MESSAGE, tag1, true, null);
+        mbox.alterTag(null, msgId, MailItem.Type.MESSAGE, tag2, true, null);
+        
+               
+        Element request = new Element.XMLElement(
+            MailConstants.ITEM_ACTION_REQUEST);
+        Element action = request.addElement(MailConstants.E_ACTION);
+        action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
+        action.addAttribute(MailConstants.A_ITEM_TYPE, "");
+        action.addAttribute(MailConstants.A_ID, msgId);
+        
+        new ItemAction().handle(request, ServiceTestUtil.getRequestContext(acct));
+        Assert.assertEquals("Verifying unread flag is set after tag deletion",
+            Flag.BITMASK_UNREAD, 
+            item.getFlagBitmask());   
+        
+        Tag tag = mbox.getTagByName(null, tag1);
+        Assert.assertEquals(tag1+ " (tag messages)", 0, tag.getSize());
+        
+        tag = mbox.getTagByName(null, tag2);
+        Assert.assertEquals(tag1+ " (tag messages)", 0, tag.getSize());
+        
+    }
+    
+    
+    private static final String tag1 = "foo", tag2 = "bar";
 }

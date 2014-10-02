@@ -326,9 +326,10 @@ public class DeleteAppointment extends AjaxCommonTest {
 
 	}
 
+	// https://bugzilla.zimbra.com/show_bug.cgi?id=72444 targeted for Kiss release so changing test group from "functional" to "deprecated" for now.
 	@Bugs(ids = "69132,72444")
 	@Test(	description = "Delete a appt by selecting and typing '.t' shortcut",
-			groups = { "functional" } )
+			groups = { "deprecated" } )
 	public void DeleteAppointment_04() throws HarnessException {
 
 		// Create the appointment on the server
@@ -646,9 +647,10 @@ public class DeleteAppointment extends AjaxCommonTest {
 
 	}
 
-	@Bugs(ids = "69132")
+	// https://bugzilla.zimbra.com/show_bug.cgi?id=61625 is "Not Committed" since long so changing test group from "functional" to "deprecated" for now.
+	@Bugs(ids = "61625")
 	@Test(	description = "Hard-delete a appt by selecting and typing 'shift-del' shortcut",
-			groups = { "functional" } )
+			groups = { "deprecated" } )
 	public void HardDeleteAppointment_01() throws HarnessException {
 
 
@@ -722,9 +724,10 @@ public class DeleteAppointment extends AjaxCommonTest {
 
 	}
 
-	@Bugs(ids = "69132")
+	// https://bugzilla.zimbra.com/show_bug.cgi?id=61625 is "Not Committed" since long so changing test group from "functional" to "deprecated" for now.
+	@Bugs(ids = "61625")
 	@Test(	description = "Hard-delete multiple appts (3) by selecting and typing 'shift-del' shortcut",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void HardDeleteAppointment_02() throws HarnessException {
 
 

@@ -769,7 +769,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>block all attachment downloading</desc>
 </attr>
 
-<attr id="116" name="zimbraAttachmentsViewInHtmlOnly" type="boolean" cardinality="single" optionalIn="account,cos,globalConfig" flags="accountInherited,domainAdminModifiable">
+<attr id="116" name="zimbraAttachmentsViewInHtmlOnly" type="boolean" cardinality="single" optionalIn="account,cos,globalConfig" flags="accountInfo,accountInherited,domainAdminModifiable">
   <defaultCOSValue>FALSE</defaultCOSValue>
   <globalConfigValue>FALSE</globalConfigValue>
   <desc>view all attachments in html only</desc>
@@ -823,7 +823,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>contact features</desc>
 </attr>
 
-<attr id="136" name="zimbraFeatureCalendarEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited">
+<attr id="136" name="zimbraFeatureCalendarEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" callback="FeatureCalendarEnabled">
   <defaultCOSValue>TRUE</defaultCOSValue>
   <defaultExternalCOSValue>FALSE</defaultExternalCOSValue>
   <desc>calendar features</desc>
@@ -6873,7 +6873,7 @@ TODO: delete them permanently from here
 </attr>
 
 <attr id="1379" name="zimbraReverseProxyAvailableLookupTargets" type="string" cardinality="multi" optionalIn="server,globalConfig" flags="serverInherited" since="8.0.0">
-  <desc>The servers to be included in the proxy lookup hanlders list. Proxy will only use the servers specified here to do the lookup. Leaving empty means using all the servers whose zimbraReverseProxyLookupTarget is TRUE.</desc>
+  <desc>The servers to be included in the proxy lookup handlers list. Proxy will only use the servers specified here to do the lookup. Leaving empty means using all the servers whose zimbraReverseProxyLookupTarget is TRUE.</desc>
 </attr>
 
 <attr id="1380" name="zimbraMailLocalBind" type="boolean" cardinality="single" immutable="1" optionalIn="server" requiresRestart="mailbox" since="8.0.0">
@@ -7207,12 +7207,28 @@ TODO: delete them permanently from here
 </attr>
 
 <attr id="1572" name="zimbraMobileForceSamsungProtocol25" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="8.0.7">
-  <defaultCOSValue>TRUE</defaultCOSValue>
+  <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>Whether to force Samsung devices using Active Sync 2.5</desc>
 </attr>
 
 <attr id="1573" name="zimbraMobileForceProtocol25" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="8.0.7">
   <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>Whether to force devices using Active Sync 2.5</desc>
+</attr>
+
+<attr id="1588" name="zimbraMtaSmtpdClientPortLogging" type="enum" value="yes,no" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.8, 8.5.0">
+  <globalConfigValue>no</globalConfigValue>
+  <desc>Value for postconf smtpd_client_port_logging. Defaults to no</desc>
+</attr>
+
+<attr id="1596" name="zimbraMobileMaxMessageSize" type="integer" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="8.0.8, 8.5.0" requiresRestart="mailbox">
+  <globalConfigValue>10240000</globalConfigValue>
+  <desc>Maximum total size of a mail message that can be synced to device without truncation. It cannot be larger than zimbraMTAMaxMessageSize. 0 means zimbraMTAMaxMessageSize or INTEGER_MAX, whichever is smaller</desc>
+</attr>
+<attr id="1643" name="zimbraRegexMaxAccessesWhenMatching" type="integer" cardinality="single" optionalIn="globalConfig" since="8.0.8, 8.5.0">
+  <globalConfigValue>1000000</globalConfigValue>
+  <desc>This attribute is used to limit the amount of computation allowed when matching regex expressions.  For example as part of the IMAP LIST command.
+      Set to a higher value if legitimate IMAP list commands fail throwing TooManyAccessesToMatchTargetException.
+  </desc>
 </attr>
 </attrs>

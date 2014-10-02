@@ -66,6 +66,7 @@ MAPIMessage::MAPIMessage(): m_pMessage(NULL), m_pMessagePropVals(NULL), m_pRecip
     m_pDateTimeStr[0] = '\0';
     m_pDeliveryDateTimeStr[0] = '\0';
     m_pDeliveryUnixDateTimeStr[0] = '\0';
+	m_pDateUnixDateTimeStr[0] = '\0';
 
     // initialize the RTF tags.
     RTFElement.push_back("{");
@@ -356,6 +357,25 @@ LPSTR MAPIMessage::DateString()
             nWritten + 1);
     }
     return m_pDateTimeStr;
+}
+
+
+LPSTR MAPIMessage::DateUnixString()
+{
+    if (PROP_TYPE(m_pMessagePropVals[MESSAGE_DATE].ulPropTag) == PT_ERROR)
+    {
+        strcpy(m_pDateUnixDateTimeStr, "No Date");
+    }
+    else if (m_pDateUnixDateTimeStr[0] == '\0')
+    {
+        __int64 unixTime;
+        Zimbra::Util::FileTimeToUnixTime64(m_pMessagePropVals[MESSAGE_DATE].Value.ft,
+            unixTime);                          // server wants this time format
+
+        _i64toa(unixTime, m_pDateUnixDateTimeStr, 10);
+        strcat(m_pDateUnixDateTimeStr, "000");
+    }
+    return m_pDateUnixDateTimeStr;
 }
 
 DWORD MAPIMessage::Size()

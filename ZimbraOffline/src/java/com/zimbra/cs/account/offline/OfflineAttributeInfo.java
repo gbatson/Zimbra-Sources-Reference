@@ -2,17 +2,21 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.offline;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.SystemUtil;
@@ -28,10 +32,6 @@ import com.zimbra.cs.account.AttributeServerType;
 import com.zimbra.cs.account.AttributeType;
 import com.zimbra.cs.offline.OfflineLog;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 /**
  */
 public class OfflineAttributeInfo extends AttributeInfo {
@@ -43,7 +43,7 @@ public class OfflineAttributeInfo extends AttributeInfo {
             Set<AttributeClass> optionalIn, Set<AttributeFlag> flags, List<String> globalConfigValues,
             List<String> defaultCOSValues, List<String> globalConfigValuesUpgrade,
             List<String> defaultCOSValuesUpgrade, String description, List<AttributeServerType> requiresRestart,
-            Version since, Version deprecatedSince) {
+            List<Version> since, Version deprecatedSince) {
         super(attrName, id, parentId, groupId, callback, type, order, value, immutable, min, max, cardinality,
               requiredIn, optionalIn, flags, globalConfigValues, defaultCOSValues, null, globalConfigValuesUpgrade,
               defaultCOSValuesUpgrade, description, requiresRestart, since, deprecatedSince);

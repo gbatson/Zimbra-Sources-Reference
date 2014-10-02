@@ -61,6 +61,7 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		// Refresh
 		app.zPageAddressbook.zRefresh();
 		
+		
 		// Right click on the contact
 		DialogNewContactGroup dialog = (DialogNewContactGroup) app.zPageAddressbook.zListItem(
 				Action.A_RIGHTCLICK, 
@@ -105,8 +106,13 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		
 		//-- GUI
 		
-		// Refresh
-		app.zPageAddressbook.zRefresh();
+		// Logout and login to pick up the changes
+		app.zPageLogin.zNavigateTo();
+		this.startingPage.zNavigateTo();
+
+	    // Refresh
+	 	app.zPageAddressbook.zRefresh();
+	 	
 		
 		// Right click on the contact -> Group -> Existing Group Name
 		app.zPageAddressbook.zListItem(
@@ -153,8 +159,12 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		
 		//-- GUI
 		
-		// Refresh
-		app.zPageAddressbook.zRefresh();
+		// Logout and login to pick up the changes
+		app.zPageLogin.zNavigateTo();
+		this.startingPage.zNavigateTo();
+
+	    // Refresh
+	 	app.zPageAddressbook.zRefresh();
 
 		// Check 3 contact items
 	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact1.getName());
@@ -347,13 +357,18 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		
 		//-- GUI
 		
-		// Refresh
-		app.zPageAddressbook.zRefresh();
+				
+	   // Logout and login to pick up the changes
+		app.zPageLogin.zNavigateTo();
+		this.startingPage.zNavigateTo();
 
-		// Check 3 contact items
-	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact.getName());
+	    // Refresh
+	 	app.zPageAddressbook.zRefresh();
+	 	
+
+	   // Check 3 contact items
 	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, group1.getName());
-
+	    app.zPageAddressbook.zListItem(Action.A_CHECKBOX, contact.getName());
 
 		// Right click on one contact -> Group -> Existing Group Name
 		app.zPageAddressbook.zListItem(
@@ -368,7 +383,7 @@ public class Bug44132_ManipulateContactGroupFromContactContextMenu extends AjaxC
 		//-- Verification
 		
 		// Verify the contact group is created
-		ContactGroupItem actual = ContactGroupItem.importFromSOAP(app.zGetActiveAccount(), group1.getName());
+		ContactGroupItem actual = ContactGroupItem.importFromSOAP(app.zGetActiveAccount(), group2.getName());
 		ZAssert.assertNotNull(actual,  "Verify the contact group is created");
 		
 		// Verify the contact group contains the contact

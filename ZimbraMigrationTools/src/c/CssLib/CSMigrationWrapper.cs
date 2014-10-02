@@ -265,12 +265,23 @@ public class CSMigrationWrapper
 
     private bool SkipFolder(MigrationOptions options, List<string> skipList, dynamic folder) {
         // Note that Rules and OOO do not apply here
+
+
+        if (folder.Id == (int)ZimbraFolders.Junk &&
+            (options.ItemsAndFolders.ToString().Contains("Junk")))
+        {
+            return false;
+        }
+
+
         if ((folder.Id == (int)ZimbraFolders.Calendar &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Calendar)) ||
             (folder.Id == (int)ZimbraFolders.Contacts &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Contacts)) ||
             (folder.Id == (int)ZimbraFolders.Junk &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Junk)) ||
+            (folder.Id == (int)ZimbraFolders.Junk &&
+            !options.ItemsAndFolders.ToString().Contains("Junk")) ||
             (folder.Id == (int)ZimbraFolders.Sent &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Sent)) ||
             (folder.Id == (int)ZimbraFolders.Tasks &&
@@ -286,6 +297,7 @@ public class CSMigrationWrapper
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Tasks)) ||
             (folder.ContainerClass == "IPF.Note" &&
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Mail)) ||
+             
             (folder.ContainerClass == "" &&     // if no container class, assume IPF.Note
             !options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Mail)))
         {
@@ -1353,8 +1365,16 @@ public class CSMigrationWrapper
         if (value.Length > 0)
         {
             Acct.IsValid = false;
-            Log.err("Unable to initialize", accountName, value +"or verify if source mailbox exists.");
-            Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
+            if (value.Contains("Outlook"))
+            {
+                Log.err("Unable to initialize", accountName, value);
+                Acct.LastProblemInfo = new ProblemInfo(accountName, value, ProblemInfo.TYPE_ERR);
+            }
+            else
+            {
+                Log.err("Unable to initialize", accountName, value + "or verify if source mailbox exists.");
+                Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
+            }
             Acct.TotalErrors++;
             //Acct.TotalErrors = Acct.MaxErrorCount;
             return;
@@ -1465,6 +1485,7 @@ public class CSMigrationWrapper
                     return;
                 }
             }
+           
 
             if (SkipFolder(options, skipList, folder))
             {

@@ -1,6 +1,6 @@
 open_source_license.txt
 
-Zimbra Collaboration Suite 8.0.7 GA
+Zimbra Collaboration Suite 8.0.8 GA
 
 
 ===========================================================================
@@ -32,7 +32,7 @@ PART 1. APPLICATION LAYER
 
 SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
 
-   >>> altermime-0.3.10
+   >>> altermime-0.3-20100505
    >>> ant-contrib-1.0b1
    >>> asm-3.3.1
    >>> autoit-3.0
@@ -40,7 +40,7 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> bouncycastle-1.46
    >>> bouncycastle-zimbra-20110708
    >>> chunkin-nginx-module-0.23rc2
-   >>> curl-7.35.0
+   >>> curl-7.37.0
    >>> cyrus-sasl-zimbra-2.1.26
    >>> dom4j-1.5.2
    >>> freetype-2.4.9
@@ -56,7 +56,7 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> javamail-1.4.5
    >>> jaxen-1.1.3
    >>> jce_policy-7
-   >>> jdk-1.7.0_51
+   >>> jdk-1.7.0_67
    >>> jdom-1.1
    >>> jplayer-2.1.0
    >>> json-1.0
@@ -70,13 +70,13 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> libxml2-2.7.8-zimbra
    >>> md5.js-2.1
    >>> memcached-1.4.17
-   >>> net-snmp-5.7.2
+   >>> net-snmp-5.7.2.1
    >>> nginx-1.2-zimbra
    >>> nist-sip-1.2
    >>> nviennot-nginx-tcp-keepalive-4d7186d
-   >>> opendkim-2.9.0
-   >>> openldap-2.4.38
-   >>> openssl-1.0.1f
+   >>> opendkim-2.9.2
+   >>> openldap-2.4.39
+   >>> openssl-1.0.1i
    >>> perl-data-uuid-1.218
    >>> perl-geography-countries-2009041301
    >>> perl-locale-maketext-simple-0.21
@@ -84,12 +84,11 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> perl-net-ssleay-1.52
    >>> perl-socket6-0.23
    >>> perl-try-tiny-0.11
-   >>> php-5.4.17
+   >>> php-5.4.30
    >>> sendmail-8.14.8
    >>> slf4j-1.6.4
    >>> soundmanager2-2.0b
    >>> spymemcached-2.6
-   >>> sqlite-amalgamation-3.7.6.2
    >>> sqlitejdbc-3.6.20.1
    >>> tnef-1.6.0
    >>> xp-0.5
@@ -112,8 +111,7 @@ SECTION 2: Apache License, V2.0
    >>> apache-commons-io-1.4
    >>> apache-commons-logging-1.1.1
    >>> apache-commons-pool-1.6
-   >>> apache-derby-10.5.3.0
-   >>> apache-httpd-2.4.7
+   >>> apache-httpd-2.4.10
    >>> apache-jcs-1.3
    >>> apache-log4j-1.2.16
    >>> apache-log4j-extras-1.0
@@ -138,7 +136,6 @@ SECTION 2: Apache License, V2.0
    >>> selenium-2.23.1
    >>> smack-3.2.1
    >>> spamassassin-3.4.0
-   >>> sqlite-xerial-jdbc-3.7.6.2
    >>> testng-5.12.1
    >>> xerces-c-3.1.1
    >>> xerces-j-2.9.1
@@ -223,11 +220,11 @@ SECTION 7: GNU General Public License, V1.0
 SECTION 8: GNU General Public License, V2.0
 
    >>> amavisd-2.8.0
-   >>> clamav-0.98.1
+   >>> clamav-0.98.4
    >>> cluebringer-2.1.0-beta
    >>> libtool-2.2.6b
    >>> libwww-perl-6.04
-   >>> mysql-5.5.35
+   >>> mysql-5.5.39
    >>> mysql-connector-java-5.1.18
    >>> perl-archive-tar-1.90
    >>> perl-archive-zip-1.30
@@ -259,7 +256,7 @@ SECTION 8: GNU General Public License, V2.0
    >>> perl-digest-sha1-2.13
    >>> perl-encode-locale-1.03
    >>> perl-extutils-constant-0.23
-   >>> perl-extutils-makemaker-6.78
+   >>> perl-extutils-makemaker-6.88
    >>> perl-extutils-parsexs-3.18
    >>> perl-file-copy-recursive-0.38
    >>> perl-file-grep-0.02
@@ -355,7 +352,6 @@ SECTION 9: GNU General Public License, V3.0
 SECTION 10: GNU Lesser General Public License, V2.1
 
    >>> aspell-0.60.6.1
-   >>> firefox-nss-4.0.1-zimbra
    >>> jcommon-1.0.20
    >>> jfreechart-1.0.16
    >>> jna-3.4.0
@@ -382,13 +378,20 @@ SECTION 12: GNU Library General Public License, V2.0
 
 SECTION 13: IBM Public License, V1.0
 
-   >>> postfix-2.10.2
+   >>> postfix-2.10.3
 
 
 
 SECTION 14: Microsoft Limited Public License
 
    >>> msdn-signing-code-zimbra-20120125
+
+
+SECTION 15: Mozilla Public License, V2.0
+
+   >>> firefox-nss-22-zimbra
+   >>> firefox-nspr-22-zimbra
+
 
 APPENDIX. Standard License Files
 
@@ -430,6 +433,8 @@ APPENDIX. Standard License Files
 
    >>> Oracle Binary Code License Agreement for the Java SE Platform Products and JavaFX
 
+   >>> Mozilla Public License, V2.0
+
 
 
 =============== PART 1. APPLICATION LAYER ====================================
@@ -441,7 +446,7 @@ APPENDIX. Standard License Files
 BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES are applicable to the following component(s).
 
 
->>> altermime-0.3.10
+>>> altermime-0.3-20100505
 
 alterMIME LICENSE
 
@@ -860,7 +865,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
->>> curl-7.35.0
+>>> curl-7.37.0
 
 COPYRIGHT AND PERMISSION NOTICE
 
@@ -9587,7 +9592,7 @@ included with JRE 7, JDK 7, and OpenJDK 7, except where noted:
 --------------------------------------------------------------------------------
 
 
->>> jdk-1.7.0_51
+>>> jdk-1.7.0_67
 
 [USE OF THIS PACKAGE IS SUBJECT TO THE TERMS AND CONDITIONS OF YOUR TELLIGENT END USER LICENSE AGREEMENT. ADDITIONAL COPYRIGHT NOTICES AND LICENSE TERMS APPLICABLE TO PORTIONS OF THIS PACKAGE ARE SET FORTH BELOW.]
 
@@ -14692,7 +14697,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
->>> net-snmp-5.7.2
+>>> net-snmp-5.7.2.1
 
 Various copyrights apply to this package, listed in various separate
 parts below.  Please make sure that you read all the parts.
@@ -15208,7 +15213,7 @@ Copyright (C) 2011 Nicolas Viennot <nicolas@viennot.biz>
 This file is subject to the terms and conditions of the MIT License.
 
 
->>> opendkim-2.9.0
+>>> opendkim-2.9.2
 
 Copyright (c) 2009, 2010, 2012, The Trusted Domain Project.
 All rights reserved.
@@ -15248,7 +15253,7 @@ ADDITIONAL LICENSE INFORMATION :
 
 > SENDMAIL OPEN SOURCE LICENSE
 
-opendkim-2.9.0.tar.gz\opendkim-2.9.0.tar\opendkim-2.9.0\LICENSE
+opendkim-2.9.2.tar.gz\opendkim-2.9.2.tar\opendkim-2.9.2\LICENSE
 
 The following license terms and conditions apply to this open source
 software ("Software"), unless a different license is obtained directly
@@ -15329,7 +15334,7 @@ $Revision: 1.1 $ $Date: 2009/07/16 18:43:18 $
 
 > MIT
 
-opendkim-2.9.0.tar.gz\opendkim-2.9.0.tar\opendkim-2.9.0\libopendkim\base32.c
+opendkim-2.9.2.tar.gz\opendkim-2.9.2.tar\opendkim-2.9.2\libopendkim\base32.c
 
 Copyright (c) 2006-2009 Bjorn Andersson <flex@kryo.se>,
 Erik Ekman <yarrick@kryo.se>
@@ -15352,7 +15357,7 @@ Portions Copyright (c) 2010-2012, The Trusted Domain Project.
 All rights reserved.
 
 
->>> openldap-2.4.38
+>>> openldap-2.4.39
 
 The OpenLDAP Public License
 Version 2.8, 17 August 2003
@@ -15403,7 +15408,7 @@ California, USA.  All Rights Reserved.  Permission to copy and
 distribute verbatim copies of this document is granted.
 
 
->>> openssl-1.0.1f
+>>> openssl-1.0.1i
 
 LICENSE ISSUES
   ==============
@@ -15722,7 +15727,7 @@ This program is free software; you can redistribute
 it and/or modify it under the terms of the MIT license.
 
 
->>> php-5.4.17
+>>> php-5.4.30
 
 The PHP License, version 3.01
 
@@ -15751,7 +15756,7 @@ ADDITIONAL LICENSE INFORMATION:
 
 > BSD style
 
-php-5.4.17.tar.bz2\php-5.4.17.tar\php-5.4.17\Zend\LICENSE
+php-5.4.30.tar.bz2\php-5.4.30.tar\php-5.4.30\Zend\LICENSE
 
 The Zend Engine License, Version 2.00
 Copyright (c) 1999-2006 Zend Technologies Ltd. All rights reserved.
@@ -15775,7 +15780,7 @@ THIS SOFTWARE IS PROVIDED BY ZEND TECHNOLOGIES LTD. ``AS IS'' AND  ANY EXPRESSED
 
 > GPL 2.0
 
-php-5.4.17.tar.bz2\php-5.4.17.tar\php-5.4.17\build\shtool
+php-5.4.30.tar.bz2\php-5.4.30.tar\php-5.4.30\build\shtool
 
 GNU shtool -- The GNU Portable Shell Tool
 Copyright (c) 1994-2008 Ralf S. Engelschall <rse@engelschall.com>
@@ -15796,14 +15801,14 @@ NOTICE: Given that you include this file verbatim into your own source tree, you
 
 > LGPL 2.1
 
-php-5.4.17.tar.bz2\php-5.4.17.tar\php-5.4.17\ext\bcmath\libbcmath\COPYING.LIB
+php-5.4.30.tar.bz2\php-5.4.30.tar\php-5.4.30\ext\bcmath\libbcmath\COPYING.LIB
 
 License: LGPL 2.1
 
 
 > LGPL 2.0
 
-php-5.4.17.tar.bz2\php-5.4.17.tar\php-5.4.17\ext\bcmath\libbcmath\src\add.c
+php-5.4.30.tar.bz2\php-5.4.30.tar\php-5.4.30\ext\bcmath\libbcmath\src\add.c
 
 Copyright (C) 1991, 1992, 1993, 1994, 1997 Free Software Foundation, Inc.
 Copyright (C) 2000 Philip A. Nelson
@@ -15824,7 +15829,7 @@ Bellingham, WA 98226-9062
 
 > MIT
 
-php-5.4.17.tar.bz2\php-5.4.17.tar\php-5.4.17\ext\gd\libgd\ COPYING
+php-5.4.30.tar.bz2\php-5.4.30.tar\php-5.4.30\ext\gd\libgd\ COPYING
 
 Portions copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002 by Cold Spring Harbor Laboratory. Funded under Grant P41-RR02188 by the National Institutes of Health.
  
@@ -15850,7 +15855,7 @@ Although their code does not appear in gd, the authors wish to thank David Kobla
 
 > Public Domain
 
-php-5.4.17.tar.bz2\php-5.4.17.tar\php-5.4.17\ext\sqlite3\libsqlite\sqlite3.h
+php-5.4.30.tar.bz2\php-5.4.30.tar\php-5.4.30\ext\sqlite3\libsqlite\sqlite3.h
 
 2001 September 15
 
@@ -16008,21 +16013,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
->>> sqlite-amalgamation-3.7.6.2
-
-SQLite Copyright
-
-SQLite is in the Public Domain
-
-All of the deliverable code in SQLite has been dedicated to the public domain by the authors. All code authors, and representatives of the companies they work for, have signed affidavits dedicating their contributions to the public domain and originals of those signed affidavits are stored in a firesafe at the main offices of Hwaci. Anyone is free to copy, modify, publish, use, compile, sell, or distribute the original SQLite code, either in source code form or as a compiled binary, for any purpose, commercial or non-commercial, and by any means.
-
-The previous paragraph applies to the deliverable code in SQLite - those parts of the SQLite library that you actually bundle and ship with a larger application. Portions of the documentation and some code used as part of the build process might fall under other licenses. The details here are unclear. We do not worry about the licensing of the documentation and build code so much because none of these things are part of the core deliverable SQLite library.
-
-All of the deliverable code in SQLite has been written from scratch. No code has been taken from other projects or from the open internet. Every line of code can be traced back to its original author, and all of those authors have public domain dedications on file. So the SQLite code base is clean and is uncontaminated with licensed code from other projects. 
-
-(Available at http://www.sqlite.org/copyright.html on 4th May 2011)
 
 
 >>> sqlitejdbc-3.6.20.1
@@ -16928,187 +16918,7 @@ This product includes software developed by
 The Apache Software Foundation (http://www.apache.org/).
 
 
->>> apache-derby-10.5.3.0
-
-Licensed to the Apache Software Foundation (ASF) under one or more
-contributor license agreements.  See the NOTICE file distributed with
-this work for additional information regarding copyright ownership.
-The ASF licenses this file to you under the Apache License, Version 2.0
-(the "License"); you may not use this file except in compliance with
-the License.  You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-
-ADDITIONAL LICENSE INFORMATION:
-
-This product includes software developed by
-The Apache Software Foundation (http://www.apache.org/).
-
-Portions of Derby were originally developed by
-International Business Machines Corporation and are
-licensed to the Apache Software Foundation under the
-"Software Grant and Corporate Contribution License Agreement",
-informally known as the "Derby CLA".
-The following copyright notice(s) were affixed to portions of the code
-with which this file is now or was at one time distributed
-and are placed here unaltered.
-
-(C) Copyright 1997,2004 International Business Machines Corporation.  All rights reserved.
-
-(C) Copyright IBM Corp. 2003.
-
-==================================================
-
-The portion of the functionTests under 'nist' was originally
-developed by the National Institute of Standards and Technology (NIST),
-an agency of the United States Department of Commerce, and adapted by
-International Business Machines Corporation in accordance with the NIST
-Software Acknowledgment and Redistribution document at
-http://www.itl.nist.gov/div897/ctg/sql_form.htm
-
-
-========================================================
-
-The JDBC apis for small devices and JDBC3 (under java/stubs/jsr169 and
-java/stubs/jdbc3) were produced by trimming sources supplied by the
-Apache Harmony project. The following notice covers the Harmony sources:
-
-Portions of Harmony were originally developed by
-Intel Corporation and are licensed to the Apache Software
-Foundation under the "Software Grant and Corporate Contribution
-License Agreement", informally known as the "Intel Harmony CLA".
-
-
-=====================================================
-
-The Derby build relies on source files supplied by the Apache Felix
-project. The following notice covers the Felix files:
-
-Apache Felix Main
-Copyright 2009 The Apache Software Foundation
-
-
-I. Included Software
-
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
-Licensed under the Apache License 2.0.
-
-This product includes software developed at
-The OSGi Alliance (http://www.osgi.org/).
-Copyright (c) OSGi Alliance (2000, 2007).
-Licensed under the Apache License 2.0.
-
-This product includes software from http://kxml.sourceforge.net.
-Copyright (c) 2002,2003, Stefan Haustein, Oberhausen, Rhld., Germany.
-Licensed under BSD License.
-
-II. Used Software
-
-This product uses software developed at
-The OSGi Alliance (http://www.osgi.org/).
-Copyright (c) OSGi Alliance (2000, 2007).
-Licensed under the Apache License 2.0.
-
-
-III. License Summary
-- Apache License 2.0
-- BSD License
-
-====================================================
-The Derby build relies on jar files supplied by the Apache Xalan
-project. The following notice covers the Xalan jar files:
-
-====================================================
-==  NOTICE file corresponding to section 4(d) of the Apache License,   ==
-==  Version 2.0, in this case for the Apache Xalan Java distribution.  ==
-====================================================
-Apache Xalan (Xalan XSLT processor)
-Copyright 1999-2006 The Apache Software Foundation
-
-Apache Xalan (Xalan serializer)
-Copyright 1999-2006 The Apache Software Foundation
-
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
-
-======================================================
-Portions of this software was originally based on the following:
-- software copyright (c) 1999-2002, Lotus Development Corporation.,
-http://www.lotus.com.
-- software copyright (c) 2001-2002, Sun Microsystems.,
-http://www.sun.com.
-- software copyright (c) 2003, IBM Corporation.,
-http://www.ibm.com.
-
-======================================================
-The binary distribution package (ie. jars, samples and documentation) of
-this product includes software developed by the following:
-
-- The Apache Software Foundation
-- Xerces Java - see LICENSE.txt
-- JAXP 1.3 APIs - see LICENSE.txt
-- Bytecode Engineering Library - see LICENSE.txt
-- Regular Expression - see LICENSE.txt
-
-- Scott Hudson, Frank Flannery, C. Scott Ananian
-- CUP Parser Generator runtime (javacup\runtime) - see LICENSE.txt
-
-=====================================================
-The source distribution package (ie. all source and tools required to build
-Xalan Java) of this product includes software developed by the following:
-
-- The Apache Software Foundation
-- Xerces Java - see LICENSE.txt
-- JAXP 1.3 APIs - see LICENSE.txt
-- Bytecode Engineering Library - see LICENSE.txt
-- Regular Expression - see LICENSE.txt
-- Ant - see LICENSE.txt
-- Stylebook doc tool - see LICENSE.txt
-
-- Elliot Joel Berk and C. Scott Ananian
-- Lexical Analyzer Generator (JLex) - see LICENSE.txt
-
-==================================================
-Apache Xerces Java
-Copyright 1999-2006 The Apache Software Foundation
-
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
-
-Portions of Apache Xerces Java in xercesImpl.jar and xml-apis.jar
-were originally based on the following:
-- software copyright (c) 1999, IBM Corporation., http://www.ibm.com.
-- software copyright (c) 1999, Sun Microsystems., http://www.sun.com.
-- voluntary contributions made by Paul Eng on behalf of the
-Apache Software Foundation that were originally developed at iClick, Inc.,
-software copyright (c) 1999.
-
-=================================================
-Apache xml-commons xml-apis (redistribution of xml-apis.jar)
-
-Apache XML Commons
-Copyright 2001-2003,2006 The Apache Software Foundation.
-
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
-
-Portions of this software were originally based on the following:
-- software copyright (c) 1999, IBM Corporation., http://www.ibm.com.
-- software copyright (c) 1999, Sun Microsystems., http://www.sun.com.
-- software copyright (c) 2000 World Wide Web Consortium, http://www.w3.org
-
-====================================================
-
-
->>> apache-httpd-2.4.7
+>>> apache-httpd-2.4.10
 
 copyright 2013 The Apache Software Foundation.
 
@@ -23237,50 +23047,6 @@ limitations under the License.
 License: Apache 2.0
 
 
->>> sqlite-xerial-jdbc-3.7.6.2
-
-Copyright 2009 Taro L. Saito
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-
-
-ADDITIONAL LICENSE INFORMATION:
-Copyright (c) 2006, David Crawshaw.  All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-1. Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGE.
-
-
 >>> testng-5.12.1
 
 LICENSE = Apache License 2.0
@@ -26088,7 +25854,7 @@ A copy of the license is included in the section entitled "GNU
 Free Documentation License".
 
 
->>> clamav-0.98.1
+>>> clamav-0.98.4
 
 Copyright (C)2008 Sourcefire, Inc.
 
@@ -26112,7 +25878,7 @@ ADDITIONAL LICENSE INFORMATION :
 
 > BSD
 
-clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\COPYING.bzip2
+clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\COPYING.bzip2
 
 This program, "bzip2", the associated library "libbzip2", and all
 documentation, are copyright (C) 1996-2006 Julian R Seward.  All
@@ -26155,7 +25921,7 @@ bzip2/libbzip2 version 1.0.4 of 20 December 2006
 
 > MIT
 
-clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\COPYING.getopt
+clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\COPYING.getopt
 
 getopt.c - my re-implementation of getopt.
 Copyright 1997, 2000, 2001, 2002, 2006, Benjamin Sittler
@@ -26182,7 +25948,7 @@ DEALINGS IN THE SOFTWARE.
 
 > LLVM License
 
-clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\COPYING.llvm
+clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\COPYING.llvm
 
 LLVM Release License
 ==============================================================================
@@ -26229,7 +25995,7 @@ SOFTWARE.
 
 > Public Domain
 
-clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\COPYING.lzma
+clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\COPYING.lzma
 
 The original lzma.txt license file, a small portion of which is reproduced below,
 is available under libclamav/7z/lzma.txt.
@@ -26241,7 +26007,7 @@ LZMA SDK is written and placed in the public domain by Igor Pavlov
 
 > Unrar License
 
-C:\Documents and Settings\jasdeep.singh\My Documents\Downloads\clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\COPYING.unrar
+C:\Documents and Settings\jasdeep.singh\My Documents\Downloads\clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\COPYING.unrar
 
 The libclamunrar code is based on the work of Alexander L. Roshal (C)
 
@@ -26295,7 +26061,7 @@ Thank you for your interest in RAR and UnRAR.
 
 > LGPL 2.1
 
-clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\libclamunrar_iface\unrar_iface.h
+clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\libclamunrar_iface\unrar_iface.h
 
 Interface to libclamunrar
 Copyright (C) 2007 Sourcefire, Inc.
@@ -26312,7 +26078,7 @@ Lesser General Public License for more details.
 
 > LGPL 2.0
 
-clamav-0.98.1.tar.gz\clamav-0.98.1.tar\clamav-0.98.1\libltdl\argz.c
+clamav-0.98.4.tar.gz\clamav-0.98.4.tar\clamav-0.98.4\libltdl\argz.c
 
 Copyright (C) 2004, 2006, 2007, 2008 Free Software Foundation, Inc.
 Written by Gary V. Vaughan, 2004
@@ -26439,7 +26205,7 @@ COPYRIGHT
 This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
 
->>> mysql-5.5.35
+>>> mysql-5.5.39
 
 Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.
 
@@ -26477,7 +26243,7 @@ ADDITIONAL LICENSE INFORMATION:
 
 > LGPL 2.0
 
-mysql-5.5.35.tar.gz\mysql-5.5.35.tar\mysql-5.5.35\client\completion_hash.h
+mysql-5.5.39.tar.gz\mysql-5.5.39.tar\mysql-5.5.39\client\completion_hash.h
 
 Copyright (C) 2000-2002 MySQL AB
 
@@ -26499,7 +26265,7 @@ MA 02111-1307, USA
 
 > BSD
 
-mysql-5.5.35.tar.gz\mysql-5.5.35.tar\mysql-5.5.35\cmd-line-utils\libedit\np\fgetln.c
+mysql-5.5.39.tar.gz\mysql-5.5.39.tar\mysql-5.5.39\cmd-line-utils\libedit\np\fgetln.c
 
 Copyright (c) 1998 The NetBSD Foundation, Inc.
 All rights reserved.
@@ -26531,7 +26297,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 > MIT Style
 
-mysql-5.5.35.tar.gz\mysql-5.5.35.tar\mysql-5.5.35\cmd-line-utils\libedit\np\strlcat.c
+mysql-5.5.39.tar.gz\mysql-5.5.39.tar\mysql-5.5.39\cmd-line-utils\libedit\np\strlcat.c
 
 Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
 
@@ -26550,7 +26316,7 @@ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 > Public Domain
 
-mysql-5.5.35.tar.gz\mysql-5.5.35.tar\mysql-5.5.35\dbug\dbug.c
+mysql-5.5.39.tar.gz\mysql-5.5.39.tar\mysql-5.5.39\dbug\dbug.c
 
 N O T I C E
 
@@ -27122,7 +26888,7 @@ file.
 Copyright  2001, 2002, 2005 Nicholas Clark
 
 
->>> perl-extutils-makemaker-6.78
+>>> perl-extutils-makemaker-6.88
 
 [PLEASE NOTE:  TELLIGENT, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 2.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE GPL 2.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
 
@@ -28743,7 +28509,7 @@ Boston, MA 02111-1307, USA.
 IBM Public License, V1.0 is applicable to the following component(s).
 
 
->>> postfix-2.10.2
+>>> postfix-2.10.3
 
 License: IBM Public License 1.0
 
@@ -28751,7 +28517,7 @@ Additional license information:
 
 >BSD
 
-postfix_2.10.2.orig.tar.gz\postfix_2.10.2.orig.tar\postfix-2.10.2\COPYRIGHT
+postfix_2.10.3.orig.tar.gz\postfix_2.10.3.orig.tar\postfix-2.10.3\COPYRIGHT
 
 Copyright (c) 1987, 1993
 The Regents of the University of California.  All rights reserved.
@@ -28795,6 +28561,18 @@ Microsoft Limited Public License is applicable to the following component(s).
 License : Microsoft Limited Public License
 
  2010 Microsoft Corporation. All rights reserved.
+
+
+--------------- SECTION 15: Mozilla Public License, V2.0 ----------
+
+>>> firefox-nss-22-zimbra
+
+License: MPL v2.0
+
+
+>>> firefox-nspr-22-zimbra
+
+License: MPL v2.0
 
 
 =============== APPENDIX. Standard License Files ============== 
@@ -34236,6 +34014,384 @@ their use in free software.
 
 
 
+--------------- SECTION 19: Mozilla Public License, V2.0 -----------
+
+Mozilla Public License Version 2.0
+==================================
+
+1. Definitions
+--------------
+
+1.1. "Contributor"
+    means each individual or legal entity that creates, contributes to
+    the creation of, or owns Covered Software.
+
+1.2. "Contributor Version"
+    means the combination of the Contributions of others (if any) used
+    by a Contributor and that particular Contributor's Contribution.
+
+1.3. "Contribution"
+    means Covered Software of a particular Contributor.
+
+1.4. "Covered Software"
+    means Source Code Form to which the initial Contributor has attached
+    the notice in Exhibit A, the Executable Form of such Source Code
+    Form, and Modifications of such Source Code Form, in each case
+    including portions thereof.
+
+1.5. "Incompatible With Secondary Licenses"
+    means
+
+    (a) that the initial Contributor has attached the notice described
+        in Exhibit B to the Covered Software; or
+
+    (b) that the Covered Software was made available under the terms of
+        version 1.1 or earlier of the License, but not also under the
+        terms of a Secondary License.
+
+1.6. "Executable Form"
+    means any form of the work other than Source Code Form.
+
+1.7. "Larger Work"
+    means a work that combines Covered Software with other material, in 
+    a separate file or files, that is not Covered Software.
+
+1.8. "License"
+    means this document.
+
+1.9. "Licensable"
+    means having the right to grant, to the maximum extent possible,
+    whether at the time of the initial grant or subsequently, any and
+    all of the rights conveyed by this License.
+
+1.10. "Modifications"
+    means any of the following:
+
+    (a) any file in Source Code Form that results from an addition to,
+        deletion from, or modification of the contents of Covered
+        Software; or
+
+    (b) any new file in Source Code Form that contains any Covered
+        Software.
+
+1.11. "Patent Claims" of a Contributor
+    means any patent claim(s), including without limitation, method,
+    process, and apparatus claims, in any patent Licensable by such
+    Contributor that would be infringed, but for the grant of the
+    License, by the making, using, selling, offering for sale, having
+    made, import, or transfer of either its Contributions or its
+    Contributor Version.
+
+1.12. "Secondary License"
+    means either the GNU General Public License, Version 2.0, the GNU
+    Lesser General Public License, Version 2.1, the GNU Affero General
+    Public License, Version 3.0, or any later versions of those
+    licenses.
+
+1.13. "Source Code Form"
+    means the form of the work preferred for making modifications.
+
+1.14. "You" (or "Your")
+    means an individual or a legal entity exercising rights under this
+    License. For legal entities, "You" includes any entity that
+    controls, is controlled by, or is under common control with You. For
+    purposes of this definition, "control" means (a) the power, direct
+    or indirect, to cause the direction or management of such entity,
+    whether by contract or otherwise, or (b) ownership of more than
+    fifty percent (50%) of the outstanding shares or beneficial
+    ownership of such entity.
+
+2. License Grants and Conditions
+--------------------------------
+
+2.1. Grants
+
+Each Contributor hereby grants You a world-wide, royalty-free,
+non-exclusive license:
+
+(a) under intellectual property rights (other than patent or trademark)
+    Licensable by such Contributor to use, reproduce, make available,
+    modify, display, perform, distribute, and otherwise exploit its
+    Contributions, either on an unmodified basis, with Modifications, or
+    as part of a Larger Work; and
+
+(b) under Patent Claims of such Contributor to make, use, sell, offer
+    for sale, have made, import, and otherwise transfer either its
+    Contributions or its Contributor Version.
+
+2.2. Effective Date
+
+The licenses granted in Section 2.1 with respect to any Contribution
+become effective for each Contribution on the date the Contributor first
+distributes such Contribution.
+
+2.3. Limitations on Grant Scope
+
+The licenses granted in this Section 2 are the only rights granted under
+this License. No additional rights or licenses will be implied from the
+distribution or licensing of Covered Software under this License.
+Notwithstanding Section 2.1(b) above, no patent license is granted by a
+Contributor:
+
+(a) for any code that a Contributor has removed from Covered Software;
+    or
+
+(b) for infringements caused by: (i) Your and any other third party's
+    modifications of Covered Software, or (ii) the combination of its
+    Contributions with other software (except as part of its Contributor
+    Version); or
+
+(c) under Patent Claims infringed by Covered Software in the absence of
+    its Contributions.
+
+This License does not grant any rights in the trademarks, service marks,
+or logos of any Contributor (except as may be necessary to comply with
+the notice requirements in Section 3.4).
+
+2.4. Subsequent Licenses
+
+No Contributor makes additional grants as a result of Your choice to
+distribute the Covered Software under a subsequent version of this
+License (see Section 10.2) or under the terms of a Secondary License (if
+permitted under the terms of Section 3.3).
+
+2.5. Representation
+
+Each Contributor represents that the Contributor believes its
+Contributions are its original creation(s) or it has sufficient rights
+to grant the rights to its Contributions conveyed by this License.
+
+2.6. Fair Use
+
+This License is not intended to limit any rights You have under
+applicable copyright doctrines of fair use, fair dealing, or other
+equivalents.
+
+2.7. Conditions
+
+Sections 3.1, 3.2, 3.3, and 3.4 are conditions of the licenses granted
+in Section 2.1.
+
+3. Responsibilities
+-------------------
+
+3.1. Distribution of Source Form
+
+All distribution of Covered Software in Source Code Form, including any
+Modifications that You create or to which You contribute, must be under
+the terms of this License. You must inform recipients that the Source
+Code Form of the Covered Software is governed by the terms of this
+License, and how they can obtain a copy of this License. You may not
+attempt to alter or restrict the recipients' rights in the Source Code
+Form.
+
+3.2. Distribution of Executable Form
+
+If You distribute Covered Software in Executable Form then:
+
+(a) such Covered Software must also be made available in Source Code
+    Form, as described in Section 3.1, and You must inform recipients of
+    the Executable Form how they can obtain a copy of such Source Code
+    Form by reasonable means in a timely manner, at a charge no more
+    than the cost of distribution to the recipient; and
+
+(b) You may distribute such Executable Form under the terms of this
+    License, or sublicense it under different terms, provided that the
+    license for the Executable Form does not attempt to limit or alter
+    the recipients' rights in the Source Code Form under this License.
+
+3.3. Distribution of a Larger Work
+
+You may create and distribute a Larger Work under terms of Your choice,
+provided that You also comply with the requirements of this License for
+the Covered Software. If the Larger Work is a combination of Covered
+Software with a work governed by one or more Secondary Licenses, and the
+Covered Software is not Incompatible With Secondary Licenses, this
+License permits You to additionally distribute such Covered Software
+under the terms of such Secondary License(s), so that the recipient of
+the Larger Work may, at their option, further distribute the Covered
+Software under the terms of either this License or such Secondary
+License(s).
+
+3.4. Notices
+
+You may not remove or alter the substance of any license notices
+(including copyright notices, patent notices, disclaimers of warranty,
+or limitations of liability) contained within the Source Code Form of
+the Covered Software, except that You may alter any license notices to
+the extent required to remedy known factual inaccuracies.
+
+3.5. Application of Additional Terms
+
+You may choose to offer, and to charge a fee for, warranty, support,
+indemnity or liability obligations to one or more recipients of Covered
+Software. However, You may do so only on Your own behalf, and not on
+behalf of any Contributor. You must make it absolutely clear that any
+such warranty, support, indemnity, or liability obligation is offered by
+You alone, and You hereby agree to indemnify every Contributor for any
+liability incurred by such Contributor as a result of warranty, support,
+indemnity or liability terms You offer. You may include additional
+disclaimers of warranty and limitations of liability specific to any
+jurisdiction.
+
+4. Inability to Comply Due to Statute or Regulation
+---------------------------------------------------
+
+If it is impossible for You to comply with any of the terms of this
+License with respect to some or all of the Covered Software due to
+statute, judicial order, or regulation then You must: (a) comply with
+the terms of this License to the maximum extent possible; and (b)
+describe the limitations and the code they affect. Such description must
+be placed in a text file included with all distributions of the Covered
+Software under this License. Except to the extent prohibited by statute
+or regulation, such description must be sufficiently detailed for a
+recipient of ordinary skill to be able to understand it.
+
+5. Termination
+--------------
+
+5.1. The rights granted under this License will terminate automatically
+if You fail to comply with any of its terms. However, if You become
+compliant, then the rights granted under this License from a particular
+Contributor are reinstated (a) provisionally, unless and until such
+Contributor explicitly and finally terminates Your grants, and (b) on an
+ongoing basis, if such Contributor fails to notify You of the
+non-compliance by some reasonable means prior to 60 days after You have
+come back into compliance. Moreover, Your grants from a particular
+Contributor are reinstated on an ongoing basis if such Contributor
+notifies You of the non-compliance by some reasonable means, this is the
+first time You have received notice of non-compliance with this License
+from such Contributor, and You become compliant prior to 30 days after
+Your receipt of the notice.
+
+5.2. If You initiate litigation against any entity by asserting a patent
+infringement claim (excluding declaratory judgment actions,
+counter-claims, and cross-claims) alleging that a Contributor Version
+directly or indirectly infringes any patent, then the rights granted to
+You by any and all Contributors for the Covered Software under Section
+2.1 of this License shall terminate.
+
+5.3. In the event of termination under Sections 5.1 or 5.2 above, all
+end user license agreements (excluding distributors and resellers) which
+have been validly granted by You or Your distributors under this License
+prior to termination shall survive termination.
+
+************************************************************************
+*                                                                      *
+*  6. Disclaimer of Warranty                                           *
+*  -------------------------                                           *
+*                                                                      *
+*  Covered Software is provided under this License on an "as is"       *
+*  basis, without warranty of any kind, either expressed, implied, or  *
+*  statutory, including, without limitation, warranties that the       *
+*  Covered Software is free of defects, merchantable, fit for a        *
+*  particular purpose or non-infringing. The entire risk as to the     *
+*  quality and performance of the Covered Software is with You.        *
+*  Should any Covered Software prove defective in any respect, You     *
+*  (not any Contributor) assume the cost of any necessary servicing,   *
+*  repair, or correction. This disclaimer of warranty constitutes an   *
+*  essential part of this License. No use of any Covered Software is   *
+*  authorized under this License except under this disclaimer.         *
+*                                                                      *
+************************************************************************
+
+************************************************************************
+*                                                                      *
+*  7. Limitation of Liability                                          *
+*  --------------------------                                          *
+*                                                                      *
+*  Under no circumstances and under no legal theory, whether tort      *
+*  (including negligence), contract, or otherwise, shall any           *
+*  Contributor, or anyone who distributes Covered Software as          *
+*  permitted above, be liable to You for any direct, indirect,         *
+*  special, incidental, or consequential damages of any character      *
+*  including, without limitation, damages for lost profits, loss of    *
+*  goodwill, work stoppage, computer failure or malfunction, or any    *
+*  and all other commercial damages or losses, even if such party      *
+*  shall have been informed of the possibility of such damages. This   *
+*  limitation of liability shall not apply to liability for death or   *
+*  personal injury resulting from such party's negligence to the       *
+*  extent applicable law prohibits such limitation. Some               *
+*  jurisdictions do not allow the exclusion or limitation of           *
+*  incidental or consequential damages, so this exclusion and          *
+*  limitation may not apply to You.                                    *
+*                                                                      *
+************************************************************************
+
+8. Litigation
+-------------
+
+Any litigation relating to this License may be brought only in the
+courts of a jurisdiction where the defendant maintains its principal
+place of business and such litigation shall be governed by laws of that
+jurisdiction, without reference to its conflict-of-law provisions.
+Nothing in this Section shall prevent a party's ability to bring
+cross-claims or counter-claims.
+
+9. Miscellaneous
+----------------
+
+This License represents the complete agreement concerning the subject
+matter hereof. If any provision of this License is held to be
+unenforceable, such provision shall be reformed only to the extent
+necessary to make it enforceable. Any law or regulation which provides
+that the language of a contract shall be construed against the drafter
+shall not be used to construe this License against a Contributor.
+
+10. Versions of the License
+---------------------------
+
+10.1. New Versions
+
+Mozilla Foundation is the license steward. Except as provided in Section
+10.3, no one other than the license steward has the right to modify or
+publish new versions of this License. Each version will be given a
+distinguishing version number.
+
+10.2. Effect of New Versions
+
+You may distribute the Covered Software under the terms of the version
+of the License under which You originally received the Covered Software,
+or under the terms of any subsequent version published by the license
+steward.
+
+10.3. Modified Versions
+
+If you create software not governed by this License, and you want to
+create a new license for such software, you may create and use a
+modified version of this License if you rename the license and remove
+any references to the name of the license steward (except to note that
+such modified license differs from this License).
+
+10.4. Distributing Source Code Form that is Incompatible With Secondary
+Licenses
+
+If You choose to distribute Source Code Form that is Incompatible With
+Secondary Licenses under the terms of this version of the License, the
+notice described in Exhibit B of this License must be attached.
+
+Exhibit A - Source Code Form License Notice
+-------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+If it is not possible or desirable to put the notice in a particular
+file, then You may include the notice in a location (such as a LICENSE
+file in a relevant directory) where a recipient would be likely to look
+for such a notice.
+
+You may add additional accurate notices of copyright ownership.
+
+Exhibit B - "Incompatible With Secondary Licenses" Notice
+---------------------------------------------------------
+
+  This Source Code Form is "Incompatible With Secondary Licenses", as
+  defined by the Mozilla Public License, v. 2.0.
+
+
+
 ===========================================================================
 
 To the extent any open source components are licensed under the
@@ -34245,7 +34401,7 @@ available (as would be noted above), you may obtain a copy of
 the source code corresponding to the binaries for such open
 source components and modifications thereto, if any, (the
 "Source Files"), by downloading the Source Files from Telligent's source repository
-described at http://wiki.zimbra.com/wiki/Building_Zimbra_using_Perforce, or by
+described at http://wiki.zimbra.com/wiki/Building_Zimbra_using_Git, or by
 sending a request, with your name and address to:
 Telligent, Inc., 3000 Internet Blvd., Suite 200
 Frisco, TX 75034,United States of America. All such
@@ -34258,4 +34414,4 @@ the Source Files may accompany the Telligent product.
 
 Last updated 22 Nov 2013
 
-[ZCS806GAVV051013]
+[ZCS808GAVV051013]

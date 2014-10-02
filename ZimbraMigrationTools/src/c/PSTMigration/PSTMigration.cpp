@@ -105,7 +105,7 @@ void ZCFileUploadTest()
 {
     Zimbra::Rpc::UserSession *session = Zimbra::Rpc::UserSession::CreateInstance(lpProfileName,
         lpAccountUser, lpAccountUserPwd, lpServerAddress, nPort, 0, 0, L"", false);
-    Zimbra::Rpc::UserSession::SetProfileName(lpProfileName);
+    //Zimbra::Rpc::UserSession::SetProfileName(lpProfileName);
     Zimbra::Rpc::ZimbraConnection *z_pConnection = new Zimbra::Rpc::ZimbraConnection(
         L"migration", lpServerAddress, nPort, false, 0, L"");
 

@@ -438,9 +438,10 @@ public class DeleteTask extends AjaxCommonTest {
 	
 	}
 	
+	// https://bugzilla.zimbra.com/show_bug.cgi?id=61625 is "Not Committed" since long so changing test group from "functional" to "deprecated" for now.
 	@Bugs(ids="61625")
 	@Test(	description = "Hard-delete a task by selecting and typing 'shift-del' shortcut",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void HardDeleteTask_07() throws HarnessException {
 
 		
@@ -504,9 +505,10 @@ public class DeleteTask extends AjaxCommonTest {
 
 	}
 
+	// https://bugzilla.zimbra.com/show_bug.cgi?id=61625 is "Not Committed" since long so changing test group from "functional" to "deprecated" for now.
 	@Bugs(ids="61625")
 	@Test(	description = "Hard-delete multiple tasks(3) by selecting and typing 'shift-del' shortcut",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void HardDeleteTask_08() throws HarnessException {
 		
 		FolderItem taskFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Tasks);		

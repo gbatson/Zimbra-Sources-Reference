@@ -821,7 +821,7 @@ public class ZimbraAPI
 
         if (rsp != null)
         {
-            int dIdx = rsp.IndexOf("account id=");
+            int dIdx = rsp.IndexOf("id=");
 
             if (dIdx != -1)
             {
@@ -853,7 +853,7 @@ public class ZimbraAPI
 
         if (rsp != null)
         {
-            int dIdx = rsp.IndexOf("account id=");
+            int dIdx = rsp.IndexOf("id=");
 
             if (dIdx != -1)
             {
@@ -1031,7 +1031,7 @@ public class ZimbraAPI
         tagID = "";
         if (rsp != null)
         {
-            int idx = rsp.IndexOf("tag id=");
+            int idx = rsp.IndexOf("id=");
 
             if (idx != -1)
             {
@@ -1758,7 +1758,22 @@ public class ZimbraAPI
             writer.WriteAttributeString("requestId", requestId.ToString());
         writer.WriteStartElement("m");
         writer.WriteAttributeString("l", message.folderId);
-        writer.WriteAttributeString("d", message.rcvdDate);
+        long nrd = 0;
+        if (long.TryParse(message.rcvdDate, out nrd) == true)
+            writer.WriteAttributeString("d", message.rcvdDate); 
+        else if(long.TryParse(message.DateUnixString, out nrd)==true)
+        {
+            Log.warn("delivery date not found. Using message date for 'd' attribute.");
+            writer.WriteAttributeString("d", message.DateUnixString);
+        }
+        else
+        {
+            //do nothing. 'd' is optional
+            //skipping it will result in migration datetime
+            //shown in ZCS UI mail list but no error will happen
+            //and content will be migarted.
+            Log.warn("Date and delivery date not found. Skipping the 'd' attribute.");
+        }
         writer.WriteAttributeString("f", message.flags);
         if (message.tags.Length > 0)
         {
@@ -1784,7 +1799,7 @@ public class ZimbraAPI
 
         string uploadInfo = "";
         int retval = 0;
-        ZimbraMessage zm = new ZimbraMessage("", "", "", "", "");
+        ZimbraMessage zm = new ZimbraMessage("", "", "", "", "", "");
 
         System.Type type = typeof (ZimbraMessage);
         FieldInfo[] myFields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
@@ -1910,7 +1925,7 @@ public class ZimbraAPI
             {
                 Dictionary<string, string> message = lMessages[i];
 
-                ZimbraMessage zm = new ZimbraMessage("", "", "", "", "");
+                ZimbraMessage zm = new ZimbraMessage("", "", "", "", "","");
 
                 for (int j = 0; j < myFields.Length; j++)       // use reflection to set ZimbraMessage object values
                 {
@@ -2022,16 +2037,23 @@ public class ZimbraAPI
             writer.WriteAttributeString("uid", appt["uid"]);
         }
 
-        writer.WriteStartElement("s");
-        writer.WriteAttributeString("d", appt["s"]);
+        if (appt["s"].Length > 0)
+        {
+
+            writer.WriteStartElement("s");
+            writer.WriteAttributeString("d", appt["s"]);
+        }
         if (isRecurring)
         {
             writer.WriteAttributeString("tz", appt["tid"]);
         }
         writer.WriteEndElement();
 
-        writer.WriteStartElement("e");
-        writer.WriteAttributeString("d", appt["e"]);
+        if (appt["e"].Length > 0)
+        {
+            writer.WriteStartElement("e");
+            writer.WriteAttributeString("d", appt["e"]);
+        }
         if (isRecurring)
         {
             writer.WriteAttributeString("tz", appt["tid"]);

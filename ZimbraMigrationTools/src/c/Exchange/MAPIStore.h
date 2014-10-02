@@ -13,6 +13,9 @@
  * ***** END LICENSE BLOCK *****
  */
 #pragma once
+#include "ReminderEventListener.h"
+#include "mso.tlh"
+#include "msoutl.tlh"
 
 namespace Zimbra
 {
@@ -34,13 +37,18 @@ class MAPIStore
 private:
     LPMDB m_Store;
     LPMAPISESSION m_mapiSession;
-    SBinaryArray m_specialFolderIds;
+	SBinaryArray m_specialFolderIds;
     Zimbra::Util::CriticalSection cs_store;
-
+	Olk::_NameSpacePtr m_pOlkMapi;
+	CReminderEventListener *m_pReminderEventHandler;
+	LPDISPATCH m_pOlkReminderDisp;
+	wstring m_wstrProfileName;
+	int m_migtype;
+	bool m_bdefaultStore;
 public:
-    MAPIStore();
+    MAPIStore(int migtype);
     ~MAPIStore();
-    void Initialize(LPMAPISESSION mapisession, LPMDB pMdb);
+    void Initialize(LPMAPISESSION mapisession, LPMDB pMdb, LPWSTR lpwstrProfileName, bool bdefaultStore=false);
     HRESULT CompareEntryIDs(SBinary *pBin1, SBinary *pBin2, ULONG &lpulResult);
     HRESULT GetRootFolder(MAPIFolder &rootFolder);
 
@@ -48,6 +56,9 @@ public:
     SBinaryArray GetSpecialFolderIds() { return m_specialFolderIds; }
     HRESULT OpenEntry(ULONG cbEntryID, LPENTRYID lpEntryID, LPCIID lpInterface, ULONG ulFlags,
         ULONG FAR *lpulObjType, LPUNKNOWN FAR *lppUnk);
+	void UnRegisterReminderHandler();
+	void RegisterReminderEventHandler();
+	Olk::_NameSpacePtr GetOOMInstance() {return m_pOlkMapi;}
 };
 }
 }

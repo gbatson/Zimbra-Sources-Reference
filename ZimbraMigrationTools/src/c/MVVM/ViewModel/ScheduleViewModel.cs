@@ -873,7 +873,7 @@ public class ScheduleViewModel: BaseViewModel
             if ((!(MyAcct.IsValid)) && (MyAcct.TotalErrors > 0))
             {
                 Log.info(" in DOWORK -- Migration failed for usernum: " + MyAcct.AccountNum + " and threadnum" + tnum);
-                accountResultsViewModel.AccountResultsList[num].PBMsgValue = "Migration Failed - Invalid account";
+                accountResultsViewModel.AccountResultsList[num].PBMsgValue = MyAcct.LastProblemInfo.Msg;//"Migration Failed - Invalid account";
                 accountResultsViewModel.AccountResultsList[num].AcctProgressMsg = "Failed";
             }
             else

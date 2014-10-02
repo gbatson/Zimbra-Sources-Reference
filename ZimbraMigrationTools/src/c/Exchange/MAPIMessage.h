@@ -104,6 +104,7 @@ private:
     CHAR m_pDateTimeStr[32];
     CHAR m_pDeliveryDateTimeStr[32];
     CHAR m_pDeliveryUnixDateTimeStr[32];
+	CHAR m_pDateUnixDateTimeStr[32];
     std::vector<std::string> RTFElement;
     enum EnumRTFElement
     {
@@ -145,6 +146,7 @@ public:
 
     __int64 DeliveryDate();
     LPSTR DateString();
+	LPSTR DateUnixString();
     __int64 Date();
     DWORD Size();
     LPSTR DeliveryDateString();

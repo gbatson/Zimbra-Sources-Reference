@@ -193,4 +193,6 @@ public:
     wstring GetRecurMonthOccurrence();
     wstring GetRecurMonthOfYear();
     Tz GetRecurTimezone();
+
+	LPMESSAGE GetInternalMessageObject(){return m_pMessage;}
 };

@@ -46,6 +46,7 @@ MAPIAppointment::MAPIAppointment(Zimbra::MAPI::MAPISession &session, Zimbra::MAP
 	pInvTz = NULL;
 	_pTzString = NULL;
 	m_pAddrBook = NULL;
+	m_bUseOOM = false;
 	
     //if (MAPIAppointment::m_bNamedPropsInitialized == false)
     //{
@@ -177,7 +178,7 @@ HRESULT MAPIAppointment::InitNamedPropsForAppt()
     pr_isrecurring = SetPropType(pAppointmentTags->aulPropTag[N_ISRECUR], PT_BOOLEAN);
     pr_recurstream = SetPropType(pAppointmentTags->aulPropTag[N_RECURSTREAM], PT_BINARY);
     pr_timezoneid = SetPropType(pAppointmentTags->aulPropTag[N_TIMEZONEID], PT_TSTRING);
-    pr_responsestatus = SetPropType(pAppointmentTags->aulPropTag[N_RESPONSESTATUS], PT_LONG);
+	pr_responsestatus = SetPropType(pAppointmentTags->aulPropTag[N_RESPONSESTATUS], PT_LONG);
     pr_exceptionreplacetime = SetPropType(pAppointmentTags->aulPropTag[N_EXCEPTIONREPLACETIME], PT_SYSTIME);
     pr_reminderminutes = SetPropType(pAppointmentTagsC->aulPropTag[N_REMINDERMINUTES], PT_LONG);
 	
@@ -208,7 +209,7 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 	    pr_appt_start, pr_appt_end, pr_location, pr_busystatus, pr_allday,
 	    pr_isrecurring, pr_recurstream, pr_timezoneid, pr_responsestatus,
             PR_RESPONSE_REQUESTED,pr_exceptionreplacetime,
-			pr_reminderminutes, pr_private, pr_reminderset
+			pr_reminderminutes, pr_private, pr_reminderset, PR_SENSITIVITY
 	}
     };
 
@@ -217,11 +218,11 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
     bool bAllday = false;
     m_bHasAttachments = false;
     m_bIsRecurring = false;	
-
-	// get the zimbra appt wrapper around the mapi message
+	
+    // get the zimbra appt wrapper around the mapi message
  	Zimbra::Mapi::Appt appt(m_pMessage, m_mapiStore->GetInternalMAPIStore());
-
-    // save off the default timezone info for this appointment
+	
+	// save off the default timezone info for this appointment
 	try
 	{
 		hr = appt.GetTimezone(_olkTz, &_pTzString);
@@ -229,6 +230,7 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 	catch(...)
 	{
 		hr=E_FAIL;
+		pInvTz = NULL;
 	}
 	if (SUCCEEDED(hr))
     {
@@ -237,7 +239,63 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 		pInvTz->Initialize(_olkTz, _pTzString);
 	}
 
-    if (FAILED(hr = m_pMessage->GetProps((LPSPropTagArray) & appointmentProps, fMapiUnicode, &cVals,
+	//////////////////////////////>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	double apptStart =0;
+	double apptEnd=0;
+	if(m_iExceptionType== NO_EXCEPTION)
+	{
+		//Get OOM
+		Olk::_NameSpacePtr olkOOMPtr=  m_mapiStore->GetOOMInstance();
+
+		// Get the entry id of the message store and convert it in string format
+		LPSPropValue pProp;
+		hr=HrGetOneProp(m_mapiStore->GetInternalMAPIStore(), PR_ENTRYID, &pProp);
+		if(SUCCEEDED(hr))
+		{
+			LPSTR pszStoreEid = new CHAR[(pProp->Value.bin.cb * 2) + 1];
+			HexFromBin(pProp->Value.bin.lpb, pProp->Value.bin.cb, (LPTSTR)pszStoreEid);
+			MAPIFreeBuffer(pProp);
+			pProp = NULL;
+
+			//get message entryid
+			SBinary sbin= m_mapiMessage->EntryID();
+
+			// convert entry id of the appointment in string format
+			LPSTR pszEid = new CHAR[(sbin.cb * 2) + 1];
+			HexFromBin(sbin.lpb, sbin.cb, (LPTSTR)pszEid);
+	
+			IDispatchPtr pOlkItemDisp=NULL;
+			try
+			{
+				// Get the appointment/task item from OOM
+				pOlkItemDisp = olkOOMPtr->GetItemFromID(pszEid, pszStoreEid);
+			}
+			catch (_com_error &err)
+			{
+				pOlkItemDisp=NULL;
+				CString cstrError = _T("Failed to get OOM instance for appointment item. Error: ");
+				cstrError += err.ErrorMessage();
+				dloge(cstrError.GetBuffer());
+				dloge("MAPI Properties will be used for date calculations.");
+			}
+			delete[] pszEid;
+			delete[] pszStoreEid;
+    
+			if(pOlkItemDisp)
+			{
+				Olk::_AppointmentItemPtr pOlkAppt = pOlkItemDisp;
+
+				apptStart= pOlkAppt->Start;
+				apptEnd = pOlkAppt->End;
+
+				dlogd("OOM StartTime: ",apptStart, "      OOM EndTime:", apptEnd);
+				m_bUseOOM = true;
+			}
+		}
+	}
+
+	/////////////////////////////<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	if (FAILED(hr = m_pMessage->GetProps((LPSPropTagArray) & appointmentProps, fMapiUnicode, &cVals,
             &m_pPropVals)))
         throw MAPIAppointmentException(hr, L"SetMAPIAppointmentValues(): GetProps Failed.",
 		ERR_MAPI_APPOINTMENT, __LINE__, __FILE__);
@@ -268,12 +326,18 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 	SetInstanceUID(&m_pPropVals[C_UID].Value.bin);
     }
     if (m_pPropVals[C_START].ulPropTag == appointmentProps.aulPropTag[C_START])
-    {
-	SetStartDate(m_pPropVals[C_START].Value.ft);
+    {	
+		if(m_bUseOOM)
+			SetStartDate(apptStart);
+		else
+			SetStartDate(m_pPropVals[C_START].Value.ft);
     }
     if (m_pPropVals[C_END].ulPropTag == appointmentProps.aulPropTag[C_END])
     {
-        SetEndDate(m_pPropVals[C_END].Value.ft, bAllday);
+		if(m_bUseOOM)
+			SetEndDate(apptEnd, bAllday);
+		else
+			SetEndDate(m_pPropVals[C_END].Value.ft, bAllday);
     }
     if (m_pPropVals[C_LOCATION].ulPropTag == appointmentProps.aulPropTag[C_LOCATION])
     {
@@ -315,11 +379,22 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 		SetReminderMinutes(m_pPropVals[C_REMINDERMINUTES].Value.l);
 		}
 	}
+	
+	//privacy will be over-ridden by sensitivity.
+	//In many cases, C_PRIVATE is not avalibale and PR_SENSITIVITY is present and have definite value
+	//keeping C_PRIVATE due to historical presence where SENSITIVITY might not be available
     if (m_pPropVals[C_PRIVATE].ulPropTag == appointmentProps.aulPropTag[C_PRIVATE])
     {
-	SetPrivate(m_pPropVals[C_PRIVATE].Value.b);
+		SetPrivate(m_pPropVals[C_PRIVATE].Value.b);
+		dlogi("IsPrivate: ",m_pPropVals[C_PRIVATE].Value.b);
     }
 	
+	if(m_pPropVals[C_SENSITIVITY].ulPropTag == appointmentProps.aulPropTag[C_SENSITIVITY])
+	{
+		SetPrivate((unsigned short)m_pPropVals[C_SENSITIVITY].Value.l,true);
+		dlogi("Sensitivity: ",m_pPropVals[C_SENSITIVITY].Value.l);
+	}
+
     SetTransparency(L"O");
     SetPlainTextFileAndContent();
     SetHtmlFileAndContent();
@@ -563,7 +638,7 @@ void MAPIAppointment::SetExceptions()
             if (lpExceptionMessage.get() != NULL)
             {
                 exMAPIMsg.Initialize(lpExceptionMessage.get(), *m_session);
-                MAPIAppointment* pEx = new MAPIAppointment(*m_session, *m_mapiStore, exMAPIMsg, NORMAL_EXCEPTION);   // delete done in CMapiAccessWrap::GetData
+				MAPIAppointment* pEx = new MAPIAppointment(*m_session, *m_mapiStore, exMAPIMsg, NORMAL_EXCEPTION);   // delete done in CMapiAccessWrap::GetData
                 FillInExceptionAppt(pEx, lpException);
                 m_vExceptions.push_back(pEx);
             }
@@ -728,14 +803,6 @@ void MAPIAppointment::SetStartDate(FILETIME ft)
     m_pCalFilterDate = Zimbra::MAPI::Util::CommonDateString(m_pPropVals[C_START].Value.ft);   // may have issue with recur/local
 }
 
-LPWSTR MAPIAppointment::MakeDateFromExPtr(FILETIME ft)
-{
-    SYSTEMTIME st;
-
-    FileTimeToSystemTime(&ft, &st);
-    return Zimbra::Util::FormatSystemTime(st, FALSE, TRUE);			       
-}
-
 void MAPIAppointment::SetEndDate(FILETIME ft, bool bAllday)
 {
     SYSTEMTIME st, localst;
@@ -766,6 +833,75 @@ void MAPIAppointment::SetEndDate(FILETIME ft, bool bAllday)
 			     : Zimbra::Util::FormatSystemTime(st, TRUE, TRUE);
 }
 
+
+void MAPIAppointment::SetStartDate(double vst)
+{
+    TIME_ZONE_INFORMATION tzi;
+
+	//store it for durtaion calculation with end time
+ 	m_dStartDate = vst;
+
+	// recurring or exception -- should have timezone; else, UTC
+	bool bAddTimezone = ((m_bIsRecurring) || (m_iExceptionType == NORMAL_EXCEPTION));   
+	bool bIncludeTime = (GetAllday() == L"0");
+
+	Zimbra::Mail::TimeZone *pTimezone = bAddTimezone ? pInvTz : NULL;
+	if (pTimezone)
+	{
+        pTimezone->PopulateTimeZoneInfo(tzi);
+		m_pStartDate = Zimbra::Util::VariantTimeToTzSpecificTimeStr(vst, bIncludeTime,
+        !bIncludeTime ||pTimezone ? &tzi : NULL);	
+	}
+	else
+	{
+		// If All Day Event, Do Provide the TimeZone Information to avoid the day shift
+		GetTimeZoneInformation(&tzi);
+		m_pStartDate = Zimbra::Util::VariantTimeToTzSpecificTimeStr(vst, bIncludeTime,!bIncludeTime?&tzi:NULL);	
+	}
+
+    m_pCalFilterDate = Zimbra::MAPI::Util::CommonDateString(m_pPropVals[C_START].Value.ft);   // may have issue with recur/local
+}
+
+LPWSTR MAPIAppointment::MakeDateFromExPtr(FILETIME ft)
+{
+    SYSTEMTIME st;
+
+    FileTimeToSystemTime(&ft, &st);
+    return Zimbra::Util::FormatSystemTime(st, FALSE, TRUE);			       
+}
+
+void MAPIAppointment::SetEndDate(double vet, bool bAllday)
+{
+    int iDuration = (int)(vet - m_dStartDate) * 24 * 60;
+
+	// if AllDay appt, subtract one from the end date for Zimbra friendliness
+	if ((bAllday) && (iDuration >= 1440))   
+    {
+		vet = vet -1;
+    }
+
+	// recurring or exception -- should have timezone; else, UTC
+	bool bAddTimezone = ((m_bIsRecurring) || (m_iExceptionType == NORMAL_EXCEPTION));   
+
+	TIME_ZONE_INFORMATION tzi;
+    Zimbra::Mail::TimeZone *pTimezone = bAddTimezone ? pInvTz : NULL;
+	bool bIncludeTime = (GetAllday() == L"0");
+
+	if (pTimezone)
+	{
+        pTimezone->PopulateTimeZoneInfo(tzi);
+		m_pEndDate = Zimbra::Util::VariantTimeToTzSpecificTimeStr(vet, bIncludeTime,
+       !bIncludeTime ||pTimezone ? &tzi : NULL);	
+	}
+	else
+	{
+		// If All Day Event, Do Provide the TimeZone Information to avoid the day shift
+		GetTimeZoneInformation(&tzi);
+		m_pEndDate = Zimbra::Util::VariantTimeToTzSpecificTimeStr(vet, bIncludeTime,!bIncludeTime?&tzi:NULL);	
+	}
+ 
+}
+
 void MAPIAppointment::SetInstanceUID(LPSBinary bin)
 {
     Zimbra::Util::ScopedArray<CHAR> spUid(new CHAR[(bin->cb * 2) + 1]);
@@ -774,6 +910,12 @@ void MAPIAppointment::SetInstanceUID(LPSBinary bin)
 	Zimbra::Util::HexFromBin(bin->lpb, bin->cb, spUid.get());
     }
     m_pInstanceUID = Zimbra::Util::AnsiiToUnicode(spUid.get());
+	dlogi("UID: ",m_pInstanceUID);
+	if( m_pInstanceUID.length()> 255)
+	{
+		m_pInstanceUID = m_pInstanceUID.substr(0,255);
+		dlogw("UID is truncated to 255 characters to avoid ZCS rejection. \nNew UID: ", m_pInstanceUID);
+	}
 }
 
 void MAPIAppointment::SetLocation(LPTSTR pStr)
@@ -886,9 +1028,16 @@ void MAPIAppointment::SetReminderMinutes(long reminderminutes)
     m_pReminderMinutes = pwszTemp;
 }
 
-void MAPIAppointment::SetPrivate(unsigned short usPrivate)
+void MAPIAppointment::SetPrivate(unsigned short usPrivate,bool bSensitivity)
 {
-    m_pPrivate = (usPrivate == 1) ? L"1" : L"0";
+	if(bSensitivity)
+	{
+		m_pPrivate = (usPrivate == 2) ? L"1" : L"0";
+	}
+	else
+	{
+		m_pPrivate = (usPrivate == 1) ? L"1" : L"0";
+	}
 }
 
 void MAPIAppointment::SetReminderSet(unsigned short usReminderset)
@@ -986,19 +1135,25 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
     hr = pRecipTable->SetColumns((LPSPropTagArray) & reciptags, 0);
     if (FAILED(hr))
     {
-	//LOG_ERROR(_T("could not get the recipient table, hr: %x"), hr);
+	    dloge("could not get the recipient table, hr:", hr);
         return hr;
     }
     hr = pRecipTable->GetRowCount(0, &ulRows);
     if (FAILED(hr))
     {
-	//LOG_ERROR(_T("could not get the recipient table row count, hr: %x"), hr);
+	    dloge("could not get the recipient table row count, hr:", hr);
         return hr;
     }
+	if(ulRows < 1)
+	{
+		dlogi("No recipients found. ulRows: ", ulRows);
+		return S_OK;
+	}
     hr = pRecipTable->QueryRows(ulRows, 0, pRecipRows.getptr());
     if (FAILED(hr))
     {
-        //LOG_ERROR(_T("Failed to query table rows. hr: %x"), hr);
+        dloge("Failed to query table rows. hr:", hr);
+		dlogi("Recipient Count:",ulRows);
         return hr;
     }
     if (pRecipRows != NULL)

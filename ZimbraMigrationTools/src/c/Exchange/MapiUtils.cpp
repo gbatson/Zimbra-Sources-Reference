@@ -23,6 +23,10 @@
 #include <Dsgetdc.h>
 #include <lmcons.h>
 #include <lmapibuf.h>
+#include "psapi.h"
+#pragma warning(disable: 4995)
+#include "Logger.h"
+#pragma warning(pop)
 enum AttachPropIdx
 {
     ATTACH_METHOD = 0, ATTACH_CONTENT_ID, ATTACH_LONG_FILENAME, WATTACH_LONG_FILENAME,
@@ -243,7 +247,7 @@ HRESULT Zimbra::MAPI::Util::GetmsExchHomeServerName(LPCWSTR lpszServer, LPCWSTR 
 		}
 	}
     
-    wstring strFilter = _T("(&(objectClass=organizationalPerson)(cn=");
+    wstring strFilter = _T("(&((&(objectCategory=user)(objectClass=user)))(cn=");
 
     strFilter += lpszUser;
     strFilter += L"))";
@@ -312,8 +316,6 @@ HRESULT Zimbra::MAPI::Util::GetUserDNAndLegacyName(LPCWSTR lpszServer, LPCWSTR l
     lpszPwd, wstring &wstruserdn, wstring &wstrlegacyname)
 {
     wstruserdn = L"";
-    LPWSTR dnEmpty = L"No";
-    LPWSTR ldnEmpty = L"No";
 
     // Get IDirectorySearch Object
     CComPtr<IDirectorySearch> pDirSearch;
@@ -321,6 +323,7 @@ HRESULT Zimbra::MAPI::Util::GetUserDNAndLegacyName(LPCWSTR lpszServer, LPCWSTR l
     wstring strADServer = L"LDAP://";
 
     strADServer += lpszServer;
+	dlogi("AD Server: ", strADServer.c_str());
 
 	HRESULT hr = ADsOpenObject(strADServer.c_str(),
         /*lpszUser*/ NULL, lpszPwd /*NULL*/, ADS_SECURE_AUTHENTICATION, IID_IDirectorySearch,
@@ -342,13 +345,14 @@ HRESULT Zimbra::MAPI::Util::GetUserDNAndLegacyName(LPCWSTR lpszServer, LPCWSTR l
 		}
 	}
    
-    wstring strFilter = _T("(&(objectClass=organizationalPerson)(|(cn=");
+    wstring strFilter = _T("(&((&(objectCategory=user)(objectClass=user)))(|(cn=");
 
     strFilter += lpszUser;
     strFilter += L")";
 		strFilter += L"(sAMAccountName=";
 		 strFilter += lpszUser;
 	strFilter += L")))";
+	dlogi("Search Filter: ",strFilter);
 
     // Set Search Preferences
     ADS_SEARCH_HANDLE hSearch;
@@ -385,19 +389,21 @@ HRESULT Zimbra::MAPI::Util::GetUserDNAndLegacyName(LPCWSTR lpszServer, LPCWSTR l
             hr = pDirSearch->GetColumn(hSearch, pAttributes[0], &dnCol);
             if (FAILED(hr))
             {
-                dnEmpty = L"Yes";
+				dloge("distinguishedName NOT FOUND");                
                 break;
             }
             wstruserdn = dnCol.pADsValues->CaseIgnoreString;
+			dlogi("distinguishedName: ",wstruserdn.c_str());
 
             // legacyExchangeDN
             hr = pDirSearch->GetColumn(hSearch, pAttributes[1], &dnCol);
             if (FAILED(hr))
             {
-                ldnEmpty =  L"Yes";
+				dloge("legacyExchangeDN NOT FOUND");
                 break;
             }
             wstrlegacyname = dnCol.pADsValues->CaseIgnoreString;
+			dlogi("legacyExchangeDN: ",wstrlegacyname.c_str());
 
             pDirSearch->CloseSearchHandle(hSearch);
             return S_OK;
@@ -421,11 +427,7 @@ HRESULT Zimbra::MAPI::Util::GetUserDNAndLegacyName(LPCWSTR lpszServer, LPCWSTR l
     pDirSearch->CloseSearchHandle(hSearch);
     if (wstruserdn.empty() || wstrlegacyname.empty())
     {
-		 wstring errorMessage = L"Util::GetUserDNAndLegacyName(): S_ADS_NOMORE_ROWS";
-			errorMessage += L" Error Cause :: DN Empty? : ";
-			errorMessage += dnEmpty;
-			errorMessage += L"  LegacyDN Empty? :";
-			errorMessage += ldnEmpty;
+		wstring errorMessage = L"Util::GetUserDNAndLegacyName(): one of the required param (distinguishedName or legacyExchangeDN) not found!";			
 		throw MapiUtilsException(hr, errorMessage.c_str(),
             ERR_AD_NOROWS, __LINE__, __FILE__);
     }
@@ -1300,6 +1302,66 @@ void Zimbra::MAPI::Util::AddBodyToPart(mimepp::BodyPart *pPart, LPSTR pStr, size
         delete[] pBuf;
 }
 
+bool GetApplicationFromCLSID(CLSID appCLSID, LPSTR szPath, ULONG cSize)
+{
+	LPOLESTR pwszClsid;
+	WCHAR  szKey[128];
+    CHAR  szCLSID[60];
+    HKEY hKey;
+
+	// Convert CLSID to String
+    HRESULT hr = StringFromCLSID(appCLSID, &pwszClsid);
+    if (FAILED(hr))
+    {
+		return FALSE;
+    }
+	dlogi("OLE CLSID:",pwszClsid);
+
+	// Convert result to ANSI
+    WideCharToMultiByte(CP_ACP, 0, pwszClsid, -1, szCLSID, 60, NULL, NULL);
+
+	// Format Registry Key string
+    StringCbPrintf(szKey, 128, L"CLSID\\%s\\LocalServer32", pwszClsid);
+    
+	// Open key to find path of application
+    LONG lRet = RegOpenKeyEx(HKEY_CLASSES_ROOT, szKey, 0, KEY_ALL_ACCESS, &hKey);
+    if (lRet != ERROR_SUCCESS) 
+    {
+	// If LocalServer32 does not work, try with LocalServer
+        StringCbPrintf(szKey, 128, L"CLSID\\%s\\LocalServer", pwszClsid);
+        lRet = RegOpenKeyEx(HKEY_CLASSES_ROOT, szKey, 0, KEY_ALL_ACCESS, &hKey);
+		if (lRet != ERROR_SUCCESS) 
+        {
+			dlogw("No application info for CLSID found in LocalServer32 or LocalServer.");
+			// Free memory used by StringFromCLSID
+			CoTaskMemFree(pwszClsid);    
+            return FALSE;
+        }
+    }
+	
+	// Free memory used by StringFromCLSID
+    CoTaskMemFree(pwszClsid);
+    
+	// Query value of key to get Path and close the key
+    lRet = RegQueryValueEx(hKey, NULL, NULL, NULL, (BYTE*)szPath, &cSize);
+    RegCloseKey(hKey);
+    if (lRet != ERROR_SUCCESS)
+    {
+		dlogw("CLSID registry query failed.");
+		return FALSE;
+    }
+
+	// Strip off the '/Automation' switch from the path
+    char *x = strrchr(szPath, '/');
+    if(0!= x) // If no /Automation switch on the path
+    {
+		int result = int(x - szPath); 
+		szPath[result]  = '\0';  // If switch there, strip it
+    }   
+    return TRUE;
+	
+}
+
 BYTE OID_MAC_BINARY[] = { 0x2A, 0x86, 0x48, 0x86, 0xf7, 0x14, 0x03, 0x0B, 0x01 };
 mimepp::BodyPart *Zimbra::MAPI::Util::AttachPartFromIAttach(MAPISession &session, LPATTACH
     pAttach, LPSTR pCharset, LONG codepage)
@@ -1501,6 +1563,141 @@ mimepp::BodyPart *Zimbra::MAPI::Util::AttachPartFromIAttach(MAPISession &session
             MAPIFreeBuffer(pProp);
     }
     break;
+	case ATTACH_OLE:
+	{
+		LPSTORAGE lpStorageSrc = NULL;
+		LPSTORAGE lpStorageDest = NULL;
+		UNREFERENCED_PARAMETER(lpStorageDest);
+        hr = pAttach->OpenProperty(PR_ATTACH_DATA_OBJ, &IID_IStorage, 0, 0,
+            (LPUNKNOWN *)&lpStorageSrc);
+        if (FAILED(hr))
+        {
+			dloge("OLE Storage cannot be opened. Skipping the attachment.");
+            delete pAttachPart;
+			pAttachPart = NULL;
+			return NULL;
+        }
+		if (lpStorageSrc)
+		{
+			STATSTG *pstatstg=NULL;
+			IEnumSTATSTG *penum = NULL;
+			LPSTREAM pStgStrm = NULL;
+			CLSID storageCLSID;
+
+			//Read the CLSID of storage to get the application info
+			//which was used to create OLE attachment.
+			//if no info retirved, extension of the attachment cannot be determined 
+			//which results in attachment migartion with no extension
+			if(ReadClassStg(lpStorageSrc, &storageCLSID) == S_OK)
+			{
+				CHAR szApp[50];
+				if(GetApplicationFromCLSID(storageCLSID, szApp, 50))
+				{
+					dlogi("application from CLSID:", szApp);
+				}
+				else
+				{
+					dlogw("OLE attachment type cannot be determined. Attachment will be migrated without extension.");
+				}
+			}
+
+			hr = lpStorageSrc->EnumElements( NULL, NULL, NULL, &penum );
+			if( SUCCEEDED(hr) ) 
+			{
+				ULONG reqStatstg=40;
+				ULONG fetchedStatstg=0;
+				pstatstg = new STATSTG[reqStatstg];
+				hr = penum->Next( reqStatstg, pstatstg, &fetchedStatstg );
+				
+				// Loop through all the child objects of this storage.
+				for(ULONG itr=0;itr<fetchedStatstg;itr++)
+				{					
+					dlogi("OLE pwcsName: ",pstatstg[itr].pwcsName);
+					//we are interested only in content now
+					if((pstatstg[itr].type == STGTY_STREAM ) && (!wcscmp (pstatstg[itr].pwcsName, L"CONTENTS")))
+					{
+						hr = lpStorageSrc->OpenStream( pstatstg[itr].pwcsName,
+											 NULL,
+											 STGM_READ | STGM_SHARE_EXCLUSIVE,
+											 0,
+											 &pStgStrm );
+						if( SUCCEEDED(hr) ) 
+						{
+							STATSTG statstg;
+							LPVOID pAttachData = NULL;
+							LPVOID inBuffer = NULL;                 // temp buffer
+							size_t attachDataLen = 0;
+        
+							hr = pStgStrm->Stat(&statstg, STATFLAG_NONAME);
+
+							if (!SUCCEEDED(hr))
+							{
+								dloge("OLE Storage STATSTG cannot be fetched. Skipping the attachment.");
+								delete pAttachPart;
+								pAttachPart = NULL;
+								return NULL;
+							}
+							
+							attachDataLen = statstg.cbSize.LowPart;
+
+							// allocate buffer for incoming body data
+							hr = MAPIAllocateBuffer((ULONG)attachDataLen, (LPVOID FAR *)&inBuffer);
+							if (!SUCCEEDED(hr))
+							{
+								dloge("OLE attachemnt: Memory allocation failed. Skipping the attachment.");
+								delete pAttachPart;
+								pAttachPart = NULL;
+								return NULL;
+							}
+							ZeroMemory(inBuffer, (int)attachDataLen);
+
+							// download the text
+							ULONG cb;
+							hr = pStgStrm->Read(inBuffer, statstg.cbSize.LowPart, &cb);
+							pAttachData = inBuffer;
+
+							int i=0;
+							for (i = 0; i < NBOMS; i++)
+							{
+								if (attachDataLen > (size_t)nboms[i])
+								{
+									if (memcmp(pAttachData, boms[i], nboms[i]) == 0)
+									{
+										bom = (BOM)i;
+										break;
+									}
+								}
+							}
+							if (bMacEncoded)
+								AddBodyToPart(pAttachPart, (LPSTR)pAttachData + 128, attachDataLen - 128, FALSE);
+							else if (bom == BOM_NONE)
+								AddBodyToPart(pAttachPart, (LPSTR)pAttachData, attachDataLen, FALSE);
+							else
+								AddBodyToPart(pAttachPart, (LPSTR)(((BYTE *)pAttachData) + nboms[i]),
+									(attachDataLen - nboms[i]), FALSE);
+							if (inBuffer != NULL)
+								MAPIFreeBuffer(inBuffer);
+							
+							CoTaskMemFree( pstatstg[itr].pwcsName );
+				            pstatstg[itr].pwcsName = NULL;
+
+							if( NULL != pStgStrm )
+								pStgStrm->Release();
+							pStgStrm = NULL;
+						}
+					}
+				}
+								
+				delete[] pstatstg;
+			}
+			if( NULL != penum )
+				penum->Release();
+			if(NULL != lpStorageSrc)
+				lpStorageSrc->Release();
+		}
+		
+	}
+	break;
     case ATTACH_EMBEDDED_MSG:
     {
         LPMESSAGE pMessage = NULL;
@@ -3332,4 +3529,40 @@ HRESULT Zimbra::MAPI::Util::GetSMTPFromAD(Zimbra::MAPI::MAPISession &session, RE
     {
         return S_OK;
     }
+}
+
+BOOL Zimbra::MAPI::Util::IsOutlookRunning()
+{
+    // Get the list of process identifiers.
+    DWORD arrProcesseIds[1024] = { 0 }, dwNeededBytes = 0, dwProcesses = 0;
+
+    if (!EnumProcesses(arrProcesseIds, sizeof (arrProcesseIds), &dwNeededBytes))
+        return FALSE;
+    // Calculate how many process identifiers were returned.
+    dwProcesses = dwNeededBytes / sizeof (DWORD);
+    // Find outlook.exe
+    for (DWORD i = 0; i < dwProcesses; i++)
+    {
+        TCHAR szProcessName[MAX_PATH] = { 0 };
+
+        // Get a handle to the process.
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE,
+            arrProcesseIds[i]);
+
+        // Get the process name.
+        if (hProcess)
+        {
+            HMODULE hMod = NULL;
+
+            if (EnumProcessModules(hProcess, &hMod, sizeof (hMod), &dwNeededBytes))
+            {
+                GetModuleBaseName(hProcess, hMod, szProcessName, sizeof (szProcessName) /
+                    sizeof (TCHAR));
+            }
+            CloseHandle(hProcess);
+            if (!_tcsicmp(_T("OUTLOOK.EXE"), szProcessName))
+                return TRUE;
+        }
+    }
+    return FALSE;
 }

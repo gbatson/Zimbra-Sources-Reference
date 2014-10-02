@@ -41,7 +41,7 @@ class MAPISession
 {
 private:
     IMAPISession *m_Session;
-
+	std::wstring wstrProfileName;
     HRESULT _mapiLogon(LPWSTR strProfile, DWORD dwFlags, LPMAPISESSION &session);
 
     Zimbra::Util::CriticalSection cs;
@@ -60,6 +60,7 @@ public:
     HRESULT OpenEntry(ULONG cbEntryID, LPENTRYID lpEntryID, LPCIID lpInterface, ULONG ulFlags,
         ULONG FAR *lpulObjType, LPUNKNOWN FAR *lppUnk);
     HRESULT CompareEntryIDs(SBinary *pBin1, SBinary *pBin2, ULONG &lpulResult);
+	wstring GetProfileName(){return wstrProfileName;}
 };
 }
 }

@@ -21,6 +21,8 @@ namespace Zimbra
 {
 namespace MAPI
 {
+
+#define ERR_OUTLOOK_RUNNING			L"Outlook must not be running while migrating accounts.\nClose Outlook in order to proceed."
 typedef struct _Folder_Data
 {
     wstring name;
@@ -145,6 +147,7 @@ typedef struct _MessageItemData: BaseItemData
     wstring DeliveryDateString;
     wstring DeliveryUnixString;
     __int64 Date;
+	wstring DateUnixString;
     wstring DateString;
     vector<LPWSTR>* vTags;
     data_buffer textbody;
@@ -229,6 +232,8 @@ typedef struct _TaskItemData: BaseItemData
     wstring recurMonthOfYear;
 } TaskItemData;
 
+typedef enum MIG_TYPE {MAILBOX_MIG, PST_MIG, PROFILE_MIG} MIG_TYPE;
+
 class MAPIAccessAPI
 {
 private:
@@ -243,7 +248,7 @@ private:
     Zimbra::MAPI::MAPIStore *m_userStore;
     Zimbra::MAPI::MAPIFolder *m_rootFolder;
     ExchangeSpecialFolderId FolderToSkip[TS_FOLDERS_MAX];
-
+	
     void InitFoldersToSkip();
     bool SkipFolder(ExchangeSpecialFolderId exfid);
     LPCWSTR OpenUserStore();
@@ -252,12 +257,16 @@ private:
     HRESULT GetInternalFolder(SBinary sbFolderEID, MAPIFolder &folder);
 	static LONG WINAPI UnhandledExceptionFilter(LPEXCEPTION_POINTERS pExPtrs);
 	static void internalInit();
+
+	static void SetOOMRegistry();
+	static void ResetOOMRegistry();
+	static MIG_TYPE m_MigType;
 public:
 	// static methods to be used by all mailboxes/profile/PST
     // lpcwstrMigTarget -> Exchange Admin Profile for Exchange mailboxes migration
     // lpcwstrMigTarget -> Local Exchange profile migration
     // lpcwstrMigTarget -> PST file path for PST migration
-    static LPCWSTR InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget);
+    static LPCWSTR InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget, LPCWSTR userAccount=L"");
 	static LPCWSTR _InitGlobalSessionAndStore(LPCWSTR lpcwstrMigTarget);	
     static void UnInitGlobalSessionAndStore();
 
@@ -275,6 +284,7 @@ public:
 	LPCWSTR _GetItem(SBinary sbItemEID, BaseItemData &itemData);
     LPWSTR  GetOOOStateAndMsg();
     LPCWSTR GetExchangeRules(vector<CRule> &vRuleList);
+	static MIG_TYPE GetMigrationType(){return m_MigType;}
 };
 }
 }

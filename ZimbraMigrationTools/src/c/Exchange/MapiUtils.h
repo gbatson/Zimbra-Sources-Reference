@@ -216,6 +216,7 @@ CString GetGUID();
 void GetContentTypeFromExtension(LPSTR pExt, LPSTR &pContentType);
 HRESULT GetSMTPFromAD(Zimbra::MAPI::MAPISession &session, RECIP_INFO &recipInfo,
     wstring strUser, wstring strPsw, tstring &strSmtpAddress);
+BOOL IsOutlookRunning();
 
 namespace CharsetUtil
 {

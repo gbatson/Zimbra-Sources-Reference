@@ -494,11 +494,14 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 				if (ret == NULL)	// 71630
 				{
 					pIt[L"Subject"] = SysAllocString((msgdata.Subject).c_str());
+					dlog.info("subject:",msgdata.Subject.c_str());
 					pIt[L"Date"] = SysAllocString((msgdata.DateString).c_str());
 					pIt[L"filePath"] = SysAllocString((msgdata.MimeFile).c_str());
 					pIt[L"UrlName"] = SysAllocString((msgdata.Urlname).c_str());
+					dlog.info("urlname:",msgdata.Urlname.c_str());
 					pIt[L"rcvdDate"] = SysAllocString((msgdata.DeliveryUnixString.c_str()));
 					pIt[L"wstrmimeBuffer"] = SysAllocString((msgdata.wstrmimeBuffer.c_str()));
+					pIt[L"DateUnixString"]= SysAllocString(msgdata.DateUnixString.c_str());
 
 					bool bHasTags = false;
 					if (msgdata.vTags)
@@ -516,6 +519,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 								}
 							}
 							pIt[L"tags"] = SysAllocString(tagData.c_str());
+							dlog.info("tagData:",tagData.c_str());
 							delete msgdata.vTags;
 							bHasTags = true;
 						}
@@ -528,11 +532,11 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					CComBSTR flags = L"";
 
 					if (msgdata.HasAttachments)
-						wcscat(flags, L"a");
+						flags.Append(L"a");
 					if (msgdata.IsUnread)
-						wcscat(flags, L"u");
+						flags.Append(L"u");
 					if (msgdata.IsFlagged)
-						wcscat(flags, L"f");
+						flags.Append(L"f");
 
 					/*if(msgdata.HasText)
 					 * {
@@ -543,13 +547,13 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					 *      flags.AppendBSTR(L"H");
 					 * }*/
 					if (msgdata.IsDraft)
-						wcscat(flags, L"d");
+						flags.Append(L"d");
 					if (msgdata.IsForwared)
-						wcscat(flags, L"w");
+						flags.Append(L"w");
 					if ((msgdata.IsUnsent) || (msgdata.Urlname.substr(0, 11) == L"/Sent Items"))
-						wcscat(flags, L"s");
+						flags.Append(L"s");
 					if (msgdata.RepliedTo)
-						wcscat(flags, L"r");
+						flags.Append(L"r");
 
 					/*pIt[L"Has Attachments"] = (msgdata.HasAttachments)? L"True":L"False";
 					 * pIt[L"HasHTML"] = (msgdata.HasHtml)? L"True":L"False";

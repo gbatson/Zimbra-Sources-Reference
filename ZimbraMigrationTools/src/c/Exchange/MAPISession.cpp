@@ -16,6 +16,7 @@
 #include "Exchange.h"
 #include "MAPISession.h"
 #include "MAPIStore.h"
+#include "Logger.h"
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 // Exception class
@@ -36,15 +37,15 @@ MAPISessionException::MAPISessionException(HRESULT hrErrCode, LPCWSTR lpszDescri
 // MAPI Session Class
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-MAPISession::MAPISession(): m_Session(NULL)
+MAPISession::MAPISession(): m_Session(NULL)	
 {
     Zimbra::Util::AutoCriticalSection autocriticalsection(cs);
 
-    MAPIINIT_0 MAPIInit;
-   MAPIInit.ulFlags = MAPI_NO_COINIT | 0;
-   MAPIInit.ulVersion = MAPI_INIT_VERSION;
-   HRESULT hr= MAPIInitialize(&MAPIInit);
-       
+	MAPIINIT_0 MAPIInit;
+	MAPIInit.ulFlags = MAPI_NO_COINIT | 0;
+	MAPIInit.ulVersion = MAPI_INIT_VERSION;
+	HRESULT hr= MAPIInitialize(&MAPIInit);
+
     UNREFERENCED_PARAMETER(hr);
     Zimbra::Mapi::Memory::SetMemAllocRoutines(NULL, MAPIAllocateBuffer, MAPIAllocateMore,
         MAPIFreeBuffer);
@@ -60,6 +61,7 @@ MAPISession::~MAPISession()
         UlRelease(m_Session);
         m_Session = NULL;
     }
+	
     MAPIUninitialize();
 }
 
@@ -67,6 +69,7 @@ HRESULT MAPISession::_mapiLogon(LPWSTR strProfile, DWORD dwFlags, LPMAPISESSION 
 {
     Zimbra::Util::AutoCriticalSection autocriticalsection(cs);
     HRESULT hr = S_OK;
+	wstrProfileName= strProfile;
 
     if (FAILED(hr = MAPILogonEx(0, strProfile, NULL, dwFlags, &session)))
         throw MAPISessionException(hr, L"_mapiLogon(): MAPILogonEx Failed.", 
@@ -127,7 +130,7 @@ HRESULT MAPISession::OpenDefaultStore(MAPIStore &Store)
     if (FAILED(hr))
         throw MAPISessionException(hr, L"OpenDefaultStore(): OpenMsgStore Failed.",
 		ERR_STORE_ERR, __LINE__, __FILE__);
-    Store.Initialize(m_Session, pDefaultMDB);
+    Store.Initialize(m_Session, pDefaultMDB, (LPWSTR) wstrProfileName.c_str(), true);
     return S_OK;
 }
 
@@ -155,7 +158,7 @@ HRESULT MAPISession::OpenOtherStore(LPMDB OpenedStore, LPWSTR pServerDn, LPWSTR 
     if (FAILED(hr))
         throw MAPISessionException(hr, L"OpenDefaultStore(): MailboxLogon Failed.", 
 		ERR_STORE_ERR, __LINE__,  __FILE__);
-    OtherStore.Initialize(m_Session, pMdb);
+    OtherStore.Initialize(m_Session, pMdb, (LPWSTR) wstrProfileName.c_str());
 
     return S_OK;
 }

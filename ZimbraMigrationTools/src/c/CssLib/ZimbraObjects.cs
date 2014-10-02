@@ -14,6 +14,7 @@ public class ZimbraMessage
     public string flags;
     public string tags;
     public string rcvdDate;
+    public string DateUnixString;
 
     public ZimbraMessage()
     {
@@ -21,16 +22,18 @@ public class ZimbraMessage
         flags = "";
         tags = "";
         rcvdDate = "";
+        DateUnixString = "";
     }
 
     public ZimbraMessage(string FilePath, string FolderId, string Flags, string Tags, string
-        RcvdDate)
+        RcvdDate, string strdate)
     {
         filePath = FilePath;
         folderId = FolderId;
         flags = Flags;
         tags = Tags;
         rcvdDate = RcvdDate;
+        DateUnixString = strdate;
     }
 }
 

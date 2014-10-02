@@ -13563,6 +13563,88 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
+     * Maximum total size of a mail message that can be synced to device
+     * without truncation. It cannot be larger than zimbraMTAMaxMessageSize.
+     * 0 means zimbraMTAMaxMessageSize or INTEGER_MAX, whichever is smaller
+     *
+     * @return zimbraMobileMaxMessageSize, or 10240000 if unset
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1596)
+    public int getMobileMaxMessageSize() {
+        return getIntAttr(Provisioning.A_zimbraMobileMaxMessageSize, 10240000);
+    }
+
+    /**
+     * Maximum total size of a mail message that can be synced to device
+     * without truncation. It cannot be larger than zimbraMTAMaxMessageSize.
+     * 0 means zimbraMTAMaxMessageSize or INTEGER_MAX, whichever is smaller
+     *
+     * @param zimbraMobileMaxMessageSize new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1596)
+    public void setMobileMaxMessageSize(int zimbraMobileMaxMessageSize) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMaxMessageSize, Integer.toString(zimbraMobileMaxMessageSize));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum total size of a mail message that can be synced to device
+     * without truncation. It cannot be larger than zimbraMTAMaxMessageSize.
+     * 0 means zimbraMTAMaxMessageSize or INTEGER_MAX, whichever is smaller
+     *
+     * @param zimbraMobileMaxMessageSize new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1596)
+    public Map<String,Object> setMobileMaxMessageSize(int zimbraMobileMaxMessageSize, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMaxMessageSize, Integer.toString(zimbraMobileMaxMessageSize));
+        return attrs;
+    }
+
+    /**
+     * Maximum total size of a mail message that can be synced to device
+     * without truncation. It cannot be larger than zimbraMTAMaxMessageSize.
+     * 0 means zimbraMTAMaxMessageSize or INTEGER_MAX, whichever is smaller
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1596)
+    public void unsetMobileMaxMessageSize() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMaxMessageSize, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum total size of a mail message that can be synced to device
+     * without truncation. It cannot be larger than zimbraMTAMaxMessageSize.
+     * 0 means zimbraMTAMaxMessageSize or INTEGER_MAX, whichever is smaller
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1596)
+    public Map<String,Object> unsetMobileMaxMessageSize(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMaxMessageSize, "");
+        return attrs;
+    }
+
+    /**
      * mta anti spam lock method.
      *
      * @return zimbraMtaAntiSpamLockMethod, or "flock" if unset
@@ -14779,6 +14861,137 @@ public abstract class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetMtaSaslAuthEnable(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraMtaSaslAuthEnable, "");
+        return attrs;
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @return zimbraMtaSmtpdClientPortLogging, or ZAttrProvisioning.MtaSmtpdClientPortLogging.no if unset and/or has invalid value
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public ZAttrProvisioning.MtaSmtpdClientPortLogging getMtaSmtpdClientPortLogging() {
+        try { String v = getAttr(Provisioning.A_zimbraMtaSmtpdClientPortLogging); return v == null ? ZAttrProvisioning.MtaSmtpdClientPortLogging.no : ZAttrProvisioning.MtaSmtpdClientPortLogging.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.MtaSmtpdClientPortLogging.no; }
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @return zimbraMtaSmtpdClientPortLogging, or "no" if unset
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public String getMtaSmtpdClientPortLoggingAsString() {
+        return getAttr(Provisioning.A_zimbraMtaSmtpdClientPortLogging, "no");
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @param zimbraMtaSmtpdClientPortLogging new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public void setMtaSmtpdClientPortLogging(ZAttrProvisioning.MtaSmtpdClientPortLogging zimbraMtaSmtpdClientPortLogging) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaSmtpdClientPortLogging, zimbraMtaSmtpdClientPortLogging.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @param zimbraMtaSmtpdClientPortLogging new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public Map<String,Object> setMtaSmtpdClientPortLogging(ZAttrProvisioning.MtaSmtpdClientPortLogging zimbraMtaSmtpdClientPortLogging, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaSmtpdClientPortLogging, zimbraMtaSmtpdClientPortLogging.toString());
+        return attrs;
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @param zimbraMtaSmtpdClientPortLogging new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public void setMtaSmtpdClientPortLoggingAsString(String zimbraMtaSmtpdClientPortLogging) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaSmtpdClientPortLogging, zimbraMtaSmtpdClientPortLogging);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @param zimbraMtaSmtpdClientPortLogging new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public Map<String,Object> setMtaSmtpdClientPortLoggingAsString(String zimbraMtaSmtpdClientPortLogging, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaSmtpdClientPortLogging, zimbraMtaSmtpdClientPortLogging);
+        return attrs;
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public void unsetMtaSmtpdClientPortLogging() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaSmtpdClientPortLogging, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Value for postconf smtpd_client_port_logging. Defaults to no
+     *
+     * <p>Valid values: [yes, no]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.8,8.5.0
+     */
+    @ZAttr(id=1588)
+    public Map<String,Object> unsetMtaSmtpdClientPortLogging(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMtaSmtpdClientPortLogging, "");
         return attrs;
     }
 
@@ -18387,7 +18600,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18402,7 +18615,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18420,7 +18633,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18439,7 +18652,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18457,7 +18670,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18476,7 +18689,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18494,7 +18707,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18513,7 +18726,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.
@@ -18530,7 +18743,7 @@ public abstract class ZAttrServer extends NamedEntry {
     }
 
     /**
-     * The servers to be included in the proxy lookup hanlders list. Proxy
+     * The servers to be included in the proxy lookup handlers list. Proxy
      * will only use the servers specified here to do the lookup. Leaving
      * empty means using all the servers whose zimbraReverseProxyLookupTarget
      * is TRUE.

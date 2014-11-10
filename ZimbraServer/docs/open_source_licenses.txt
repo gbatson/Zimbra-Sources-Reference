@@ -1,6 +1,6 @@
 open_source_license.txt
 
-Zimbra Collaboration Suite 8.0.8 GA
+Zimbra Collaboration Suite 8.0.9 GA
 
 
 ===========================================================================
@@ -76,7 +76,7 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> nviennot-nginx-tcp-keepalive-4d7186d
    >>> opendkim-2.9.2
    >>> openldap-2.4.39
-   >>> openssl-1.0.1i
+   >>> openssl-1.0.1j
    >>> perl-data-uuid-1.218
    >>> perl-geography-countries-2009041301
    >>> perl-locale-maketext-simple-0.21
@@ -15408,7 +15408,7 @@ California, USA.  All Rights Reserved.  Permission to copy and
 distribute verbatim copies of this document is granted.
 
 
->>> openssl-1.0.1i
+>>> openssl-1.0.1j
 
 LICENSE ISSUES
   ==============
@@ -34412,6 +34412,6 @@ offer to obtain a copy of the Source Files is valid for three
 years from the date you acquired this Software product. Alternatively,
 the Source Files may accompany the Telligent product.
 
-Last updated 22 Nov 2013
+Last updated 24 Oct 2014
 
-[ZCS808GAVV051013]
+[ZCS809GAVV241014]

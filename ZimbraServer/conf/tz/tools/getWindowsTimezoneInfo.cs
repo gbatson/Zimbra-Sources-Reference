@@ -13,6 +13,7 @@ public class Example
    {
       const string OUTPUTFILENAME = @"C:\Temp\WindowsTimeZoneInfo.txt";
 
+      CultureInfo culture = System.Globalization.CultureInfo.GetCultureInfo("en-GB"); // fix date strings as per UK culture
       DateTimeFormatInfo dateFormats = CultureInfo.CurrentCulture.DateTimeFormat;
       ReadOnlyCollection<TimeZoneInfo> timeZones = TimeZoneInfo.GetSystemTimeZones();
       StreamWriter sw = new StreamWriter(OUTPUTFILENAME, false);
@@ -42,7 +43,7 @@ public class Example
                TimeZoneInfo.TransitionTime transTimeStart = rule.DaylightTransitionStart;
                TimeZoneInfo.TransitionTime transTimeEnd = rule.DaylightTransitionEnd;
 
-               sw.WriteLine("      From {0} to {1}", rule.DateStart, rule.DateEnd);
+               sw.WriteLine("      From {0} to {1}", rule.DateStart.ToString(culture.DateTimeFormat), rule.DateEnd.ToString(culture.DateTimeFormat));
                sw.WriteLine("      Delta: {0}", rule.DaylightDelta);
                if (! transTimeStart.IsFixedDateRule)
                {

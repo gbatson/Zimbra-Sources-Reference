@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Zimbra Software, LLC.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.4 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -825,13 +825,15 @@ public final class LC {
     public static final KnownKey zimbra_waitset_max_request_timeout = KnownKey.newKey(1200);
     public static final KnownKey zimbra_waitset_max_per_account = KnownKey.newKey(5);
 
-    // *_disable_tiemout settings are here for bug 56458
+    // *_disable_timeout settings are here for bug 56458
     // This is a workaround for an issue in Jetty 6.1.22.zc6m when we upgrade
     // we should re-evaluate/remove these settings and the code that uses them
     public static final KnownKey zimbra_archive_formatter_disable_timeout = KnownKey.newKey(true);
     public static final KnownKey zimbra_csv_formatter_disable_timeout = KnownKey.newKey(true);
     public static final KnownKey zimbra_archive_formatter_search_chunk_size = KnownKey.newKey(4096);
     public static final KnownKey zimbra_gal_sync_disable_timeout = KnownKey.newKey(true);
+    // for bug 79865
+    public static final KnownKey zimbra_dav_disable_timeout = KnownKey.newKey(true);
 
     public static final KnownKey zimbra_admin_waitset_default_request_timeout = KnownKey.newKey(300);
     public static final KnownKey zimbra_admin_waitset_min_request_timeout = KnownKey.newKey(0);
@@ -1116,7 +1118,7 @@ public final class LC {
     public static final KnownKey ldap_dit_naming_rdn_attr_mime         = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for server entries
     public static final KnownKey ldap_dit_naming_rdn_attr_server       = KnownKey.newKey("");
-    public static final KnownKey ldap_dit_naming_rdn_attr_user         =KnownKey.newKey("");
+    public static final KnownKey ldap_dit_naming_rdn_attr_user         = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for xmpp component entries
     public static final KnownKey ldap_dit_naming_rdn_attr_xmppcomponent= KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for zimlet entries
@@ -1150,11 +1152,11 @@ public final class LC {
 
     public static final KnownKey check_dl_membership_enabled = KnownKey.newKey(true);
 
-        
+
     //Defanger
-    public static final KnownKey defang_style_unwanted_func = 
+    public static final KnownKey defang_style_unwanted_func =
         KnownKey.newKey("[\\S&&[^:]]+(?<!(rgb|and|not|media|,))\\s*\\(.*\\)");
-    public static final KnownKey defang_valid_ext_url = 
+    public static final KnownKey defang_valid_ext_url =
         KnownKey.newKey("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)");
     public static final KnownKey defang_valid_int_img = KnownKey.newKey("^data:|^cid:|\\.(jpg|jpeg|png|gif)$");
 
@@ -1164,6 +1166,8 @@ public final class LC {
     public static final KnownKey defang_av_script_tag = KnownKey.newKey("</?script/?>");
     public static final KnownKey defang_av_javascript = KnownKey.newKey("javascript");
 
+
+    public static final KnownKey defang_block_form_same_host_post_req = KnownKey.newKey(true);
 
     static {
         // Automatically set the key name with the variable name.

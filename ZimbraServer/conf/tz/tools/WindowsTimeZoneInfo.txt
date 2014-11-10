@@ -128,7 +128,7 @@ ID: Canada Central Standard Time
    Offset from UTC:                      -6 hours, 0 minutes
    Number of adjustment rules:                          0
 ID: SA Pacific Standard Time
-   Display Name:          (UTC-05:00) Bogota, Lima, Quito
+   Display Name: (UTC-05:00) Bogota, Lima, Quito, Rio Branco
    Standard Name:                SA Pacific Standard Time
    Daylight Name:                SA Pacific Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                      -5 hours, 0 minutes
@@ -203,35 +203,35 @@ ID: Paraguay Standard Time
       From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 4 of March
       From 01/01/2015 00:00:00 to 31/12/2015 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 3 of March
       From 01/01/2016 00:00:00 to 31/12/2016 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 5 of March
       From 01/01/2017 00:00:00 to 31/12/2017 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 5 of September
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 5 of March
       From 01/01/2018 00:00:00 to 31/12/2018 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 1 of April
+      Ends at 23:59 on Saturday of week 4 of March
       From 01/01/2019 00:00:00 to 31/12/2019 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 4 of March
       From 01/01/2020 00:00:00 to 31/12/2020 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 3 of March
       From 01/01/2021 00:00:00 to 31/12/9999 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of October
-      Ends at 23:59 on Saturday of week 2 of April
+      Ends at 23:59 on Saturday of week 5 of March
 ID: Atlantic Standard Time
    Display Name:       (UTC-04:00) Atlantic Time (Canada)
    Standard Name:                  Atlantic Standard Time
@@ -405,7 +405,7 @@ ID: Pacific SA Standard Time
    Standard Name:                Pacific SA Standard Time
    Daylight Name:                Pacific SA Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                      -4 hours, 0 minutes
-   Number of adjustment rules:                          8
+   Number of adjustment rules:                          9
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2007 00:00:00
       Delta: 01:00:00
@@ -435,7 +435,11 @@ ID: Pacific SA Standard Time
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 1 of September
       Ends at 23:59 on Saturday of week 5 of April
-      From 01/01/2014 00:00:00 to 31/12/9999 00:00:00
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Saturday of week 1 of September
+      Ends at 23:59 on Saturday of week 5 of April
+      From 01/01/2015 00:00:00 to 31/12/9999 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Saturday of week 2 of October
       Ends at 23:59 on Saturday of week 2 of March
@@ -904,6 +908,49 @@ ID: Namibia Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 1 of September
       Ends at 02:00 on Sunday of week 1 of April
+ID: Jordan Standard Time
+   Display Name:                        (UTC+02:00) Amman
+   Standard Name:                    Jordan Standard Time
+   Daylight Name:                    Jordan Daylight Time   ***Has Daylight Saving Time***
+   Offset from UTC:                       2 hours, 0 minutes
+   Number of adjustment rules:                          9
+   Adjustment Rules:
+      From 01/01/0001 00:00:00 to 31/12/2006 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of September
+      From 01/01/2007 00:00:00 to 31/12/2007 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of October
+      From 01/01/2008 00:00:00 to 31/12/2008 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of October
+      From 01/01/2009 00:00:00 to 31/12/2009 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of October
+      From 01/01/2010 00:00:00 to 31/12/2010 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of October
+      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of October
+      From 01/01/2012 00:00:00 to 31/12/2012 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 00:00 on Sunday of week 1 of January
+      From 01/01/2013 00:00:00 to 31/12/2013 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Tuesday of week 1 of January
+      Ends at 00:00 on Friday of week 3 of December
+      From 01/01/2014 00:00:00 to 31/12/9999 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 5 of March
+      Ends at 01:00 on Friday of week 5 of October
 ID: GTB Standard Time
    Display Name:            (UTC+02:00) Athens, Bucharest
    Standard Name:                       GTB Standard Time
@@ -979,7 +1026,7 @@ ID: Egypt Standard Time
    Standard Name:                     Egypt Standard Time
    Daylight Name:                     Egypt Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       2 hours, 0 minutes
-   Number of adjustment rules:                          6
+   Number of adjustment rules:                          7
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2005 00:00:00
       Delta: 01:00:00
@@ -1004,6 +1051,10 @@ ID: Egypt Standard Time
       From 01/01/2010 00:00:00 to 31/12/2010 00:00:00
       Delta: 01:00:00
       Begins at 23:59 on Thursday of week 5 of April
+      Ends at 23:59 on Thursday of week 5 of September
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 23:59 on Thursday of week 3 of May
       Ends at 23:59 on Thursday of week 5 of September
 ID: Syria Standard Time
    Display Name:                     (UTC+02:00) Damascus
@@ -1093,7 +1144,7 @@ ID: Turkey Standard Time
    Standard Name:                    Turkey Standard Time
    Daylight Name:                    Turkey Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       2 hours, 0 minutes
-   Number of adjustment rules:                          3
+   Number of adjustment rules:                          6
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
       Delta: 01:00:00
@@ -1103,7 +1154,19 @@ ID: Turkey Standard Time
       Delta: 01:00:00
       Begins at 03:00 on Monday of week 5 of March
       Ends at 04:00 on Sunday of week 5 of October
-      From 01/01/2012 00:00:00 to 31/12/9999 00:00:00
+      From 01/01/2012 00:00:00 to 31/12/2012 00:00:00
+      Delta: 01:00:00
+      Begins at 03:00 on Sunday of week 5 of March
+      Ends at 04:00 on Sunday of week 5 of October
+      From 01/01/2013 00:00:00 to 31/12/2013 00:00:00
+      Delta: 01:00:00
+      Begins at 03:00 on Sunday of week 5 of March
+      Ends at 04:00 on Sunday of week 5 of October
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 03:00 on Monday of week 5 of March
+      Ends at 04:00 on Sunday of week 5 of October
+      From 01/01/2015 00:00:00 to 31/12/9999 00:00:00
       Delta: 01:00:00
       Begins at 03:00 on Sunday of week 5 of March
       Ends at 04:00 on Sunday of week 5 of October
@@ -1190,6 +1253,25 @@ ID: Israel Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Friday of week 4 of March
       Ends at 02:00 on Sunday of week 5 of October
+ID: Kaliningrad Standard Time
+   Display Name:          (UTC+02:00) Kaliningrad (RTZ 1)
+   Standard Name:               Russia TZ 1 Standard Time
+   Daylight Name:               Russia TZ 1 Daylight Time   ***Has Daylight Saving Time***
+   Offset from UTC:                       2 hours, 0 minutes
+   Number of adjustment rules:                          3
+   Adjustment Rules:
+      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 03:00 on Sunday of week 5 of October
+      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: Libya Standard Time
    Display Name:                      (UTC+02:00) Tripoli
    Standard Name:                     Libya Standard Time
@@ -1205,41 +1287,6 @@ ID: Libya Standard Time
       Delta: 01:00:00
       Begins at 01:00 on Friday of week 5 of March
       Ends at 00:00 on Tuesday of week 1 of January
-ID: Jordan Standard Time
-   Display Name:                        (UTC+03:00) Amman
-   Standard Name:                    Jordan Standard Time
-   Daylight Name:                    Jordan Daylight Time   ***Has Daylight Saving Time***
-   Offset from UTC:                       3 hours, 0 minutes
-   Number of adjustment rules:                          7
-   Adjustment Rules:
-      From 01/01/0001 00:00:00 to 31/12/2006 00:00:00
-      Delta: 01:00:00
-      Begins at 00:00 on Thursday of week 5 of March
-      Ends at 01:00 on Friday of week 5 of September
-      From 01/01/2007 00:00:00 to 31/12/2007 00:00:00
-      Delta: 01:00:00
-      Begins at 23:59 on Thursday of week 5 of March
-      Ends at 01:00 on Friday of week 5 of October
-      From 01/01/2008 00:00:00 to 31/12/2008 00:00:00
-      Delta: 01:00:00
-      Begins at 23:59 on Thursday of week 5 of March
-      Ends at 01:00 on Friday of week 5 of October
-      From 01/01/2009 00:00:00 to 31/12/2009 00:00:00
-      Delta: 01:00:00
-      Begins at 23:59 on Thursday of week 5 of March
-      Ends at 01:00 on Friday of week 5 of October
-      From 01/01/2010 00:00:00 to 31/12/2010 00:00:00
-      Delta: 01:00:00
-      Begins at 23:59 on Thursday of week 5 of March
-      Ends at 01:00 on Friday of week 5 of October
-      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
-      Delta: 01:00:00
-      Begins at 23:59 on Thursday of week 5 of March
-      Ends at 01:00 on Friday of week 5 of October
-      From 01/01/2012 00:00:00 to 31/12/2012 00:00:00
-      Delta: 01:00:00
-      Begins at 23:59 on Thursday of week 5 of March
-      Ends at 00:00 on Sunday of week 1 of January
 ID: Arabic Standard Time
    Display Name:                      (UTC+03:00) Baghdad
    Standard Name:                    Arabic Standard Time
@@ -1255,10 +1302,16 @@ ID: Arabic Standard Time
       Delta: 01:00:00
       Begins at 03:00 on Sunday of week 1 of April
       Ends at 04:00 on Monday of week 1 of October
-ID: Kaliningrad Standard Time
-   Display Name:           (UTC+03:00) Kaliningrad, Minsk
-   Standard Name:               Kaliningrad Standard Time
-   Daylight Name:               Kaliningrad Daylight Time   ***Has Daylight Saving Time***
+ID: Arab Standard Time
+   Display Name:               (UTC+03:00) Kuwait, Riyadh
+   Standard Name:                      Arab Standard Time
+   Daylight Name:                      Arab Daylight Time   ***Does Not Have Daylight Saving Time***
+   Offset from UTC:                       3 hours, 0 minutes
+   Number of adjustment rules:                          0
+ID: Belarus Standard Time
+   Display Name:                        (UTC+03:00) Minsk
+   Standard Name:                   Belarus Standard Time
+   Daylight Name:                   Belarus Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       3 hours, 0 minutes
    Number of adjustment rules:                          2
    Adjustment Rules:
@@ -1270,12 +1323,25 @@ ID: Kaliningrad Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of March
       Ends at 00:00 on Saturday of week 1 of January
-ID: Arab Standard Time
-   Display Name:               (UTC+03:00) Kuwait, Riyadh
-   Standard Name:                      Arab Standard Time
-   Daylight Name:                      Arab Daylight Time   ***Does Not Have Daylight Saving Time***
+ID: Russian Standard Time
+   Display Name: (UTC+03:00) Moscow, St. Petersburg, Volgograd (RTZ 2)
+   Standard Name:               Russia TZ 2 Standard Time
+   Daylight Name:               Russia TZ 2 Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       3 hours, 0 minutes
-   Number of adjustment rules:                          0
+   Number of adjustment rules:                          3
+   Adjustment Rules:
+      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 03:00 on Sunday of week 5 of October
+      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: E. Africa Standard Time
    Display Name:                      (UTC+03:00) Nairobi
    Standard Name:                 E. Africa Standard Time
@@ -1318,21 +1384,12 @@ ID: Azerbaijan Standard Time
       Delta: 01:00:00
       Begins at 04:00 on Sunday of week 5 of March
       Ends at 05:00 on Sunday of week 5 of October
-ID: Russian Standard Time
-   Display Name: (UTC+04:00) Moscow, St. Petersburg, Volgograd
-   Standard Name:                   Russian Standard Time
-   Daylight Name:                   Russian Daylight Time   ***Has Daylight Saving Time***
+ID: Russia Time Zone 3
+   Display Name:      (UTC+04:00) Izhevsk, Samara (RTZ 3)
+   Standard Name:               Russia TZ 3 Standard Time
+   Daylight Name:               Russia TZ 3 Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                       4 hours, 0 minutes
-   Number of adjustment rules:                          2
-   Adjustment Rules:
-      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 03:00 on Sunday of week 5 of October
-      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 00:00 on Saturday of week 1 of January
+   Number of adjustment rules:                          0
 ID: Mauritius Standard Time
    Display Name:                   (UTC+04:00) Port Louis
    Standard Name:                 Mauritius Standard Time
@@ -1377,6 +1434,25 @@ ID: West Asia Standard Time
    Daylight Name:                 West Asia Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                       5 hours, 0 minutes
    Number of adjustment rules:                          0
+ID: Ekaterinburg Standard Time
+   Display Name:         (UTC+05:00) Ekaterinburg (RTZ 4)
+   Standard Name:               Russia TZ 4 Standard Time
+   Daylight Name:               Russia TZ 4 Daylight Time   ***Has Daylight Saving Time***
+   Offset from UTC:                       5 hours, 0 minutes
+   Number of adjustment rules:                          3
+   Adjustment Rules:
+      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 03:00 on Sunday of week 5 of October
+      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: Pakistan Standard Time
    Display Name:           (UTC+05:00) Islamabad, Karachi
    Standard Name:                  Pakistan Standard Time
@@ -1427,12 +1503,12 @@ ID: Bangladesh Standard Time
       Delta: 01:00:00
       Begins at 23:00 on Friday of week 3 of June
       Ends at 23:59 on Thursday of week 5 of December
-ID: Ekaterinburg Standard Time
-   Display Name:                 (UTC+06:00) Ekaterinburg
-   Standard Name:              Ekaterinburg Standard Time
-   Daylight Name:              Ekaterinburg Daylight Time   ***Has Daylight Saving Time***
+ID: N. Central Asia Standard Time
+   Display Name:          (UTC+06:00) Novosibirsk (RTZ 5)
+   Standard Name:               Russia TZ 5 Standard Time
+   Daylight Name:               Russia TZ 5 Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       6 hours, 0 minutes
-   Number of adjustment rules:                          2
+   Number of adjustment rules:                          3
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
       Delta: 01:00:00
@@ -1442,6 +1518,10 @@ ID: Ekaterinburg Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of March
       Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: Myanmar Standard Time
    Display Name:             (UTC+06:30) Yangon (Rangoon)
    Standard Name:                   Myanmar Standard Time
@@ -1454,12 +1534,12 @@ ID: SE Asia Standard Time
    Daylight Name:                   SE Asia Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                       7 hours, 0 minutes
    Number of adjustment rules:                          0
-ID: N. Central Asia Standard Time
-   Display Name:                  (UTC+07:00) Novosibirsk
-   Standard Name:           N. Central Asia Standard Time
-   Daylight Name:           N. Central Asia Daylight Time   ***Has Daylight Saving Time***
+ID: North Asia Standard Time
+   Display Name:          (UTC+07:00) Krasnoyarsk (RTZ 6)
+   Standard Name:               Russia TZ 6 Standard Time
+   Daylight Name:               Russia TZ 6 Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       7 hours, 0 minutes
-   Number of adjustment rules:                          2
+   Number of adjustment rules:                          3
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
       Delta: 01:00:00
@@ -1469,18 +1549,22 @@ ID: N. Central Asia Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of March
       Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: China Standard Time
    Display Name: (UTC+08:00) Beijing, Chongqing, Hong Kong, Urumqi
    Standard Name:                     China Standard Time
    Daylight Name:                     China Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                       8 hours, 0 minutes
    Number of adjustment rules:                          0
-ID: North Asia Standard Time
-   Display Name:                  (UTC+08:00) Krasnoyarsk
-   Standard Name:                North Asia Standard Time
-   Daylight Name:                North Asia Daylight Time   ***Has Daylight Saving Time***
+ID: North Asia East Standard Time
+   Display Name:              (UTC+08:00) Irkutsk (RTZ 7)
+   Standard Name:               Russia TZ 7 Standard Time
+   Daylight Name:               Russia TZ 7 Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                       8 hours, 0 minutes
-   Number of adjustment rules:                          2
+   Number of adjustment rules:                          3
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
       Delta: 01:00:00
@@ -1490,6 +1574,10 @@ ID: North Asia Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of March
       Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: Singapore Standard Time
    Display Name:      (UTC+08:00) Kuala Lumpur, Singapore
    Standard Name:           Malay Peninsula Standard Time
@@ -1531,21 +1619,6 @@ ID: Ulaanbaatar Standard Time
    Daylight Name:               Ulaanbaatar Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                       8 hours, 0 minutes
    Number of adjustment rules:                          0
-ID: North Asia East Standard Time
-   Display Name:                      (UTC+09:00) Irkutsk
-   Standard Name:           North Asia East Standard Time
-   Daylight Name:           North Asia East Daylight Time   ***Has Daylight Saving Time***
-   Offset from UTC:                       9 hours, 0 minutes
-   Number of adjustment rules:                          2
-   Adjustment Rules:
-      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 03:00 on Sunday of week 5 of October
-      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 00:00 on Saturday of week 1 of January
 ID: Tokyo Standard Time
    Display Name:        (UTC+09:00) Osaka, Sapporo, Tokyo
    Standard Name:                     Tokyo Standard Time
@@ -1558,6 +1631,25 @@ ID: Korea Standard Time
    Daylight Name:                     Korea Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                       9 hours, 0 minutes
    Number of adjustment rules:                          0
+ID: Yakutsk Standard Time
+   Display Name:              (UTC+09:00) Yakutsk (RTZ 8)
+   Standard Name:               Russia TZ 8 Standard Time
+   Daylight Name:               Russia TZ 8 Daylight Time   ***Has Daylight Saving Time***
+   Offset from UTC:                       9 hours, 0 minutes
+   Number of adjustment rules:                          3
+   Adjustment Rules:
+      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 03:00 on Sunday of week 5 of October
+      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
 ID: Cen. Australia Standard Time
    Display Name:                     (UTC+09:30) Adelaide
    Standard Name:            Cen. Australia Standard Time
@@ -1621,12 +1713,12 @@ ID: Tasmania Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 1 of October
       Ends at 03:00 on Sunday of week 1 of April
-ID: Yakutsk Standard Time
-   Display Name:                      (UTC+10:00) Yakutsk
-   Standard Name:                   Yakutsk Standard Time
-   Daylight Name:                   Yakutsk Daylight Time   ***Has Daylight Saving Time***
+ID: Magadan Standard Time
+   Display Name:                      (UTC+10:00) Magadan
+   Standard Name:                   Magadan Standard Time
+   Daylight Name:                   Magadan Daylight Time   ***Has Daylight Saving Time***
    Offset from UTC:                      10 hours, 0 minutes
-   Number of adjustment rules:                          2
+   Number of adjustment rules:                          3
    Adjustment Rules:
       From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
       Delta: 01:00:00
@@ -1636,27 +1728,47 @@ ID: Yakutsk Standard Time
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 5 of March
       Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 02:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
+ID: Vladivostok Standard Time
+   Display Name: (UTC+10:00) Vladivostok, Magadan (RTZ 9)
+   Standard Name:               Russia TZ 9 Standard Time
+   Daylight Name:               Russia TZ 9 Daylight Time   ***Has Daylight Saving Time***
+   Offset from UTC:                      10 hours, 0 minutes
+   Number of adjustment rules:                          3
+   Adjustment Rules:
+      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 03:00 on Sunday of week 5 of October
+      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
+      Delta: 01:00:00
+      Begins at 02:00 on Sunday of week 5 of March
+      Ends at 00:00 on Saturday of week 1 of January
+      From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
+      Delta: 01:00:00
+      Begins at 00:00 on Wednesday of week 1 of January
+      Ends at 02:00 on Sunday of week 5 of October
+ID: Russia Time Zone 10
+   Display Name:          (UTC+11:00) Chokurdakh (RTZ 10)
+   Standard Name:              Russia TZ 10 Standard Time
+   Daylight Name:              Russia TZ 10 Daylight Time   ***Does Not Have Daylight Saving Time***
+   Offset from UTC:                      11 hours, 0 minutes
+   Number of adjustment rules:                          0
 ID: Central Pacific Standard Time
    Display Name:   (UTC+11:00) Solomon Is., New Caledonia
    Standard Name:           Central Pacific Standard Time
    Daylight Name:           Central Pacific Daylight Time   ***Does Not Have Daylight Saving Time***
    Offset from UTC:                      11 hours, 0 minutes
    Number of adjustment rules:                          0
-ID: Vladivostok Standard Time
-   Display Name:                  (UTC+11:00) Vladivostok
-   Standard Name:               Vladivostok Standard Time
-   Daylight Name:               Vladivostok Daylight Time   ***Has Daylight Saving Time***
-   Offset from UTC:                      11 hours, 0 minutes
-   Number of adjustment rules:                          2
-   Adjustment Rules:
-      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 03:00 on Sunday of week 5 of October
-      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 00:00 on Saturday of week 1 of January
+ID: Russia Time Zone 11
+   Display Name: (UTC+12:00) Anadyr, Petropavlovsk-Kamchatsky (RTZ 11)
+   Standard Name:              Russia TZ 11 Standard Time
+   Daylight Name:              Russia TZ 11 Daylight Time   ***Does Not Have Daylight Saving Time***
+   Offset from UTC:                      12 hours, 0 minutes
+   Number of adjustment rules:                          0
 ID: New Zealand Standard Time
    Display Name:         (UTC+12:00) Auckland, Wellington
    Standard Name:               New Zealand Standard Time
@@ -1712,26 +1824,11 @@ ID: Fiji Standard Time
       From 01/01/2014 00:00:00 to 31/12/2014 00:00:00
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 4 of October
-      Ends at 03:00 on Sunday of week 3 of January
+      Ends at 02:00 on Sunday of week 3 of January
       From 01/01/2015 00:00:00 to 31/12/9999 00:00:00
       Delta: 01:00:00
       Begins at 02:00 on Sunday of week 4 of October
       Ends at 03:00 on Sunday of week 4 of January
-ID: Magadan Standard Time
-   Display Name:                      (UTC+12:00) Magadan
-   Standard Name:                   Magadan Standard Time
-   Daylight Name:                   Magadan Daylight Time   ***Has Daylight Saving Time***
-   Offset from UTC:                      12 hours, 0 minutes
-   Number of adjustment rules:                          2
-   Adjustment Rules:
-      From 01/01/0001 00:00:00 to 31/12/2010 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 03:00 on Sunday of week 5 of October
-      From 01/01/2011 00:00:00 to 31/12/2011 00:00:00
-      Delta: 01:00:00
-      Begins at 02:00 on Sunday of week 5 of March
-      Ends at 00:00 on Saturday of week 1 of January
 ID: Kamchatka Standard Time
    Display Name: (UTC+12:00) Petropavlovsk-Kamchatsky - Old
    Standard Name:                 Kamchatka Standard Time
@@ -1768,3 +1865,9 @@ ID: Samoa Standard Time
       Delta: 01:00:00
       Begins at 00:00 on Sunday of week 5 of September
       Ends at 01:00 on Sunday of week 1 of April
+ID: Line Islands Standard Time
+   Display Name:            (UTC+14:00) Kiritimati Island
+   Standard Name:              Line Islands Standard Time
+   Daylight Name:              Line Islands Daylight Time   ***Does Not Have Daylight Saving Time***
+   Offset from UTC:                      14 hours, 0 minutes
+   Number of adjustment rules:                          0

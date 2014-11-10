@@ -2868,7 +2868,7 @@ HTML>BODY .appt-selected .appt_allday_body
  */
 
 .ZmReminderDialog {
-	overflow:auto;
+	overflow:hidden;
 	width:auto; 			/*??? SIZE */
 	@BoxMargin@
 	margin-bottom:0px;
@@ -3054,6 +3054,11 @@ HTML>BODY .appt-selected .appt_allday_body
 	border-width:0px;
 	padding-top:3px;
 	height:22px;
+}
+
+.ZmApptEditView .ZmFreeBusySchedulerView {
+	max-height: 180px;
+	max-height: 15rem;
 }
 
 /* Make disabled inputs still readable in scheduler view */

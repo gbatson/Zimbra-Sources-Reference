@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -210,6 +211,22 @@ public abstract class CalendarItem extends MailItem {
                 sender = org.getIndexString();
         }
         return Strings.nullToEmpty(sender);
+    }
+
+    public ZOrganizer getOrganizer() {
+        Invite firstInvite = getDefaultInviteOrNull();
+        if (firstInvite == null) {
+            return null;
+        }
+        return firstInvite.getOrganizer();
+    }
+
+    public Account getOrganizerAccount() throws ServiceException {
+        Invite firstInvite = getDefaultInviteOrNull();
+        if (firstInvite == null) {
+            return null;
+        }
+        return firstInvite.getOrganizerAccount();
     }
 
     public long getStartTime() {
@@ -3319,53 +3336,40 @@ public abstract class CalendarItem extends MailItem {
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions to change this appointment/task's state");
 
         boolean dirty = false;
-        Invite invMatchingRecurId = null;
         // unique ID: UID+RECURRENCE_ID
+        // See RFC2446: 2.1.5 Message Sequencing
+        // UID already matches...next check if RecurId matches
+        // if so, then seqNo is next
+        // finally use DTStamp
+        Invite matchingInvite = matchingInvite(reply.getRecurId());
+        if (matchingInvite != null) {
+            // they're replying to this invite!
 
-        for (int i = 0; i < numInvites(); i++) {
-            Invite cur = getInvite(i);
-
-            // UID already matches...next check if RecurId matches
-            // if so, then seqNo is next
-            // finally use DTStamp
-            //
-            // See RFC2446: 2.1.5 Message Sequencing
-            //
-
-
-            // If any of the existing Invites have recurIDs which exactly match the reply,
-            // then we should do a sequence-check against them before deciding to accept
-            // this reply
+            // If any of the existing Invites have recurIDs which exactly match the reply, then we should do a
+            // sequence-check against them before deciding to accept this reply
             // FIXME should check for cur.recurID WITHIN_RANGE (THISANDFUTURE-type support)
-            if ((cur.getRecurId() != null && cur.getRecurId().equals(reply.getRecurId())) ||
-                    (cur.getRecurId() == null && reply.getRecurId() == null)) {
 
-                // they're replying to this invite!
-
-                // Bug 32573 Meeting replies can be dropped if client PC time is behind server time
-                // Removed check that (cur.getDTStamp() > reply.getDTStamp()) as the following
-                // implies that REPLY DTSTAMP is related to client submission time rather than
-                // the DTSTAMP in the original invite & clock skew can result in it being earlier.
-                // From http://tools.ietf.org/html/rfc5546 (iTIP) 2.1.5. Message Sequencing :
-                //     for each "ATTENDEE" property of a component,
-                //     "Organizer" CUAs will need to persist the "SEQUENCE"
-                //     and "DTSTAMP" property values associated with the "Attendee's" last
-                //     response, so that any earlier responses from an "Attendee" that are
-                //     received out of order (e.g., due to a delay in the transport) can be
-                //     correctly discarded.
-                // bug 74117 : Allow the replies from attendees whose event sequence number is not
-                //             up to date with the organizer's event, provided there were no major changes.
-                if ((cur.isOrganizer() && (cur.getLastFullSeqNo() > reply.getSeqNo())) ||
-                        (!cur.isOrganizer() && (cur.getSeqNo() > reply.getSeqNo()))) {
-                    sLog.info("Invite-Reply "+reply.toString()+" is outdated (Calendar entry has higher SEQUENCE), ignoring!");
-                    return false;
-                }
-
-                // maybeStoreNewReply does some further checks which might invalidate this reply
-                // so, postpone updating attendee information until after that.
-                invMatchingRecurId = cur;
-                break; // found a match, fall through to below and process it!
+            // Bug 32573 Meeting replies can be dropped if client PC time is behind server time
+            // Removed check that (cur.getDTStamp() > reply.getDTStamp()) as the following
+            // implies that REPLY DTSTAMP is related to client submission time rather than
+            // the DTSTAMP in the original invite & clock skew can result in it being earlier.
+            // From http://tools.ietf.org/html/rfc5546 (iTIP) 2.1.5. Message Sequencing :
+            //     for each "ATTENDEE" property of a component,
+            //     "Organizer" CUAs will need to persist the "SEQUENCE"
+            //     and "DTSTAMP" property values associated with the "Attendee's" last
+            //     response, so that any earlier responses from an "Attendee" that are
+            //     received out of order (e.g., due to a delay in the transport) can be
+            //     correctly discarded.
+            // bug 74117 : Allow the replies from attendees whose event sequence number is not
+            //             up to date with the organizer's event, provided there were no major changes.
+            if (    (matchingInvite.isOrganizer() && (matchingInvite.getLastFullSeqNo() > reply.getSeqNo())) ||
+                    (!matchingInvite.isOrganizer() && (matchingInvite.getSeqNo() > reply.getSeqNo()))) {
+                sLog.info("Invite-Reply %s is outdated (Calendar entry has higher SEQUENCE), ignoring!", reply);
+                return false;
             }
+
+            // maybeStoreNewReply does some further checks which might invalidate this reply
+            // so, postpone updating attendee information until after that.
         }
 
         // if we got here then we have validated the sequencing against all of our Invites,
@@ -3377,14 +3381,105 @@ public abstract class CalendarItem extends MailItem {
         }
 
         if (!dirty) {
-            sLog.info("Invite-Reply "+reply.toString()+" is outdated ignoring!");
+            sLog.info("Invite-Reply %s is outdated ignoring!", reply);
             return false;
         }
-        if (invMatchingRecurId != null) {
-            invMatchingRecurId.updateMatchingAttendeesFromReply(reply);
+        if (matchingInvite != null) {
+            matchingInvite.updateMatchingAttendeesFromReply(reply);
+            updateLocalExceptionsWhichMatchSeriesReply(reply);
+        } else {
+            createPseudoExceptionForSingleInstanceReplyIfNecessary(reply);
         }
         saveMetadata();
         return true;
+    }
+
+    /**
+     * Assumption UID already matches.
+     * @param recurId - if this is null, it means match Series or instance if it is a single instance
+     */
+    public Invite matchingInvite(RecurId aRecurId) {
+        // unique ID: UID+RECURRENCE_ID
+        return Invite.matchingInvite(getInvites(), aRecurId);
+    }
+
+    /**
+     * Exceptions can be created which aren't communicated to ATTENDEEs, either because the ORGANIZER wants to
+     * have local changes like a different alarm time or because a response is received which only affects one
+     * instance of a series.
+     * Caller is responsible for ensuring changed MetaData is written through to SQL sending notification of change.
+     */
+    private void updateLocalExceptionsWhichMatchSeriesReply(Invite reply) throws ServiceException {
+        if ((reply == null) || reply.getRecurId() != null) {
+            return; // Only interested in series replies
+        }
+        IRecurrence replyRecurrence = reply.getRecurrence();
+        if (replyRecurrence == null) {
+            sLog.debug("Giving up on trying to match series reply to local exceptions - no recurrence in reply");
+            return;
+        }
+        for (int i = 0; i < numInvites(); i++) {
+            Invite cur = getInvite(i);
+            if (!cur.classPropSetByMe() || (cur.getRecurId() == null)) {
+                continue;
+            }
+            ParsedDateTime recurIdDT = cur.getRecurId().getDt();
+            ParsedDateTime startDT = cur.getStartTime();
+            // If the start time has moved then the series response can't be applicable.
+            if ((recurIdDT == null) || (startDT == null) || !recurIdDT.sameTime(startDT)) {
+                continue;
+            }
+            long utcTime = recurIdDT.getUtcTime();
+
+            // Find instances within 2 seconds either side of start - assuming it will be a direct hit if found
+            List<Instance> instances = Recurrence.expandInstances(replyRecurrence, getId(),
+                    utcTime - 2000L, utcTime + 2000L);
+            if (instances == null || (instances.size() != 1)) {
+                continue;
+            }
+            cur.updateMatchingAttendeesFromReply(reply);
+        }
+    }
+
+    /**
+     * Bug 94018 - Need an exception to represent a reply to a single instance of an exception, otherwise a decline
+     * to a single instance gets forgotten in some cases where the series partstat is used instead.
+     * Assumption - already checked that there isn't a matching exception instance already
+     * Caller is responsible for ensuring changed MetaData is written through to SQL sending notification of change.
+     */
+    private void createPseudoExceptionForSingleInstanceReplyIfNecessary(Invite reply) throws ServiceException {
+        if ((reply == null) || reply.getRecurId() == null) {
+            return; // reply isn't to a single instance
+        }
+        Recurrence.RecurrenceRule recurrenceRule = null;
+        if ((mRecurrence == null)  || !(mRecurrence instanceof Recurrence.RecurrenceRule)) {
+            return;
+        }
+        recurrenceRule = (Recurrence.RecurrenceRule) mRecurrence;
+        Collection<Instance> instancesNear = instancesNear(reply.getRecurId());
+        if (!instancesNear.isEmpty()) {
+            /* we need a new exception to handle the difference in attendee status */
+            for (int i = 0; i < numInvites(); i++) {
+                Invite cur = getInvite(i);
+                if (cur.getRecurId() == null) {
+                    try {
+                        ParsedDateTime pdt = ParsedDateTime.parseUtcOnly(reply.getRecurId().getDtZ());
+                        Invite localException = cur.makeInstanceInvite(pdt);
+                        localException.setDtStamp(System.currentTimeMillis());
+                        localException.updateMatchingAttendeesFromReply(reply);
+                        localException.setClassPropSetByMe(true); // flag as organizer change
+                        mInvites.add(localException);
+                        // create a fake ExceptionRule wrapper around the single-instance
+                        recurrenceRule.addException(
+                                new Recurrence.ExceptionRule(reply.getRecurId(), localException.getStartTime(),
+                                        localException.getEffectiveDuration(), new InviteInfo(localException)));
+                    } catch (ParseException e) {
+                        sLog.debug("Unexpected exception - not updating calendar invite with pseudo exception", e);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     public InputStream getRawMessage() throws ServiceException {

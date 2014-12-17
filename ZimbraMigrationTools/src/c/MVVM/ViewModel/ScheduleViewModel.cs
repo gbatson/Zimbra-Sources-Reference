@@ -43,6 +43,38 @@ public class ScheduleViewModel: BaseViewModel
     public void SetConfigFile(string configFile)
     {
         this.m_configFile = configFile;
+        
+        
+        
+    }
+    public void LoadConfig(Config config)
+    {
+        
+
+        CurrentCOSSelection = 0;
+
+
+        string cos = config.UserProvision.COS;
+
+        if (CosList.Count > 0)
+        {
+            for (int i = 0; i < CosList.Count; i++)
+            {
+                if (cos == CosList[i].CosName)
+                {
+                    CurrentCOSSelection = i;
+                    // DomainsFilledIn = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            CosInfo cs = new CosInfo("", "");
+            cs.CosName = cos;
+            CosList.Add(cs);
+        }
+
     }
 
     public void SetUsermapFile(string usermapFile)
@@ -88,12 +120,29 @@ public class ScheduleViewModel: BaseViewModel
          */
         const int TR_MAX_SIZE = 261;
 
-        if ((m_configFile.Length == 0) || (m_usermapFile.Length == 0))
+        if ((m_configFile.Length == 0) && (m_usermapFile.Length == 0))
         {
-            MessageBox.Show("There must be a config file and usermap file", "Zimbra Migration",
+            
+            MessageBox.Show("There must be a config file(Use Load option in Source and Destination Screen) and usermap file( Use LoadCSV option in Users Screen)", "Zimbra Migration",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
+        if ((m_configFile.Length == 0))
+        {
+
+            MessageBox.Show("Please use the Load option in Source, Destination or Options screen to load the configuration xml ", "Zimbra Migration",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if ( (m_usermapFile.Length == 0))
+        {
+
+            MessageBox.Show("Please use the LoadCSV option in Users screen to load a  usermap file", "Zimbra Migration",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
 
         OperatingSystem os = System.Environment.OSVersion;
         Version v = os.Version;
@@ -189,6 +238,12 @@ public class ScheduleViewModel: BaseViewModel
     }
     private void Back()
     {
+        OptionsViewModel optionsViewModel =
+               ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]);
+
+        if(optionsViewModel.IsPublicFolders)
+            lb.SelectedIndex = 5;
+        else
         lb.SelectedIndex = 4;
     }
     public ICommand PreviewCommand {
@@ -207,6 +262,20 @@ public class ScheduleViewModel: BaseViewModel
     private void Migrate()
     {
         m_isPreview = false;
+        string ret = "";
+        CSMigrationWrapper mw = ((IntroViewModel)ViewModelPtrs[(int)ViewType.INTRO]).mw;
+        OptionsViewModel optionsViewModel =
+               ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]);
+
+         ConfigViewModelS configViewModelSrc =
+                    ((ConfigViewModelS)ViewModelPtrs[(int)ViewType.SVRSRC]);
+
+            if ((!optionsViewModel.IsPublicFolders) && (configViewModelSrc.Isprofile))
+                    ret = mw.GlobalInit(configViewModelSrc.OutlookProfile, "", "");
+          
+        if (optionsViewModel.IsPublicFolders)
+            DoPublicMigrate(m_isPreview);
+        else
         DoMigrate(m_isPreview);
     }
 
@@ -350,7 +419,7 @@ public class ScheduleViewModel: BaseViewModel
             {
                 return;
             }
-            lb.SelectedIndex = 6;
+            lb.SelectedIndex = 7;
         }
         else
         {
@@ -391,7 +460,7 @@ public class ScheduleViewModel: BaseViewModel
         int numThreads = Math.Min(numUsers, maxThreads);
         for (int i = 0; i < numUsers; i++)
         {
-            Log.info("Schedule bachground workers with numusers :" + numUsers + " and maxthreads are :"+ numThreads);
+            Log.info("Schedule background workers with numusers " + numUsers + " and maxthreads " + numThreads);
             if (i < numThreads)
             {
                 UserBW bgw = new UserBW(i);
@@ -413,6 +482,198 @@ public class ScheduleViewModel: BaseViewModel
                 overflowList.Add(i);
             }
         }; 
+    }
+
+    public void DoPublicMigrate(bool isPreview)
+    {
+        bgwlist.Clear();
+        if (isServer)
+        {
+            if (CurrentCOSSelection == -1)
+                CurrentCOSSelection = 0;
+            PublicfoldersViewModel foldersViewModel =
+                ((PublicfoldersViewModel)ViewModelPtrs[(int)ViewType.PUBFLDS]);
+
+            UsersViewModel usersViewModel =
+                ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]);
+
+            if (ZimbraValues.zimbraValues.AuthToken.Length == 0)
+            {
+                MessageBox.Show("You must log on to the Zimbra server", "Zimbra Migration",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            ConfigViewModelS sourceModel =
+                ((ConfigViewModelS)ViewModelPtrs[(int)ViewType.SVRSRC]);
+
+            if (!sourceModel.IsMailServerInitialized)
+            {
+                MessageBox.Show("You must log on to Exchange", "Zimbra Migration",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            string domainName = foldersViewModel.ZimbraDomain;
+            usersViewModel.ZimbraDomain = domainName;
+            string defaultPWD = DefaultPWD;
+            string tempMessage = "";
+            bool bProvision = false;
+            MessageBoxImage mbi = MessageBoxImage.Information;
+
+            for (int i = 0; i < SchedList.Count; i++)
+            {
+                string userName = (usersViewModel.UsersList[i].MappedName.Length > 0) ?
+                    usersViewModel.UsersList[i].MappedName :
+                    usersViewModel.UsersList[i].Username;
+                string accountName = userName + "@" + domainName;
+
+                if (!SchedList[i].isProvisioned)
+                {
+                    if (!isPreview)
+                    {
+                        bProvision = true;
+                        if (defaultPWD.Length == 0)
+                        {
+                            MessageBox.Show("Please provide an initial password",
+                                "Zimbra Migration", MessageBoxButton.OK,
+                                MessageBoxImage.Exclamation);
+                            return;
+                        }
+
+                        string cosID = CosList[CurrentCOSSelection].CosID;
+                        ZimbraAPI zimbraAPI = new ZimbraAPI(isServer);
+
+                        // FBS bug 71646 -- 3/26/12
+                        string displayName = "";
+                        string givenName = "";
+                        string sn = "";
+                        string zfp = "";
+
+                        // FBS bug 73395 -- 4/25/12
+                        ObjectPickerInfo opinfo = usersViewModel.GetOPInfo();
+                        if (opinfo.DisplayName.Length > 0)
+                        {
+                            displayName = opinfo.DisplayName;
+                        }
+                        if (opinfo.GivenName.Length > 0)
+                        {
+                            givenName = opinfo.GivenName;
+                        }
+                        if (opinfo.Sn.Length > 0)
+                        {
+                            sn = opinfo.Sn;
+                        }
+                        if (opinfo.Zfp.Length > 0)
+                        {
+                            zfp = opinfo.Zfp;
+                        }
+                        // end 73395
+                        // end 71646
+
+                        string historyfile = Path.GetTempPath() + accountName.Substring(0, accountName.IndexOf('@')) + "history.log";
+                        if (File.Exists(historyfile))
+                        {
+                            try
+                            {
+
+                                File.Delete(historyfile);
+                            }
+                            catch (Exception e)
+                            {
+                                string msg = "exception in deleteing the Histroy file " + e.Message;
+                                System.Console.WriteLine(msg);
+                            }
+
+                        }
+
+                        bool mustChangePW = usersViewModel.UsersList[i].MustChangePassword;
+                        if (zimbraAPI.CreateAccount(accountName, displayName, givenName, sn, zfp, defaultPWD, mustChangePW, cosID) == 0)
+                        {
+                            tempMessage += string.Format("{0} Provisioned", userName) + "\n";
+                            // MessageBox.Show(string.Format("{0} Provisioned", userName), "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            // MessageBox.Show(string.Format("Provision unsuccessful for {0}: {1}", userName, zimbraAPI.LastError), "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                            tempMessage += string.Format("Provision unsuccessful for {0}: {1}",
+                                userName, zimbraAPI.LastError) + "\n";
+                            mbi = MessageBoxImage.Error;
+                        }
+                    }
+                }
+            }
+            if (bProvision)
+            {
+                MessageBox.Show(tempMessage, "Zimbra Migration", MessageBoxButton.OK, mbi);
+            }
+            if (mbi == MessageBoxImage.Error)
+            {
+                return;
+            }
+            lb.SelectedIndex = 7;
+        }
+        else
+        {
+            lb.SelectedIndex = 5;
+        }
+
+        AccountResultsViewModel accountResultsViewModel =
+            ((AccountResultsViewModel)ViewModelPtrs[(int)ViewType.RESULTS]);
+
+        accountResultsViewModel.AccountResultsList.Clear();
+        if (isServer)
+        {
+            EnableMigrate = false;
+            EnablePreview = false;
+        }
+        else
+        {
+            ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]).OEnableNext = false;
+        }
+        accountResultsViewModel.EnableStop = !EnableMigrate;
+
+        int num = 0;
+
+        foreach (SchedUser su in SchedList)
+        {
+            accountResultsViewModel.AccountResultsList.Add(new AccountResultsViewModel(this,
+                num++, 0, "", "", su.username, 0, "", 0, 0,
+                accountResultsViewModel.EnableStop));
+        }
+        accountResultsViewModel.OpenLogFileEnabled = true;
+
+        // FBS bug 71048 -- 4/16/12 -- use the correct number of threads.
+        // If MaxThreadCount not specified, default to 4.  If fewer users than MaxThreadCount, numThreads = numUsers
+        OptionsViewModel ovm = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]);
+        int maxThreads = (ovm.MaxThreadCount > 0) ? ovm.MaxThreadCount : 4;
+        maxThreads = Math.Min(maxThreads, 8);   // let's make 8 the limit for now
+        int numUsers = SchedList.Count;
+        int numThreads = Math.Min(numUsers, maxThreads);
+        for (int i = 0; i < numUsers; i++)
+        {
+            Log.info("Schedule background workers with numusers " + numUsers + " and maxthreads " + numThreads);
+            if (i < numThreads)
+            {
+                UserBW bgw = new UserBW(i);
+                bgw.DoWork += new System.ComponentModel.DoWorkEventHandler(worker_DoWork);
+                bgw.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(
+                    worker_ProgressChanged);
+                bgw.WorkerReportsProgress = true;
+                bgw.WorkerSupportsCancellation = true;
+                bgw.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(
+                    worker_RunWorkerCompleted);
+                bgw.usernum = i;
+                bgw.RunWorkerAsync(i);
+                bgwlist.Add(bgw);
+                Log.info("Background worker started number :", bgw.threadnum);
+            }
+            else
+            {
+                Log.info("adding user number to overflow list", i);
+                overflowList.Add(i);
+            }
+        };
     }
 
     // //////////////////////
@@ -458,6 +719,30 @@ public class ScheduleViewModel: BaseViewModel
             return schedlist;
         }
     }
+
+    private ObservableCollection<SchedUser> schedfolderlist = new ObservableCollection<SchedUser>();
+    public ObservableCollection<SchedUser> SchedfolderList
+    {
+        get
+        {
+            schedfolderlist.Clear();
+
+            PublicfoldersViewModel usersViewModel =
+                ((PublicfoldersViewModel)ViewModelPtrs[(int)ViewType.PUBFLDS]);
+
+            foreach (PublicfoldersViewModel obj in usersViewModel.UsersBKList)
+            {
+                string NameToCheck = (obj.ZimbraAccountName.Length > 0) ? obj.ZimbraAccountName :
+                    obj.ZimbraAccountName;
+                int idx = NameToCheck.IndexOf("@");
+                string NameToAdd = (idx != -1) ? NameToCheck.Substring(0, idx) : NameToCheck;
+
+                schedfolderlist.Add(new SchedUser(NameToAdd, obj.IsProvisioned));
+            }
+            return schedfolderlist;
+        }
+    }
+   
     public string COS {
         get { return m_config.UserProvision.COS; }
         set
@@ -486,7 +771,8 @@ public class ScheduleViewModel: BaseViewModel
         {
             if (value == m_schedule.EnableMigrate)
                 return;
-            m_schedule.EnableMigrate = m_isComplete ? false : value;
+            m_schedule.EnableMigrate = value;
+           // m_schedule.EnableMigrate = m_isComplete ? false : value;
             OnPropertyChanged(new PropertyChangedEventArgs("EnableMigrate"));
         }
     }
@@ -785,6 +1071,7 @@ public class ScheduleViewModel: BaseViewModel
 
         if (isServer)
         {
+             
             accountname = accountname + "@" + usersViewModel.ZimbraDomain;
             accountid = usersViewModel.UsersList[num].Username;
 
@@ -974,7 +1261,7 @@ public class ScheduleViewModel: BaseViewModel
             Log.info(" in worker_RunWorkerCompleted -- Migration completed ");
             m_isComplete = true;
         }
-        EnablePreview = EnableMigrate = !m_isComplete;
+      //  EnablePreview = EnableMigrate = !m_isComplete;
         if (overflowList.Count > 0)
         {
             Log.info(" in worker_RunWorkerCompleted -- Migration completed overflowcount is > 0", overflowList.Count);

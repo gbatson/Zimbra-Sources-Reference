@@ -320,8 +320,8 @@ function(style, noResize) {
 		}
 	}
 	
-	this.sourceListView.multiSelectEnabled = (style == DwtChooser.MULTI_SELECT);
-	this.targetListView.multiSelectEnabled = (style == DwtChooser.MULTI_SELECT);
+	this.sourceListView.setMultiSelect(style == DwtChooser.MULTI_SELECT);
+	this.targetListView.setMultiSelect(style == DwtChooser.MULTI_SELECT);
 };
 
 /**
@@ -630,8 +630,8 @@ function() {
 	}
 
 	if (this._selectStyle == DwtChooser.SINGLE_SELECT) {
-		this.sourceListView.multiSelectEnabled = false;
-		this.targetListView.multiSelectEnabled = false;
+		this.sourceListView.setMultiSelect(false);
+		this.targetListView.setMultiSelect(false);
 	}
 };
 
@@ -780,12 +780,7 @@ function(ev) {
 	var sel = this.sourceListView.getSelection();
 	if (sel && sel.length) {
 		this.transfer(sel, id);
-		var list = this.sourceListView.getList();
-		if (list && list.size()) {
-			this._selectFirst(DwtChooserListView.SOURCE);
-		} else {
-			this._enableButtons();
-		}
+		this._enableButtons();
 	} else {
 		var email = this._getEmailFromText();
 		if (email) {

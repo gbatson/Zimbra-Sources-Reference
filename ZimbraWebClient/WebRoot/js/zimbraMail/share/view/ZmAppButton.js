@@ -81,6 +81,7 @@ ZmAppButton = function(params) {
 
 ZmAppButton.prototype = new DwtButton;
 ZmAppButton.prototype.constructor = ZmAppButton;
+ZmAppButton.prototype.role = "tab";
 
 /**
  * Returns a string representation of the object.
@@ -143,14 +144,4 @@ function(actionCode, ev) {
 			return false;
 	}
 	return true;
-};
-
-/**
- * App toolbar buttons user ZHover instead of ZFocused
- * 
- * @private
- */
-ZmAppButton.prototype._focus =
-function() {
-    this.setDisplayState(DwtControl.HOVER);
 };

@@ -19,6 +19,7 @@ package com.zimbra.cs.mime;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.mail.Address;
 import javax.mail.BodyPart;
@@ -57,10 +59,12 @@ import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.MimePart;
 import javax.mail.internet.MimeUtility;
 import javax.mail.internet.ParseException;
+import javax.mail.util.ByteArrayDataSource;
 import javax.mail.util.SharedFileInputStream;
 
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.net.QCodec;
+import org.apache.commons.io.IOUtils;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
@@ -244,6 +248,34 @@ public class Mime {
         }
 
         return parts;
+    }
+
+    /**
+     * Some devices send wide base64 encoded message body i.e. without line folding.
+     * As per RFC https://www.ietf.org/rfc/rfc2045.txt see 6.8.  Base64 Content-Transfer-Encoding
+     * "The encoded output stream must be represented in lines of no more than 76 characters each."
+     * 
+     * To fix the issue here, re-writing the same content to message part.
+     * @param mm
+     * @throws MessagingException
+     * @throws IOException
+     */
+    public static void fixBase64MimePartLineFolding(MimeMessage mm) throws MessagingException,IOException {
+        List<MPartInfo> mList = Mime.getParts(mm);
+        for (MPartInfo mPartInfo : mList) {
+            String ct  = mPartInfo.getMimePart().getHeader("Content-Transfer-Encoding", ":");
+            if (MimeConstants.ET_BASE64.equalsIgnoreCase(ct)) {
+                InputStream io = mPartInfo.getMimePart().getInputStream();
+                String ctype = mPartInfo.getMimePart().getContentType();
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                IOUtils.copy(io, bos);
+                DataSource ds = new ByteArrayDataSource(bos.toByteArray(), ctype);
+                DataHandler dh = new DataHandler(ds);
+                mPartInfo.getMimePart().setDataHandler(dh);
+                mPartInfo.getMimePart().setHeader("Content-Transfer-Encoding", ct);
+                mPartInfo.getMimePart().setHeader("Content-Type", ctype);
+            }
+        }
     }
 
     private static MPartInfo generateMPartInfo(MimePart mp, MPartInfo parent, String prefix, int partNum) {
@@ -1022,6 +1054,9 @@ public class Mime {
     }
 
     public static String getCharset(String contentType) {
+        if (contentType == null) {
+            return null;
+        }
         String charset = new ContentType(contentType).getParameter(MimeConstants.P_CHARSET);
         if (charset == null || charset.trim().isEmpty()) {
             charset = null;

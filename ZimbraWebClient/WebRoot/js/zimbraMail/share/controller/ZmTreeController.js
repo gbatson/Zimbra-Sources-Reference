@@ -70,6 +70,8 @@ ZmTreeController = function(type) {
 	this._treeView = {};	// hash of tree views of this type, by overview ID
 	this._hideEmpty = {};	// which tree views to hide if they have no data
 	this._dataTree = {};	// data tree per account
+
+	this._treeSelectionShortcutDelay = ZmTreeController.TREE_SELECTION_SHORTCUT_DELAY;
 };
 
 ZmTreeController.prototype = new ZmController;
@@ -869,9 +871,7 @@ function(ev) {
 	if ((ev.detail == DwtTree.ITEM_ACTIONED) || (isContextCmd)) {
 		// right click
 		if (overview.actionSupported) {
-			var actionMenu = (item.nId == ZmOrganizer.ID_ROOT || item.isDataSource(ZmAccount.TYPE_IMAP))
-				? this._getHeaderActionMenu(ev)
-				: this._getActionMenu(ev, item);
+			var actionMenu = this.getItemActionMenu(ev, item);
 			if (actionMenu) {
 				this.resetOperations(actionMenu, type, id);
 				actionMenu.popup(0, ev.docX, ev.docY);
@@ -887,6 +887,13 @@ function(ev) {
 		this._itemDblClicked(item);
 	}
 };
+
+ZmTreeController.prototype.getItemActionMenu = function(ev, item) {
+	var actionMenu = (item.nId == ZmOrganizer.ID_ROOT || item.isDataSource(ZmAccount.TYPE_IMAP))
+		? this._getHeaderActionMenu(ev)
+		: this._getActionMenu(ev, item);
+	return actionMenu;
+}
 
 /**
  * @private
@@ -906,10 +913,13 @@ function(ev, overview, treeItem, item) {
 	}
 
 	if ((overview.selectionSupported || item._showFoldersCallback) && !treeItem._isHeader) {
-		if (ev.kbNavEvent && ZmTreeController.TREE_SELECTION_SHORTCUT_DELAY) {
-			var action = new AjxTimedAction(this, ZmTreeController.prototype._treeSelectionTimedAction, [item, overview]);
-			overview._treeSelectionShortcutDelayActionId =
-				AjxTimedAction.scheduleAction(action, ZmTreeController.TREE_SELECTION_SHORTCUT_DELAY);
+		if (ev.kbNavEvent) {
+			// for shortcuts, process selection via Enter immediately; selection via up/down keys
+			// is delayed (or can be disabled by setting the delay to 0)
+			if (ev.enter || this._treeSelectionShortcutDelay) {
+				var action = new AjxTimedAction(this, ZmTreeController.prototype._treeSelectionTimedAction, [item, overview]);
+				overview._treeSelectionShortcutDelayActionId = AjxTimedAction.scheduleAction(action, this._treeSelectionShortcutDelay);
+			}
 		} else {
 			if ((appCtxt.multiAccounts && (item instanceof ZmOrganizer)) ||
 				(item.type == ZmOrganizer.VOICE))
@@ -989,8 +999,11 @@ function(ev) {
 		if (typeof(setExpanded) == "string") {//I can't figure out why it becomes a string sometimes. That's nasty.
 			setExpanded = (setExpanded === "true");
 		}
-		if (setExpanded != isExpand) { //set only if changed (ZmSetting.prototype.setValue is supposed to not send a request if no change, but it might have bugs)
-			appCtxt.set(ZmSetting.FOLDERS_EXPANDED, isExpand, folderId, null, null, null, overview.skipImplicit);
+		//setting in case of skipImplicit is still causing problems (the fix to bug 72590 was not good enough), since even if this "set" is not persisting,
+		//future ones (collapse/expand in the mail tab) would cause it to save implicitly, which is not what we want.
+		//so I simply do not call "set" in case of skipImplicit. Might want to change the name of this variable slightly, but not sure to what.
+		if (!overview.skipImplicit && setExpanded !== isExpand) { //set only if changed (ZmSetting.prototype.setValue is supposed to not send a request if no change, but it might have bugs)
+			appCtxt.set(ZmSetting.FOLDERS_EXPANDED, isExpand, folderId);
 		}
 
 		// check if any of this treeItem's children need to be expanded as well
@@ -1081,7 +1094,7 @@ function(ev, treeView, overviewId) {
 			var idx = parentNode ? ZmTreeView.getSortIndex(parentNode, organizer, eval(ZmTreeView.COMPARE_FUNC[organizer.type])) : null;
 			if (parentNode && (ev.event == ZmEvent.E_CREATE)) {
 				// parent's tree controller should handle creates - root is shared by all folder types
-				var type = (organizer.parent.nId == ZmOrganizer.ID_ROOT) ? ev.type : organizer.parent.type;
+				var type = ((organizer.parent.nId == ZmOrganizer.ID_ROOT) || organizer.parent.isRemoteRoot()) ? ev.type : organizer.parent.type;
 				if (type !== this.type || !treeView._isAllowed(organizer.parent, organizer)) {
 					continue;
 				}

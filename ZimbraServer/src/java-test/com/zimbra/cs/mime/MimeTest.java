@@ -17,6 +17,7 @@
 package com.zimbra.cs.mime;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.util.List;
 import java.util.Set;
@@ -446,4 +447,59 @@ public class MimeTest {
         Assert.assertTrue(TestUtil.bytesEqual(plainText.getBytes(), body.getMimePart().getInputStream()));
     }
 
+    @Test
+    public void fixBase64LineWrapping() throws Exception {
+        String textPlain = "Line 1 This is base64 encoded text message part. It does not have line folding. \r\n"
+            + "Line 2 This is base64 encoded text message part. It does not have line folding. \r\n"
+            + "Line 3 This is base64 encoded text message part. It does not have line folding. \r\n";
+        String textHtml = "<html>\r\n"
+            + "<body>\r\n"
+            + "Line 1 This is base64 encoded html message part. It does not have line folding.  </ br>"
+            + "Line 2 This is base64 encoded html message part. It does not have line folding. </ br>\r\n"
+            + "Line 3 This is base64 encoded html message part. It does not have line folding. \r\n"
+            + "</ br>\r\n"
+            + "</body>\r\n"
+            + "</html>";
+        InputStream is = getClass().getResourceAsStream("base64mime.txt");
+        MimeMessage mm =  new Mime.FixedMimeMessage(JMSession.getSession(), is);
+        mm.saveChanges();
+        String dataBeforeFix = IOUtils.toString(mm.getInputStream());
+
+        Mime.fixBase64MimePartLineFolding(mm);
+        mm.saveChanges();
+        String dataAfterFix =IOUtils.toString(mm.getInputStream());
+        MPartInfo mpiText = Mime.getTextBody(Mime.getParts(mm), false);
+        MPartInfo mpiHtml = Mime.getTextBody(Mime.getParts(mm), true);
+
+        Assert.assertFalse("Line folding should take place.",
+            dataAfterFix.equals(dataBeforeFix));
+
+        Assert.assertTrue("Text Part Content-Transfer-Encoding header should be preserved",
+            mpiText.getMimePart().getHeader("Content-Transfer-Encoding", ":").equals("base64"));
+        Assert.assertTrue("HTML Part Content-Transfer-Encoding header should be preserved",
+            mpiHtml.getMimePart().getHeader("Content-Transfer-Encoding", ":").equals("base64"));
+
+        Assert.assertTrue("Text Part Content-Disposition header should be preserved",
+            mpiText.mDisposition.equals("inline"));
+        Assert.assertTrue("HTML Part Content-Disposition header should be preserved",
+            mpiHtml.mDisposition.equals("inline"));
+
+        Assert.assertTrue("Text data should not be modified",
+            TestUtil.bytesEqual(textPlain.getBytes(), mpiText.getMimePart().getInputStream()));
+        Assert.assertTrue("Html data should not be modified",
+            TestUtil.bytesEqual(textHtml.getBytes(), mpiHtml.getMimePart().getInputStream()));
+    }
+
+    @Test
+    public void fixBase64LineWrappingAttachments() throws Exception {
+        InputStream is = getClass().getResourceAsStream("bug95114.txt");
+        InputStream expectedIs = getClass().getResourceAsStream("bug95114_expected.txt");
+        String expected = IOUtils.toString(expectedIs);
+        MimeMessage mm =  new Mime.FixedMimeMessage(JMSession.getSession(), is);
+        mm.saveChanges();
+        Mime.fixBase64MimePartLineFolding(mm);
+        mm.saveChanges();
+        String actual = IOUtils.toString(mm.getInputStream());
+        Assert.assertEquals("Content altered.", expected, actual);
+    }
 }

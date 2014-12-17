@@ -1,25 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
--->
-<WebWorksHelpBook version="5.0" name="Exchange Migration Help" context="Exchange_Migration_Help" locale="en" xmlns="urn:WebWorks-Help-Book-Files-Schema">
+<WebWorksHelpBook version="5.0" name="MigrationHelp_860" context="MigrationHelp_860" locale="en" xmlns="urn:WebWorks-Help-Book-Files-Schema">
   <CommonWordsToSkip minlen="3">
     a about after all also am an and another any are as at
     be because been before being between both but by
@@ -65,7 +45,11 @@
     <Document title="Destination Server Configuration" href="destination_user.html" />
     <Document title="Selecting Options to Migrate" href="options_server.html" />
     <Document title="Selecting Options to Migrate" href="options_user.html" />
-    <Document title="Selecting Users to Migrate" href="users.html" />
+    <Document title="Selecting Users to Migrate" href="MigrationHelp_860.Selecting_Users_to_Migrate.html" />
+    <Document title="Use Load CSV" href="MigrationHelp_860.Use_Load_CSV.html" />
+    <Document title="Use Object Picker" href="MigrationHelp_860.Use_Object_Picker.html" />
+    <Document title="Use LDAP Browser" href="MigrationHelp_860.Use_LDAP_Browser.html" />
+    <Document title="Add Users Manually" href="MigrationHelp_860.Add_Users_Manually.html" />
     <Document title="Scheduling the Migration" href="migrate.html" />
     <Document title="Viewing Migration Results" href="results.html" />
   </DocumentInfo>

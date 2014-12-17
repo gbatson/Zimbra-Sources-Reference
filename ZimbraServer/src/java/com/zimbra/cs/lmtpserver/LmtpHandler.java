@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -18,8 +18,8 @@
 package com.zimbra.cs.lmtpserver;
 
 import java.io.IOException;
-import java.util.Date;
 import java.net.InetAddress;
+import java.util.Date;
 
 import javax.mail.internet.MailDateFormat;
 import javax.mail.internet.MimeUtility;
@@ -29,9 +29,9 @@ import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.stats.ZimbraPerf;
 import com.zimbra.cs.server.ProtocolHandler;
 import com.zimbra.cs.server.ServerThrottle;
+import com.zimbra.cs.stats.ZimbraPerf;
 
 public abstract class LmtpHandler extends ProtocolHandler {
     // Connection specific data
@@ -44,8 +44,11 @@ public abstract class LmtpHandler extends ProtocolHandler {
     // Message specific data
     protected LmtpEnvelope mEnvelope;
     private String mCurrentCommandLine;
-    
     private final ServerThrottle throttle;
+
+    protected boolean lhloIssued;
+    protected boolean startedTLS;
+    protected boolean lhloIssuedAfterStartTLS;
 
     LmtpHandler(LmtpServer server) {
         super(server instanceof TcpLmtpServer ? (TcpLmtpServer) server : null);
@@ -103,7 +106,7 @@ public abstract class LmtpHandler extends ProtocolHandler {
             dropConnection();
             return false;
         }
-        
+
         if (throttle.isIpThrottled(mRemoteAddress)) {
             ZimbraLog.lmtp.warn("throttling LMTP connection for remote IP %s", mRemoteAddress);
             dropConnection();
@@ -141,6 +144,16 @@ public abstract class LmtpHandler extends ProtocolHandler {
 
         case 'm':
         case 'M':
+            if (tlsConnectionRequired()) {
+                sendReply(LmtpReply.TLS_REQUIRED);
+                dropConnection();
+                return true;
+            }
+            if (missingLHLO()) {
+                sendReply(LmtpReply.MISSING_LHLO);
+                dropConnection();
+                return true;
+            }
             if ("MAIL".equalsIgnoreCase(cmd)) {
                 final int fromColonLength = 5;
                 if (arg.length() < fromColonLength) {
@@ -158,6 +171,16 @@ public abstract class LmtpHandler extends ProtocolHandler {
 
         case 'r':
         case 'R':
+            if(tlsConnectionRequired()){
+                sendReply(LmtpReply.TLS_REQUIRED);
+                dropConnection();
+                return true;
+            }
+            if (missingLHLO()) {
+                sendReply(LmtpReply.MISSING_LHLO);
+                dropConnection();
+                return true;
+            }
             if ("RSET".equalsIgnoreCase(cmd)) {
                 doRSET(arg);
                 return true;
@@ -179,6 +202,16 @@ public abstract class LmtpHandler extends ProtocolHandler {
 
         case 'd':
         case 'D':
+            if(tlsConnectionRequired()){
+                sendReply(LmtpReply.TLS_REQUIRED);
+                dropConnection();
+                return true;
+            }
+            if (missingLHLO()) {
+                sendReply(LmtpReply.MISSING_LHLO);
+                dropConnection();
+                return true;
+            }
             if ("DATA".equalsIgnoreCase(cmd)) {
                 doDATA();
                 return true;
@@ -187,6 +220,11 @@ public abstract class LmtpHandler extends ProtocolHandler {
 
         case 'n':
         case 'N':
+            if (missingLHLO()) {
+                sendReply(LmtpReply.MISSING_LHLO);
+                dropConnection();
+                return true;
+            }
             if ("NOOP".equalsIgnoreCase(cmd)) {
                 doNOOP();
                 return true;
@@ -196,13 +234,36 @@ public abstract class LmtpHandler extends ProtocolHandler {
         case 'q':
         case 'Q':
             if ("QUIT".equalsIgnoreCase(cmd)) {
-            doQUIT();
-            return false;
+	            doQUIT();
+	            return false;
+            }
+            break;
+
+        case 's':
+        case 'S':
+            if (missingLHLO()) {
+                sendReply(LmtpReply.MISSING_LHLO);
+                dropConnection();
+                return true;
+            }
+            if ("STARTTLS".equalsIgnoreCase(cmd)) {
+                doSTARTTLS(arg);
+                return true;
             }
             break;
 
         case 'v':
         case 'V':
+            if(tlsConnectionRequired()){
+                sendReply(LmtpReply.TLS_REQUIRED);
+                dropConnection();
+                return true;
+            }
+            if (missingLHLO()) {
+                sendReply(LmtpReply.MISSING_LHLO);
+                dropConnection();
+                return true;
+            }
             if ("VRFY".equalsIgnoreCase(cmd)) {
             doVRFY(arg);
             return true;
@@ -216,7 +277,7 @@ public abstract class LmtpHandler extends ProtocolHandler {
         return true;
     }
 
-    private void sendReply(LmtpReply reply) {
+    protected void sendReply(LmtpReply reply) {
         String cl = mCurrentCommandLine != null ? mCurrentCommandLine : "<none>";
         if (!reply.success()) {
             ZimbraLog.lmtp.info("S: %s (%s)", reply, cl);
@@ -227,7 +288,7 @@ public abstract class LmtpHandler extends ProtocolHandler {
         mWriter.flush();
     }
 
-    private void doSyntaxError() {
+    protected void doSyntaxError() {
         sendReply(LmtpReply.SYNTAX_ERROR);
     }
 
@@ -273,12 +334,17 @@ public abstract class LmtpHandler extends ProtocolHandler {
         String resp = "250-" + config.getServerName() + "\r\n" +
                 "250-8BITMIME\r\n" +
                 "250-ENHANCEDSTATUSCODES\r\n" +
+                (startedTLS? "" : "250-STARTTLS\r\n") + //don't publish STARTTLS to LHLO if STARTTLS is already done.
                 "250-SIZE\r\n" +
                 "250 PIPELINING";
-        ZimbraLog.lmtp.trace("S: %s", resp);
         mWriter.println(resp);
         mWriter.flush();
         reset();
+        if (startedTLS) {
+            lhloIssuedAfterStartTLS = true;
+        } else {
+            lhloIssued = true;
+        }
     }
 
     private void doMAIL(String arg) {
@@ -441,5 +507,23 @@ public abstract class LmtpHandler extends ProtocolHandler {
         headers.append("\r\n");
 
         return headers.toString();
+    }
+    abstract protected void doSTARTTLS(String arg) throws IOException;
+
+    private boolean tlsConnectionRequired() {
+        if (config.isTLSEnforcedByServer()) {
+            if (!startedTLS) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean missingLHLO() {
+        if (config.isLHLORequired()) {
+            return !lhloIssued || (startedTLS && !lhloIssuedAfterStartTLS);
+        } else {
+            return false;
+        }
     }
 }

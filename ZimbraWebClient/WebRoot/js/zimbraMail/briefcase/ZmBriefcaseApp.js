@@ -151,7 +151,7 @@ function() {
 							 folderKey      : "briefcase",                                                      
 							 mountKey       : "mountFolder",
 							 createFunc     : "ZmOrganizer.create",
-							 compareFunc    : "ZmBriefcase.sortCompare",
+							 compareFunc    : "ZmFolder.sortCompareNonMail",
 							 deferrable     : true,
 							 newOp			: ZmOperation.NEW_BRIEFCASE,
 							 displayOrder	: 100,
@@ -539,7 +539,7 @@ ZmBriefcaseApp.prototype.initExternalDndUpload = function(files, node, isInline,
 					errorCallback:           null,
 					completeOneCallback:     null,
 					completeAllCallback:     this.uploadSaveDocs.bind(this),
-					completeDocSaveCallback: this._finishUpload.bind(this)
+					completeDocSaveCallback: this._finishUpload.bind(this, null)
 				}
 				uploadManager.upload(params);
 			}
@@ -577,7 +577,8 @@ ZmBriefcaseApp.prototype.chkFolderPermission = function(folderId){
  */
 ZmBriefcaseApp.prototype.uploadSaveDocs = function(allResponses, params, status, guids) {
 	if (status != AjxPost.SC_OK) {
-		appCtxt.getAppController().popupUploadErrorDialog(ZmItem.BRIEFCASE, status);
+		var errorMessage = appCtxt.getAppController().createErrorMessage(ZmItem.BRIEFCASE, status);
+		this._popupErrorDialog(errorMessage, params.errorCallback);
 	} else {
 		var docFiles;
 		if (allResponses) {
@@ -593,7 +594,10 @@ ZmBriefcaseApp.prototype.uploadSaveDocs = function(allResponses, params, status,
 						{name:     file.name,
 						 fullname: file.name,
 						 notes:    params.notes,
-						 guid:     aid});
+						 version:  file.version,
+						 id:	   file.id,
+						 guid:     aid,
+						 preventDuplicate: file.preventDuplicate});
 				}
 				params.docFiles = docFiles;
 			}
@@ -616,7 +620,10 @@ ZmBriefcaseApp.prototype.uploadSaveDocs = function(allResponses, params, status,
 	}
 };
 
-ZmBriefcaseApp.prototype._popupErrorDialog = function(message) {
+ZmBriefcaseApp.prototype._popupErrorDialog = function(message, errorCallback) {
+	if (errorCallback) {
+		errorCallback.run();
+	}
 	var dialog = appCtxt.getMsgDialog();
 	dialog.setMessage(message, DwtMessageDialog.CRITICAL_STYLE);
 	dialog.popup();
@@ -695,21 +702,25 @@ ZmBriefcaseApp.prototype._uploadSaveDocsResponse = function(params, response) {
 
 	// check for conflicts
 	var mailboxQuotaExceeded = false;
+	var alreadyExists = false;
 	var uploadRejected = false;
 	var isItemLocked = false;
 	var code = 0;
 	var conflicts = [];
 	if (resp && resp.Fault) {
 		var errors = [];
+		var uploadRejected = false, rejectedFile = "Unknown", rejectedReason = "Unknown";
 		for (var i = 0; i < resp.Fault.length; i++) {
 			var fault = resp.Fault[i];
 			var error = fault.Detail.Error;
 			code = error.Code;
 			var attrs = error.a;
 			isItemLocked = (code == ZmCsfeException.LOCKED);
-			if (code == ZmCsfeException.MAIL_ALREADY_EXISTS ||
+			var file = docFiles[fault.requestId];
+			if ((code == ZmCsfeException.MAIL_ALREADY_EXISTS) && file.preventDuplicate) {
+				alreadyExists = true;
+			} else if (code == ZmCsfeException.MAIL_ALREADY_EXISTS ||
 				code == ZmCsfeException.MODIFY_CONFLICT) {
-				var file = docFiles[fault.requestId];
 				for (var p in attrs) {
 					var attr = attrs[p];
 					switch (attr.n) {
@@ -727,6 +738,13 @@ ZmBriefcaseApp.prototype._uploadSaveDocsResponse = function(params, response) {
 					mailboxQuotaExceeded = true;
 				}  else if (code === ZmCsfeException.UPLOAD_REJECTED) {
 					uploadRejected = true;
+					for (var p in attrs) {
+						var attr = attrs[p];
+						switch (attr.n) {
+							case "reason" : rejectedReason = attr._content; break;
+							case "name":    rejectedFile   = attr._content; break;
+						}
+					}
 				}
 
 				errors[fault.requestId] = fault;
@@ -742,24 +760,21 @@ ZmBriefcaseApp.prototype._uploadSaveDocsResponse = function(params, response) {
 	// TODO: What to do about other errors?
 	// TODO: This should handle reporting several errors at once
 	if (mailboxQuotaExceeded) {
-		this._popupErrorDialog(ZmMsg.errorQuotaExceeded);
+		this._popupErrorDialog(ZmMsg.errorQuotaExceeded, params.errorCallback);
 		return;
-	}
-	else if (isItemLocked) {
-		this._popupErrorDialog(ZmMsg.errorItemLocked);
+	} else 	if (alreadyExists) {
+		this._popupErrorDialog(AjxMessageFormat.format(ZmMsg.itemWithFileNameExits, file.name), params.errorCallback);
+		return;
+	} else if (isItemLocked) {
+		this._popupErrorDialog(ZmMsg.errorItemLocked, params.errorCallback);
 		return;
 	} else if (uploadRejected) {
-		// Yes, its bogus, but strings are locked.  This allows us to get somewhat close to indicating what happened.
-		// TODO: Add an appropriate error string
-		var rejectedMsg = AjxMessageFormat.format(ZmMsg.uploadError, [ ZmMsg.dlReject ] );
-		this._popupErrorDialog(rejectedMsg);
+		var rejectedMsg = AjxMessageFormat.format(ZmMsg.uploadRejectedError, [ rejectedFile, rejectedReason ] );
+		this._popupErrorDialog(rejectedMsg, params.errorCallback);
 		return;
 	}
 	else if (code == ZmCsfeException.SVC_PERM_DENIED) {
-		this._popupErrorDialog(ZmMsg.errorPermissionDenied);
-		if (params.errorCallback) {
-			params.errorCallback.run();
-		}
+		this._popupErrorDialog(ZmMsg.errorPermissionDenied, params.errorCallback);
 		return;
 	}
 
@@ -800,13 +815,17 @@ ZmBriefcaseApp.prototype._completeUpload = function(params) {
 	}
 };
 
-ZmBriefcaseApp.prototype._finishUpload = function(docFiles, uploadFolder) {
+ZmBriefcaseApp.prototype._finishUpload = function(finishCallback, docFiles, uploadFolder) {
 	var filenames = [];
 	for (var i in docFiles) {
 		var name = docFiles[i].name;
 		filenames.push(name);
 	}
 	this._handlePostUpload(uploadFolder, filenames, docFiles);
+
+	if (finishCallback) {
+		finishCallback(docFiles);
+	}
 };
 
 ZmBriefcaseApp.prototype._handlePostUpload = function(folder, filenames, files) {

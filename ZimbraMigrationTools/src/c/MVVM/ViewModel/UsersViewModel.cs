@@ -493,7 +493,14 @@ public class UsersViewModel: BaseViewModel
             break;
             }
         }
-        lb.SelectedIndex = 5;
+
+        OptionsViewModel OViewModel =
+            ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]);
+
+        if (OViewModel.IsPublicFolders)
+            lb.SelectedIndex = 5;
+        else
+            lb.SelectedIndex = 6;
     }
 
     public const int TYPE_USERNAME = 1;

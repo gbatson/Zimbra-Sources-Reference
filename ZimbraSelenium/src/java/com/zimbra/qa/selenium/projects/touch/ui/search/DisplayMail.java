@@ -19,7 +19,7 @@ package com.zimbra.qa.selenium.projects.touch.ui.search;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 
-public class DisplayMail extends com.zimbra.qa.selenium.projects.ajax.ui.mail.DisplayMail {
+public class DisplayMail extends com.zimbra.qa.selenium.projects.touch.ui.mail.DisplayMail {
 
 	public DisplayMail(AbsApplication application) {
 		super(application);

@@ -99,16 +99,16 @@ public class ZimbraAPI
     Dictionary<string, string> specialFoldersMap_ge = new Dictionary<string, string>()
     {{"","0"},{"/MAPIRoot","1"},
         {"/MAPIRoot/Inbox","2"}, {"/MAPIRoot/Posteingang","2"},
-        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Gel\u00f6schte Objekte","3"},
+        {"/MAPIRoot/Deleted Items","3"}, {"/MAPIRoot/Gel\u00f6schte Objekte","3"}, {"/MAPIRoot/Gel\u00f6schte Elemente","3"},
         {"/MAPIRoot/Junk E-Mail","4"}, {"/MAPIRoot/Junk-E-Mail","4"},
-        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Gesendete Objekte","5"},
+        {"/MAPIRoot/Sent Items","5"}, {"/MAPIRoot/Gesendete Objekte","5"}, {"/MAPIRoot/Gesendete Elemente","5"},
         {"/MAPIRoot/Drafts","6"}, {"/MAPIRoot/Entw\u00fcrfe","6"},
         {"/MAPIRoot/Contacts","7"}, {"/MAPIRoot/Kontakte","7"},
         {"/MAPIRoot/Tags","8"},
         {"/MAPIRoot/Conversations","9"},
         {"/MAPIRoot/Calendar","10"}, {"/MAPIRoot/Kalender","10"},
         {"/MAPIRoot/Wiki","12"},
-        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Emailed Kontakte","13"},
+        {"/MAPIRoot/Emailed Contacts","13"}, {"/MAPIRoot/Vorgeschlagene Kontakte","13"},
         {"/MAPIRoot/Chats","14"},
         {"/MAPIRoot/Tasks","15"},  {"/MAPIRoot/Aufgaben","15"},
     };
@@ -1073,6 +1073,23 @@ public class ZimbraAPI
 
     // ////////
 
+    private int SendRequest(WebServiceClient client, StringBuilder req, out string rsp)
+    {
+        string logid = null;
+        string msg = req.ToString();
+        rsp = "";
+        try
+        {
+            logid = TraceLog.log("Soap Request", msg);
+            client.InvokeService(msg, out rsp);
+        }
+        finally
+        {
+            TraceLog.log("Soap Response", rsp, logid);
+        }
+        return client.status;
+    }
+
     // private UploadFile method
     private int UploadFile(string filepath, string mimebuffer, string contentdisposition, string contenttype, int mode, out string uploadToken)
     {
@@ -1216,13 +1233,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-
-        WriteSoapLog(sb.ToString(),true);
+        int retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        WriteSoapLog(rsp.ToString(),false);
-        
-        if (client.status == 0)
+        if (retval == 0)
         {
             ParseLogon(rsp, isAdmin);
             ZimbraValues.GetZimbraValues().HostName = hostname;
@@ -1237,7 +1250,7 @@ public class ZimbraAPI
             else
                 lastError = client.exceptionMessage;
         }
-        return client.status;
+        return retval;
     }
 
     public int GetInfo()
@@ -1272,12 +1285,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
-        //Log.dump("Soap Request for GetInfo", sb.ToString());
-        client.InvokeService(sb.ToString(), out rsp);
-        //Log.dump("Soap Response for GetInfo", rsp.ToString());
-        WriteSoapLog(rsp.ToString(),false);
-        if (client.status == 0)
+        int retval = SendRequest(client, sb, out rsp);
+
+        if (retval == 0)
         {
             ParseGetInfo(rsp);
         }
@@ -1290,7 +1300,7 @@ public class ZimbraAPI
             else
                 lastError = client.exceptionMessage;
         }
-        return client.status;
+        return retval;
     }
 
     public int GetAllDomains()
@@ -1326,12 +1336,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        int retval = SendRequest(client, sb, out rsp);
 
-        client.InvokeService(sb.ToString(), out rsp);
-
-        WriteSoapLog(rsp.ToString(),false);
-        if (client.status == 0)
+        if (retval == 0)
         {
             ParseGetAllDomain(rsp);
         }
@@ -1344,7 +1351,7 @@ public class ZimbraAPI
             else
                 lastError = client.exceptionMessage;
         }
-        return client.status;
+        return retval;
     }
 
     public int GetAllCos()
@@ -1380,12 +1387,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        int retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        if (client.status == 0)
+        if (retval == 0)
         {
             ParseGetAllCos(rsp);
         }
@@ -1398,7 +1402,7 @@ public class ZimbraAPI
             else
                 lastError = client.exceptionMessage;
         }
-        return client.status;
+        return retval;
     }
 
     public int GetAccount(string accountname)
@@ -1437,13 +1441,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        if (client.status == 0)
+        if (retval == 0)
         {
             if (ParseGetAccount(rsp) == 0)      // length of name is 0 -- this is bad
                 retval = ACCOUNT_NO_NAME;
@@ -1524,13 +1524,9 @@ public class ZimbraAPI
             }
 
             string rsp = "";
-            WriteSoapLog(sb.ToString(), true);
+            retval = SendRequest(client, sb, out rsp);
 
-            client.InvokeService(sb.ToString(), out rsp);
-
-            WriteSoapLog(rsp.ToString(), false);
-            retval = client.status;
-            if (client.status == 0)
+            if (retval == 0)
             {
                 if (ParseCreateAccount(rsp) == 0)   // length of name is 0 -- this is bad
                     retval = ACCOUNT_CREATE_FAILED;
@@ -1700,12 +1696,8 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
         return retval;
     }
 
@@ -1756,13 +1748,8 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
         return retval;
     }
 
@@ -1775,7 +1762,16 @@ public class ZimbraAPI
         if (requestId != -1)
             writer.WriteAttributeString("requestId", requestId.ToString());
         writer.WriteStartElement("m");
-        writer.WriteAttributeString("l", message.folderId);
+
+        string fID = message.folderId;
+        if (fID.Length == 0)
+        {
+            // This is the same default as the server will use
+            Log.warn("folderId is empty, using root (0)");
+            fID = "0";
+        }
+        writer.WriteAttributeString("l", fID);
+
         long nrd = 0;
         if (long.TryParse(message.rcvdDate, out nrd) == true)
             writer.WriteAttributeString("d", message.rcvdDate); 
@@ -1878,13 +1874,9 @@ public class ZimbraAPI
             }
 
             string rsp = "";
-            WriteSoapLog(sb.ToString(),true);
+            retval = SendRequest(client, sb, out rsp);
             
-            client.InvokeService(sb.ToString(), out rsp);
-            
-            WriteSoapLog(rsp.ToString(),false);
-            retval = client.status;
-            if (client.status == 0)
+            if (retval == 0)
             {
                 string mID = "";
 
@@ -1986,13 +1978,8 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-
         return retval;
     }
 
@@ -2560,14 +2547,11 @@ public class ZimbraAPI
             writer.WriteEndElement();           // soap envelope
             writer.WriteEndDocument();
         }
+
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        if (client.status != 0)
+        if (retval != 0)
         {
             string soapReason = ParseSoapFault(client.errResponseMessage);
             if (soapReason.Length > 0)
@@ -2963,12 +2947,8 @@ public class ZimbraAPI
             writer.WriteEndDocument();
         }
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
         return retval;
     }
 
@@ -3028,12 +3008,8 @@ public class ZimbraAPI
             writer.WriteEndDocument();
         }
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
         return retval;
     }
 
@@ -3158,13 +3134,10 @@ public class ZimbraAPI
                 writer.WriteEndElement();           // soap envelope
                 writer.WriteEndDocument();
             }
+            
             string rsp = "";
+            retval = SendRequest(client, sb, out rsp);
 
-            WriteSoapLog(sb.ToString(), true);
-            client.InvokeService(sb.ToString(), out rsp);
-
-            WriteSoapLog(rsp.ToString(), false);
-            retval = client.status;
             return retval;
        
     }
@@ -3239,13 +3212,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
+        retval = SendRequest(client, sb, out rsp);
         
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        if (client.status == 0)
+        if (retval == 0)
         {
             ParseCreateFolder(rsp, out folderID);       // get the id
         }
@@ -3593,13 +3562,9 @@ public class ZimbraAPI
             }
 
             string rsp = "";
-            WriteSoapLog(sb.ToString(), true);
+            retval = SendRequest(client, sb, out rsp);
 
-            client.InvokeService(sb.ToString(), out rsp);
-
-            WriteSoapLog(rsp.ToString(), false);
-            retval = client.status;
-            if (client.status == 0)
+            if (retval == 0)
             {
                 ParseCreateTag(rsp, out tagID);       // get the id
             }
@@ -3662,13 +3627,9 @@ public class ZimbraAPI
         }
 
         string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
-        
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        if (client.status == 0)
+        retval = SendRequest(client, sb, out rsp);
+
+        if (retval == 0)
         {
             ParseGetTag(rsp);   // will store in ZimbraValues
         }
@@ -3735,38 +3696,6 @@ public class ZimbraAPI
             }
         }
     }
-
-    // ///////////////////////
-
-   private bool WriteSoapLog(string  message,bool request)
-{
-    bool bReturn        = false;
-    if (loglevel == LogLevel.Trace)
-    {
-        try
-        {
-            
-            string path = Path.GetTempPath() + "\\SoapXml.log";
-            FileStream fs = new FileStream(path, FileMode.Append,
-                    FileAccess.Write);
-            StreamWriter w = new StreamWriter(fs);
-            if( request)
-            w.WriteLine(DateTime.Now + "" +"Soap Request -------------------");
-            else
-                w.WriteLine(DateTime.Now+ ""+ "Soap Response -------------------");
-            w.WriteLine(message);
-            w.WriteLine("\n");
-            w.Close();
-            bReturn = true;
-        }
-        catch (Exception e)
-        {
-            bReturn = false;
-            Log.err(" ZimbraAPI::Exception is WriteSoapLog ", e.Message);
-        }
-    }
-    return bReturn;
-}
 
 }
 }

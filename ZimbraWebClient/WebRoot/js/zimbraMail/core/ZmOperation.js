@@ -89,8 +89,8 @@ function(op, params, setting, callback) {
 };
 
 
-ZmOperation.KEY_ID		= "_opId";
-ZmOperation.MENUITEM_ID	= "_menuItemId";
+ZmOperation.KEY_ID		= "opId";
+ZmOperation.MENUITEM_ID	= "menuItemId";
 
 ZmOperation.NEW_ITEM_OPS	= [];
 ZmOperation.NEW_ITEM_KEY	= {};
@@ -131,8 +131,9 @@ function() {
 	ZmOperation.registerOp(ZmId.OP_EXPAND_ALL, {textKey:"expandAll", image:"Plus"});
 //	ZmOperation.registerOp(ZmId.OP_EXPORT_FOLDER, {textKey:"exportFolder", image:"MailExport"});
 	ZmOperation.registerOp(ZmId.OP_EMPTY_FOLDER,{textKey:"emptyFolder",image:"EmptyFolder"});
-	ZmOperation.registerOp(ZmId.OP_FORMAT_HTML, {textKey:"formatAsHtml", image:"HtmlDoc"}, ZmSetting.HTML_COMPOSE_ENABLED);
-	ZmOperation.registerOp(ZmId.OP_FORMAT_TEXT, {textKey:"formatAsText", image:"GenericDoc"}, ZmSetting.HTML_COMPOSE_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_FORMAT_HTML, {textKey: "formatAsHtml"}, ZmSetting.HTML_COMPOSE_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_FORMAT_TEXT, {textKey: "formatAsText"}, ZmSetting.HTML_COMPOSE_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_FORMAT_MORE_OPTIONS, {textKey: "moreComposeOptions"});
     ZmOperation.registerOp(ZmId.OP_GROUPBY, {textKey:"groupBy"});
     ZmOperation.registerOp(ZmId.OP_GROUPBY_NONE, {textKey:"groupByNone"});
     ZmOperation.registerOp(ZmId.OP_GROUPBY_DATE, {textKey:"groupByDate"});
@@ -140,12 +141,12 @@ function() {
     ZmOperation.registerOp(ZmId.OP_GROUPBY_PRIORITY, {textKey:"groupByPriority"});
     ZmOperation.registerOp(ZmId.OP_GROUPBY_SIZE, {textKey:"groupBySize"});
     ZmOperation.registerOp(ZmId.OP_GROUPBY_TAG,  {textKey:"groupByTag"});
-	ZmOperation.registerOp(ZmId.OP_GO_TO_URL, {image:"URL"});
+	ZmOperation.registerOp(ZmId.OP_GO_TO_URL, {image:"URL", textKey:"goToUrlAlt"});
 //	ZmOperation.registerOp(ZmId.OP_IMPORT_FOLDER, {textKey:"importFolder", image:"MailImport"});
 	ZmOperation.registerOp(ZmId.OP_MARK_ALL_READ, {textKey:"markAllRead", image:"ReadMessage"});
 //	ZmOperation.registerOp(ZmId.OP_MOUNT_FOLDER, {textKey:"mountFolder", image:"Folder"});
 	ZmOperation.registerOp(ZmId.OP_MOVE, {textKey:"move", tooltipKey:"moveTooltip", image:"MoveToFolder", textPrecedence:40, showImageInToolbar: true}); //todo - remove
-	ZmOperation.registerOp(ZmId.OP_MOVE_MENU, {tooltipKey:"moveTooltip", image:"MoveToFolder"}, null,
+	ZmOperation.registerOp(ZmId.OP_MOVE_MENU, {textKey: "move", tooltipKey:"moveTooltip", image:"MoveToFolder", showImageInToolbar: true }, null,
 		AjxCallback.simpleClosure(function(parent) {
 			ZmOperation.addDeferredMenu(ZmOperation.addMoveMenu, parent, true);
 		}));
@@ -201,7 +202,7 @@ function() {
 		AjxCallback.simpleClosure(function(parent) {
 			ZmOperation.addDeferredMenu(ZmOperation.addColorMenu, parent);
 		}));
-	ZmOperation.registerOp(ZmId.OP_TAG_MENU, {tooltipKey:"tagTooltip", image:"Tag"}, ZmSetting.TAGGING_ENABLED,
+	ZmOperation.registerOp(ZmId.OP_TAG_MENU, {textKey: "tag", tooltipKey:"tagTooltip", image:"Tag", showImageInToolbar: true }, ZmSetting.TAGGING_ENABLED,
 		AjxCallback.simpleClosure(function(parent) {
 			ZmOperation.addDeferredMenu(ZmOperation.addTagMenu, parent, true);
 		}));

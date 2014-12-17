@@ -422,6 +422,8 @@ public final class LC {
     public static final KnownKey ldap_common_threads = KnownKey.newKey(8);
     public static final KnownKey ldap_common_toolthreads = KnownKey.newKey(2);
     public static final KnownKey ldap_common_writetimeout = KnownKey.newKey(360);
+    public static final KnownKey ldap_common_tlsprotocolmin = KnownKey.newKey("3.1");
+    public static final KnownKey ldap_common_tlsciphersuite = KnownKey.newKey("MEDIUM:HIGH");
     public static final KnownKey ldap_db_maxsize = KnownKey.newKey(85899345920L);
     public static final KnownKey ldap_db_envflags = KnownKey.newKey("writemap nometasync");
     public static final KnownKey ldap_accesslog_maxsize = KnownKey.newKey(85899345920L);
@@ -597,6 +599,8 @@ public final class LC {
 
     @Supported
     public static final KnownKey mailboxd_java_options = KnownKey.newKey("-server" +
+            " -Dhttps.protocols=TLSv1,TLSv1.1,TLSv1.2" +
+            " -Djdk.tls.client.protocols=TLSv1,TLSv1.1,TLSv1.2" +
             " -Djava.awt.headless=true" +
             " -Dsun.net.inetaddr.ttl=${networkaddress_cache_ttl}" +
             " -Dorg.apache.jasper.compiler.disablejsr199=true" +
@@ -654,7 +658,7 @@ public final class LC {
 
     public static final KnownKey ssl_disable_dh_cipher_suite = KnownKey.newKey(true);
 
-    public static final KnownKey ssl_default_digest = KnownKey.newKey("sha1");
+    public static final KnownKey ssl_default_digest = KnownKey.newKey("sha256");
 
     @Supported
     public static final KnownKey zimlet_directory = KnownKey.newKey("${zimbra_home}/zimlets-deployed");
@@ -769,6 +773,9 @@ public final class LC {
     public static final KnownKey zmconfigd_interval = KnownKey.newKey(60);
     public static final KnownKey zmconfigd_log_level = KnownKey.newKey(3);
     public static final KnownKey zmconfigd_listen_port = KnownKey.newKey(7171);
+    public static final KnownKey zmconfigd_startup_pause = KnownKey.newKey(60);
+
+    public static final KnownKey zimbra_configrewrite_timeout = KnownKey.newKey(120);
 
     @Supported
     public static final KnownKey zimbra_mailbox_groups = KnownKey.newKey(100);
@@ -857,7 +864,9 @@ public final class LC {
     public static final KnownKey zimbra_authtoken_cache_size = KnownKey.newKey(5000);
     public static final KnownKey zimbra_deregistered_authtoken_queue_size = KnownKey.newKey(5000);
     public static final KnownKey zimbra_authtoken_cookie_domain = KnownKey.newKey("");
-    public static final KnownKey zimbra_zmjava_options = KnownKey.newKey("-Xmx256m");
+    public static final KnownKey zimbra_zmjava_options = KnownKey.newKey("-Xmx256m" +
+            " -Dhttps.protocols=TLSv1,TLSv1.1,TLSv1.2" +
+            " -Djdk.tls.client.protocols=TLSv1,TLSv1.1,TLSv1.2");
     public static final KnownKey zimbra_zmjava_java_library_path = KnownKey.newKey("");
     public static final KnownKey zimbra_zmjava_java_ext_dirs = KnownKey.newKey("");
     public static final KnownKey debug_xmpp_disable_client_tls = KnownKey.newKey(0);

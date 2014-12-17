@@ -104,6 +104,8 @@ ZmCheckinDialog.prototype._uploadSaveDocs = function(file, status, guid) {
 	if (status != AjxPost.SC_OK) {
 		appCtxt.getAppController().popupUploadErrorDialog(ZmItem.BRIEFCASE,
 		                                                  status);
+		this.setButtonEnabled(DwtDialog.OK_BUTTON, true );
+		this.setButtonEnabled(DwtDialog.CANCEL_BUTTON, true);
 	} else {
 
         file.guid = guid;
@@ -191,7 +193,7 @@ function(file, status, guid, response) {
 
 ZmCheckinDialog.prototype._finishUpload = function(file) {
 	if(this._uploadCallback)
-	    this._uploadCallback.run(file);
+	    this._uploadCallback.run([file]);
 };
 
 ZmCheckinDialog.prototype._popupErrorDialog = function(message) {

@@ -59,6 +59,7 @@ ZmConvView2.prototype.isZmConvView2 = true;
 ZmConvView2.prototype.toString = function() { return "ZmConvView2"; };
 ZmConvView2.MAX_INVITE_MSG_EXPANDED = 10;
 
+ZmConvView2.prototype.role = 'region';
 
 /**
  * Displays the given conversation.
@@ -133,6 +134,10 @@ function() {
 	});
 	this._header.replaceElement(headerDivId);
 
+	 // label our control after the subject element
+	this.getHtmlElement().setAttribute('aria-labelledby',
+	                                   this._header._convSubjectId);
+
 	if (this._controller && this._controller._checkKeepReading) {
 		Dwt.setHandler(this._messagesDiv, DwtEvent.ONSCROLL, ZmDoublePaneController.handleScroll);
 	}
@@ -167,6 +172,12 @@ function(conv) {
 	Dwt.setLoadedTime("ZmConv");
 };
 
+// Only invoked by doing a saveDraft, from editing a reply in an individual Conversation display
+ZmConvView2.prototype.redrawItem = function(item) {
+	this._renderConv(this._item);
+}
+ZmConvView2.prototype.setSelection = function(item, skipNotify, forceSelection) { }
+
 /**
  * Renders this conversation's messages. Each message may be expanded (shows header, body, and footer)
  * or collapsed (shows just the header).
@@ -180,9 +191,14 @@ function(conv) {
 ZmConvView2.prototype._renderMessages =
 function(conv, container) {
 
+	// clear messages from tabgroup; we'll re-add them later
+	this.getTabGroupMember().removeAllMembers();
+
+	this.getTabGroupMember().addMember(this._header);
+
 	this._msgViews = {};
 	this._msgViewList = [];
-	var msgs = conv.getMsgList(0, false, this._controller.getFoldersToOmit());
+	var msgs = conv.getMsgList(0, false, ZmMailApp.getFoldersToOmit());
 	
 	// base the ordering off a list of msg IDs
 	var idList = [], idHash = {};
@@ -245,19 +261,45 @@ function(conv, container) {
 ZmConvView2.prototype._renderMessage =
 function(msg, params) {
 	
-	params = params || {};
+	params = AjxUtil.hashCopy(params) || {};
 	params.mode = this._mode;
 	params.msgId = msg.id;
 	params.sessionId = this._controller.getSessionId();
 	params.isDraft = msg.isDraft;
-	var msgView = this._msgViews[msg.id] = new ZmMailMsgCapsuleView(params);
-	if (params.index !== undefined) {
-		this._msgViewList.splice(params.index, 0, msg.id);
+
+	var container = params.parentElement;
+	if (container) {
+		// wrap the message element in a DIV with role listitem
+		var listitem = params.parentElement = document.createElement('DIV');
+		listitem.setAttribute('role', 'listitem');
+		if (params.index != null) {
+			container.insertBefore(listitem, container.childNodes[params.index]);
+		}
+		else {
+			container.appendChild(listitem);
+		}
+
+		// this method is called when iterating over messages; hence,
+		// the current index is the number of messages processed
+		var msgCount = this._item.msgs ? this._item.msgs.size() : 0;
+		var msgIdx = (params.index != null) ? params.index + 1 : container.childNodes.length;
+		var messages = AjxMessageFormat.format(ZmMsg.typeMessage, [msgCount]);
+		var label = AjxMessageFormat.format(ZmMsg.itemCount1, [msgIdx, msgCount, messages]);
+
+		listitem.setAttribute('aria-label', label);
+
+		// TODO: hidden header support
+		/* listitem.appendChild(util.createHiddenHeader(label, 2)); */
 	}
-	this._msgViewList.push(msg.id);
+
+	AjxUtil.arrayAdd(this._msgViewList, msg.id, params.index);
+	params.index = null;    // index not needed since msg view will be only child of listitem
+	var msgView = this._msgViews[msg.id] = new ZmMailMsgCapsuleView(params);
+
+	// add to tabgroup
+	this.getTabGroupMember().addMember(msgView.getTabGroupMember());
 	msgView.set(msg);
 };
-
 
 ZmConvView2.prototype.clearChangeListeners =
 function() {
@@ -287,6 +329,12 @@ function(noClear) {
 	}
 	this._msgViewList = null;
 	this._currentMsgView = null;
+
+	// remove the listitem wrappers around the msg views (see _renderMessage)
+	var msgsDiv = this._messagesDiv;
+	while (msgsDiv && msgsDiv.lastChild) {
+		msgsDiv.removeChild(msgsDiv.lastChild);
+	}
 
 	if (this._initialized) {
 		this._header.reset();
@@ -396,6 +444,13 @@ function(scrollMsgView) {
 		window.setTimeout(this._resize.bind(this, scrollMsgView), 100);
 		this._resizePending = true;
 	}
+};
+
+ZmConvView2.prototype.getTabGroupMember = function() {
+	if (!this._tabGroupMember) {
+		this._tabGroupMember = new DwtTabGroup(this.toString());
+	}
+	return this._tabGroupMember;
 };
 
 // re-render if reading pane moved between right and bottom
@@ -548,15 +603,15 @@ function(check) {
 	}
 	
 	// next, see if there's an expanded msg view we could bring to the top
-	el = el && el.nextSibling;
-	var msgView, done;
-	while (el && !done) {
-		msgView = DwtControl.findControl(el);
+	var msgView = this._getSiblingMsgView(startMsgView, true),
+		done = false;
+
+	while (msgView && !done) {
 		if (msgView && msgView._expanded) {
 			done = true;
 		}
 		else {
-			el = el.nextSibling;
+			msgView = this._getSiblingMsgView(msgView, true);
 		}
 	}
 	if (msgView && done && canScroll) {
@@ -569,6 +624,23 @@ function(check) {
 	}
 	
 	return false;
+};
+
+// Returns the next or previous msg view based on the given msg view.
+ZmConvView2.prototype._getSiblingMsgView = function(curMsgView, next) {
+
+	var idList = this._msgViewList,
+		index = AjxUtil.indexOf(idList, curMsgView._msgId),
+		msgView = null;
+
+	if (index !== -1) {
+		var id = next ? idList[index + 1] : idList[index - 1];
+		if (id) {
+			msgView = this._msgViews[id];
+		}
+	}
+
+	return msgView;
 };
 
 /**
@@ -746,6 +818,7 @@ function(msg, msgView, op) {
 	
 	if (!this._replyView) {
 		this._replyView = new ZmConvReplyView({parent: this});
+		this.getTabGroupMember().addMember(this._replyView.getTabGroupMember());
 	}
 	this._replyView.set(msg, msgView, op);
 };
@@ -841,6 +914,7 @@ ZmConvView2Header.prototype.constructor = ZmConvView2Header;
 ZmConvView2Header.prototype.isZmConvView2Header = true;
 ZmConvView2Header.prototype.toString = function() { return "ZmConvView2Header"; };
 
+ZmConvView2Header.prototype.isFocusable = true;
 
 ZmConvView2Header.prototype.set =
 function(conv) {
@@ -884,6 +958,9 @@ function() {
 	this._expandDiv			= document.getElementById(this._convExpandId);
 	this._subjectSpan		= document.getElementById(this._convSubjectId);
 	this._infoDiv			= document.getElementById(this._convInfoId);
+
+	var convviewel = this._convView.getHtmlElement();
+	convviewel.setAttribute('aria-labelledby', this._convSubjectId);
 };
 
 ZmConvView2Header.prototype._setExpandIcon =
@@ -1080,7 +1157,10 @@ ZmConvReplyView.prototype._initializeToolbar =
 function() {
 	
 	if (!this._replyToolbar) {
-		var buttons = [ZmOperation.SEND, ZmOperation.CANCEL];
+		var buttons = [
+			ZmOperation.SEND, ZmOperation.CANCEL,
+			ZmOperation.FILLER, ZmOperation.FORMAT_MORE_OPTIONS
+		];
 		var overrides = {};
 		overrides[ZmOperation.CANCEL] = {tooltipKey: "cancel", shortcut: null};
 		var tbParams = {
@@ -1095,11 +1175,7 @@ function() {
 		var tb = this._replyToolbar = new ZmButtonToolBar(tbParams);
 		tb.addSelectionListener(ZmOperation.SEND, this._convView._sendListener.bind(this._convView));
 		tb.addSelectionListener(ZmOperation.CANCEL, this._convView._cancelListener.bind(this._convView));
-		var link = document.createElement("a");
-		link.className = "Link";
-		link.onclick = this._moreOptions.bind(this);
-		link.innerHTML = ZmMsg.moreComposeOptions;
-		tb.addChild(link);
+		tb.addSelectionListener(ZmOperation.FORMAT_MORE_OPTIONS, this._moreOptions.bind(this));
 	}
 };
 
@@ -1218,6 +1294,11 @@ ZmMailMsgCapsuleView = function(params) {
 	this.addListener(ZmInviteMsgView.REPLY_INVITE_EVENT, this._convView._inviteReplyListener);
 	this.addListener(ZmMailMsgView.SHARE_EVENT, this._convView._shareListener);
 	this.addListener(ZmMailMsgView.SUBSCRIBE_EVENT, this._convView._subscribeListener);
+
+	this.addListener(DwtEvent.ONFOCUS,
+	                 ZmMailMsgCapsuleView.prototype.__onFocus.bind(this));
+	this.addListener(DwtEvent.ONBLUR,
+	                 ZmMailMsgCapsuleView.prototype.__onBlur.bind(this));
 };
 
 ZmMailMsgCapsuleView.prototype = new ZmMailMsgView;
@@ -1268,6 +1349,7 @@ function(msg, force) {
 	if (this._expanded) {
 		this._convView._hasBeenExpanded[msg.id] = true;
 	}
+	this.getHtmlElement().setAttribute('aria-expanded', Boolean(this._expanded));
 	this._setHeaderClass();
 
 	var dayViewCallback = null;
@@ -1326,7 +1408,9 @@ function() {
 // Look in the computed style object for height, padding, and margins.
 ZmMailMsgCapsuleView.prototype._getHeightFromComputedStyle =
 function(el) {
-
+	// Set the container overflow.  This is insures the proper height calculation.  See W3C Visual
+	// Formatting model details, section 10.6.6 and 10.6.7
+	el.style.overflow = "hidden";
 	var styleObj = DwtCssStyle.getComputedStyleObject(el),
 		height = 0;
 
@@ -1337,6 +1421,7 @@ function(el) {
 			height += isNaN(h) ? 0 : h;
 		}
 	}
+	el.style.overflow = "";
 	return height;
 };
 
@@ -1380,6 +1465,7 @@ function() {
 		parent: this,
 		id:		[this._viewId, ZmId.MV_MSG_HEADER].join("_")
 	});
+	this._headerTabGroup.addMember(this._header);
 };
 
 ZmMailMsgCapsuleView.prototype._renderMessageBodyAndFooter =
@@ -1573,9 +1659,9 @@ function(bodyPart) {
 ZmMailMsgCapsuleView.prototype._renderMessageFooter =
 function(msg, container) {
 
-	this._footerId = [this.getHTMLElId(), ZmId.MV_MSG_FOOTER].join("_");
 	var div = document.createElement("div");
 	div.className = "footer";
+	div.id = this._footerId = [this.getHTMLElId(), ZmId.MV_MSG_FOOTER].join("_");
 	
 	var showTextKey, showTextHandler;
 	if (this._isCalendarInvite) {
@@ -1638,7 +1724,10 @@ function(msg, container) {
 		var info = this._linkInfo[links[i]];
 		var link = info && document.getElementById(info.linkId);
 		if (link) {
-			link.onclick = this._linkClicked.bind(this, links[i], info.op);
+			this._makeFocusable(link);
+			Dwt.setHandler(link, DwtEvent.ONCLICK,
+			               this._linkClicked.bind(this, links[i], info.op));
+			this._footerTabGroup.addMember(link);
 		}
 	}
     // Attempt to display the calendar if the preference is to auto-open it
@@ -1654,7 +1743,7 @@ function(id) {
     if (info.disabled) {
         return "<span id='" + linkId + "'>" + ZmMsg[info.key] + "</span>";
     }
-	return "<a class='Link' id='" + linkId + "'>" + ZmMsg[info.key] + "</a>";
+	return "<a class='ConvLink Link' id='" + linkId + "'>" + ZmMsg[info.key] + "</a>";
 };
 
 ZmMailMsgCapsuleView.prototype._linkClicked =
@@ -1665,6 +1754,28 @@ function(id, op, ev) {
 	var handler = (info && !info.disabled) ? info.handler : null;
 	if (handler) {
 		handler.apply(this, [id, info.op, ev]);
+	}
+};
+
+ZmMailMsgCapsuleView.prototype.__onFocus =
+function(ev) {
+	if (!ev || !ev.target) {
+		return;
+	}
+
+	Dwt.setOpacity(this._footerId, 100);
+};
+
+ZmMailMsgCapsuleView.prototype.__onBlur =
+function(ev) {
+	if (!ev || !ev.target) {
+		return;
+	}
+
+	var footer = Dwt.byId(this._footerId);
+
+	if (footer) {
+		footer.style.opacity = null;
 	}
 };
 
@@ -1807,13 +1918,14 @@ function(expanded) {
 
 	var showCalInConv = appCtxt.get(ZmSetting.CONV_SHOW_CALENDAR);
 	this._expanded = expanded;
+	this.getHtmlElement().setAttribute('aria-expanded', Boolean(this._expanded));
 	if (this._expanded && !this._msgBodyCreated) {
 		// Provide a callback to ensure address bubbles are properly set up
 		var dayViewCallback = null;
 		if (this._isCalendarInvite) {
 			dayViewCallback = this._handleShowCalendarLink.bind(this, ZmOperation.SHOW_ORIG, showCalInConv);
 		}
-		var respCallback = this._handleReponseSetExpansion.bind(this, this._msg, dayViewCallback);
+		var respCallback = this._handleResponseSetExpansion.bind(this, this._msg, dayViewCallback);
 		this._renderMessage(this._msg, null, respCallback);
 	}
 	else {
@@ -1833,6 +1945,7 @@ function(expanded) {
 			this._setTags(this._msg);
 			this._resetLinks();
 			this._controller._handleMarkRead(this._msg);
+			appCtxt.notifyZimlets("onMsgExpansion", [this._msg, this]);
 		}
 		else {
 			var replyView = this._convView._replyView;
@@ -1858,7 +1971,7 @@ function(expanded) {
 	this._resetIframeHeightOnTimer();
 };
 
-ZmMailMsgCapsuleView.prototype._handleReponseSetExpansion =
+ZmMailMsgCapsuleView.prototype._handleResponseSetExpansion =
 function(msg, callback) {
 	this._handleResponseSet(msg, null, callback);
 	this._convView._header._setExpandIcon();
@@ -2051,6 +2164,9 @@ ZmMailMsgCapsuleViewHeader.prototype.constructor = ZmMailMsgCapsuleViewHeader;
 ZmMailMsgCapsuleViewHeader.prototype.isZmMailMsgCapsuleViewHeader = true;
 ZmMailMsgCapsuleViewHeader.prototype.toString = function() { return "ZmMailMsgCapsuleViewHeader"; };
 
+ZmMailMsgCapsuleViewHeader.prototype.isFocusable = true;
+ZmMailMsgCapsuleViewHeader.prototype.role = 'header';
+
 ZmMailMsgCapsuleViewHeader.COLLAPSED	= "Collapsed";
 ZmMailMsgCapsuleViewHeader.EXPANDED		= "Expanded";
 
@@ -2100,34 +2216,32 @@ function(state, force) {
 		date:			dateString,
 		dateCellId:		this._dateCellId,
 		dateTooltip:	dateTooltip
-
 	};
+
+	var imageSize = isExpanded ? 48 : 32,
+		imageURL  = ai.sentByContact && ai.sentByContact.getImageUrl(imageSize, imageSize),
+		imageAltText = imageURL && ai.sentByContact && ai.sentByContact.getFullName();
 
 	if (!isExpanded) {
 		var fromId = id + "_0";
 		this._idToAddr[fromId] = ai.fromAddr;
 
-		var imageURL = ai.sentByContact &&
-			ai.sentByContact.getImageUrl(32, 32) ||
-			ZmZimbraMail.DEFAULT_CONTACT_ICON_SMALL;
-
 		AjxUtil.hashUpdate(subs, {
-			imageURL:	imageURL,
-			from:		ai.from,
-			fromId:		fromId,
-			fragment:	AjxStringUtil.htmlEncode(msg.fragment),
-			isInvite:   this.parent._isCalendarInvite
+			imageURL:	    imageURL || ZmZimbraMail.DEFAULT_CONTACT_ICON_SMALL,
+			imageAltText:   imageAltText || ZmMsg.unknownPerson,
+			from:		    ai.from,
+			fromId:		    fromId,
+			fragment:	    AjxStringUtil.htmlEncode(msg.fragment),
+			isInvite:       this.parent._isCalendarInvite
 		});
 		html = AjxTemplate.expand("mail.Message#Conv2MsgHeader-collapsed", subs);
 	}
 	else {
-		var imageURL = ai.sentByContact &&
-			ai.sentByContact.getImageUrl(48, 48) ||
-			ZmZimbraMail.DEFAULT_CONTACT_ICON;
 
 		AjxUtil.hashUpdate(subs, {
 			hdrTableId:		this._msgView._hdrTableId = id + "_hdrTable",
-			imageURL:		imageURL,
+			imageURL:		imageURL || ZmZimbraMail.DEFAULT_CONTACT_ICON,
+			imageAltText:   imageAltText || ZmMsg.unknownPerson,
 			sentBy:			ai.sentBy,
 			sentByAddr:		ai.sentByAddr,
 			obo:			ai.obo,

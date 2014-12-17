@@ -1,24 +1,4 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
- */
-// Copyright (c) 2000-2011 Quadralay Corporation.  All rights reserved.
+// Copyright (c) 2000-2012 Quadralay Corporation.  All rights reserved.
 //
 
 function  WWHBrowserUtilities_SearchReplace(ParamString,
@@ -81,6 +61,7 @@ function  WWHBrowser_Object()
 
   this.fInitialize      = WWHBrowser_Initialize;
   this.fNormalizeURL    = WWHBrowser_NormalizeURL;
+  this.fValidateFrameReference = WWHBrowser_ValidateFrameReference;
   this.fSetLocation     = WWHBrowser_SetLocation;
   this.fReplaceLocation = WWHBrowser_ReplaceLocation;
   this.fReloadLocation  = WWHBrowser_ReloadLocation;
@@ -283,24 +264,86 @@ function  WWHBrowser_NormalizeURL(ParamURL)
   return URL;
 }
 
+function  WWHBrowser_ValidateFrameReference(ParamFrameReference, ParamAction)
+{
+  var  VarFrame;
+
+  // Ensure required frames can be resolved (required for Mac Help)
+  //
+  if (ParamFrameReference !== undefined)
+  {
+    try
+    {
+      // Frame not yet created?
+      //
+      VarFrame = eval(ParamFrameReference);
+      if (VarFrame !== undefined)
+      {
+        // File not yet loaded?
+        //
+        if (VarFrame.location.href === "about:blank")
+        {
+          // Try to set the appropriate file path
+          //
+          VarFrame.location.replace(WWHStringUtilities_GetBaseURL(location.href) + "wwhelp/wwhimpl/common/html/blank.htm");
+
+          // Try again in a bit
+          //
+          setTimeout(function () {
+              WWHFrame.WWHBrowser.fValidateFrameReference(ParamFrameReference, ParamAction);
+            }, 10);
+        }
+        else
+        {
+          // Perform action!
+          //
+          ParamAction();
+        }
+      }
+      else
+      {
+        // Try again in a bit
+        //
+        setTimeout(function () {
+            WWHFrame.WWHBrowser.fValidateFrameReference(ParamFrameReference, ParamAction);
+          }, 10);
+      }
+    }
+    catch (err)
+    {
+      // Try again in a bit
+      //
+      setTimeout(function () {
+          WWHFrame.WWHBrowser.fValidateFrameReference(ParamFrameReference, ParamAction);
+        }, 10);
+    }
+  }
+}
+
 function  WWHBrowser_SetLocation(ParamFrameReference,
                                  ParamURL)
 {
-  var  EscapedURL;
+  this.fValidateFrameReference(ParamFrameReference,
+    function () {
+      var  EscapedURL;
 
 
-  EscapedURL = WWHBrowserUtilities_EscapeURLForJavaScriptAnchor(ParamURL);
-  setTimeout(ParamFrameReference + ".location = \"" + EscapedURL + "\";", 1);
+      EscapedURL = WWHBrowserUtilities_EscapeURLForJavaScriptAnchor(ParamURL);
+      setTimeout(ParamFrameReference + ".location = \"" + EscapedURL + "\";", 1);
+    });
 }
 
 function  WWHBrowser_ReplaceLocation(ParamFrameReference,
                                      ParamURL)
 {
-  var  EscapedURL;
+  this.fValidateFrameReference(ParamFrameReference,
+    function () {
+      var  EscapedURL;
 
 
-  EscapedURL = WWHBrowserUtilities_EscapeURLForJavaScriptAnchor(ParamURL);
-  setTimeout(ParamFrameReference + ".location.replace(\"" + EscapedURL + "\");", 1);
+      EscapedURL = WWHBrowserUtilities_EscapeURLForJavaScriptAnchor(ParamURL);
+      setTimeout(ParamFrameReference + ".location.replace(\"" + EscapedURL + "\");", 1);
+    });
 }
 
 function  WWHBrowser_ReloadLocation(ParamFrameReference)

@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -58,6 +58,8 @@ import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.service.formatter.Formatter;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.servlet.CsrfFilter;
+import com.zimbra.cs.servlet.util.CsrfUtil;
 
 public class UserServletContext {
     public final HttpServletRequest req;
@@ -90,6 +92,24 @@ public class UserServletContext {
     private long mStartTime = -2;
     private long mEndTime = -2;
     private Throwable error;
+    private boolean csrfAuthSucceeded;
+
+
+
+    /**
+     * @return the csrfAuthSucceeded
+     */
+    public boolean isCsrfAuthSucceeded() {
+        return csrfAuthSucceeded;
+    }
+
+
+    /**
+     * @param csrfAuthSucceeded the csrfAuthSucceeded to set
+     */
+    public void setCsrfAuthSucceeded(boolean csrfAuthSucceeded) {
+        this.csrfAuthSucceeded = csrfAuthSucceeded;
+    }
 
     public static class Item {
         public int id;
@@ -602,6 +622,13 @@ public class UserServletContext {
                         Provisioning.A_zimbraMtaMaxMessageSize, DEFAULT_MAX_SIZE);
             }
         }
+
+        boolean doCsrfCheck = false;
+        if (req.getAttribute(CsrfFilter.CSRF_TOKEN_CHECK) != null) {
+            doCsrfCheck =  (Boolean) req.getAttribute(CsrfFilter.CSRF_TOKEN_CHECK);
+        }
+
+
         if (ServletFileUpload.isMultipartContent(req)) {
             ServletFileUpload sfu = new ServletFileUpload();
 
@@ -615,6 +642,28 @@ public class UserServletContext {
                         is = fis.openStream();
                         params.put(fis.getFieldName(),
                             new String(ByteUtil.getContent(is, -1), "UTF-8"));
+                        if (doCsrfCheck && !this.csrfAuthSucceeded) {
+                            String csrfToken = params.get(FileUploadServlet.PARAM_CSRF_TOKEN);
+                            if (UserServlet.log.isDebugEnabled()) {
+                                String paramValue = req.getParameter(UserServlet.QP_AUTH);
+                                UserServlet.log.debug(
+                                    "CSRF check is: %s, CSRF token is: %s, Authentication recd with request is: %s",
+                                    doCsrfCheck, csrfToken, paramValue);
+                            }
+
+                            if (!CsrfUtil.isValidCsrfToken(csrfToken, authToken)) {
+                                setCsrfAuthSucceeded(Boolean.FALSE);
+                                UserServlet.log.debug("CSRF token validation failed for account: %s"
+                                    + ", Auth token is CSRF enabled:  %s" + "CSRF token is: %s",
+                                    authToken, authToken.isCsrfTokenEnabled(), csrfToken);
+                                throw new UserServletException(HttpServletResponse.SC_UNAUTHORIZED,
+                                    L10nUtil.getMessage(MsgKey.errMustAuthenticate));
+                            } else {
+                                setCsrfAuthSucceeded(Boolean.TRUE);
+                            }
+
+                        }
+
                         is.close();
                         is = null;
                     } else {
@@ -622,6 +671,8 @@ public class UserServletContext {
                         break;
                     }
                 }
+            } catch (UserServletException e) {
+                throw new UserServletException(e.getHttpStatusCode(), e.getMessage(), e);
             } catch (Exception e) {
                 throw new UserServletException(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, e.toString());
             }

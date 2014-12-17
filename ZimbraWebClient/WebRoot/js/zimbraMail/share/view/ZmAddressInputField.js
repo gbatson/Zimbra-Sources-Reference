@@ -480,6 +480,23 @@ function(targetEl) {
 	return !(this._bubble[targetEl.id] || this.__isInputEl(targetEl));
 };
 
+ZmAddressInputField.prototype.getTabGroupMember =
+function() {
+	if (!this._tabGroup) {
+		var tg = this._tabGroup = new DwtTabGroup('ZmAddressInputField');
+
+		// the composite tab group includes regular children of the control; in
+		// this instance the address bubbles -- we want that, and our raw input
+		var ctg = DwtComposite.prototype.getTabGroupMember.call(this);
+
+		tg.addMember(ctg);
+		tg.addMember(this.getInputElement());
+	}
+
+	return this._tabGroup;
+};
+
+
 /**
  * Makes bubbles out of addresses in pasted text.
  *
@@ -603,12 +620,14 @@ function(params) {
 
 	this._holderId = Dwt.getNextId();
 	this._inputId = params.inputId || Dwt.getNextId();
+	this._label = params.label;
 	this._dragInsertionBarId = Dwt.getNextId();
 	var data = {
 		inputTagName:		AjxEnv.isIE || AjxEnv.isModernIE ?
 								'textarea' : 'input',
 		holderId:			this._holderId,
 		inputId:			this._inputId,
+		label:				this._label,
 		dragInsertionBarId:	this._dragInsertionBarId
 	};
 	this._createHtmlFromTemplate(params.templateId || this.TEMPLATE, data);
@@ -616,6 +635,7 @@ function(params) {
 	this._holder = document.getElementById(this._holderId);
 	this._holder._aifId = this._htmlElId;
 	this._input = document.getElementById(this._inputId);
+	this._input.supportsAutoComplete = true;
 	this._dragInsertionBar = document.getElementById(this._dragInsertionBarId);
 
 	Dwt.setHandler(this._holder, DwtEvent.ONCLICK, ZmAddressInputField.onHolderClick);
@@ -789,7 +809,7 @@ function(ev) {
 		actionMenu.getOp(ZmOperation.EXPAND).setVisible(false);
 
 		this._setContactText(null);
-		menu.popup(0, ev.docX, ev.docY);
+		menu.popup(0, ev.docX || bubble.getXW(), ev.docY || bubble.getYH());
 	}
 
 	// if we are listening for outside mouse clicks, add the action menu to the elements
@@ -896,7 +916,8 @@ ZmAddressInputField.prototype._handleResponseGetContact =
 function(ev, contact) {
 	ZmAddressInputField.menuContext.contact = contact;
 	this._setContactText(contact);
-	this.getActionMenu().popup(0, ev.docX, ev.docY);
+	this.getActionMenu().popup(0, ev.docX || ev.item.getXW(),
+	                           ev.docY || ev.item.getYH());
 };
 
 ZmAddressInputField.prototype._setContactText =
@@ -1088,16 +1109,19 @@ function() {
 	var maxWidth = Dwt.getSize(this._holder).x - (this._input.offsetLeft + ((AjxEnv.isTrident) ? (margins.left + paddings.left) : 0) + paddings.right + margins.right + 1);
 	maxWidth = Math.max(maxWidth, 3); //don't get too small - minimum 3 - if it gets negative, the cursor would not show up before starting to type (bug 84924)
 
-	var inputFontSize = DwtCssStyle.getProperty(this._input, "font-size");
-	var strW = AjxStringUtil.getWidth(val, false, inputFontSize);
-	if (AjxEnv.isWindows && (AjxEnv.isFirefox || AjxEnv.isSafari || AjxEnv.isChrome) ){
-		// FF/Win: fudge factor since string is longer in INPUT than when measured in SPAN
-		strW = strW * 1.2;
-	}
-	var pad = this._editMode ? ZmAddressInputField.INPUT_EXTRA_SMALL : ZmAddressInputField.INPUT_EXTRA;
-	var inputWidth = Math.min(strW + pad, maxWidth);
-	if (this._editMode) {
-		inputWidth = Math.max(inputWidth, ZmAddressInputField.INPUT_EXTRA);
+	var inputWidth = "100%";
+	if (this._input.supportsAutoComplete) {
+		var inputFontSize = DwtCssStyle.getProperty(this._input, "font-size");
+		var strW = AjxStringUtil.getWidth(val, false, inputFontSize);
+		if (AjxEnv.isWindows && (AjxEnv.isFirefox || AjxEnv.isSafari || AjxEnv.isChrome) ){
+			// FF/Win: fudge factor since string is longer in INPUT than when measured in SPAN
+			strW = strW * 1.2;
+		}
+		var pad = this._editMode ? ZmAddressInputField.INPUT_EXTRA_SMALL : ZmAddressInputField.INPUT_EXTRA;
+		inputWidth = Math.min(strW + pad, maxWidth);
+		if (this._editMode) {
+			inputWidth = Math.max(inputWidth, ZmAddressInputField.INPUT_EXTRA);
+		}
 	}
 	Dwt.setSize(this._input, inputWidth, Dwt.DEFAULT);
 };
@@ -1503,6 +1527,7 @@ ZmAddressBubble.prototype.constructor = ZmAddressBubble;
 
 ZmAddressBubble.prototype.isZmAddressBubble = true;
 ZmAddressBubble.prototype.toString = function() { return "ZmAddressBubble"; };
+ZmAddressBubble.prototype.isFocusable = true;
 
 ZmAddressBubble.prototype._createElement =
 function() {
@@ -1566,6 +1591,37 @@ function(params) {
 	var addrText = html.join("");
 
 	return expandLinkText + addrText + removeLinkText;
+};
+
+
+/**
+ * Gets the key map name.
+ * 
+ * @return	{string}	the key map name
+ */
+ZmAddressBubble.prototype.getKeyMapName =
+function() {
+	return DwtKeyMap.MAP_BUTTON;
+};
+
+/**
+ * Handles a key action event.
+ * 
+ * @param	{constant}		actionCode		the action code (see {@link DwtKeyMap})
+ * @param	{DwtEvent}		ev		the event
+ * @return	{boolean}		<code>true</code> if the event is handled; <code>false</code> otherwise
+ * @see		DwtKeyMap
+ */
+ZmAddressBubble.prototype.handleKeyAction =
+function(actionCode, ev) {
+	switch (actionCode) {
+		case DwtKeyMap.SELECT:
+		case DwtKeyMap.SUBMENU:
+			this.list._itemActioned(ev, this);
+			break;
+	}
+
+	return true;
 };
 
 /**
@@ -1691,7 +1747,6 @@ ZmAddressBubble.expandBubble = function(bubbleId, email) {
 				loc.y += bubbleObj.getSize().y + 2;
 				parent._aclv.expandDL({
 					email:      email,
-					textId:     bubbleObj._htmlElId,
 					loc:        loc,
 					element:    parent._input
 				});

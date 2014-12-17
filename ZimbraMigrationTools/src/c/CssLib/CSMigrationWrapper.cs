@@ -5,50 +5,65 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Collections;
+using System.Xml;
 
 namespace CssLib
 {
 public class Log {
     public enum Level { None, Err, Warn, Info, Debug, Trace };
 
+    private static Level level;
+
     public static void init(string file, Level level)
     {
+        Log.level = level;
+
         log_init(file, level);
+
+        string initid = TraceLog.init(file, level);
+        info("Client Version: ", "(ZimbraMigration/" + ZimbraValues.GetZimbraValues().ClientVersion + ")", initid);
     }
 
     public static void log(Level level, object obj)
     {
-        log_print(level, obj.ToString());
+        string msg = obj != null ? obj.ToString() : "(null)";
+        foreach (string line in msg.Split(new string[] { "\r\n", "\n" }, System.StringSplitOptions.None))
+        {
+            log_print(level, line);
+        }
     }
 
     public static void log(Level level, params object[] objs)
     {
         StringBuilder s = new StringBuilder();
-        String last = null;
+        String last = "";
 
         foreach (object obj in objs) {
             if (s.Length > 0 && !last.EndsWith("="))
+            {
                 s.Append(' ');
-            last = obj.ToString();
+            }
+            last = obj != null ? obj.ToString() : "(null)";
             s.Append(last);
         }
-        log_print(level, s.ToString());
+        log(level, s);
     }
 
-    public static void trace(string str) { log_print(Level.Trace, str); }
+    public static void trace(string str) { log(Level.Trace, str); }
     public static void trace(params object[] objs) { log(Level.Trace, objs); }
-    public static void debug(string str) { log_print(Level.Debug, str); }
+    public static void debug(string str) { log(Level.Debug, str); }
     public static void debug(params object[] objs) { log(Level.Debug, objs); }
-    public static void err(string str) { log_print(Level.Err, str); }
+    public static void err(string str) { log(Level.Err, str); }
     public static void err(params object[] objs) { log(Level.Err, objs); }
-    public static void info(string str) { log_print(Level.Info, str); }
+    public static void info(string str) { log(Level.Info, str); }
     public static void info(params object[] objs) { log(Level.Info, objs); }
-    public static void warn(string str) { log_print(Level.Warn, str); }
+    public static void warn(string str) { log(Level.Warn, str); }
     public static void warn(params object[] objs) { log(Level.Warn, objs); }
 
     public static void dump(string str, string data)
     {
-        log_print(Level.Trace, (str + "\r\n" + data).ToString());
+        log(Level.Trace, str + "\r\n" + data);
     }
     public static string file() { return log_file(); }
     public static void open(string file) { log_open(file); }
@@ -72,6 +87,112 @@ public class Log {
     static private extern void log_print(Level level, string str);
 
     #endregion PInvokes
+}
+
+public class TraceLog
+{
+    [ThreadStatic]
+    private static bool enabled = false;
+    [ThreadStatic]
+    private static string logfile;
+
+    public static string init(string file, Log.Level level)
+    {
+        logfile = Path.ChangeExtension(file, ".trace.log");
+        enabled = level == Log.Level.Trace;
+
+        string initid = log("Init", null);
+        return initid != null ? initid : "";
+    }
+
+    public static string log(string type, object obj, string logid = null)
+    {
+        if (!enabled)
+        {
+            return logid;
+        }
+
+        StreamWriter w = null;
+        try
+        {
+            FileStream fs = new FileStream(logfile, FileMode.Append,
+                    FileAccess.Write);
+            w = new StreamWriter(fs);
+
+            if (logid == null || logid == String.Empty)
+            {
+                logid = Guid.NewGuid().ToString();
+            }
+            Log.trace(" -> " + type + " " + logid);
+            w.WriteLine("[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.ffffff") + "] " + type + " " + logid + " -------------------");
+
+            if (obj == null)
+            {
+                obj = "<null/>";
+            }
+            else if (obj is Dictionary<string, string>)
+            {
+                StringBuilder sb = new StringBuilder();
+                IDictionary dict = (IDictionary)obj;
+                obj = sb;
+
+                XmlWriterSettings settings = new XmlWriterSettings();
+                // Don't includ ethe XML preamble
+                settings.OmitXmlDeclaration = true;
+                // Allow slightly misformatted XML by writing (encoded)
+                // control characters if we encounter them
+                settings.CheckCharacters = false;
+                // Replace (part of) newlines with entities as well.
+                settings.NewLineHandling = NewLineHandling.Entitize;
+
+                using (XmlWriter xml = XmlWriter.Create(sb, settings))
+                {
+                    xml.WriteStartElement("d");
+                    foreach (DictionaryEntry entry in dict)
+                    {
+                        string key = entry.Key.ToString();
+                        string val = entry.Value.ToString();
+                        // Retrieve full length
+                        int vallen = val.Length;
+                        // Limit to first line
+                        val = val.Split(new char[] { '\n' }, 2).First();
+                        // example: <v k="foo" l="3">bar</entry>
+                        xml.WriteStartElement("v");
+                        xml.WriteStartAttribute("k");
+                        xml.WriteString(key);
+                        xml.WriteEndAttribute();
+                        xml.WriteStartAttribute("l");
+                        xml.WriteValue(vallen);
+                        xml.WriteEndAttribute();
+                        xml.WriteValue(val);
+                        xml.WriteEndElement();
+                    }
+                    xml.WriteEndElement();
+                }
+            }
+            w.WriteLine(obj.ToString());
+            w.WriteLine("\n");
+        }
+        catch (Exception e)
+        {
+            Log.debug(" TraceLog::Exception ", e.Message);
+        }
+        finally
+        {
+            if (w != null)
+            {
+                try
+                {
+                    w.Close();
+                }
+                catch (Exception e)
+                {
+                    Log.debug(" TraceLog::Exception ", e.Message);
+                }
+            }
+        }
+        return logid;
+    }
 }
 
 [Flags] public enum ItemsAndFoldersOptions
@@ -515,6 +636,7 @@ public class CSMigrationWrapper
                                         }
                                     }
                                 }
+                                TraceLog.log("Item Data", dict);
 
                                 api.AccountID = Acct.AccountID;
                                 api.AccountName = Acct.AccountName;
@@ -792,22 +914,45 @@ public class CSMigrationWrapper
                                             try
                                             {
                                                 DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
+                                                DateTime dstartm = DateTime.Parse(dict["s"]);
+                                                DateTime dendm = DateTime.Parse(dict["e"]);
                                                 DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
                                                 if ((options.DateFilterItem != null))
                                                 {
-                                                    if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                    if ((dstartm != null) && (dendm != null))
+                                                    {
+
+                                                        if ((DateTime.Compare(dtm, filterDtm) < 0) && (options.DateFilterItem.Contains(itemtype)))
+                                                        {
+                                                            bSkipMessage = true;
+                                                            Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                        }
+                                                    }
+                                                    else
                                                     {
                                                         bSkipMessage = true;
-                                                        Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                        Log.debug("Skipping", dict["su"], "-- task has no start or due date");
+
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    if ((DateTime.Compare(dtm, filterDtm) < 0))
+                                                    if ((dstartm != null) && (dendm != null))
+                                                    {
+
+                                                        if ((DateTime.Compare(dtm, filterDtm) < 0))
+                                                        {
+                                                            bSkipMessage = true;
+                                                            Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                        }
+                                                    }
+                                                    else
                                                     {
                                                         bSkipMessage = true;
-                                                        Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                                        Log.debug("Skipping", dict["su"], "-- task has no start or due date");
+
                                                     }
+
                                                 }
                                             }
                                             catch (Exception)
@@ -1333,6 +1478,152 @@ public class CSMigrationWrapper
 
 }
 
+    public string[] GetPublicFolders(MigrationAccount Acct, LogLevel logLevel)
+    {
+        string accountName = "";
+        dynamic[] folders = null;
+        int idx = Acct.AccountName.IndexOf("@");
+        Log.Level level = (Log.Level)logLevel;
+        dynamic user = null;
+        string value = "";
+        string[] s;
+        
+
+        if (MailClient == "MAPI")
+        {
+            user = new MapiUser();
+        }
+        
+        if (idx == -1)
+        {
+            Acct.LastProblemInfo = new ProblemInfo(Acct.AccountName, "Illegal account name",
+                ProblemInfo.TYPE_ERR);
+            Acct.TotalErrors++;
+
+           String status = string.Format("Error in Getpublicfolders");
+           s = new string[1];
+            s[0] = status;
+            return s ;
+        }
+        else
+        {
+            accountName = Acct.AccountName.Substring(0, idx);
+        }
+
+        Log.init(Path.GetTempPath() + "migration.log", level);  // might have gotten a new level from options
+        InitLogFile(accountName, level);
+        try
+        {
+
+            value = user.Init("", Acct.ProfileName, accountName, 1);
+        }
+
+        catch (Exception e)
+        {
+            string serr = string.Format("Initialization Exception. {0}", e.Message);
+
+            Acct.LastProblemInfo = new ProblemInfo(accountName, serr, ProblemInfo.TYPE_ERR);
+            Acct.TotalErrors++;
+            s = new string[1];
+             s[0]= serr;
+             return s;
+        }
+        Log.info("Account name", accountName);
+        Log.info("Account Id", Acct.AccountID);
+        Log.info("Account Num", Acct.AccountNum.ToString());
+
+        if (value.Length > 0)
+        {
+            Acct.IsValid = false;
+            if (value.Contains("Outlook"))
+            {
+                Log.err("Unable to initialize", accountName, value);
+                Acct.LastProblemInfo = new ProblemInfo(accountName, value, ProblemInfo.TYPE_ERR);
+            }
+            else
+            {
+                Log.err("Unable to initialize", accountName, value + "or verify if source mailbox exists.");
+                Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
+            }
+            Acct.TotalErrors++;
+            //Acct.TotalErrors = Acct.MaxErrorCount;
+
+            string serr = string.Format("Unable to initialize");
+            s = new string[1];
+            s[0] = serr;
+            return s;
+        }
+        else
+        {
+            Acct.IsValid = true;
+            Acct.IsCompletedMigration = true;
+            Log.info(accountName, "initialized");
+        }
+
+        
+        Log.debug("Retrieving folders");
+        try
+        {
+
+            folders = user.GetFolders();
+        }
+        catch (Exception e)
+        {
+            Log.err("exception in startmigration->user.GetFolders", e.Message);
+
+        }
+        if (folders != null)
+        {
+            Log.info("CSmigrationwrapper get folders returned folders");
+            if (folders.Count() == 0)
+            {
+
+                Log.info("No folders for user to migrate");
+                 String status = string.Format("No folders for user to migrate");
+                 s = new string[1];
+            s[0] = status;
+            
+                return s;
+            }
+            else
+            {
+                s = new string[folders.Count()];
+                int i = 0;
+                foreach (dynamic folder in folders)
+                {
+                    
+                    
+                    s[i] = folder.Name;
+                    i++;
+                }
+            }
+        }
+        else
+        {
+            string serrs = "CSmigrationwrapper get folders returned null for folders";
+            Acct.LastProblemInfo = new ProblemInfo(accountName, serrs, ProblemInfo.TYPE_ERR);
+            Acct.TotalErrors++;
+            Acct.IsCompletedMigration = false;
+            Log.err(serrs);
+            user.Uninit();
+            s = new string[1];
+            s[0] = serrs;
+            return s;
+        }
+
+        try
+        {
+            user.Uninit();
+        }
+        catch (Exception e)
+        {
+            Log.err("Exception in user.Uninit ", e.Message);
+
+        }
+
+        return s;
+    }
+
     public void StartMigration(MigrationAccount Acct, MigrationOptions options, bool isServer = true,
         LogLevel logLevel = LogLevel.Info, bool isPreview = false, bool doRulesAndOOO = true)      
     {
@@ -1368,104 +1659,116 @@ public class CSMigrationWrapper
         Log.init(Path.GetTempPath() + "migration.log", level);  // might have gotten a new level from options
         InitLogFile(accountName, level);
         bool Zdesktop = options.IsZDesktop;
-
-        try
-        {
-            bool IsPublic = options.IsPublicFolders;
-            if(IsPublic)
-                value = user.Init("", Acct.ProfileName, accountName, 1);
-            else
-                value = user.Init(isServer ? "host" : "", Acct.AccountID, accountName, 0);
-        }
-        catch (Exception e)
-        {
-            string s = string.Format("Initialization Exception. {0}", e.Message);
-
-            Acct.LastProblemInfo = new ProblemInfo(accountName, s, ProblemInfo.TYPE_ERR);
-            Acct.TotalErrors++;
-            return;
-        }
-        Log.info("Account name", accountName);
-        Log.info("Account Id", Acct.AccountID);
-        Log.info("Account Num", Acct.AccountNum.ToString());
-
-        if (value.Length > 0)
-        {
-            Acct.IsValid = false;
-            if (value.Contains("Outlook"))
-            {
-                Log.err("Unable to initialize", accountName, value);
-                Acct.LastProblemInfo = new ProblemInfo(accountName, value, ProblemInfo.TYPE_ERR);
-            }
-            else
-            {
-                Log.err("Unable to initialize", accountName, value + "or verify if source mailbox exists.");
-                Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
-            }
-            Acct.TotalErrors++;
-            //Acct.TotalErrors = Acct.MaxErrorCount;
-            return;
-        }
-        else
-        {
-            Acct.IsValid = true;
-            Acct.IsCompletedMigration = true;
-            Log.info(accountName, "initialized");
-        }
-
+        
         // set up check for skipping folders
         List<string> skipList = new List<string>();
 
-        if (options.SkipFolders != null && options.SkipFolders.Length > 0)
-        {
-            string[] tokens = options.SkipFolders.Split(',');
-
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                string token = tokens.GetValue(i).ToString();
-
-                skipList.Add(token.Trim());
-            }
-        }
-
-        Log.debug("Retrieving folders");
         try
-        {
-
-            folders = user.GetFolders();
-        }
-        catch (Exception e)
-        {
-            Log.err("exception in startmigration->user.GetFolders", e.Message);
-            
-        }
-        if (folders != null)
-        {
-            Log.info("CSmigrationwrapper get folders returned folders");
-            if (folders.Count() == 0)
             {
+                bool IsPublic = options.IsPublicFolders;
 
-                Log.info("No folders for user to migrate");
-                return;
-            }
+                
+        if (IsPublic)
+        {
+         value = user.Init("", Acct.ProfileName, accountName, 1);
         }
         else
-        {
-            string s = "CSmigrationwrapper get folders returned null for folders";
-            Acct.LastProblemInfo = new ProblemInfo(accountName, s, ProblemInfo.TYPE_ERR);
-            Acct.TotalErrors++;
-            Acct.IsCompletedMigration = false;
-            Log.err(s);
-            user.Uninit();
-            return;
-        }
-        Acct.migrationFolder.CurrentCountOfItems = folders.Count();
-        Log.debug("Retrieved folders.  Count:", Acct.migrationFolder.CurrentCountOfItems.ToString());
 
-        foreach (dynamic folder in folders) {
-            if (!SkipFolder(options, skipList, folder))
-                Acct.TotalItems += folder.ItemCount;
-        }
+                value = user.Init(isServer ? "host" : "", Acct.AccountID, accountName, 0);
+            }
+            catch (Exception e)
+            {
+                string s = string.Format("Initialization Exception. {0}", e.Message);
+
+                Acct.LastProblemInfo = new ProblemInfo(accountName, s, ProblemInfo.TYPE_ERR);
+                Acct.TotalErrors++;
+                return;
+            }
+            Log.info("Account name", accountName);
+            Log.info("Account Id", Acct.AccountID);
+            Log.info("Account Num", Acct.AccountNum.ToString());
+
+            if (value.Length > 0)
+            {
+                Acct.IsValid = false;
+                if (value.Contains("Outlook"))
+                {
+                    Log.err("Unable to initialize", accountName, value);
+                    Acct.LastProblemInfo = new ProblemInfo(accountName, value, ProblemInfo.TYPE_ERR);
+                }
+                else
+                {
+                    Log.err("Unable to initialize", accountName, value + "or verify if source mailbox exists.");
+                    Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
+                }
+                Acct.TotalErrors++;
+                //Acct.TotalErrors = Acct.MaxErrorCount;
+                return;
+            }
+            else
+            {
+                Acct.IsValid = true;
+                Acct.IsCompletedMigration = true;
+                Log.info(accountName, "initialized");
+            }
+
+          
+
+            if (options.SkipFolders != null && options.SkipFolders.Length > 0)
+            {
+                string[] tokens = options.SkipFolders.Split(',');
+
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    string token = tokens.GetValue(i).ToString();
+
+                    skipList.Add(token.Trim());
+                }
+            }
+
+            Log.debug("Retrieving folders");
+            try
+            {
+
+                folders = user.GetFolders();
+            }
+            catch (Exception e)
+            {
+                Log.err("exception in startmigration->user.GetFolders", e.Message);
+
+            }
+            if (folders != null)
+            {
+                Log.info("CSmigrationwrapper get folders returned folders");
+                if (folders.Count() == 0)
+                {
+
+                    Log.info("No folders for user to migrate");
+                    return;
+                }
+            }
+            else
+            {
+                string s = "CSmigrationwrapper get folders returned null for folders";
+                Acct.LastProblemInfo = new ProblemInfo(accountName, s, ProblemInfo.TYPE_ERR);
+                Acct.TotalErrors++;
+                Acct.IsCompletedMigration = false;
+                Log.err(s);
+                user.Uninit();
+                return;
+            }
+
+
+            Acct.migrationFolder.CurrentCountOfItems = folders.Count();
+            Log.debug("Retrieved folders.  Count:", Acct.migrationFolder.CurrentCountOfItems.ToString());
+
+            foreach (dynamic folder in folders)
+            {
+                if (!SkipFolder(options, skipList, folder))
+                    Acct.TotalItems += folder.ItemCount;
+            }
+
+        
         Log.info("Acct.TotalItems=", Acct.TotalItems.ToString());
         ZimbraAPI api;
         if (options.LangID != 0)

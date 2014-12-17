@@ -741,13 +741,14 @@ function(){
     var item = this._getSelectedItem();
     if(item && item instanceof ZmBriefcaseItem){
         var dlg = this._getCheckinDlg();                                        
-        dlg.popup(item, new AjxCallback(this, this._doneCheckin, item));
+        dlg.popup(item, this._doneCheckin.bind(this, item));
     }
 };
 
 ZmBriefcaseController.prototype._doneCheckin =
-function(item, file){
+function(item, files){
     //Update item attribs
+	var file = files[0];
     item.version = file.version;
     item.name = file.name;
     this.unlockItem(item, new AjxCallback(this, this.refreshItem, item));
@@ -1341,9 +1342,9 @@ function(item, listView) {
 	if (item.size) {
 		prop.push({name:ZmMsg.briefcasePropSize, value:AjxUtil.formatSize(item.size)});
 	}
-	if (item.modifyDate) {
+	if (item.contentChangeDate) {
 		var dateFormatter = AjxDateFormat.getDateTimeInstance(AjxDateFormat.FULL, AjxDateFormat.MEDIUM);
-		var dateStr = dateFormatter.format(item.modifyDate);
+		var dateStr = dateFormatter.format(item.contentChangeDate);
 		prop.push({name:ZmMsg.briefcasePropModified, value:dateStr});
 	}
 
@@ -1446,7 +1447,8 @@ function(dlg, msgId, partId) {
 		overviewId:		dlg.getOverviewId(this._app._name),
 		title:			ZmMsg.addToBriefcaseTitle,
 		description:	ZmMsg.targetFolder,
-		appName:		ZmApp.BRIEFCASE
+		appName:		ZmApp.BRIEFCASE,
+		noRootSelect:	true
 	};
     params.omit = {};
     params.omit[ZmFolder.ID_DRAFTS] = true;

@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -551,7 +551,7 @@ class WebUpstreamClientServersVar extends ProxyConfVar {
 
             if (isValidUpstream(server, serverName)) {
                 directives.add(generateServerDirective(server, serverName, portName));
-                mLog.info("Added server to HTTP webclient upstream: " + serverName);
+                mLog.debug("Added server to HTTP webclient upstream: " + serverName);
             }
         }
         mValue = directives;
@@ -594,7 +594,7 @@ class WebSSLUpstreamClientServersVar extends ProxyConfVar {
 
             if (isValidUpstream(server, serverName)) {
                 directives.add(generateServerDirective(server, serverName, portName));
-                mLog.info("Added server to HTTPS webclient upstream: " + serverName);
+                mLog.debug("Added server to HTTPS webclient upstream: " + serverName);
             }
         }
         mValue = directives;
@@ -637,7 +637,7 @@ class WebAdminUpstreamAdminClientServersVar extends ProxyConfVar {
 
             if (isValidUpstream(server, serverName)) {
                 directives.add(generateServerDirective(server, serverName, portName));
-                mLog.info("Added server to HTTPS Admin client upstream: " + serverName);
+                mLog.debug("Added server to HTTPS Admin client upstream: " + serverName);
             }
         }
         mValue = directives;
@@ -825,7 +825,7 @@ abstract class ServersVar extends ProxyConfVar {
                 Server server = mProv.getServerByName(serverName);
                 if (isValidUpstream(server, serverName)) {
                     directives.add(generateServerDirective(server, serverName, portName));
-                    mLog.info("Added server to HTTP upstream: " + serverName);
+                    mLog.debug("Added server to HTTP upstream: " + serverName);
                 }
             }
         } else {
@@ -837,7 +837,7 @@ abstract class ServersVar extends ProxyConfVar {
                         Provisioning.A_zimbraServiceHostname, "");
                 if (isValidUpstream(server, serverName)) {
                     directives.add(generateServerDirective(server, serverName, portName));
-                    mLog.info("Added server to HTTP upstream: " + serverName);
+                    mLog.debug("Added server to HTTP upstream: " + serverName);
                 }
             }
         }
@@ -883,7 +883,7 @@ class WebUpstreamServersVar extends ServersVar {
 
     		if (isValidUpstream(server, serverName)) {
     			directives.add(generateServerDirective(server, serverName, portName));
-    			mLog.info("Added server to HTTP mailstore upstream: " + serverName);
+    			mLog.debug("Added server to HTTP mailstore upstream: " + serverName);
     		}
     	}
     	mValue = directives;
@@ -911,7 +911,7 @@ class WebSSLUpstreamServersVar extends ServersVar {
 
     		if (isValidUpstream(server, serverName)) {
     			directives.add(generateServerDirective(server, serverName, portName));
-    			mLog.info("Added server to HTTPS mailstore upstream: " + serverName);
+    			mLog.debug("Added server to HTTPS mailstore upstream: " + serverName);
     		}
     	}
     	mValue = directives;
@@ -937,7 +937,7 @@ class WebAdminUpstreamServersVar extends ServersVar {
 
 			if (isValidUpstream(server, serverName)) {
 				directives.add(generateServerDirective(server, serverName, portName));
-				mLog.info("Added server to HTTPS Admin mailstore upstream: " + serverName);
+				mLog.debug("Added server to HTTPS Admin mailstore upstream: " + serverName);
 			}
 		}
 		mValue = directives;
@@ -962,7 +962,7 @@ class WebEwsUpstreamServersVar extends ServersVar {
                 Server server = mProv.getServerByName(serverName);
                 if (isValidUpstream(server, serverName)) {
                     directives.add(generateServerDirective(server, serverName, portName));
-                    mLog.info("Added EWS server to HTTP upstream: " + serverName);
+                    mLog.debug("Added EWS server to HTTP upstream: " + serverName);
                 }
             }
         }
@@ -988,7 +988,7 @@ class WebEwsSSLUpstreamServersVar extends ServersVar {
                 Server server = mProv.getServerByName(serverName);
                 if (isValidUpstream(server, serverName)) {
                     directives.add(generateServerDirective(server, serverName, portName));
-                    mLog.info("Added EWS server to HTTPS upstream: " + serverName);
+                    mLog.debug("Added EWS server to HTTPS upstream: " + serverName);
                 }
             }
         }
@@ -1014,7 +1014,7 @@ class WebLoginUpstreamServersVar extends ServersVar {
                 Server server = mProv.getServerByName(serverName);
                 if (isValidUpstream(server, serverName)) {
                     directives.add(generateServerDirective(server, serverName, portName));
-                    mLog.info("Added Login server to HTTP upstream: " + serverName);
+                    mLog.debug("Added Login server to HTTP upstream: " + serverName);
                 }
             }
         }
@@ -1040,7 +1040,7 @@ class WebLoginSSLUpstreamServersVar extends ServersVar {
                 Server server = mProv.getServerByName(serverName);
                 if (isValidUpstream(server, serverName)) {
                     directives.add(generateServerDirective(server, serverName, portName));
-                    mLog.info("Added Login server to HTTPS upstream: " + serverName);
+                    mLog.debug("Added Login server to HTTPS upstream: " + serverName);
                 }
             }
         }
@@ -1583,6 +1583,106 @@ class DomainAttrExceptionItem extends DomainAttrItem {
     public ProxyConfException exception;
 }
 
+/**
+ * Provide the value of "ssl_protocols" for web proxy.
+ */
+class WebSSLProtocolsVar extends ProxyConfVar {
+
+    public WebSSLProtocolsVar() {
+        super("web.ssl.protocols", null, getEnabledSSLProtocols(),
+                ProxyConfValueType.CUSTOM, ProxyConfOverride.CUSTOM,
+                "SSL Protocols enabled for the web proxy");
+    }
+
+    static ArrayList<String> getEnabledSSLProtocols () {
+        ArrayList<String> sslProtocols = new ArrayList<String> ();
+        sslProtocols.add("TLSv1");
+        sslProtocols.add("TLSv1.1");
+        sslProtocols.add("TLSv1.2");
+        return sslProtocols;
+    }
+
+    @Override
+    public void update() {
+
+        ArrayList<String> sslProtocols = new ArrayList<String>();
+        String[] sslProtocolsEnabled =
+            serverSource.getMultiAttr("zimbraReverseProxySSLProtocols");
+        for (String c:sslProtocolsEnabled)
+        {
+            sslProtocols.add(c);
+        }
+        if (sslProtocols.size() > 0) {
+            mValue = sslProtocols;
+        } else {
+            mValue = mDefault;
+        }
+    }
+
+    @Override
+    public String format(Object o) {
+
+        @SuppressWarnings("unchecked")
+        ArrayList<String> sslProtocols = (ArrayList<String>) o;
+        StringBuilder sslproto = new StringBuilder();
+        for (String c : sslProtocols) {
+            sslproto.append(" ");
+            sslproto.append(c);
+        }
+        return sslproto.toString();
+    }
+}
+
+/**
+ * Provide the value of "ssl_protocols" for mail proxy.
+ */
+class MailSSLProtocolsVar extends ProxyConfVar {
+
+    public MailSSLProtocolsVar() {
+        super("web.ssl.protocols", null, getEnabledSSLProtocols(),
+                ProxyConfValueType.CUSTOM, ProxyConfOverride.CUSTOM,
+                "SSL Protocols enabled for the mail proxy");
+    }
+
+    static ArrayList<String> getEnabledSSLProtocols () {
+        ArrayList<String> sslProtocols = new ArrayList<String> ();
+        sslProtocols.add("TLSv1");
+        sslProtocols.add("TLSv1.1");
+        sslProtocols.add("TLSv1.2");
+        return sslProtocols;
+    }
+
+    @Override
+    public void update() {
+
+        ArrayList<String> sslProtocols = new ArrayList<String>();
+        String[] sslProtocolsEnabled =
+            serverSource.getMultiAttr("zimbraReverseProxySSLProtocols");
+        for (String c:sslProtocolsEnabled)
+        {
+            sslProtocols.add(c);
+        }
+        if (sslProtocols.size() > 0) {
+            mValue = sslProtocols;
+        } else {
+            mValue = mDefault;
+        }
+    }
+
+    @Override
+    public String format(Object o) {
+
+        @SuppressWarnings("unchecked")
+        ArrayList<String> sslProtocols = (ArrayList<String>) o;
+        StringBuilder sslproto = new StringBuilder();
+        for (String c : sslProtocols) {
+            sslproto.append(" ");
+            sslproto.append(c);
+        }
+        return sslproto.toString();
+    }
+}
+
 public class ProxyConfGen
 {
     private static final int DEFAULT_SERVERS_NAME_HASH_MAX_SIZE = 512;
@@ -1664,7 +1764,7 @@ public class ProxyConfGen
         CommandLineParser parser = new GnuParser();
         CommandLine cl = null;
         try {
-            cl = parser.parse(mOptions, args);
+            cl = parser.parse(mOptions, args, false);
         } catch (ParseException pe) {
             usage(pe.getMessage());
             return cl;
@@ -1883,11 +1983,12 @@ public class ProxyConfGen
             String tf = tFile.getAbsolutePath();
             String wf = wFile.getAbsolutePath();
 
-            mLog.info("Expanding template:" + tf + " to file:" + wf);
-
             if (mDryRun) {
+                mLog.info("Would expand template:" + tf + " to file:" + wf);
                 return;
             }
+
+            mLog.info("Expanding template:" + tf + " to file:" + wf);
 
             if (!tFile.exists()) {
                 throw new ProxyConfException("Template file " + tf + " does not exist");
@@ -2264,7 +2365,8 @@ public class ProxyConfGen
         mConfVars.put("mail.userrej", new ProxyConfVar("mail.userrej", "zimbraReverseProxyUserThrottleMsg", "Login rejected for this user", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Rejection message for User throttle"));
         mConfVars.put("mail.upstream.pop3xoip", new ProxyConfVar("mail.upstream.pop3xoip", "zimbraReverseProxySendPop3Xoip", true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Whether NGINX issues the POP3 XOIP command to the upstream server prior to logging in (audit purpose)"));
         mConfVars.put("mail.upstream.imapid", new ProxyConfVar("mail.upstream.imapid", "zimbraReverseProxySendImapId", true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Whether NGINX issues the IMAP ID command to the upstream server prior to logging in (audit purpose)"));
-        mConfVars.put("mail.ssl.preferserverciphers", new ProxyConfVar("mail.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires protocols SSLv3 and TLSv1 server ciphers be preferred over the client's ciphers"));
+        mConfVars.put("mail.ssl.protocols", new MailSSLProtocolsVar());
+        mConfVars.put("mail.ssl.preferserverciphers", new ProxyConfVar("mail.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires TLS protocol server ciphers be preferred over the client's ciphers"));
         mConfVars.put("mail.ssl.ciphers", new ProxyConfVar("mail.ssl.ciphers", "zimbraReverseProxySSLCiphers", "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:"
                 + "ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:"
                 + "DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:ECDHE-RSA-RC4-SHA:ECDHE-ECDSA-RC4-SHA:AES128:AES256:RC4-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!3DES:!MD5:!PSK", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Permitted ciphers for mail proxy"));
@@ -2307,7 +2409,8 @@ public class ProxyConfGen
         mConfVars.put("web.http.maxbody", new ProxyConfVar("web.http.maxbody", "zimbraFileUploadMaxSize", new Long(10485760), ProxyConfValueType.LONG, ProxyConfOverride.SERVER,"Maximum accepted client request body size (indicated by Content-Length) - if content length exceeds this limit, then request fails with HTTP 413"));
         mConfVars.put("web.https.port", new ProxyConfVar("web.https.port", Provisioning.A_zimbraMailSSLProxyPort, new Integer(0), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER,"Web Proxy HTTPS Port"));
         mConfVars.put("web.https.maxbody", new ProxyConfVar("web.https.maxbody", "zimbraFileUploadMaxSize", new Long(10485760), ProxyConfValueType.LONG, ProxyConfOverride.SERVER,"Maximum accepted client request body size (indicated by Content-Length) - if content length exceeds this limit, then request fails with HTTP 413"));
-        mConfVars.put("web.ssl.preferserverciphers", new ProxyConfVar("web.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires protocols SSLv3 and TLSv1 server ciphers be preferred over the client's ciphers"));
+        mConfVars.put("web.ssl.protocols", new WebSSLProtocolsVar());
+        mConfVars.put("web.ssl.preferserverciphers", new ProxyConfVar("web.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires TLS protocol server ciphers be preferred over the client's ciphers"));
         mConfVars.put("web.ssl.ciphers", new ProxyConfVar("web.ssl.ciphers", "zimbraReverseProxySSLCiphers", "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:"
                 + "ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:"
                 + "DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:ECDHE-RSA-RC4-SHA:ECDHE-ECDSA-RC4-SHA:AES128:AES256:RC4-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!3DES:!MD5:!PSK", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Permitted ciphers for web proxy"));
@@ -2549,6 +2652,12 @@ public class ProxyConfGen
             return(exitCode);
         }
 
+        if (cl.getArgs().length > 0) {
+            usage(null);
+            exitCode = 0;
+            return(exitCode);
+        }
+
         if (!isWorkableConf()) {
             mLog.error("Configuration is not valid because no route lookup handlers exist, or because no HTTP/HTTPS upstream servers were found");
             mLog.error("Please ensure that the output of 'zmprov garpu/garpb' returns at least one entry in non-split mode and atleast two if this server is in split-mode (just service or zimbra/zimbraAdmin)");
@@ -2610,13 +2719,14 @@ public class ProxyConfGen
             handleException(se);
             exitCode = 1;
         }
-        if (exitCode == 0) {
-            mLog.info("Proxy configuration files are generated successfully");
-            appendConfGenResultToConf("__SUCCESS__");
-        } else {
-            mLog.info("Proxy configuration files generation is interrupted by errors");
+        if (!mDryRun) {
+            if (exitCode == 0) {
+                mLog.info("Proxy configuration files are generated successfully");
+                appendConfGenResultToConf("__SUCCESS__");
+            } else {
+                mLog.info("Proxy configuration files generation is interrupted by errors");
+            }
         }
-
         return (exitCode);
     }
 

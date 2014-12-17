@@ -1,6 +1,6 @@
 open_source_license.txt
 
-Zimbra Collaboration Suite 8.5.1 GA
+Zimbra Collaboration Suite 8.6.0 GA
 
 
 ===========================================================================
@@ -32,6 +32,7 @@ PART 1. APPLICATION LAYER
 
 SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
 
+   >>> aopalliance-1.0
    >>> altermime-0.3-20100505
    >>> amavis-logwatch-1.51.03pre4
    >>> ant-contrib-1.0b1
@@ -40,7 +41,7 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> bouncycastle-1.46
    >>> bouncycastle-zimbra-20110708
    >>> chunkin-nginx-module-0.23rc2
-   >>> curl-7.37.0
+   >>> curl-7.38.0
    >>> cyrus-sasl-zimbra-2.1.26
    >>> dom4j-1.5.2
    >>> ext.ux.touchcalendar-0.1
@@ -52,12 +53,13 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> ical4j-0.9.16
    >>> icu4j-4.8.1.1
    >>> iscroll-3.5.1
-   >>> j2sdk-1.8.0-internal-build_2014_04_17_12_34-b00
+   >>> j2sdk-1.8.0-internal-build_2014_07_29_16_56-b00
    >>> javamail-1.4.5
    >>> jaxen-1.1.3
    >>> jce_policy-7
    >>> jdk-1.7.0_55
    >>> jdom-1.1
+   >>> jedis-2.5.2
    >>> jquery-1.8.1
    >>> json-1.0
    >>> jython-2.5.2
@@ -111,9 +113,11 @@ SECTION 2: Apache License, V2.0
    >>> apache-commons-dbcp-1.4
    >>> apache-commons-fileupload-1.2.2
    >>> apache-commons-httpclient-3.1
+   >>> apache-commons-httpclient-4.2.1
    >>> apache-commons-io-1.4
    >>> apache-commons-logging-1.1.1
    >>> apache-commons-pool-1.6
+   >>> apache-commons-pool2-2.0
    >>> apache-helix-0.6.1
    >>> apache-httpasyncclient-4.0-beta3
    >>> apache-httpcomponents-core-4.2.2
@@ -140,14 +144,16 @@ SECTION 2: Apache License, V2.0
    >>> org.apache.mina-2.0.4
    >>> org.openid4java-0.9.5
    >>> ridl-4.0.2
-   >>> selenium-2.37.0
+   >>> selenium-2.43.0
    >>> smack-3.2.1
    >>> spamassassin-3.4.0
    >>> spring-framework-3.0.7
    >>> stax2-api-3.1.1
    >>> testng-5.12.1
    >>> unoil-4.0.2
+   >>> woodstox-core-4.2.0
    >>> xerces-j-2.9.1
+   >>> xmlschema-core-2.0.3
    >>> zkclient-0.1
    >>> zookeeper-3.4.5
 
@@ -172,7 +178,7 @@ SECTION 4: Common Development and Distribution License, V1.0
 
 SECTION 5: Common Development and Distribution License, V1.1
 
-   >>> jax-ws-2.2.6
+   >>> jax-ws-2.2.8
    >>> jersey-multipart-1.12
 
 
@@ -237,7 +243,7 @@ SECTION 8: GNU General Public License, V2.0
    >>> javax.ws.rs-api-2.0-m10
    >>> libtool-2.2.6b
    >>> libwww-perl-6.05
-   >>> mariadb-10.0.12
+   >>> mariadb-10.0.15
    >>> mysql-connector-java-5.1.29
    >>> perl-archive-tar-1.96
    >>> perl-archive-zip-1.37
@@ -381,7 +387,7 @@ SECTION 10: GNU Lesser General Public License, V2.1
    >>> perl-mozilla-ca-20130114
    >>> perl-test-nowarnings-1.04
    >>> syslog4j-0.9.46
-   >>> tinymce-4.0.25
+   >>> tinymce-4.1.6
    >>> unbound-ldap-sdk-2.3.5
 
 
@@ -421,6 +427,12 @@ SECTION 15: Mozilla Public License, V2.0
 SECTION 16: Common Public License, V1.0
 
    >>> wsdl4j-1.6.3
+
+
+
+SECTION 17: Eclipse Public License, V1.0
+
+   >>> aspectjweaver-1.7.4
 
 
 
@@ -477,6 +489,13 @@ APPENDIX. Standard License Files
 --------------- SECTION 1:  BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES ----------
 
 BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES are applicable to the following component(s).
+
+
+>>> aopalliance-1.0
+
+The AOP Alliance project is a joint open-source project between several software engineering people who are interested in AOP and Java.
+
+LICENCE: all the source code provided by AOP Alliance is Public Domain. 
 
 
 >>> altermime-0.3-20100505
@@ -860,7 +879,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
->>> curl-7.37.0
+>>> curl-7.38.0
 
 COPYRIGHT AND PERMISSION NOTICE
 
@@ -889,7 +908,7 @@ ADDITIONAL LICENSE INFORMATION:
 
 > BSD
 
-curl-7.37.0.tar.gz\curl-7.37.0.tar\curl-7.37.0\lib\security.c
+curl-7.38.0.tar.gz\curl-7.38.0.tar\curl-7.38.0\lib\security.c
 
 
 Copyright (c) 1998, 1999 Kungliga Tekniska Hgskolan
@@ -930,7 +949,7 @@ SUCH DAMAGE.
 > RSA Data Security
 
 
-curl-7.37.0.tar.gz\curl-7.37.0.tar\curl-7.37.0\lib\md4.c
+curl-7.38.0.tar.gz\curl-7.38.0.tar\curl-7.38.0\lib\md4.c
 
 
 Copyright (C) 1990-2, RSA Data Security, Inc. All rights reserved.
@@ -1610,7 +1629,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 
->>> j2sdk-1.8.0-internal-build_2014_04_17_12_34-b00
+>>> j2sdk-1.8.0-internal-build_2014_07_29_16_56-b00
 
 The GNU General Public License (GPL)
 
@@ -1998,7 +2017,7 @@ OpenJDK 8.
 
 --- begin of LICENSE ---
 
-Copyright (c) 2000-2011 France Télécom
+Copyright (c) 2000-2011 France Telecom
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -2800,7 +2819,7 @@ JRE 8, JDK 8, and OpenJDK 8.
 --- begin of LICENSE ---
 
 Copyright notice
-Copyright © 2011 Ecma International
+Copyright (c) 2011 Ecma International
 Ecma International
 Rue du Rhone 114
 CH-1204 Geneva
@@ -2924,7 +2943,7 @@ Linux and Solaris.
 
 --- begin of LICENSE ---
 
-Copyright © 2001,2003 Keith Packard
+Copyright (c) 2001,2003 Keith Packard
 
 Permission to use, copy, modify, distribute, and sell this software and its
 documentation for any purpose is hereby granted without fee, provided that the
@@ -4164,16 +4183,16 @@ which may be included with JRE 8, JDK 8, and OpenJDK 8.
 Unicode Terms of Use
 
 For the general privacy policy governing access to this site, see the Unicode
-Privacy Policy. For trademark usage, see the Unicode® Consortium Name and
+Privacy Policy. For trademark usage, see the Unicode(r) Consortium Name and
 Trademark Usage Policy.
 
 A. Unicode Copyright.
-   1. Copyright © 1991-2013 Unicode, Inc. All rights reserved.
+   1. Copyright (c) 1991-2013 Unicode, Inc. All rights reserved.
 
    2. Certain documents and files on this website contain a legend indicating
       that "Modification is permitted." Any person is hereby authorized,
       without fee, to modify such documents and files to create derivative
-      works conforming to the Unicode® Standard, subject to Terms and
+      works conforming to the Unicode(r) Standard, subject to Terms and
       Conditions herein.
 
     3. Any person is hereby authorized, without fee, to view, use, reproduce,
@@ -4239,14 +4258,14 @@ D. Waiver of Damages. In no event shall Unicode or its licensors be liable for
 
 E.Trademarks & Logos.
    1. The Unicode Word Mark and the Unicode Logo are trademarks of Unicode,
-      Inc.  “The Unicode Consortium” and “Unicode, Inc.” are trade names of
+      Inc.  "The Unicode Consortium" and "Unicode, Inc." are trade names of
       Unicode, Inc.  Use of the information and materials found on this
-      website indicates your acknowledgement of Unicode, Inc.’s exclusive
+      website indicates your acknowledgement of Unicode, Inc.'s exclusive
       worldwide rights in the Unicode Word Mark, the Unicode Logo, and the
       Unicode trade names.
 
-   2. The Unicode Consortium Name and Trademark Usage Policy (“Trademark
-      Policy”) are incorporated herein by reference and you agree to abide by
+   2. The Unicode Consortium Name and Trademark Usage Policy ("Trademark
+      Policy") are incorporated herein by reference and you agree to abide by
       the provisions of the Trademark Policy, which may be changed from time
       to time in the sole discretion of Unicode, Inc.
 
@@ -4269,12 +4288,12 @@ Miscellaneous.
 
    2. Modification by Unicode.  Unicode shall have the right to modify this
       Agreement at any time by posting it to this site. The user may not
-      assign any part of this Agreement without Unicode’s prior written
+      assign any part of this Agreement without Unicode's prior written
       consent.
 
    3. Taxes. The user agrees to pay any taxes arising from access to this
       website or use of the information herein, except for those based on
-      Unicode’s net income.
+      Unicode's net income.
 
    4. Severability.  If any provision of this Agreement is declared invalid or
       unenforceable, the remaining provisions of this Agreement shall remain
@@ -4303,7 +4322,7 @@ SOFTWARE.
 
 COPYRIGHT AND PERMISSION NOTICE
 
-Copyright © 1991-2012 Unicode, Inc. All rights reserved. Distributed under the
+Copyright (c) 1991-2012 Unicode, Inc. All rights reserved. Distributed under the
 Terms of Use in http://www.unicode.org/copyright.html.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -17247,6 +17266,32 @@ Copyright (C) 2000-2004 Jason Hunter & Brett McLaughlin.
  on the JDOM Project, please see <http://www.jdom.org/>.
 
 
+>>> jedis-2.5.2
+
+Copyright (c) 2010 Jonathan Leibiusky
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
 >>> jquery-1.8.1
 
 Copyright 2013 jQuery Foundation and other contributors
@@ -18256,7 +18301,7 @@ for man/arc4random.3, man/tree.3 and man/getprogname.3.
 
     --
 
-    Copyright © 2001 Christopher G. Demetriou
+    Copyright (c) 2001 Christopher G. Demetriou
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -18290,10 +18335,10 @@ for man/arc4random.3, man/tree.3 and man/getprogname.3.
 The rest of the licenses apply to code and/or man pages.
 
 
-    Copyright © 2004-2006, 2008-2013 Guillem Jover <guillem@hadrons.org>
-    Copyright © 2005 Hector Garcia Alvarez
-    Copyright © 2005 Aurelien Jarno
-    Copyright © 2006 Robert Millan
+    Copyright (c) 2004-2006, 2008-2013 Guillem Jover <guillem@hadrons.org>
+    Copyright (c) 2005 Hector Garcia Alvarez
+    Copyright (c) 2005 Aurelien Jarno
+    Copyright (c) 2006 Robert Millan
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -18319,9 +18364,9 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1980, 1982, 1986, 1989-1994
+    Copyright (c) 1980, 1982, 1986, 1989-1994
 	The Regents of the University of California.  All rights reserved.
-    Copyright © 2001 Mike Barcroft <mike@FreeBSD.org>
+    Copyright (c) 2001 Mike Barcroft <mike@FreeBSD.org>
 
     Some code is derived from software contributed to Berkeley by
     the American National Standards Committee X3, on Information
@@ -18368,9 +18413,9 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1996  Peter Wemm <peter@FreeBSD.org>.
+    Copyright (c) 1996  Peter Wemm <peter@FreeBSD.org>.
     All rights reserved.
-    Copyright © 2002 Networks Associates Technology, Inc.
+    Copyright (c) 2002 Networks Associates Technology, Inc.
     All rights reserved.
 
     Portions of this software were developed for the FreeBSD Project by
@@ -18404,7 +18449,7 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1995 Peter Wemm <peter@FreeBSD.org>
+    Copyright (c) 1995 Peter Wemm <peter@FreeBSD.org>
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -18425,7 +18470,7 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1997-2000, 2002, 2008 The NetBSD Foundation, Inc.
+    Copyright (c) 1997-2000, 2002, 2008 The NetBSD Foundation, Inc.
     All rights reserved.
 
     Some code was contributed to The NetBSD Foundation by Allen Briggs.
@@ -18461,26 +18506,26 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1998, M. Warner Losh <imp@freebsd.org>
+    Copyright (c) 1998, M. Warner Losh <imp@freebsd.org>
     All rights reserved.
 
-    Copyright © 2001 Dima Dorfman.
+    Copyright (c) 2001 Dima Dorfman.
     All rights reserved.
 
-    Copyright © 2002 Thomas Moestl <tmm@FreeBSD.org>
+    Copyright (c) 2002 Thomas Moestl <tmm@FreeBSD.org>
     All rights reserved.
 
-    Copyright © 2005 Pawel Jakub Dawidek <pjd@FreeBSD.org>
+    Copyright (c) 2005 Pawel Jakub Dawidek <pjd@FreeBSD.org>
     All rights reserved.
 
-    Copyright © 2007 Eric Anderson <anderson@FreeBSD.org>
-    Copyright © 2007 Pawel Jakub Dawidek <pjd@FreeBSD.org>
+    Copyright (c) 2007 Eric Anderson <anderson@FreeBSD.org>
+    Copyright (c) 2007 Pawel Jakub Dawidek <pjd@FreeBSD.org>
     All rights reserved.
 
-    Copyright © 2007 Dag-Erling Coïdan Smørgrav
+    Copyright (c) 2007 Dag-Erling Coidan Smorgrav
     All rights reserved.
 
-    Copyright © 2009 Advanced Computing Technologies LLC
+    Copyright (c) 2009 Advanced Computing Technologies LLC
     Written by: John H. Baldwin <jhb@FreeBSD.org>
     All rights reserved.
 
@@ -18507,10 +18552,10 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1997 Christos Zoulas.
+    Copyright (c) 1997 Christos Zoulas.
     All rights reserved.
 
-    Copyright © 2002 Niels Provos <provos@citi.umich.edu>
+    Copyright (c) 2002 Niels Provos <provos@citi.umich.edu>
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -18535,7 +18580,7 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 2007 Dag-Erling Coïdan Smørgrav
+    Copyright (c) 2007 Dag-Erling Coidan Smorgrav
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -18562,10 +18607,10 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1998, 2000 Todd C. Miller <Todd.Miller@courtesan.com>
-    Copyright © 2004 Ted Unangst
+    Copyright (c) 1998, 2000 Todd C. Miller <Todd.Miller@courtesan.com>
+    Copyright (c) 2004 Ted Unangst
 
-    Copyright © 2004 Ted Unangst and Todd Miller
+    Copyright (c) 2004 Ted Unangst and Todd Miller
     All rights reserved.
 
     Permission to use, copy, modify, and distribute this software for any
@@ -18582,7 +18627,7 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 2000-2002, 2004-2005, 2007, 2010
+    Copyright (c) 2000-2002, 2004-2005, 2007, 2010
         Todd C. Miller <Todd.Miller@courtesan.com>
 
     Permission to use, copy, modify, and distribute this software for any
@@ -18603,7 +18648,7 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1996 by Internet Software Consortium.
+    Copyright (c) 1996 by Internet Software Consortium.
 
     Permission to use, copy, modify, and distribute this software for any
     purpose with or without fee is hereby granted, provided that the above
@@ -18620,8 +18665,8 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 1996, David Mazieres <dm@uun.org>
-    Copyright © 2008, Damien Miller <djm@openbsd.org>
+    Copyright (c) 1996, David Mazieres <dm@uun.org>
+    Copyright (c) 2008, Damien Miller <djm@openbsd.org>
 
     Permission to use, copy, modify, and distribute this software for any
     purpose with or without fee is hereby granted, provided that the above
@@ -18655,8 +18700,8 @@ The rest of the licenses apply to code and/or man pages.
 
     --
 
-    Copyright © 2010 William Ahern
-    Copyright © 2012 Guillem Jover <guillem@hadrons.org>
+    Copyright (c) 2010 William Ahern
+    Copyright (c) 2012 Guillem Jover <guillem@hadrons.org>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the
@@ -19065,7 +19110,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 >>> modernizr-2.6.2
 
-Copyright (c) 2009–2013
+Copyright (c) 2009-2013
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -21365,6 +21410,11 @@ This product includes software developed by
 The Apache Software Foundation (http://www.apache.org/).
 
 
+>>> apache-commons-httpclient-4.2.1
+
+License: Apache License 2.0
+
+
 >>> apache-commons-io-1.4
 
 Apache Commons IO
@@ -21389,6 +21439,11 @@ Copyright 2001-2012 The Apache Software Foundation
 
 This product includes software developed by
 The Apache Software Foundation (http://www.apache.org/).
+
+
+>>> apache-commons-pool2-2.0
+
+License: Apache License 2.0
 
 
 >>> apache-helix-0.6.1
@@ -27511,7 +27566,7 @@ License : Apache 2.0
 License : Apache 2.0
 
 
->>> selenium-2.37.0
+>>> selenium-2.43.0
 
 Copyright 2008-2009 Web Driver committers
 Copyright 2008-2009 Google Inc.
@@ -27593,6 +27648,11 @@ LICENSE = Apache License 2.0
 License: Apache 2.0
 
 
+>>> woodstox-core-4.2.0
+
+License: Apache 2.0
+
+
 >>> xerces-j-2.9.1
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27668,6 +27728,11 @@ The name and trademarks of copyright holders may NOT be used in advertising
 or publicity pertaining to this document or its contents without specific,
 written prior permission. Title to copyright in this document will at all
 times remain with copyright holders.
+
+
+>>> xmlschema-core-2.0.3
+
+License: Apache 2.0
 
 
 >>> zkclient-0.1
@@ -28748,12 +28813,12 @@ Copyright 2005 Sun Microsystems, Inc. All rights reserved.
 Common Development and Distribution License, V1.1 is applicable to the following component(s).
 
 
->>> jax-ws-2.2.6
+>>> jax-ws-2.2.8
 
 [PLEASE NOTE:  ZIMBRA, INC. ELECTS TO INCLUDE THIS SOFTWARE IN THIS DISTRIBUTION UNDER THE CDDL 1.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE CDDL 1.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
 
 
- Copyright (c) 1997-2010 Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 1997-2013 Oracle and/or its affiliates. All rights reserved.
 
  The contents of this file are subject to the terms of either the GNU
  General Public License Version 2 only ("GPL") or the Common Development
@@ -31013,7 +31078,7 @@ COPYRIGHT
 This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
 
->>> mariadb-10.0.12
+>>> mariadb-10.0.15
 
 
 This is a release of MariaDB.
@@ -35056,7 +35121,7 @@ F<http://www.fsf.org/licenses/licenses.html>.
 License: LGPL 2.1
 
 
->>> tinymce-4.0.25
+>>> tinymce-4.1.6
 
 Copyright 2009, Moxiecode Systems AB
 Released under LGPL License.
@@ -35255,6 +35320,15 @@ License: MPL v2.0
 --------------- SECTION 16: Common Public License, V1.0 ----------
 
 >>> wsdl4j-1.6.3
+
+
+
+--------------- SECTION 16: Eclipse Public License, V1.0 ----------
+
+>>> aspectjweaver-1.7.4
+
+License: EPL V1.0
+
 
 
 =============== APPENDIX. Standard License Files ============== 
@@ -41310,6 +41384,6 @@ any resulting litigation.
 
 
 
-Last updated 24 Oct 2014
+Last updated 18 Nov 2014
 
-[ZCS851GAVV241014]
+[ZCS860GAVV181114]

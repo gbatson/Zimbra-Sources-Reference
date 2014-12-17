@@ -1,24 +1,4 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
- */
-// Copyright (c) 2000-2011 Quadralay Corporation.  All rights reserved.
+// Copyright (c) 2000-2012 Quadralay Corporation.  All rights reserved.
 //
 
 function  WWHHelp_Object(ParamURL)
@@ -416,25 +396,49 @@ function  WWHHelp_InitStage(ParamStage)
           alert(WWHFrame.WWHHelp.mMessages.mBrowserNotSupported);
         }
 
-        // Include help set parameters in case we encounter a frameset security exception
+        // Test for frameset security exceptions
         //
-        Parameters = "";
-        if (this.mLocationURL.indexOf("?") != -1)
+        try
         {
-          Parts = this.mLocationURL.split("?");
-          Parameters = "?" + Parts[1];
+          var VarFrame, VarFrameLocation;
+
+          if (this.fSingleTopic())
+          {
+            VarFrame = eval(this.fGetFrameReference("WWHControlsLeftFrame"));
+          }
+          else
+          {
+            VarFrame = eval(this.fGetFrameReference("WWHContentFrame"));
+          }
+
+          VarFrameLocation = VarFrame.location.href;
+
+          // Success!
+          //
+          this.fReplaceLocation("WWHControlsLeftFrame", this.mHelpURLPrefix + "wwhelp/wwhimpl/common/html/init0.htm");
         }
-        else if (this.mLocationURL.indexOf("#") != -1)
+        catch (exception)
         {
-          Parts = this.mLocationURL.split("#");
-          Parameters = "#" + Parts.slice(1).join("#");
+          // Encountered a frameset security exception
+          //
+          Parameters = "";
+          if (this.mLocationURL.indexOf("?") != -1)
+          {
+            Parts = this.mLocationURL.split("?");
+            Parameters = "?" + Parts[1];
+          }
+          else if (this.mLocationURL.indexOf("#") != -1)
+          {
+            Parts = this.mLocationURL.split("#");
+            Parameters = "#" + Parts.slice(1).join("#");
+          }
+
+          // Sanitize parameters
+          //
+          Parameters = Parameters.replace(/[\\<>:;"']|%5C|%3C|%3E|%3A|%3B|%22|%27/gi, "");
+
+          setTimeout("window.top.location.replace(\"../../api.htm" + Parameters + "\");", 1);
         }
-
-        // Sanitize parameters
-        //
-        Parameters = Parameters.replace(/[\\<>:;"']|%5C|%3C|%3E|%3A|%3B|%22|%27/gi, "");
-
-        this.fReplaceLocation("WWHControlsLeftFrame", this.mHelpURLPrefix + "wwhelp/wwhimpl/common/html/init0.htm" + Parameters);
         break;
 
       case 1:  // Prep book data
@@ -1199,11 +1203,11 @@ function  WWHHelp_PopupAdjustSize()
     //
     if (VarWidth > VarIFrame.style.width)
     {
-      VarIFrame.style.width = VarWidth;
+      VarIFrame.style.width = VarWidth + 'px';
     }
     if (VarHeight > VarIFrame.style.height)
     {
-      VarIFrame.style.height = VarHeight;
+      VarIFrame.style.height = VarHeight + 'px';
     }
   }
   else
@@ -1244,11 +1248,11 @@ function  WWHHelp_PopupAdjustSize()
     //
     if (VarWidth > VarIFrame.width)
     {
-      VarIFrame.width = VarWidth;
+      VarIFrame.width = VarWidth + 'px';
     }
     if (VarHeight > VarIFrame.height)
     {
-      VarIFrame.height = VarHeight;
+      VarIFrame.height = VarHeight + 'px';
     }
   }
 }
@@ -1563,12 +1567,23 @@ function  WWHHelp_UpdateHash(ParamURL)
       }
       if (WWHFrame.location.hash != VarHash)
       {
-        // Only works well on certain browsers
+        // Use pushState?
         //
-        if ((WWHFrame.WWHBrowser.mBrowser == 2) ||  // Shorthand for IE
-            (WWHFrame.WWHBrowser.mBrowser == 4))    // Shorthand for Netscape 6.0 (Mozilla)
+        if (typeof WWHFrame.history.replaceState === 'function')
         {
-          WWHFrame.location.hash = VarHash;
+          // Use it!
+          //
+          WWHFrame.history.replaceState(WWHFrame.location.hash, WWHFrame.document.title, VarHash);
+        }
+        else
+        {
+          // Only works well on certain browsers
+          //
+          if ((WWHFrame.WWHBrowser.mBrowser == 2) ||  // Shorthand for IE
+              (WWHFrame.WWHBrowser.mBrowser == 4))    // Shorthand for Netscape 6.0 (Mozilla)
+          {
+            WWHFrame.location.hash = VarHash;
+          }
         }
       }
     }

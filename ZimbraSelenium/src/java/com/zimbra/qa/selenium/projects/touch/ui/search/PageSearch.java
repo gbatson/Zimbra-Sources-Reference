@@ -24,7 +24,7 @@ import java.util.*;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.touch.ui.*;
 
 
 /**
@@ -138,8 +138,8 @@ public class PageSearch extends AbsTab {
 		
 
 		// If search is not active, then we must not be logged in
-		if ( !((AppAjaxClient)MyApplication).zPageMain.zIsActive() ) {
-			((AppAjaxClient)MyApplication).zPageMain.zNavigateTo();
+		if ( !((AppTouchClient)MyApplication).zPageMain.zIsActive() ) {
+			((AppTouchClient)MyApplication).zPageMain.zNavigateTo();
 		}
 
 		// Nothing more to do to make search appear, since it is always active if the app is active
@@ -175,7 +175,7 @@ public class PageSearch extends AbsTab {
 		} else if ( (button == Button.B_SEARCHSAVE) || (button == Button.B_SAVE) ) {
 			
 			locator = "css=div[id^='ztb_searchresults__'] td[id$='_saveButton'] td[id$='_title']";
-			page = new DialogSaveSearch(MyApplication, this);
+			page = null;
 			
 		} else if ( (button == Button.B_DELETE) ) {
 			
@@ -524,7 +524,7 @@ public class PageSearch extends AbsTab {
 			this.zRightClick(itemlocator);
 
 			// Return the displayed mail page object
-			page = new ContextMenu(MyApplication);
+			page = null;
 
 			// FALL THROUGH
 
@@ -712,7 +712,7 @@ public class PageSearch extends AbsTab {
 		for (int i = 1; i <= count; i++) {
 
 			// Add the new item to the list
-			MailItem item = ((AppAjaxClient)this.MyApplication).zPageMail.parseMessageRow(listLocator + " li:nth-of-type("+ i +") ");
+			MailItem item = ((AppTouchClient)this.MyApplication).zPageMail.parseMessageRow(listLocator + " li:nth-of-type("+ i +") ");
 			items.add(item);
 			logger.info(item.prettyPrint());
 		}

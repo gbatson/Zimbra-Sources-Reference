@@ -55,6 +55,10 @@ ZmCalColView = function(parent, posStyle, controller, dropTgt, view, numDays, sc
 	this._isRight = isRight;
 
 	ZmCalBaseView.call(this, parent, "calendar_view", posStyle, controller, view, readonly);
+	var element = this.getHtmlElement();
+	// clear the onClick event handler.  Otherwise accessibility code will
+	// generate spurious mouse up/down events
+	this._setEventHdlrs([DwtEvent.ONCLICK], true, element);
 
 	this.setDropTarget(dropTgt);
 	this.setScrollStyle(DwtControl.CLIP);
@@ -252,7 +256,7 @@ function() {
 	}
 
 	this._calendars = this._controller.getCheckedCalendars();
-	this._calendars.sort(ZmCalendar.sortCompare);
+	this._calendars.sort(ZmFolder.sortCompareNonMail);
 	this._folderIdToColIndex = {};
 	this._columns = [];
 	this._numCalendars = this._calendars.length;

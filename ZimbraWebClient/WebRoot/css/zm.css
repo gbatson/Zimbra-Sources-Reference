@@ -50,6 +50,14 @@
 * If you create and display one of those widgets, you'll have to add a class for it.
 */
 
+/*
+* Fix for Accessibility focus
+*/
+
+*:focus {
+	outline:none;
+}
+
 
 /*
 * Top-level (shell) stuff
@@ -1146,14 +1154,13 @@ INPUT[type="text"].search_input-expanded {
 /* IE doesn't seem to support the show/hide.  TODO:investigate why */
 #IFNDEF MSIE_LOWER_THAN_9
 	@transition@:visibility 0s linear .5s, opacity .5s linear 0s;
-	visibility:hidden;
 	opacity:0;
 }
 .ZmMailMsgCapsuleView:hover .footer {
 	@transition@-delay:0s;
-	visibility:visible;
 	opacity:1;
 }
+
 /* always show footer while reply box is open */
 .ZmMailMsgCapsuleView.Reply .footer {
 	visibility:visible;
@@ -1327,6 +1334,11 @@ INPUT[type="text"].search_input-expanded {
 	margin-top:2px; */
 	max-height:98px;
 	overflow:auto;
+}
+
+.ZmSearchResultsToolBar .addrBubbleHolder {
+	max-height: 2em;
+	max-height: 2rem;
 }
 
 .attBubbleHolder {
@@ -3061,6 +3073,10 @@ HTML>BODY .appt-selected .appt_allday_body
 	max-height: 15rem;
 }
 
+.ZmTimeSuggestionPrefDialog {
+    max-width: 600px;
+}
+
 /* Make disabled inputs still readable in scheduler view */
 /* included 2 classes and a tag to make it more specific */
 .DwtInputField-disabled INPUT[type='text'].ZmSchedulerInput {
@@ -4463,31 +4479,7 @@ HTML>BODY .appt-selected .appt_allday_body
 }
 
 /*
- * Temporary styles for the shortcuts tab. These should be
- * replaced with the proper substitutions from skin files.
- */
-
-.ZmShortcutsPage {
-	width:100%;
-}
-
-.BigHead {
-	font-size:18px; 
-	font-weight:bold;
-	padding:3px 10px 5px 7px;
-}
-
-.bottomSeparator {
-	@BottomSeparator@
-}
-
-.removeLink {
-	@Anchor-hover@
-}
-
-/*
- * Styles for showing a list of shortcuts in a prefs page, a popup info panel, a separate window,
- * or to be printed.
+ * Styles for showing a list of shortcuts in a prefs page, a popup info panel, a separate window, or to be printed.
  */
 
 .ShortcutsPrintHeader {
@@ -4498,60 +4490,61 @@ HTML>BODY .appt-selected .appt_allday_body
 }
 
 .ZmShortcutList {
-	padding:10px 10px 10px 20px;
+	padding: 1rem;
+	-moz-columns: 3;
+	-webkit-columns: 3;
+	columns: 3;
 }
 
-.shortcutListType {
-	text-align:center;
-	font-size:14px;
+.ZmShortcutList DL {
+	margin-top: 0;
+}
+
+.shortcutListMap .title {
 	font-weight:bold;
+	padding-bottom:1rem;
 }
 
-.shortcutListType-panel {
-	color:white;
-}
-
-.shortcutListType-print {
-	color:black;
-}
-
-.shortcutListTable {
-	width:100%;
-	margin-bottom:10px;
-}
-
-.shortcutListTable-panel, .shortcutListTable-print {
-	table-layout:fixed;
-}
-
-.shortcutListHeaderTd-prefs {
-	border:1px solid @darken(AppC,20)@;
-}
-
-.shortcutListHeader {
-	font-weight:bold;
-	text-align:center;
-}
-
-.shortcutListHeader-prefs {
-	font-size:12px;
-	padding:3px 10px 5px 7px;
-	background-color:@darken(AppC,20)@;
-}
-
-.shortcutListHeader-panel, .shortcutListHeader-print {
+.shortcutListMap.panel .title, .shortcutListMap.print .title {
 	text-decoration:underline;
 }
 
-.shortcutListHeader-panel {
-	font-size:12px;
+.shortcutListMap.panel .title {
 	color:yellow;
+	text-align:center;
 }
 
-.shortcutListHeader-print {
-	font-size:12px;
+.shortcutListMap.print .title {
 	color:black;
-	padding-bottom:2px;
+}
+
+.shortcutListMap LH {
+	display: block
+}
+
+.shortcutListMap DT {
+	display: inline-block;
+	text-align: right;
+	padding-right: 1em;
+}
+
+.shortcutListMap.panel dt {
+	min-width: 115px;
+}
+
+.shortcutListMap.prefs DT {
+	min-width: 144px;
+	margin-bottom: 4px;
+}
+
+.shortcutListMap DD {
+	display: inline;
+	margin: 0;
+}
+
+.shortcutListMap DD:after {
+	display: block;
+	content: '';
 }
 
 .shortcutKeys {
@@ -4560,7 +4553,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	font-weight:bold;
 }
 
-.shortcutKeys-prefs {
+.shortcutKeys.prefs {
 	@SeparatorBorder@
 	@Text-disabled@
 	padding:6px;
@@ -4570,12 +4563,12 @@ HTML>BODY .appt-selected .appt_allday_body
 	line-height:2.5rem;
 }
 
-.shortcutKeys-panel {
+.shortcutKeys.panel {
 	@Text-disabled@
 	color:white;
 }
 
-.shortcutKeys-print {
+.shortcutKeys.print {
 	font-size:12px;
 	color:black;
 }
@@ -4584,23 +4577,23 @@ HTML>BODY .appt-selected .appt_allday_body
 	width:auto;
 }
 
-.shortcutDescription-prefs {
+.shortcutDescription.prefs {
 	padding:5px;
 	@SeparatorBorder@
 	color:black;
 	background-color:white;
 }
 
-.shortcutDescription-panel, .shortcutDescription-print {
+.shortcutDescription.panel, .shortcutDescription.print {
 	padding-left:5px;
 }
 
-.shortcutDescription-panel {
+.shortcutDescription.panel {
 	color:white;
 	white-space:nowrap;
 }
 
-.shortcutDescription-print {
+.shortcutDescription.print {
 	font-size:12px;
 	color:black;
 }
@@ -4609,7 +4602,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	white-space:nowrap;
 }
 
-.shortcutKeyCombo-prefs {
+.shortcutKeyCombo.prefs {
 	margin-right:5px;
 	margin-left:5px;
 }
@@ -4619,7 +4612,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	padding:2px 4px;
 }
 
-.shortcutKey-prefs {
+.shortcutKey.prefs {
 	background-color:lightGray;
 	border:solid darkGray;
 	border-width:1px 2px 3px 1px;
@@ -4628,35 +4621,17 @@ HTML>BODY .appt-selected .appt_allday_body
 	@Text@
 }
 
-.shortcutKey-panel, .shortcutKey-print {
+.shortcutKey.panel, .shortcutKey.print {
 	padding:1px 2px;
 }
 
-.shortcutKey-panel {
+.shortcutKey.panel {
 	color:yellow;
 	line-height:22px;
 }
 
-.shortcutKey-print {
+.shortcutKey.print {
 	color:black;
-}
-
-/*
- * Styles for showing current aliases on custom shortcuts tab
- */
-.shortcutTable {
-	table-layout:fixed;
-	margin-bottom:10px;
-	border:1px solid @darken(AppC,50)@;
-}
-
-.shortcutTable TH {
-	font-size:11px;
-	text-align:left;
-	font-weight:bold;
-	padding-left:5px;
-	color:@darken(AppC,75)@;
-	border-bottom:1px solid @darken(AppC,50)@;
 }
 
 /*
@@ -4678,11 +4653,37 @@ HTML>BODY .appt-selected .appt_allday_body
 	color:white;
 }
 
-.ShortcutsPanelHeader {
+.ShortcutsPanelHeader .title {
 	font-size:18px;
 	font-weight:bold;
 	text-align:center;
 	color:white;
+}
+
+.ShortcutsPanelHeader .container {
+	float: left;
+	width: 100%;
+}
+
+.ShortcutsPanelHeader .description {
+	clear: left;
+	float: left;
+	width: 80%;
+	padding: 1rem 0;
+	margin: 0 0 0 2%;
+	display: inline;
+}
+
+.ShortcutsPanelHeader .actions {
+	float: right;
+	width: 12%;
+	padding: 1rem 0;
+	margin: 0 2% 0 0;
+	display: inline;
+}
+
+.ShortcutsPanelHeader .link {
+	@ActiveCursor@
 }
 
 .ShortcutsPanelText {
@@ -5629,9 +5630,14 @@ If you feel compelled to have a background color, please do so on a per skin lev
 .ZmEditContactView .rowLabel, .ZmEditContactView .rowType, 
 .ZmContactSplitView .rowLabel, .ZmContactSplitView .rowType,
 .ZmContactSplitView .rowValue, .ZmContactSplitView .rowValue[colspan] {
-	padding:.75em .5em .4em;
-	vertical-align:top;
+    padding:.75em .5em .4em;
+    vertical-align:top;
 }
+.ZmEditContactView .rowLabel, .ZmEditContactView .rowType,
+.ZmContactSplitView .rowLabel, .ZmContactSplitView .rowType {
+    white-space: nowrap;
+}
+
 /* cells with inputs generally need less top padding,
  * but there are variations for checkboxes and radiobuttons
  */

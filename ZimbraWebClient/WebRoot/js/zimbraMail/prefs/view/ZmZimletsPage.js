@@ -483,7 +483,7 @@ ZmPrefZimletListView = function(parent, controller) {
 	});
 
 	this._controller = controller;
-	this.multiSelectEnabled = false; // single selection only
+	this.setMultiSelect(false); // single selection only
 	this._internalId = AjxCore.assignId(this);
 };
 
@@ -513,6 +513,15 @@ function(list) {
         appCtxt.addZimletsLoadedListener(new AjxListener(this, this._handleZimletsLoaded));
     }
 };
+
+/**
+ * Bug:96418 - Overide the _setMouseEventHdlrs of DwtListView to prevent onclick handler from attaching to the list.
+ * DwtControl.__mouseEvent propagates the events if the target element is input,textarea or anchor.
+ * After accessibility changes the onclick event internally triggers mouseup and mousedown events.
+ * The click happening immediately after a mouseup is ignored but due to propagation the click handler invokes itself again and in turn triggers mouseup event.
+ * This executes the _activeStateChange method and reverts the changes done to the active state of the zimlet.
+*/
+ZmPrefZimletListView.prototype._setMouseEventHdlrs = function(){};
 
 ZmPrefZimletListView.prototype._handleZimletsLoaded = function(evt) {
     this._zimletsLoaded = true;

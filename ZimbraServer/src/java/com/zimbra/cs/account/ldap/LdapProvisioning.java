@@ -72,6 +72,7 @@ import com.zimbra.cs.account.AlwaysOnCluster;
 import com.zimbra.cs.account.AttributeClass;
 import com.zimbra.cs.account.AttributeInfo;
 import com.zimbra.cs.account.AttributeManager;
+import com.zimbra.cs.account.CacheAwareProvisioning;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Cos;
@@ -210,7 +211,7 @@ import com.zimbra.soap.type.TargetBy;
  * @since Sep 23, 2004
  * @author schemers
  */
-public class LdapProvisioning extends LdapProv {
+public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning {
 
     private static final Log mLog = LogFactory.getLog(LdapProvisioning.class);
 
@@ -511,6 +512,26 @@ public class LdapProvisioning extends LdapProv {
                     "invalid attr value: " + e.getMessage(), e);
         } catch (ServiceException e) {
             throw ServiceException.FAILURE("unable to modify attrs: "
+                    + e.getMessage(), e);
+        } finally {
+            refreshEntry(entry, zlc);
+            if (initZlc == null) {
+                LdapClient.closeContext(zlc);
+            }
+        }
+    }
+
+    private void setLdapPassword(Entry entry, ZLdapContext initZlc, String newPassword)
+            throws ServiceException {
+        ZLdapContext zlc = initZlc;
+        try {
+            if (zlc == null) {
+                zlc = LdapClient.getContext(LdapServerType.MASTER,
+                        LdapUsage.SET_PASSWORD);
+            }
+            zlc.setPassword(((LdapEntry)entry).getDN(), newPassword);
+        } catch (ServiceException e) {
+            throw ServiceException.FAILURE("unable to set password: "
                     + e.getMessage(), e);
         } finally {
             refreshEntry(entry, zlc);
@@ -1250,8 +1271,15 @@ public class LdapProvisioning extends LdapProv {
             }
 
             entry.setAttr(A_uid, localPart);
-
-            setInitialPassword(cos, entry, password);
+            String entryPassword = entry.getAttrString(Provisioning.A_userPassword);
+            if (entryPassword != null) {
+                //password is a hash i.e. from autoprov; do not set with modify password
+                password = null;
+            } else if (password != null) {
+                //user entered
+                checkPasswordStrength(password, null, cos, entry);
+            }
+            entry.setAttr(Provisioning.A_zimbraPasswordModifiedTime, DateUtil.toGeneralizedTime(new Date()));
 
             String ucPassword = entry.getAttrString(Provisioning.A_zimbraUCPassword);
             if (ucPassword != null) {
@@ -1274,6 +1302,9 @@ public class LdapProvisioning extends LdapProv {
             AttributeManager.getInstance().postModify(acctAttrs, acct, callbackContext);
             removeExternalAddrsFromAllDynamicGroups(acct.getAllAddrsSet(), zlc);
             validate(ProvisioningValidator.CREATE_ACCOUNT_SUCCEEDED, emailAddress, acct, skipCountingLicenseQuota);
+            if (password != null) {
+                setLdapPassword(acct, zlc, password);
+            }
             return acct;
         } catch (LdapEntryAlreadyExistException e) {
             throw AccountServiceException.ACCOUNT_EXISTS(emailAddress, dn, e);
@@ -5303,6 +5334,22 @@ public class LdapProvisioning extends LdapProv {
         }
     }
 
+    private boolean isProtocolEnabled(Account authAccount, AuthContext.Protocol protocol) {
+        if (protocol == null)
+            return true;
+
+        switch (protocol) {
+        case imap:
+            return authAccount.isImapEnabled();
+
+        case pop3:
+            return authAccount.isPop3Enabled();
+
+        default:
+            return true;
+        }
+    }
+
     private void verifyPassword(Account acct, String password, AuthMechanism authMech,
             Map<String, Object> authCtxt)
     throws ServiceException {
@@ -5322,7 +5369,12 @@ public class LdapProvisioning extends LdapProv {
                 verifyPasswordInternal(acct, password, authMech, authCtxt);
                 lockoutPolicy.successfulLogin();
             } catch (AccountServiceException e) {
-                lockoutPolicy.failedLogin();
+                AuthContext.Protocol protocol = (AuthContext.Protocol) authCtxt.get(AuthContext.AC_PROTOCOL);
+                if (!isProtocolEnabled(acct, protocol)) {
+                    ZimbraLog.account.info("%s not enabled for %s", protocol, acct.getName());
+                } else {
+                    lockoutPolicy.failedLogin();
+                }
                 // re-throw original exception
                 throw e;
             }
@@ -5635,20 +5687,6 @@ public class LdapProvisioning extends LdapProv {
             (ch >=123 && ch <= 126);  // { | } ~
     }
 
-    // called by create account
-    private void setInitialPassword(Cos cos, ZMutableEntry entry, String newPassword)
-    throws ServiceException {
-        String userPassword = entry.getAttrString(Provisioning.A_userPassword);
-        if (userPassword == null && (newPassword == null || "".equals(newPassword))) return;
-
-        if (userPassword == null) {
-            checkPasswordStrength(newPassword, null, cos, entry);
-            userPassword = PasswordUtil.SSHA512.generateSSHA512(newPassword, null);
-        }
-        entry.setAttr(Provisioning.A_userPassword, userPassword);
-        entry.setAttr(Provisioning.A_zimbraPasswordModifiedTime, DateUtil.toGeneralizedTime(new Date()));
-    }
-
     void setPassword(Account acct, String newPassword, boolean enforcePolicy, boolean dryRun)
     throws ServiceException {
 
@@ -5690,13 +5728,10 @@ public class LdapProvisioning extends LdapProv {
             return;
         }
 
-        String encodedPassword = PasswordUtil.SSHA512.generateSSHA512(newPassword, null);
-
         // unset it so it doesn't take up space...
         if (mustChange)
             attrs.put(Provisioning.A_zimbraPasswordMustChange, "");
 
-        attrs.put(Provisioning.A_userPassword, encodedPassword);
         attrs.put(Provisioning.A_zimbraPasswordModifiedTime, DateUtil.toGeneralizedTime(new Date()));
 
         // update the validity value to invalidate auto-standing auth tokens
@@ -5707,6 +5742,7 @@ public class LdapProvisioning extends LdapProv {
         ChangePasswordListener.invokePreModify(acct, newPassword, ctxts, attrs);
 
         try{
+            setLdapPassword(acct, null, newPassword);
             // modify the password
             modifyAttrs(acct, attrs);
         } catch(ServiceException se){
@@ -10446,6 +10482,11 @@ public class LdapProvisioning extends LdapProv {
         } finally {
             LdapClient.closeContext(zlc);
         }
+    }
+
+    @Override
+    public boolean isCacheEnabled() {
+        return useCache;
     }
 
 }

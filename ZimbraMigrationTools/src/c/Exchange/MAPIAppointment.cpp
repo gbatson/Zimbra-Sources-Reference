@@ -88,14 +88,14 @@ MAPIAppointment::MAPIAppointment(Zimbra::MAPI::MAPISession &session, Zimbra::MAP
 	m_pResponseRequested = L"0";
 	    
 	HRESULT hr=session.OpenAddressBook(&m_pAddrBook);
-	if(!SUCCEEDED(hr))
+	if(FAILED(hr))
 	{
 		m_pAddrBook=NULL;
 	}
 	hr = SetMAPIAppointmentValues();
 	if(FAILED(hr))
 	{
-		dlogw("MapiAppt::SetMAPIAppointmentValues failed");
+		dlogw("MapiAppointment::SetMAPIAppointmentValues failed");
 	}
 }
 
@@ -231,14 +231,18 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 	}
 	catch(...)
 	{
-		hr=E_FAIL;
-		pInvTz = NULL;
+		hr = E_FAIL;
 	}
 	if (SUCCEEDED(hr))
-    {
+    	{
 		// get the timezone info for this appt
 		pInvTz= new Zimbra::Mail::TimeZone(_pTzString);
 		pInvTz->Initialize(_olkTz, _pTzString);
+	}
+	else
+	{
+        	dlogd("MAPIAppointment::SetMAPIAppointmentValues GetTimezone failed:", hr);
+		pInvTz = NULL;
 	}
 
 	//////////////////////////////>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -293,6 +297,10 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 				dlogd("OOM StartTime: ",apptStart, "      OOM EndTime:", apptEnd);
 				m_bUseOOM = true;
 			}
+		}
+		else
+		{
+        		dlogd("MAPIAppointment::SetMAPIAppointmentValues GetEntryId failed:", hr);
 		}
 	}
 
@@ -610,6 +618,7 @@ void MAPIAppointment::SetExceptions()
     }
     LONG lExceptionCount = recur.GetExceptionCount();
 
+    dlogt("MAPIAppointment::SetExceptions count", lExceptionCount);
     for (LONG i = 0; i < lExceptionCount; i++)
     {
         Zimbra::Mapi::CRecurrenceTime rtDate = recur.GetExceptionOriginalDate(i);
@@ -618,6 +627,7 @@ void MAPIAppointment::SetExceptions()
         Zimbra::Mapi::COutlookRecurrenceException *lpException = recur.GetException(i);
         if (lpException != NULL)    
         {
+            dlogt("MAPIAppointment::SetExceptions NORMAL", i);
             Zimbra::Util::ScopedInterface<IMessage> lpExceptionMessage;
             Zimbra::Util::ScopedInterface<IAttach> lpExceptionAttach;
 
@@ -628,7 +638,7 @@ void MAPIAppointment::SetExceptions()
 
             if (FAILED(hResult))
             {
-                //dlogd(L"could not open appointment message for this occurrence"));
+                dlogd("MAPIAppointment::SetExceptions OpenApptNR failed:", hResult);
                 return;
             }
 
@@ -647,6 +657,7 @@ void MAPIAppointment::SetExceptions()
         }
         else
         {
+            dlogt("MAPIAppointment::SetExceptions CANCEL", i);
             MAPIAppointment* pEx = new MAPIAppointment(*m_session, *m_mapiStore, *m_mapiMessage, CANCEL_EXCEPTION);
             FillInCancelException(pEx, ftOrigDate);
             m_vExceptions.push_back(pEx);
@@ -1119,6 +1130,7 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
     hr = m_pMessage->GetRecipientTable(fMapiUnicode, pRecipTable.getptr());
     if (FAILED(hr))
     {
+        dlogd("MAPIAppointment::SetOrganizerAndAttendees GetRecipientTable failed:", hr);
         return hr;
     }
 

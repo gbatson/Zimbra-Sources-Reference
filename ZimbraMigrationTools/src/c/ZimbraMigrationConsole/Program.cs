@@ -7,6 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System;
+using System.Runtime.ExceptionServices;
+using System.Security;
+using System.Diagnostics;
 
 namespace ZimbraMigrationConsole
 {
@@ -201,24 +204,87 @@ class Program
         return true;       
     }
     /********************************************************************************************/
-    static void Main(string[] args)
+    [HandleProcessCorruptedStateExceptions] 
+    [SecurityCritical]
+    static int Main(string[] args)
     {
-
-
         if (!mutex.WaitOne(TimeSpan.Zero, true)) 
         { 
             Console.WriteLine("Another instance already running"); 
             Thread.Sleep(5000); 
-            return ; 
+            return 2;
         }              
         //save a reference so it does not get GC'd     
         consoleHandler = new HandlerRoutine(ConsoleCtrlCheck);     
         //set our handler here that will trap exit          
         SetConsoleCtrlHandler(consoleHandler, true);
+
+        int rc = 255;
+        try
+        {
+            // Run main loop and convert result to exit code
+            rc = Run(args) ? 0 : 1;
+        }
+        catch (Exception e)
+        {
+            // An unexpected Exception happened.  Try to handle it without 
+            // crashing.
+
+            // First, try to write the Exception with stack trace to the log
+            // file
+            try
+            {
+                Log.err("Unhandled Exception: " + e.ToString());
+            }
+            catch (Exception ex)
+            {
+                // If an Exception happens here we ran into an issue with the
+                // log file.  Try to tell the user via the output about it.
+                // The actual exception will be written below.
+                try
+                {
+                    Console.WriteLine("Unhandled Logging Exception: " + ex.ToString());
+                }
+                catch {
+                    // If both ways of talking to the user failed something
+                    // is really wrong so just crash.
+                    throw e;
+                }
+            }
+            // Now try to write the Exception to the output as well.
+            try
+            {
+                Console.WriteLine("Unhandled Exception: " + e.ToString());
+            }
+            catch (Exception ex)
+            {
+                // Ok, this didn't work (yes, that did happen, cf. bug 87652),
+                // try to tell about the exception via the log file (which did
+                // work else we'd thrown an Exception above)
+                try
+                {
+                    Log.err("Unhandled Output Exception: " + ex.ToString());
+                }
+                catch {
+                    // This can't really happen.  If it happens anyway, we most
+                    // probably logged the exception already so lets just exit.
+                }
+            }
+            if (Debugger.IsAttached)
+            {
+                throw e;
+            }
+            // Return a "something went seriously wrong" exit code
+            return 255;
+        }
+        // Return a proper exit code.
+        return rc;
+    }
+
+    private static bool Run(string[] args) {
         Migration Test = new Migration();
         CssLib.CSMigrationWrapper TestObj;
         
-        //Account userAccts = new Account();
         while (!keepRunning)
         {
 
@@ -291,7 +357,7 @@ class Program
                     keepRunning = true;
                     Console.ReadKey(true);
 
-                    return;
+                    return true;
 
                 }
                 
@@ -315,7 +381,7 @@ class Program
                             Console.ReadKey(true);
 
 
-                    return;
+                    return false;
                 }
                 string ConfigXmlFile = CommandLineArgs.I.argAsString("ConfigxmlFile");
                 string UserMapFile = CommandLineArgs.I.argAsString("Users");
@@ -339,6 +405,7 @@ class Program
                 bool Sent= false;bool DeletedItems = false;bool Junk = false;bool Tasks=false;bool Rules=false;bool OOO = false;
                  bool UseSSL = false;
                  int MaxErrors =0; int MaxThreads =0;
+                 string COS = "";
               
                 string Loglevel = CommandLineArgs.I.argAsString("LogLevel");
                 bool Datefilter = false;
@@ -389,7 +456,7 @@ class Program
                                 if (!Silent)
                                 { Console.ReadKey(true); }
 
-                                return;
+                                return false;
 
 
                             }
@@ -403,7 +470,7 @@ class Program
                             if (!Silent)
                             { Console.ReadKey(true); }
                             
-                            return;
+                            return false;
 
                         }
 
@@ -426,7 +493,7 @@ class Program
                                 if (!Silent)
                                 { Console.ReadKey(true); }
                                 
-                                return;
+                                return false;
                             }
                        
 
@@ -455,7 +522,7 @@ class Program
                                     //if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == true))
                                     if (!Silent)
                                     { Console.ReadKey(true); }
-                                    return;
+                                    return false;
                                 }
 
                             }
@@ -497,7 +564,7 @@ class Program
                                 System.Console.WriteLine("Press any key to return \n");
                                 Console.ReadKey(true);
                             }
-                            return;
+                            return false;
                         }
                         if (ZCSHost == "")
                         {
@@ -509,7 +576,7 @@ class Program
                                 System.Console.WriteLine("Press any key to return \n");
                                 Console.ReadKey(true);
                             }
-                            return;
+                            return false;
                         }
                     }
                    
@@ -587,6 +654,14 @@ class Program
                     }
                     else
                         UseSSL = myXmlConfig.ConfigObj.ZimbraServer.UseSSL;
+
+                    if (CommandLineArgs.I.arg("COS") != null)
+                    {
+
+                        COS = CommandLineArgs.I.argAsString("COS");
+                    }
+                    else
+                        COS = myXmlConfig.ConfigObj.UserProvision.COS;
 
                     if (CommandLineArgs.I.arg("Mail") != null)
                     {
@@ -676,7 +751,7 @@ class Program
                             //if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == true))
                             if (!Silent)
                             { Console.ReadKey(true); }
-                            return;
+                            return false;
                         }
                     }
                     else
@@ -686,7 +761,7 @@ class Program
                         //if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == true))
                         if (!Silent)
                         { Console.ReadKey(true); }
-                        return;
+                        return false;
                     }
 
                 }
@@ -856,7 +931,7 @@ class Program
                    // if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == true))
                     if (!Silent)
                     Console.ReadKey(true);
-                    return;
+                    return false;
 
                 }
 
@@ -891,7 +966,7 @@ class Program
                             System.Console.WriteLine("......... \n");
                             System.Console.WriteLine();
 
-                            return;
+                            return false;
                         }
                     }
                 }
@@ -915,7 +990,7 @@ class Program
                             System.Console.WriteLine("......... \n");
                             System.Console.WriteLine();
 
-                            return;
+                            return false;
                         }
                     }
 
@@ -971,7 +1046,7 @@ class Program
                             System.Console.WriteLine("......... \n");
                             System.Console.WriteLine();
                             
-                            // return;
+                            // return false;
                         }
 
                         // userAcct.InitializeMigration(myXmlConfig.ConfigObj.zimbraServer.ZimbraHostname, myXmlConfig.ConfigObj.zimbraServer.Port, myXmlConfig.ConfigObj.zimbraServer.ZimbraAdminID,user.UserName);
@@ -1059,6 +1134,19 @@ class Program
                             }
 
                             bool mustChangePW = user.ChangePWD;
+
+                            String CosID = COS;
+                            int retsval = zimbraAPI.GetAllCos();
+
+                            foreach (CosInfo cosinfo in ZimbraValues.GetZimbraValues().COSes)
+                            {
+                                if (cosinfo.CosName == COS)
+                                {
+                                    CosID = cosinfo.CosID;
+                                }
+                            }
+                            
+                            
                             if (zimbraAPI.CreateAccount(acctName,
                                 "",
                                 "",
@@ -1066,7 +1154,7 @@ class Program
                                 "",
                                 Defaultpwd,
                                 mustChangePW,
-                                myXmlConfig.ConfigObj.UserProvision.COS) == 0)
+                                CosID) == 0)
                             {
                                 System.Console.WriteLine();
                                /* ProgressUtil.RenderConsoleProgress(30, '\u2591',
@@ -1136,7 +1224,7 @@ class Program
                         System.Console.WriteLine("......... \n");
                         System.Console.WriteLine();
                         keepRunning = true;
-                        return;
+                        return false;
                     }
 
                     keepRunning = true;
@@ -1206,7 +1294,7 @@ class Program
                                         Log.err("Error in Migration UnInitialization");
                                         System.Console.WriteLine();
                                         keepRunning = true;
-                                        return;
+                                        return false;
                                     }
                                 }
                                 //if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == true))
@@ -1215,7 +1303,7 @@ class Program
                                 
 
                                 keepRunning = true;
-                                return;
+                                return false;
                             }
 
                         
@@ -1270,7 +1358,7 @@ class Program
                                 System.Console.WriteLine("......... \n");
                                 System.Console.WriteLine();
                                 keepRunning = true;
-                                return;
+                                return false;
                             }
                         }
 
@@ -1293,14 +1381,10 @@ class Program
                 System.Console.WriteLine();
                 Log.err("Make sure the correct arguments (2) are passed . type Help for more information\n");
                // if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == true))
-                if ((CommandLineArgs.I.arg("Silent") != null) && (CommandLineArgs.I.argAsBool("Silent") == false))
-                { Console.ReadKey(true); }
-                else
-                    if ((CommandLineArgs.I.arg("Silent") == null))
-                        Console.ReadKey(true);
 
-                
-                return;
+
+                Thread.Sleep(30000);
+                return false;
 
             }
         }
@@ -1327,7 +1411,7 @@ class Program
 
        
 
-        return;
+        return true;
       }
 }
 }

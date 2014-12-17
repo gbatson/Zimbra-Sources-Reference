@@ -35,6 +35,9 @@
         <DataTemplate DataType="{x:Type ViewModel:UsersViewModel}">
             <View:UsersView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type ViewModel:PublicfoldersViewModel}">
+            <View:PublicfoldersView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type ViewModel:ScheduleViewModel}">
             <View:ScheduleView />
         </DataTemplate>

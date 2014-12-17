@@ -106,6 +106,8 @@ function() {
 		this._onZWCOffline();
 	}
 	else {
+		// Always replay offline request on post startup event so that the offline related changes are applied.
+		this._replayOfflineRequest();
 		this._initStaticResources();
 	}
 	ZmOffline.updateFolderCount();
@@ -421,17 +423,17 @@ function(startTime, endTime, callback, getMessages, previousMessageIds, apptIds,
         // update will be a delete then rewrite).
         if (apptIds) {
             var search;
-            var offlineDeleteTrashedAppts = this._offlineDeleteAppts.bind(this);
+            var offlineUpdateAppts = this._offlineUpdateAppts.bind(this, apptContainers);
             for (var apptId in apptIds) {
                 search = [apptId];
                 // If its a recurring appt, several ZmAppts may share the same id.  Find them and delete them all
-                ZmOfflineDB.doIndexSearch(search, ZmApp.CALENDAR, null, offlineDeleteTrashedAppts,
+                ZmOfflineDB.doIndexSearch(search, ZmApp.CALENDAR, null, offlineUpdateAppts,
                     this.calendarDeleteErrorCallback.bind(this), "id");
             }
-        }
-
-        // Store the new/modified entries.  This will execute after the deletion transactions above complete
-        ZmOfflineDB.setItem(apptContainers, ZmApp.CALENDAR, null, this.calendarDownloadErrorCallback.bind(this));
+        }  else {
+			// Store the new/modified entries.
+			ZmOfflineDB.setItem(apptContainers, ZmApp.CALENDAR, null, this.calendarDownloadErrorCallback.bind(this));
+		}
 
         // Now make a server read to get the detailed appt invites, for edit view and tooltips
         if (getMessages) {
@@ -572,9 +574,12 @@ function(downloadCalendar, callback, result) {
 			if (folderInfo.m) {
 				var msgIds = folderInfo.m[0].ids;
 				if (msgIds) {
+					// Check for a shared-mailbox folder.  If so, the msgIds must be specified as mountpoint:msgId
+					var idParts = folderInfo.id.split(":");
+					var prefix = (idParts.length > 1) ? idParts[0] + ":" : "";
 					msgIds.split(",").forEach(function(id) {
 						var params = {
-							m : {id:id, html:1, needExp:1},
+							m : {id: prefix + id, html:1, needExp:1},
 							_jsns : "urn:zimbraMail"
 						};
 						msgParamsArray.push(params);
@@ -736,13 +741,21 @@ function(syncResponse) {
 	var contactIdsArray = [];
 	if (msgs) {
 		var offlineFolderIds = Object.keys(ZmOffline.folders);
+		var nonOfflineMsgIds = [];
 		msgs.forEach(function(msg) {
 			//Get messages only if it belongs to offline folder
 			if (msg.l && offlineFolderIds.indexOf(msg.l) !== -1) {
 				var params = {m:{id:msg.id, html:1, needExp:1}, _jsns:"urn:zimbraMail"};
 				msgParamsArray.push(params);
+			} else {
+				nonOfflineMsgIds.push(msg.id);
 			}
 		});
+		if (nonOfflineMsgIds.length > 0) {
+			// Fix for Bug 95758.  Try and delete the messages from the mail store, in case some were stored offline.
+			// This happens when a message is moved from a folder that stores offline messages to one that does not.
+			ZmOfflineDB.deleteItem(nonOfflineMsgIds, ZmApp.MAIL);
+		}
 	}
 	if (contacts) {
 		contacts.forEach(function(contact) {
@@ -895,17 +908,24 @@ function(items, type){
     // Search for items whose endTime is from 0 to newStartTime
     var search = [0, newStartTime];
     var errorCallback = this._expiredErrorCallback.bind(this);
-    var offlineSearchExpiredAppts = this._offlineDeleteAppts.bind(this);
+    var offlineSearchExpiredAppts = this._offlineUpdateAppts.bind(this, null);
     ZmOfflineDB.doIndexSearch(search, ZmApp.CALENDAR, null, offlineSearchExpiredAppts, errorCallback, "endDate");
 };
 
-ZmOffline.prototype._offlineDeleteAppts =
-function(apptContainers) {
+ZmOffline.prototype._offlineUpdateAppts =
+function(apptContainersToAdd, apptContainersToDelete) {
     var appt;
-    for (var i = 0; i < apptContainers.length; i++) {
-        appt = apptContainers[i].appt;
-        ZmOfflineDB.deleteItem(this._createApptPrimaryKey(appt), ZmApp.CALENDAR, this.calendarDeleteErrorCallback.bind(this));
-    }
+	if (apptContainersToDelete) {
+		for (var i = 0; i < apptContainersToDelete.length; i++) {
+			appt = apptContainersToDelete[i].appt;
+			ZmOfflineDB.deleteItem(this._createApptPrimaryKey(appt), ZmApp.CALENDAR, this.calendarDeleteErrorCallback.bind(this));
+		}
+	}
+
+	// Store the new/modified entries.
+	if (apptContainersToAdd) {
+		ZmOfflineDB.setItem(apptContainersToAdd, ZmApp.CALENDAR, null, this.calendarDownloadErrorCallback.bind(this));
+	}
 }
 
 ZmOffline.prototype._expiredErrorCallback =

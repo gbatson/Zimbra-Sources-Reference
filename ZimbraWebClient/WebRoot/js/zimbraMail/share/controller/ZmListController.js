@@ -339,6 +339,21 @@ function() {
 };
 
 /**
+ * Sets up tab groups (focus ring).
+ *
+ * @private
+ */
+ZmListController.prototype._initializeTabGroup =
+function(view) {
+	if (this._tabGroups[view]) { return; }
+
+	ZmBaseController.prototype._initializeTabGroup.apply(this, arguments);
+
+	this._tabGroups[view].addMember(this._navToolBar[view]);
+	this._tabGroups[view].addMember(this._view[view]);
+};
+
+/**
  * @private
  */
 ZmListController.prototype._addMenuListeners =

@@ -146,7 +146,6 @@ ZmMailListController.ACTION_CODE_WHICH[ZmKeyMap.PREV_UNREAD]	= DwtKeyMap.SELECT_
 
 ZmMailListController.viewToTab = {};
 
-ZmMailListController.FOLDERS_TO_OMIT = [ZmFolder.ID_TRASH, ZmFolder.ID_SPAM];
 
 // Public methods
 
@@ -199,8 +198,8 @@ function(view, force) {
 };
 
 // override if reading pane is supported
-ZmMailListController.prototype._setupReadingPaneMenuItems = function() {};
-ZmMailListController.prototype._setupConvOrderMenuItems = function() {};
+ZmMailListController.prototype._setupReadingPaneMenu = function() {};
+ZmMailListController.prototype._setupConvOrderMenu = function() {};
 
 /**
  * Checks if the reading pane is "on".
@@ -269,7 +268,7 @@ function(actionCode, ev) {
 
 		case ZmKeyMap.FORWARD:
 			if (!isDrafts && !isExternalAccount) {
-				this._doAction({action:ZmOperation.FORWARD, foldersToOmit:this.getFoldersToOmit()});
+				this._doAction({action:ZmOperation.FORWARD, foldersToOmit:ZmMailApp.getFoldersToOmit()});
 			}
 			break;
 
@@ -303,7 +302,7 @@ function(actionCode, ev) {
 		case ZmKeyMap.REPLY:
 		case ZmKeyMap.REPLY_ALL:
 			if (!isDrafts && !isExternalAccount && (num == 1) && !isSyncFailures && !isFeed) {
-				this._doAction({action:ZmMailListController.ACTION_CODE_TO_OP[actionCode], foldersToOmit:this.getFoldersToOmit()});
+				this._doAction({action:ZmMailListController.ACTION_CODE_TO_OP[actionCode], foldersToOmit:ZmMailApp.getFoldersToOmit()});
 			}
 			break;
 
@@ -360,8 +359,8 @@ function(actionCode, ev) {
 		case ZmKeyMap.READING_PANE_RIGHT:
 		case ZmKeyMap.READING_PANE_OFF:
 			var menuId = ZmMailListController.ACTION_CODE_TO_MENU_ID[actionCode];
-			this._updateViewMenu(menuId);
 			this.switchView(menuId, true);
+			this._updateViewMenu(menuId, this._readingPaneViewMenu);
 			break;
 
 		case ZmKeyMap.SHOW_FRAGMENT:
@@ -436,26 +435,6 @@ function(map) {
 	return (map == "list");
 };
 
-// returns lookup hash of folders (starting with Trash/Junk) whose messages aren't included when
-// viewing or replying a conv; if we're in one of those, we still show its messages
-ZmMailListController.prototype.getFoldersToOmit =
-function(folders) {
-
-	var a = folders || ZmMailListController.FOLDERS_TO_OMIT,
-		omit = [],
-		curSearch = this._currentSearch,
-		curFolderId = curSearch && curSearch.folderId;
-
-	var isUserInitiatedSearch = curSearch && curSearch.userInitiated;
-
-	for (var i = 0; i < a.length; i++) {
-		if (!isUserInitiatedSearch && a[i] != curFolderId) {
-			omit.push(a[i]);
-		}
-	}
-	return AjxUtil.arrayAsHash(omit);
-};
-
 /**
  * Sends the read receipt.
  * 
@@ -503,16 +482,18 @@ function(msg, dlg) {
 	msg.list.flagItems({items:[msg], op:"update", value:flags, callback:callback});
 };
 
-ZmMailListController.prototype._updateViewMenu =
-function(id) {
+ZmMailListController.prototype._updateViewMenu = function(id, menu) {
+
 	var viewBtn = this.getCurrentToolbar().getButton(ZmOperation.VIEW_MENU);
-	var menu = viewBtn && viewBtn.getMenu();
+	menu = menu || (viewBtn && viewBtn.getMenu());
 	if (menu) {
 		var mi = menu.getItemById(ZmOperation.MENUITEM_ID, id);
 		if (mi) {
 			mi.setChecked(true, true);
 		}
 	}
+
+	this._colHeaderMenuItem.setVisible(this._mailListView.isMultiColumn());
 };
 
 // Private and protected methods
@@ -1051,18 +1032,18 @@ function(ev) {
 		action = ZmOperation.REPLY;
 	}
 
-	this._doAction({ev:ev, action:action, foldersToOmit:this.getFoldersToOmit()});
+	this._doAction({ev:ev, action:action, foldersToOmit:ZmMailApp.getFoldersToOmit()});
 };
 
 ZmMailListController.prototype._forwardListener =
 function(ev) {
 	var action = ev.item.getData(ZmOperation.KEY_ID);
-	this._doAction({ev:ev, action:action, foldersToOmit:this.getFoldersToOmit()});
+	this._doAction({ev:ev, action:action, foldersToOmit:ZmMailApp.getFoldersToOmit()});
 };
 
 ZmMailListController.prototype._forwardConvListener = function(ev) {
 	var action = ev.item.getData(ZmOperation.KEY_ID);
-	this._doAction({ev:ev, action:ZmOperation.FORWARD_CONV, foldersToOmit:this.getFoldersToOmit()});
+	this._doAction({ev:ev, action:ZmOperation.FORWARD_CONV, foldersToOmit:ZmMailApp.getFoldersToOmit()});
 };
 
 // This method may be called with a null ev parameter
@@ -1521,14 +1502,10 @@ function(view) {
 ZmMailListController.prototype._setupViewMenu =
 function(view) {
 
-	var viewType = appCtxt.getViewTypeFromId(view);
-	this._updateViewMenu(viewType);
-	this._updateViewMenu(this._getReadingPanePref());
-	this._updateViewMenu(appCtxt.get(ZmSetting.CONVERSATION_ORDER));
-
 	// always reset the view menu button icon to reflect the current view
 	var btn = this._toolbar[view].getButton(ZmOperation.VIEW_MENU);
 	if (btn) {
+		var viewType = appCtxt.getViewTypeFromId(view);
 		btn.setImage(ZmMailListController.GROUP_BY_ICON[viewType]);
 	}
 };
@@ -1538,18 +1515,54 @@ function(view, btn) {
 
 	var menu = this._viewMenu = new ZmPopupMenu(btn, null, null, this);
 	btn.setMenu(menu);
-    var isExternalAccount = appCtxt.isExternalAccount();
-	if (appCtxt.get(ZmSetting.CONVERSATIONS_ENABLED)) {
+    var isExternalAccount = appCtxt.isExternalAccount(),
+	    convsEnabled = appCtxt.get(ZmSetting.CONVERSATIONS_ENABLED);
+
+	if (convsEnabled) {
 		this._setupGroupByMenuItems(view, menu);
 	}
-	this._setupReadingPaneMenuItems(view, menu);
-	if (!isExternalAccount && appCtxt.get(ZmSetting.CONVERSATIONS_ENABLED)) {
-		this._setupConvOrderMenuItems(view, menu);
+	if (menu.getItemCount() > 0) {
+		new DwtMenuItem({
+			parent: menu,
+			style:  DwtMenuItem.SEPARATOR_STYLE
+		});
 	}
+	this._readingPaneViewMenu = this._setupReadingPaneMenu(view, menu);
+	if (!isExternalAccount && convsEnabled) {
+		this._convOrderViewMenu = this._setupConvOrderMenu(view, menu);
+	}
+	this._sortViewMenu = this._setupSortViewMenu(view, menu);
+	this._colHeaderViewMenu = this._setupColHeaderViewMenu(view, menu);
+	this._groupByViewMenu = this._mailListView._getGroupByActionMenu(menu, true, true);
 
 	return menu;
 };
 
+ZmMailListController.prototype._setupSortViewMenu = function(view, menu) {
+
+	var	sortMenuItem = menu.createMenuItem(Dwt.getNextId("SORT_"), {
+			text:           ZmMsg.sortBy,
+			style:          DwtMenuItem.NO_STYLE
+		}),
+		sortMenu = this._mailListView._setupSortMenu(sortMenuItem, false);
+
+	sortMenuItem.setMenu(sortMenu);
+
+	return sortMenu;
+};
+
+ZmMailListController.prototype._setupColHeaderViewMenu = function(view, menu) {
+
+	var	colHeaderMenuItem = this._colHeaderMenuItem = menu.createMenuItem(Dwt.getNextId("COL_HEADER_"), {
+			text:           ZmMsg.display,
+			style:          DwtMenuItem.NO_STYLE
+		}),
+		colHeaderMenu = ZmListView.prototype._getActionMenuForColHeader.call(this._mailListView, true, colHeaderMenuItem, "view");
+
+	colHeaderMenuItem.setMenu(colHeaderMenu);
+
+	return colHeaderMenu;
+};
 
 // If we're in the Trash or Junk folder, change the "Delete" button tooltip
 ZmMailListController.prototype._setupDeleteButton =

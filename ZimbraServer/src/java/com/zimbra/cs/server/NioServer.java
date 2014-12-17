@@ -187,6 +187,10 @@ public abstract class NioServer implements Server {
     public ZimbraSslFilter newSSLFilter() {
         SSLContext sslCtxt = getSSLContext();
         ZimbraSslFilter sslFilter = new ZimbraSslFilter(sslCtxt);
+        String[] sslProtocols = config.getMailboxdSslProtocols();
+        if (sslProtocols != null && sslProtocols.length > 0) {
+            sslFilter.setEnabledProtocols(sslProtocols);
+        }
         String[] enabledCiphers = getSSLEnabledCiphers(sslCtxt, config);
         if (enabledCiphers.length > 0)
             sslFilter.setEnabledCipherSuites(enabledCiphers);

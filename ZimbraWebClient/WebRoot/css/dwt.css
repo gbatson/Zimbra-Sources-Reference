@@ -879,7 +879,6 @@ UL.DwtListView-Rows {
 	float:left;
 	width:12px;
 	height:11px;
-	margin-left:1px;
 	margin-right:1px;
 	border:1px solid black;
 	border-top:none;
@@ -934,9 +933,16 @@ UL.DwtListView-Rows {
 /* Container of the calendar titlebar (arrows and month label, not DOW labels) */
 .DwtCalendarTitlebar {
 	@MiniCalHeaderBg@
-#IFNDEF MSIE_LOWER_THAN_9
+#IFDEF MSIE_LOWER_THAN_9
+	height:18px;
+#ELSE
 	height:2rem;
 #ENDIF
+}
+
+.DwtCalendarTitlebar > TABLE {
+	border-collapse:separate;
+	width:100%;
 }
 
 /* Arrow buttons in the calendar titlebar in various states */
@@ -961,6 +967,7 @@ UL.DwtListView-Rows {
 	@FullWidth@
 	@MiniCalHeaderText@
 	@ActiveCursor@
+	text-align:center;
 }
 
 /* Label for the days of the week in calendar titlebar */
@@ -988,16 +995,19 @@ UL.DwtListView-Rows {
 .DwtCalendarDay {
 	@MiniCalButton@
 	@MiniCalButton-normal@
+	@MiniCalDay@
 }
 
 .DwtCalendarDay-hover {
 	@MiniCalButton@
 	@MiniCalButton-hover@
+	@MiniCalDay@
 }
 
 .DwtCalendarDay-active {
 	@MiniCalButton@
 	@MiniCalButton-active@
+	@MiniCalDay@
 }
 
 .DwtCalendarDay-selected {

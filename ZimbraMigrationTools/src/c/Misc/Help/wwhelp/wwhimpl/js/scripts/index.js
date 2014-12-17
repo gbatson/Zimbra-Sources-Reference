@@ -1,24 +1,4 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
- */
-// Copyright (c) 2000-2011 Quadralay Corporation.  All rights reserved.
+// Copyright (c) 2000-2012 Quadralay Corporation.  All rights reserved.
 //
 
 function  WWHIndex_Object()
@@ -186,14 +166,14 @@ function  WWHIndex_ProcessSeeAlsoEntries()
 
     // Access group entry
     //
-    VarSeeAlsoGroupEntry = this.mTopEntry.mChildren[VarEntry.mSeeAlsoGroupKey + "~"];
+    VarSeeAlsoGroupEntry = this.mTopEntry.mChildren[VarEntry.mSeeAlsoGroupKey];
     if ((typeof(VarSeeAlsoGroupEntry) != "undefined") &&
         (VarSeeAlsoGroupEntry != null) &&
         (VarSeeAlsoGroupEntry.mChildren != null))
     {
       // Access see also entry
       //
-      VarSeeAlsoEntry = VarSeeAlsoGroupEntry.mChildren[VarEntry.mSeeAlsoKey + "~"];
+      VarSeeAlsoEntry = VarSeeAlsoGroupEntry.mChildren[VarEntry.mSeeAlsoKey];
       if ((typeof(VarSeeAlsoEntry) != "undefined") &&
           (VarSeeAlsoEntry != null))
       {
@@ -1410,12 +1390,12 @@ function  WWHIndexEntry_AddEntry(ParamText,
   // Access entry, creating it if it doesn't exist
   //
   BookIndex = WWHFrame.WWHIndex.mInitIndex;
-  ChildEntry = this.mChildren[VarKey + "~"];
+  ChildEntry = this.mChildren[VarKey];
   if (typeof(ChildEntry) == "undefined")
   {
     ChildEntry = new WWHIndexEntry_Object(bVarGroupHeading, BookIndex, ParamText,
                                           Links, VarSeeAlsoKey, VarSeeAlsoGroupKey);
-    this.mChildren[VarKey + "~"] = ChildEntry;
+    this.mChildren[VarKey] = ChildEntry;
 
     // Add entry to see also collection if it is a see also entry
     //

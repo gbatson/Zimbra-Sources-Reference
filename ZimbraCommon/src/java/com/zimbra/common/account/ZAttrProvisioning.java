@@ -754,6 +754,78 @@ public class ZAttrProvisioning {
         public boolean isDns() { return this == dns;}
     }
 
+    public static enum MtaLmtpTlsCiphers {
+        export("export"),
+        high("high"),
+        low("low"),
+        medium("medium"),
+        null_("null");
+        private String mValue;
+        private MtaLmtpTlsCiphers(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static MtaLmtpTlsCiphers fromString(String s) throws ServiceException {
+            for (MtaLmtpTlsCiphers value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isExport() { return this == export;}
+        public boolean isHigh() { return this == high;}
+        public boolean isLow() { return this == low;}
+        public boolean isMedium() { return this == medium;}
+        public boolean isNull_() { return this == null_;}
+    }
+
+    public static enum MtaLmtpTlsMandatoryCiphers {
+        export("export"),
+        high("high"),
+        low("low"),
+        medium("medium"),
+        null_("null");
+        private String mValue;
+        private MtaLmtpTlsMandatoryCiphers(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static MtaLmtpTlsMandatoryCiphers fromString(String s) throws ServiceException {
+            for (MtaLmtpTlsMandatoryCiphers value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isExport() { return this == export;}
+        public boolean isHigh() { return this == high;}
+        public boolean isLow() { return this == low;}
+        public boolean isMedium() { return this == medium;}
+        public boolean isNull_() { return this == null_;}
+    }
+
+    public static enum MtaLmtpTlsSecurityLevel {
+        fingerprint("fingerprint"),
+        dane("dane"),
+        may("may"),
+        dane_only("dane-only"),
+        encrypt("encrypt"),
+        verify("verify"),
+        secure("secure"),
+        none("none");
+        private String mValue;
+        private MtaLmtpTlsSecurityLevel(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static MtaLmtpTlsSecurityLevel fromString(String s) throws ServiceException {
+            for (MtaLmtpTlsSecurityLevel value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isFingerprint() { return this == fingerprint;}
+        public boolean isDane() { return this == dane;}
+        public boolean isMay() { return this == may;}
+        public boolean isDane_only() { return this == dane_only;}
+        public boolean isEncrypt() { return this == encrypt;}
+        public boolean isVerify() { return this == verify;}
+        public boolean isSecure() { return this == secure;}
+        public boolean isNone() { return this == none;}
+    }
+
     public static enum MtaMilterDefaultAction {
         reject("reject"),
         accept("accept"),
@@ -1352,6 +1424,26 @@ public class ZAttrProvisioning {
         public boolean isDedupeAll() { return this == dedupeAll;}
     }
 
+    public static enum PrefDelegatedSendSaveTarget {
+        sender("sender"),
+        both("both"),
+        owner("owner"),
+        none("none");
+        private String mValue;
+        private PrefDelegatedSendSaveTarget(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static PrefDelegatedSendSaveTarget fromString(String s) throws ServiceException {
+            for (PrefDelegatedSendSaveTarget value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isSender() { return this == sender;}
+        public boolean isBoth() { return this == both;}
+        public boolean isOwner() { return this == owner;}
+        public boolean isNone() { return this == none;}
+    }
+
     public static enum PrefExternalSendersType {
         ALLNOTINAB("ALLNOTINAB"),
         ALL("ALL"),
@@ -1867,6 +1959,26 @@ public class ZAttrProvisioning {
     /**
      */
     @ZAttr(id=-1)
+    public static final String A_amavisAddrExtensionBadHeader = "amavisAddrExtensionBadHeader";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisAddrExtensionBanned = "amavisAddrExtensionBanned";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisAddrExtensionSpam = "amavisAddrExtensionSpam";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisAddrExtensionVirus = "amavisAddrExtensionVirus";
+
+    /**
+     */
+    @ZAttr(id=-1)
     public static final String A_amavisArchiveQuarantineTo = "amavisArchiveQuarantineTo";
 
     /**
@@ -1932,6 +2044,21 @@ public class ZAttrProvisioning {
     /**
      */
     @ZAttr(id=-1)
+    public static final String A_amavisCleanQuarantineTo = "amavisCleanQuarantineTo";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisDisclaimerOptions = "amavisDisclaimerOptions";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisForwardMethod = "amavisForwardMethod";
+
+    /**
+     */
+    @ZAttr(id=-1)
     public static final String A_amavisLocal = "amavisLocal";
 
     /**
@@ -1947,7 +2074,22 @@ public class ZAttrProvisioning {
     /**
      */
     @ZAttr(id=-1)
+    public static final String A_amavisSaUserConf = "amavisSaUserConf";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisSaUserName = "amavisSaUserName";
+
+    /**
+     */
+    @ZAttr(id=-1)
     public static final String A_amavisSpamAdmin = "amavisSpamAdmin";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisSpamDsnCutoffLevel = "amavisSpamDsnCutoffLevel";
 
     /**
      */
@@ -1967,7 +2109,27 @@ public class ZAttrProvisioning {
     /**
      */
     @ZAttr(id=-1)
+    public static final String A_amavisSpamQuarantineCutoffLevel = "amavisSpamQuarantineCutoffLevel";
+
+    /**
+     */
+    @ZAttr(id=-1)
     public static final String A_amavisSpamQuarantineTo = "amavisSpamQuarantineTo";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisSpamSubjectTag = "amavisSpamSubjectTag";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisSpamSubjectTag2 = "amavisSpamSubjectTag2";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisSpamSubjectTag3 = "amavisSpamSubjectTag3";
 
     /**
      */
@@ -1977,7 +2139,22 @@ public class ZAttrProvisioning {
     /**
      */
     @ZAttr(id=-1)
+    public static final String A_amavisSpamTag3Level = "amavisSpamTag3Level";
+
+    /**
+     */
+    @ZAttr(id=-1)
     public static final String A_amavisSpamTagLevel = "amavisSpamTagLevel";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisUncheckedLover = "amavisUncheckedLover";
+
+    /**
+     */
+    @ZAttr(id=-1)
+    public static final String A_amavisUncheckedQuarantineTo = "amavisUncheckedQuarantineTo";
 
     /**
      */
@@ -3231,6 +3408,19 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=651)
     public static final String A_zimbraCalendarCalDavAlternateCalendarHomeSet = "zimbraCalendarCalDavAlternateCalendarHomeSet";
+
+    /**
+     * Enable support for the the &quot;calendar-auto-schedule&quot; feature
+     * of CalDAV - see RFC6638. If FALSE, the &quot;calendar-schedule&quot;
+     * feature of CalDAV is advertised instead - see
+     * draft-desruisseaux-caldav-sched-03. Note that the value of
+     * &quot;zimbraCalendarCalDavDisableScheduling&quot; takes precedence
+     * over this attribute.
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1655)
+    public static final String A_zimbraCalendarCalDavCalendarAutoScheduleEnabled = "zimbraCalendarCalDavCalendarAutoScheduleEnabled";
 
     /**
      * Whether to allow password sent to non-secured port from CalDAV
@@ -4826,6 +5016,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1314)
     public static final String A_zimbraDumpsterUserVisibleAge = "zimbraDumpsterUserVisibleAge";
+
+    /**
+     * EmptyFolderOpTimeout is the time in seconds for which empty folder
+     * operation will wait for the current empty folder operation to complete
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1652)
+    public static final String A_zimbraEmptyFolderOpTimeout = "zimbraEmptyFolderOpTimeout";
 
     /**
      * URL for posting error report popped up in WEB client
@@ -7107,6 +7306,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraLmtpExposeVersionOnBanner = "zimbraLmtpExposeVersionOnBanner";
 
     /**
+     * Lmtp Server will reject the client transactions which do not issue
+     * LHLO
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1675)
+    public static final String A_zimbraLmtpLHLORequired = "zimbraLmtpLHLORequired";
+
+    /**
      * number of handler threads, should match MTA concurrency setting for
      * this server
      */
@@ -7247,6 +7455,16 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=799)
     public static final String A_zimbraMailBlacklistMaxNumEntries = "zimbraMailBlacklistMaxNumEntries";
+
+    /**
+     * List of SSL/TLS protocols (as documented by SunJSSE Provider Protocols
+     * and used in setEnabledProtocols) to be enabled in Jetty for HTTPS,
+     * IMAPS, POP3S, and STARTTLS (including LMTP)
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1657)
+    public static final String A_zimbraMailboxdSSLProtocols = "zimbraMailboxdSSLProtocols";
 
     /**
      * serverId:mboxId of mailbox before being moved
@@ -8796,8 +9014,11 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMtaAuthEnabled = "zimbraMtaAuthEnabled";
 
     /**
-     * Host running SOAP service for use by MTA auth. Setting this sets
-     * zimbraMtaAuthURL via attr callback mechanism.
+     * Deprecated since: 8.6. Formally deprecated in 8.6 but has been unused
+     * since at least 7.0. MTA now uses all servers which have
+     * zimbraMtaAuthTarget set to TRUE. Orig desc: Host running SOAP service
+     * for use by MTA auth. Setting this sets zimbraMtaAuthURL via attr
+     * callback mechanism.
      */
     @ZAttr(id=309)
     public static final String A_zimbraMtaAuthHost = "zimbraMtaAuthHost";
@@ -8809,8 +9030,11 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMtaAuthTarget = "zimbraMtaAuthTarget";
 
     /**
-     * URL at which this MTA (via zimbra saslauthd) should authenticate. Set
-     * by setting zimbraMtaAuthHost.
+     * Deprecated since: 8.6. Formally deprecated in 8.6 but has been unused
+     * since at least 7.0. MTA now uses all servers which have
+     * zimbraMtaAuthTarget set to TRUE. Orig desc: URL at which this MTA (via
+     * zimbra saslauthd) should authenticate. Set by setting
+     * zimbraMtaAuthHost.
      */
     @ZAttr(id=310)
     public static final String A_zimbraMtaAuthURL = "zimbraMtaAuthURL";
@@ -8979,6 +9203,71 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1507)
     public static final String A_zimbraMtaLmtpHostLookup = "zimbraMtaLmtpHostLookup";
+
+    /**
+     * Value for postconf lmtp_tls_CAfile
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1663)
+    public static final String A_zimbraMtaLmtpTlsCAfile = "zimbraMtaLmtpTlsCAfile";
+
+    /**
+     * Value for postconf lmtp_tls_CApath
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1664)
+    public static final String A_zimbraMtaLmtpTlsCApath = "zimbraMtaLmtpTlsCApath";
+
+    /**
+     * Value for postconf lmtp_tls_ciphers
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1661)
+    public static final String A_zimbraMtaLmtpTlsCiphers = "zimbraMtaLmtpTlsCiphers";
+
+    /**
+     * Value for postconf lmtp_tls_exclude_ciphers
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1659)
+    public static final String A_zimbraMtaLmtpTlsExcludeCiphers = "zimbraMtaLmtpTlsExcludeCiphers";
+
+    /**
+     * Value for postconf lmtp_tls_loglevel. Defaults to 0. Valid range is
+     * 0-4
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1665)
+    public static final String A_zimbraMtaLmtpTlsLoglevel = "zimbraMtaLmtpTlsLoglevel";
+
+    /**
+     * Value for postconf lmtp_tls_mandatory_ciphers
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1662)
+    public static final String A_zimbraMtaLmtpTlsMandatoryCiphers = "zimbraMtaLmtpTlsMandatoryCiphers";
+
+    /**
+     * Value for postconf lmtp_tls_protocols
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1658)
+    public static final String A_zimbraMtaLmtpTlsProtocols = "zimbraMtaLmtpTlsProtocols";
+
+    /**
+     * Value for postconf lmtp_tls_security_level
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1660)
+    public static final String A_zimbraMtaLmtpTlsSecurityLevel = "zimbraMtaLmtpTlsSecurityLevel";
 
     /**
      * Value for postconf mailq_path
@@ -9498,6 +9787,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1514)
     public static final String A_zimbraMtaSmtpTlsMandatoryCiphers = "zimbraMtaSmtpTlsMandatoryCiphers";
+
+    /**
+     * Value for postconf smtp_tls_protocols
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1670)
+    public static final String A_zimbraMtaSmtpTlsProtocols = "zimbraMtaSmtpTlsProtocols";
 
     /**
      * Value for postconf smtp_tls_security_level
@@ -10659,6 +10956,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraPrefDefaultSignatureId = "zimbraPrefDefaultSignatureId";
 
     /**
+     * Which mailbox to save messages sent via sendAs/sendOnBehalfOf
+     * delegation to.
+     *
+     * @since ZCS 8.6.0,9.0.0
+     */
+    @ZAttr(id=1651)
+    public static final String A_zimbraPrefDelegatedSendSaveTarget = "zimbraPrefDelegatedSendSaveTarget";
+
+    /**
      * whether meeting invite emails are moved to Trash folder upon
      * accept/decline
      */
@@ -11691,6 +11997,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraPrefUseRfc2231 = "zimbraPrefUseRfc2231";
 
     /**
+     * Whether to allow the send message Control-Enter shortcut in the web
+     * client UI
+     *
+     * @since ZCS 8.6.0,9.0.0
+     */
+    @ZAttr(id=1650)
+    public static final String A_zimbraPrefUseSendMsgShortcut = "zimbraPrefUseSendMsgShortcut";
+
+    /**
      * whether list of well known time zones is displayed in calendar UI
      */
     @ZAttr(id=236)
@@ -12551,6 +12866,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1626)
     public static final String A_zimbraReverseProxySSLECDHCurve = "zimbraReverseProxySSLECDHCurve";
+
+    /**
+     * SSL protocols enabled for the proxy
+     *
+     * @since ZCS 8.6.0
+     */
+    @ZAttr(id=1653)
+    public static final String A_zimbraReverseProxySSLProtocols = "zimbraReverseProxySSLProtocols";
 
     /**
      * If set as TRUE, proxy will use SSL to connect to the upstream mail

@@ -233,7 +233,7 @@ function(params) {
 	params.inNewWindow = !appCtxt.isWebClientOffline() && !this.isHidden && (params.inNewWindow || this._app._inNewWindow(params.ev));
 	this._msgSent = false;
 	if (params.inNewWindow) {
-        var msgId = params.msg ? params.msg.nId : (this._msg ? this._msg.nId : Dwt.getNextId());
+        var msgId = (params.msg && params.msg.nId) || Dwt.getNextId();
 		var newWinObj = ac.getNewWindow(false, ZmComposeController.NEW_WINDOW_WIDTH, ZmComposeController.NEW_WINDOW_HEIGHT, ZmId.VIEW_COMPOSE + "_" + msgId.replace(/\s|\-/g, '_'));
 
 		// this is how child window knows what to do once loading:
@@ -312,7 +312,6 @@ function() {
 		accountName:	this._accountName,
 		backupForm:		backupForm,
 		sendUID:		sendUID,
-		msgIds:			this._msgIds,
 		forAttIds:		this._forAttIds,
 		sessionId:		this.getSessionId(),
         readReceipt:	requestReadReceipt,
@@ -366,8 +365,6 @@ function(view, force) {
 	this._dontSavePreHide = false;
 
 	if (this._autoSaveTimer) {
-		this._autoSaveTimer.kill();
-
 		//the following is a bit suspicous to me. I assume maybe this method might be called with force == true
 		//in a way that is not after the popShield was activated? That would be the only explanation to have this.
 		//I wonder if that's the case that leaves orphan drafts
@@ -376,6 +373,9 @@ function(view, force) {
 			//this is a refactoring/fix of code initially from bug 72106 (since it's confusing I mention this bug to keep this knowledge)
 			this._autoSaveCallback(true);
 		}
+		//Important - killing the timer AFTER saving the draft, otherwise the code in ZmComposeController.prototype._sendMsg sees the timer is killed and exits without saving.
+		this._autoSaveTimer.kill();
+
 	}
 	return force ? true : this.popShield();
 };
@@ -876,13 +876,7 @@ function() {
 	var rootTg = appCtxt.getRootTabGroup();
 	tg.newParent(rootTg);
 	tg.addMember(this._toolbar);
-	for (var i = 0; i < ZmMailMsg.COMPOSE_ADDRS.length; i++) {
-		tg.addMember(this._composeView.getRecipientField(ZmMailMsg.COMPOSE_ADDRS[i]));
-	}
-	tg.addMember(this._composeView._subjectField);
-	var mode = this._composeView.getComposeMode();
-	var member = (mode === Dwt.TEXT) ? this._composeView._bodyField : this._composeView.getHtmlEditor();
-	tg.addMember(member);
+	tg.addMember(this._composeView.getTabGroupMember());
 };
 
 ZmComposeController.prototype.getKeyMapName =
@@ -907,7 +901,7 @@ function(actionCode) {
 			break;
 
 		case ZmKeyMap.SEND: // Send message
-			if (this._uploadingProgress) {
+			if (!appCtxt.get(ZmSetting.USE_SEND_MSG_SHORTCUT) || this._uploadingProgress) {
 				break;
 			}
 			this._send();
@@ -1120,14 +1114,16 @@ function(params) {
 		}
 		cv.reEnableDesignMode();
 
-		if (msg && (action == ZmOperation.DRAFT)) {
+		this._draftType = ZmComposeController.DRAFT_TYPE_NONE;
+		if (this._msgIds) {
+			this.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO);
+		}
+		else if (msg && (action == ZmOperation.DRAFT)) {
 			this._draftType = ZmComposeController.DRAFT_TYPE_MANUAL;
 			if (msg.autoSendTime) {
 				this.saveDraft(ZmComposeController.DRAFT_TYPE_MANUAL, null, null, msg.setAutoSendTime.bind(msg));
 				this._showMsgDialog(ZmComposeController.MSG_DIALOG_1, ZmMsg.messageAutoSaveAborted);
 			}
-		} else {
-			this._draftType = ZmComposeController.DRAFT_TYPE_NONE;
 		}
 	}
 
@@ -1149,7 +1145,54 @@ ZmComposeController.prototype._getIdentity =
 function(msg) {
 	var account = (appCtxt.multiAccounts && appCtxt.getActiveAccount().isMain)
 		? appCtxt.accountList.defaultAccount : null;
-	return (msg && msg.identity) ? msg.identity : appCtxt.getIdentityCollection(account).selectIdentity(msg);
+	var identityCollection = appCtxt.getIdentityCollection(account);
+	if (!msg) {
+		var curSearch = appCtxt.getApp(ZmApp.MAIL).currentSearch;
+		var folderId = curSearch && curSearch.folderId;
+		if (folderId) {
+			return identityCollection.selectIdentityFromFolder(folderId);
+		}
+	} else {
+		msg = this._getInboundMsg(msg);
+	}
+	return (msg && msg.identity) ? msg.identity : identityCollection.selectIdentity(msg);
+};
+
+/**
+ * find the first message after msg (or msg itself) in the conv, that's inbound (not outbound). This is since inbound ones are
+ * relevant to the rules to select identify (such as folder rules, outbound could be in "sent" for example, or "to" address rules)
+ *
+ * Also, just return the message if it does not have an associated folder - this occurs when a blank message is created in
+ * Briefcase, for the 'Send as Attachment' command.
+ * @param msg
+ * @returns {ZmMailMsg}
+ */
+ZmComposeController.prototype._getInboundMsg =
+function(msg) {
+	var folder = appCtxt.getById(msg.folderId);
+	if (!folder || !folder.isOutbound()) {
+		return msg;
+	}
+	var conv = appCtxt.getById(msg.cid);
+	if (!conv || !conv.msgs) {
+		return msg;
+	}
+	//first find the message in the conv.
+	var msgs = conv.msgs.getArray();
+	for (var i = 0; i < msgs.length; i++) {
+		if (msgs[i].id === msg.id) {
+			break;
+		}
+	}
+	//now find the first msg after it that's not outbound
+	for (i = i + 1; i < msgs.length; i++) {
+		var nextMsg = msgs[i];
+		folder = appCtxt.getById(nextMsg.folderId);
+		if (!folder.isOutbound()) {
+			return nextMsg;
+		}
+	}
+	return msg;
 };
 
 ZmComposeController.prototype._initializeToolBar =
@@ -1254,7 +1297,7 @@ function() {
 ZmComposeController.prototype._getSignatureButton =
 function() {
 	var menu = this._getOptionsMenu();
-	return menu && menu.getItemById(ZmPopupMenu.MENU_ITEM_ID_KEY, ZmOperation.ADD_SIGNATURE);
+	return menu && menu.getItemById(ZmOperation.MENUITEM_ID, ZmOperation.ADD_SIGNATURE);
 };
 
 // only show signature submenu if the account has at least one signature
@@ -1758,7 +1801,7 @@ function(ev) {
 		this._composeView._recipients._toggleBccField();
 		appCtxt.set(ZmSetting.SHOW_BCC, !appCtxt.get(ZmSetting.SHOW_BCC));
 	}
-	else if (ZmComposeController.INC_MAP[op] || op === ZmOperation.USE_PREFIX) {
+	else if (ZmComposeController.INC_MAP[op] || op === ZmOperation.USE_PREFIX || op === ZmOperation.INCLUDE_HEADERS) {
 		// user is changing include options
 		if (this._setInclude(op)) {
 			this._switchInclude(op);
@@ -1856,6 +1899,9 @@ function(op) {
 		op:				op
 	};
 	this._composeView.resetBody(params);
+	if (op === ZmOperation.INC_ATTACHMENT) {
+		this.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO);
+	}
 };
 
 ZmComposeController.prototype._detachListener =

@@ -1,23 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
- */
 function  WWHBookData_Files(P)
 {
 P.fA("Starting the Migration","welcome.html");
@@ -27,7 +7,11 @@ P.fA("Destination Server Configuration","destination_server.html");
 P.fA("Destination Server Configuration","destination_user.html");
 P.fA("Selecting Options to Migrate","options_server.html");
 P.fA("Selecting Options to Migrate","options_user.html");
-P.fA("Selecting Users to Migrate","users.html");
+P.fA("Selecting Users to Migrate","MigrationHelp_860.Selecting_Users_to_Migrate.html");
+P.fA("Use Load CSV","MigrationHelp_860.Use_Load_CSV.html");
+P.fA("Use Object Picker","MigrationHelp_860.Use_Object_Picker.html");
+P.fA("Use LDAP Browser","MigrationHelp_860.Use_LDAP_Browser.html");
+P.fA("Add Users Manually","MigrationHelp_860.Add_Users_Manually.html");
 P.fA("Scheduling the Migration","migrate.html");
 P.fA("Viewing Migration Results","results.html");
 }

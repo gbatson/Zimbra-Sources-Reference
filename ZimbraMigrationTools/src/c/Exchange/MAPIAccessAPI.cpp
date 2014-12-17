@@ -1083,7 +1083,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             msgdata->IsDraft = msg.IsDraft();
             msgdata->IsFromMe = (msg.IsFromMe() == TRUE);
             msgdata->IsUnread = (msg.IsUnread() == TRUE);
-            msgdata->IsForwared = (msg.Forwarded() == TRUE);
+            msgdata->IsForwarded = (msg.Forwarded() == TRUE);
             msgdata->RepliedTo = msg.RepliedTo() == TRUE;
             msgdata->HasAttachments = msg.HasAttach();
             msgdata->IsUnsent = msg.IsUnsent() == TRUE;

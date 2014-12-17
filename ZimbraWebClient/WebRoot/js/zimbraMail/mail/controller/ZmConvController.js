@@ -94,6 +94,7 @@ function(conv, callback, result) {
 
 	var searchResult = result.getResponse();
 	var list = searchResult.getResults(ZmItem.MSG);
+	this._currentSearch = searchResult.search;
 	if (list && list.isZmList) {
 		this.setList(list);
 		this._activeSearch = searchResult;
@@ -324,19 +325,24 @@ ZmConvController.prototype.handleKeyAction =
 function(actionCode) {
 	DBG.println(AjxDebug.DBG3, "ZmConvController.handleKeyAction");
 
+	var navToolbar = this._navToolBar[this._currentViewId],
+		button;
+
 	switch (actionCode) {
 		case ZmKeyMap.CANCEL:
 			this._backListener();
 			break;
 
 		case ZmKeyMap.NEXT_CONV:
-			if (this._navToolBar[this._currentViewId].getButton(ZmOperation.PAGE_FORWARD).getEnabled()) {
+			button = navToolbar && navToolbar.getButton(ZmOperation.PAGE_FORWARD);
+			if (!button || button.getEnabled()) {
 				this._goToConv(true);
 			}
 			break;
 
 		case ZmKeyMap.PREV_CONV:
-			if (this._navToolBar[this._currentViewId].getButton(ZmOperation.PAGE_BACK).getEnabled()) {
+			button = navToolbar && navToolbar.getButton(ZmOperation.PAGE_BACK);
+			if (!button || button.getEnabled()) {
 				this._goToConv(false);
 			}
 			break;
@@ -439,7 +445,7 @@ function() {
  * have to do this since otherwise we get the one from ZmDoublePaneController and that's not good.
  * @private
  */
-ZmConvController.prototype._setupReadingPaneMenuItems = function() {
+ZmConvController.prototype._setupReadingPaneMenu = function() {
 };
 
 /**

@@ -24,8 +24,6 @@ import com.zimbra.qa.selenium.framework.items.AttachmentItem;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
-import com.zimbra.qa.selenium.projects.touch.ui.calendar.FormApptNew;
-import com.zimbra.qa.selenium.projects.touch.ui.mail.FormMailNew.Locators;
 
 /**
  * The <code>DisplayMail<code> object defines a read-only view of a message
@@ -42,6 +40,7 @@ import com.zimbra.qa.selenium.projects.touch.ui.mail.FormMailNew.Locators;
  * @author zimbra
  * @see http://wiki.zimbra.com/wiki/Testing:_Selenium:_ZimbraSelenium_Overview#Mail_Page
  */
+
 public class DisplayMail extends AbsDisplay {
 
 	/**
@@ -49,11 +48,8 @@ public class DisplayMail extends AbsDisplay {
 	 */
 	public static class Locators {
 				
-		
 		public static final String MessageViewPreviewAtBottomCSS		= "css=div[id='zv__TV-main__MSG']";
 		public static final String MessageViewPreviewAtRightCSS			= "css=div[id='zv__TV-main__MSG']";
-		// 4/26/2012, the message ID is now used in the locator
-		// public static final String MessageViewOpenMessageCSS			= "css=div[id='zv__MSG-1__MSG']";
 		public static final String MessageViewOpenMessageCSS			= "css=div[id^='zv__MSG-'][id$='__MSG']";
 		
 		public static final String ConversationViewPreviewAtBottomCSS	= "css=div[id='zv__CLV-main__CV']";
@@ -65,27 +61,9 @@ public class DisplayMail extends AbsDisplay {
 		// Accept, Decline & Tentative button, menus and dropdown locators
 		public static final String CalendarDropdown = "css=td[id$='_calendarSelectToolbarCell'] td[id$='_select_container']";
 		
-		public static final String AcceptButton = "css=td[id$='__Inv__REPLY_ACCEPT_title']";
-		public static final String AcceptDropdown = "css=td[id$='__Inv__REPLY_ACCEPT_dropdown']>div";
-		public static final String AcceptNotifyOrganizerMenu = "id=REPLY_ACCEPT_NOTIFY_title";
-		public static final String AcceptEditReplyMenu = "id=INVITE_REPLY_ACCEPT_title";
-		public static final String AcceptDontNotifyOrganizerMenu = "id=REPLY_ACCEPT_IGNORE_title";
-
-		public static final String TentativeButton = "css=td[id$='__Inv__REPLY_TENTATIVE_title']";
-		public static final String TentativeDropdown = "css=td[id$='__Inv__REPLY_TENTATIVE_dropdown']>div";
-		public static final String TentativeNotifyOrganizerMenu = "id=REPLY_TENTATIVE_NOTIFY_title";
-		public static final String TentativeEditReplyMenu = "id=INVITE_REPLY_TENTATIVE_title";
-		public static final String TentativeDontNotifyOrganizerMenu = "id=REPLY_TENTATIVE_IGNORE_title";
-		
-		public static final String DeclineButton = "css=td[id$='__Inv__REPLY_DECLINE_title']";
-		public static final String DeclineDropdown = "css=td[id$='__Inv__REPLY_DECLINE_dropdown']>div";
-		public static final String DeclineNotifyOrganizerMenu = "id=REPLY_DECLINE_NOTIFY_title";
-		public static final String DeclineEditReplyMenu = "id=INVITE_REPLY_DECLINE_title";
-		public static final String DeclineDontNotifyOrganizerMenu = "id=REPLY_DECLINE_IGNORE_title";
-		
-		public static final String AcceptProposeNewTimeButton = "css=td[id$='Cou__ACCEPT_PROPOSAL_title']";
-		public static final String DeclineProposeNewTimeButton = "css=td[id$='Cou__DECLINE_PROPOSAL_title']";
-		public static final String ProposeNewTimeButton = "css=td[id$='__Inv__PROPOSE_NEW_TIME_title']";
+		public static final String AcceptButton			= "css=span[class='zcs-invite-button zcs-invite-accept']:contains('Accept')";
+		public static final String DeclineButton		= "css=span[class='zcs-invite-button zcs-invite-decline']:contains('Decline')";
+		public static final String TentativeButton		= "css=span[class='zcs-invite-button zcs-invite-tentative']:contains('Tentative')";
 		
 		public static final String zSubjectField = "css=div[id^=zv__COMPOSE] input[id$=_subject_control]";
 		public static final String zReplyButton ="css=div[id$='__REPLY']";
@@ -188,45 +166,9 @@ public class DisplayMail extends AbsDisplay {
 			page = null;
 			doPostfixCheck = true;
 		
-		} else if ( button == Button.O_ACCEPT_NOTIFY_ORGANIZER ) {
-			
-			locator = Locators.AcceptNotifyOrganizerMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_ACCEPT_EDIT_REPLY ) {
-			
-			locator = Locators.AcceptEditReplyMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_ACCEPT_DONT_NOTIFY_ORGANIZER ) {
-			
-			locator = Locators.AcceptDontNotifyOrganizerMenu;
-			page = null;
-			doPostfixCheck = true;
-			
 		} else if ( button == Button.B_TENTATIVE ) {
 			
 			locator = Locators.TentativeButton;
-			page = null;
-			doPostfixCheck = true;
-		
-		} else if ( button == Button.O_TENTATIVE_NOTIFY_ORGANIZER ) {
-			
-			locator = Locators.TentativeNotifyOrganizerMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_TENTATIVE_EDIT_REPLY ) {
-			
-			locator = Locators.TentativeEditReplyMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_TENTATIVE_DONT_NOTIFY_ORGANIZER ) {
-			
-			locator = Locators.TentativeDontNotifyOrganizerMenu;
 			page = null;
 			doPostfixCheck = true;
 			
@@ -234,42 +176,6 @@ public class DisplayMail extends AbsDisplay {
 			
 			locator = Locators.DeclineButton;
 			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_DECLINE_NOTIFY_ORGANIZER ) {
-			
-			locator = Locators.DeclineNotifyOrganizerMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_DECLINE_EDIT_REPLY ) {
-			
-			locator = Locators.DeclineEditReplyMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.O_DECLINE_DONT_NOTIFY_ORGANIZER ) {
-			
-			locator = Locators.DeclineDontNotifyOrganizerMenu;
-			page = null;
-			doPostfixCheck = true;
-			
-		} else if ( button == Button.B_PROPOSE_NEW_TIME ) {
-			
-			locator = Locators.ProposeNewTimeButton;
-			page = new FormApptNew(this.MyApplication);
-			doPostfixCheck = true;
-		
-		} else if ( button == Button.B_ACCEPT_PROPOSE_NEW_TIME ) {
-					
-			locator = Locators.AcceptProposeNewTimeButton;
-			page = new FormApptNew(this.MyApplication);
-			doPostfixCheck = true;
-					
-		} else if ( button == Button.B_DECLINE_PROPOSE_NEW_TIME ) {
-			
-			locator = Locators.DeclineProposeNewTimeButton;
-			page = new FormMailNew(this.MyApplication);
 			doPostfixCheck = true;
 
 		} else if ( button == Button.B_ACCEPT_SHARE ) {
@@ -341,86 +247,7 @@ public class DisplayMail extends AbsDisplay {
 		AbsPage page = this;
 		boolean doPostfixCheck = false;
 
-		if ( pulldown == Button.B_ACCEPT ) {
-			
-			pulldownLocator = Locators.AcceptDropdown;
-			
-			if (option == Button.O_ACCEPT_NOTIFY_ORGANIZER) {
-
-				optionLocator = Locators.AcceptNotifyOrganizerMenu;
-				doPostfixCheck = true;
-				page = this;
-
-			} else if (option == Button.O_ACCEPT_EDIT_REPLY) {
-
-				optionLocator = Locators.AcceptEditReplyMenu;
-				doPostfixCheck = false;
-				page = new FormMailNew(this.MyApplication);
-				
-			} else if (option == Button.O_ACCEPT_DONT_NOTIFY_ORGANIZER) {
-
-				optionLocator = Locators.AcceptDontNotifyOrganizerMenu;
-				doPostfixCheck = false;
-				page = this;
-				
-			} else {
-	
-				throw new HarnessException("No logic defined for pulldown " + pulldown + " and option " + option);
-
-			}
-
-		} else if ( pulldown == Button.B_TENTATIVE ) {
-			
-			pulldownLocator = Locators.TentativeDropdown;
-			
-			if (option == Button.O_TENTATIVE_NOTIFY_ORGANIZER) {
-
-				optionLocator = Locators.TentativeNotifyOrganizerMenu;
-				doPostfixCheck = true;
-				page = this;
-
-			} else if (option == Button.O_TENTATIVE_EDIT_REPLY) {
-
-				optionLocator = Locators.TentativeEditReplyMenu;
-				doPostfixCheck = false;
-				page = new FormMailNew(this.MyApplication);
-				
-			} else if (option == Button.O_TENTATIVE_DONT_NOTIFY_ORGANIZER) {
-
-				optionLocator = Locators.TentativeDontNotifyOrganizerMenu;
-				doPostfixCheck = false;
-				page = this;
-				
-			} else {
-	
-				throw new HarnessException("No logic defined for pulldown " + pulldown + " and option " + option);
-
-			}
-
-		} else if ( pulldown == Button.B_DECLINE ) {
-			
-			pulldownLocator = Locators.DeclineDropdown;
-			
-			if (option == Button.O_DECLINE_NOTIFY_ORGANIZER) {
-
-				optionLocator = Locators.DeclineNotifyOrganizerMenu;
-				doPostfixCheck = true;
-				page = this;
-
-			} else if (option == Button.O_DECLINE_EDIT_REPLY) {
-
-				optionLocator = Locators.DeclineEditReplyMenu;
-				doPostfixCheck = false;
-				page = new FormMailNew(this.MyApplication);
-				
-			} else if (option == Button.O_DECLINE_DONT_NOTIFY_ORGANIZER) {
-
-				optionLocator = Locators.DeclineDontNotifyOrganizerMenu;
-				doPostfixCheck = false;
-				page = this;
-			}
-			
-		} else if ( pulldown == Button.B_CALENDAR ) {
+		if ( pulldown == Button.B_CALENDAR ) {
 				
 			pulldownLocator = Locators.CalendarDropdown;
 			optionLocator = "css=div[id*='Menu_'] td[id$='_title']:contains('" + option + "')";
@@ -612,10 +439,6 @@ public class DisplayMail extends AbsDisplay {
 			
 			this.zWaitForBusyOverlay();
 
-			if ( page != null ) {
-				page.zWaitForActive();
-			}
-			
 			return (page);
 			
 		} else if ( button == Button.B_ADD_TO_CALENDAR ) {
@@ -629,10 +452,6 @@ public class DisplayMail extends AbsDisplay {
 			
 			this.zWaitForBusyOverlay();
 
-			if ( page != null ) {
-				page.zWaitForActive();
-			}
-			
 			return (page);
 
 		} else if ( button == Button.B_ADD_TO_MY_FILES ) {
@@ -645,9 +464,6 @@ public class DisplayMail extends AbsDisplay {
 		}
 
 
-		if ( locator == null )
-			throw new HarnessException("no locator defined for button "+ button);
-		
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("locator is not present for button "+ button +" : "+ locator);
 		
@@ -655,10 +471,6 @@ public class DisplayMail extends AbsDisplay {
 		
 		this.zWaitForBusyOverlay();
 
-		if ( page != null ) {
-			page.zWaitForActive();
-		}
-		
 		return (page);
 
 	}
@@ -710,49 +522,10 @@ public class DisplayMail extends AbsDisplay {
 			locator = "implement me!";
 			page = null;
 			
-		} else if ( action == Action.A_HOVEROVER ) {
-			
-			locator = attachment.getLocator() + "a[id$='_main']";
-			//page = new TooltipImage(MyApplication);
-			
-			// If another tooltip is active, sometimes it takes a few seconds for the new text to show
-			// So, wait if the tooltip is already active
-			// Don't wait if the tooltip is not active
-			//
-			
-			if (page.zIsActive()) {
-				
-				// Mouse over
-				this.sMouseOver(locator);
-				this.zWaitForBusyOverlay();
-				
-				// Wait for the new text
-				SleepUtil.sleep(5000);
-				
-				// Make sure the tooltip is active
-				page.zWaitForActive();
-
-			} else {
-				
-				// Mouse over
-				this.sMouseOver(locator);
-				this.zWaitForBusyOverlay();
-
-				// Make sure the tooltip is active
-				page.zWaitForActive();
-
-			}
-						
-			return (page);
-			
 		} else {
 			throw new HarnessException("implement me!  action = "+ action);
 		}
 
-
-		if ( page != null ) {
-			//page.zWaitForActive();
-		}
 
 		// default return command
 		return (page);
@@ -832,10 +605,6 @@ public class DisplayMail extends AbsDisplay {
 		} else {
 			throw new HarnessException("not implemented for field "+ field);
 		}
-
-		// Make sure source was found
-		if ( source == null )
-			throw new HarnessException("source was null for "+ field);
 
 		logger.info("DisplayMail.zGetMailPropertyAsHtml() = "+ HtmlElement.clean(source).prettyPrint());
 
@@ -1057,9 +826,7 @@ public class DisplayMail extends AbsDisplay {
 			
 		}
 
-		// Make sure something was set
-		if ( locator == null )
-			throw new HarnessException("locator was null for field = "+ field);
+		
 		
 		// Default behavior, process the locator by clicking on it
 		//
@@ -1096,20 +863,12 @@ public class DisplayMail extends AbsDisplay {
 
 		}
 		
-		if ( locator == null ) {
-			throw new HarnessException("locator was null!");
-		}
-		
 		if ( !(this.sIsElementPresent(locator)) ) {
 			throw new HarnessException("locator not present: "+ locator);
 		}
 		
 		this.sMouseOver(locator);
 		this.zWaitForBusyOverlay();
-		
-		if ( page != null ) {
-			page.zWaitForActive();
-		}
 		
 		return (page);
 

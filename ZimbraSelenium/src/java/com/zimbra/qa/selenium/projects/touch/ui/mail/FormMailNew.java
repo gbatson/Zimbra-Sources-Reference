@@ -17,7 +17,6 @@
 package com.zimbra.qa.selenium.projects.touch.ui.mail;
 
 import java.awt.event.KeyEvent;
-import java.util.ArrayList;
 import java.util.List;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.items.MailItem;
@@ -29,10 +28,7 @@ import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
-import com.zimbra.qa.selenium.projects.touch.ui.AutocompleteEntry;
-import com.zimbra.qa.selenium.projects.touch.ui.AutocompleteEntry.Icon;
 
 /**
  * The <code>FormMailNew<code> object defines a compose new message view
@@ -294,8 +290,6 @@ public class FormMailNew extends AbsForm {
 			SleepUtil.sleepSmall();
 			this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_SPACE);
 			SleepUtil.sleepSmall();
-			this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_BACK_SPACE); //temporary work around
-			SleepUtil.sleepSmall();
 
 			return;
 
@@ -315,8 +309,6 @@ public class FormMailNew extends AbsForm {
 			SleepUtil.sleepSmall();
 			this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_SPACE);
 			SleepUtil.sleepSmall();
-			this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_BACK_SPACE); //temporary work around
-			SleepUtil.sleepSmall();
 
 			return;
 						
@@ -331,8 +323,6 @@ public class FormMailNew extends AbsForm {
 			this.sType(locator, value);
 			SleepUtil.sleepSmall();
 			this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_SPACE);
-			SleepUtil.sleepSmall();
-			this.zKeyboard.zTypeKeyEvent(KeyEvent.VK_BACK_SPACE); //temporary work around
 			SleepUtil.sleepSmall();
 
 			return;
@@ -355,7 +345,7 @@ public class FormMailNew extends AbsForm {
 			
 			this.sClickAt(locator, "");
 			this.sFocus(locator);
-			this.zMouseClick(230, 230);
+			this.zMouseClick(320, 320);
 			
 			SleepUtil.sleepSmall();
 			this.zKeyboard.zTypeCharacters(value);
@@ -536,176 +526,4 @@ public class FormMailNew extends AbsForm {
 		
 	}
 
-	/**
-	 * Autocompleting is more complicated than zFillField().  Use this
-	 * method when filling out a field that will autocomplete.
-	 * @param field The form field to use (to, cc, bcc, etc.)
-	 * @param value The partial string to use to autocomplete
-	 * @throws HarnessException 
-	 */
-	public List<AutocompleteEntry> zAutocompleteFillField(Field field, String value) throws HarnessException {
-		logger.info(myPageName() + " zAutocompleteFillField("+ field +", "+ value +")");
-
-		tracer.trace("Set "+ field +" to "+ value);
-
-		String locator = null;
-		
-		if ( field == Field.To ) {
-			
-			locator = Locators.zToField;
-			
-			// FALL THROUGH
-			
-		} else if ( field == Field.Cc ) {
-			
-			locator = Locators.zCcField;
-			
-			if ( !zCcBccIsActive() ) {
-				this.zToolbarPressButton(Button.B_SHOWCC);
-			}
-			
-		} else if ( field == Field.Bcc ) {
-			
-			locator = Locators.zBccField;
-			
-			if ( !zCcBccIsActive() ) {
-				this.zToolbarPressButton(Button.B_SHOWBCC);
-			}
-			
-			// FALL THROUGH
-			
-		} else {
-			throw new HarnessException("Unsupported field: "+ field);
-		}
-		
-		if ( locator == null ) {
-			throw new HarnessException("locator was null for field "+ field);
-		}
-		
-		
-		// Make sure the button exists
-		if ( !this.sIsElementPresent(locator) )
-			throw new HarnessException("Field is not present field="+ field +" locator="+ locator);
-		
-		// Seems that the client can't handle filling out the new mail form too quickly
-		// Click in the "To" fields, etc, to make sure the client is ready
-		this.sFocus(locator);
-		this.sClickAt(locator,"");
-		this.zWaitForBusyOverlay();
-
-		// Instead of sType() use zKeyboard
-		// this.zKeyboard.zTypeCharacters(value);
-		
-		// workaround
-		if(ZimbraSeleniumProperties.isWebDriver()){
-		    clearField(locator);
-		    sType(locator, value);
-		}else{
-		    if(value.length() > 0){
-			sType(locator, value.substring(0, value.length()-1));
-			sFireEvent(locator, "keyup");
-		    }
-		    zWaitForBusyOverlay();
-		    sType(locator, value);
-		    sFireEvent(locator, "keyup");
-		}
-				
-		this.zWaitForBusyOverlay();
-
-		waitForAutocomplete();
-		
-		return (zAutocompleteListGetEntries());
-		
-	}
-
-	/**
-	 * Wait for the autocomplete spinner to go away
-	 */
-	protected void waitForAutocomplete() throws HarnessException {
-		String locator = "css=div[class='acWaiting'][style*='display: none;']";
-		for (int i = 0; i < 30; i++) {
-			if ( this.sIsElementPresent(locator) )
-				return; // Found it!
-			SleepUtil.sleep(1000);
-		}
-		throw new HarnessException("autocomplete never completed");
-	}
-	
-	protected AutocompleteEntry parseAutocompleteEntry(String itemLocator) throws HarnessException {
-		logger.info(myPageName() + " parseAutocompleteEntry()");
-
-		String locator = null;
-		
-		// Get the icon
-		locator = itemLocator + " td.Icon div@class";
-		String image = this.sGetAttribute(locator);
-		
-		// Get the address
-		locator = itemLocator + " td + td";
-		String address = this.sGetText(locator);
-		
-		AutocompleteEntry entry = new AutocompleteEntry(
-									Icon.getIconFromImage(image), 
-									address, 
-									false,
-									itemLocator);
-
-		return (entry);
-	}
-	
-	public List<AutocompleteEntry> zAutocompleteListGetEntries() throws HarnessException {
-		logger.info(myPageName() + " zAutocompleteListGetEntries()");
-		
-		List<AutocompleteEntry> items = new ArrayList<AutocompleteEntry>();
-		
-		String containerLocator = "css=div[id^='zac__COMPOSE-'][style*='display: block;']";
-
-		if ( !this.zWaitForElementPresent(containerLocator,"5000") ) {
-			// Autocomplete is not visible, return an empty list.
-			return (items);
-		}
-
-		
-		String rowsLocator = containerLocator + " tr[id*='_acRow_']";
-		int count = this.sGetCssCount(rowsLocator);
-		for (int i = 0; i < count; i++) {
-			
-			items.add(parseAutocompleteEntry(containerLocator + " tr[id$='_acRow_"+ i +"']"));
-			
-		}
-		
-		return (items);
-	}
-
-	public void zAutocompleteSelectItem(AutocompleteEntry entry) throws HarnessException {
-		logger.info(myPageName() + " zAutocompleteSelectItem("+ entry +")");
-		
-		// Click on the address
-		this.sMouseDown(entry.getLocator() + " td + td");
-		this.zWaitForBusyOverlay();
-		
-	}
-	
-	public void zAutocompleteForgetItem(AutocompleteEntry entry) throws HarnessException {
-		logger.info(myPageName() + " zAutocompleteForgetItem("+ entry +")");
-		
-		// Mouse over the entry
-		zAutocompleteMouseOverItem(entry);
-		
-		// Click on the address
-		this.sMouseDown(entry.getLocator() + " div[id*='_acForgetText_']");
-		this.zWaitForBusyOverlay();
-		
-	}
-
-	public void zAutocompleteMouseOverItem(AutocompleteEntry entry) throws HarnessException {
-		logger.info(myPageName() + " zAutocompleteMouseOverItem("+ entry +")");
-		
-		// Click on the address
-		this.sMouseOver(entry.getLocator() + " td + td");
-		this.zWaitForBusyOverlay();
-		
-	}
-
-	
 }

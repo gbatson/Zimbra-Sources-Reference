@@ -1,6 +1,7 @@
 <%@ page buffer="8kb" autoFlush="true" %>
 <%@ page pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
 <%@ page session="false" %>
+<%@ page import="com.zimbra.cs.taglib.ZJspSession"%>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -42,8 +43,9 @@
 	</c:if>
 </c:if>
 
-<!-- Touch client exists only in network edition -->
 <%
+    // Touch client exists only in network edition
+
     Boolean touchLoginPageExists = (Boolean) application.getAttribute("touchLoginPageExists");
     if(touchLoginPageExists == null) {
         try {
@@ -54,6 +56,9 @@
         }
         application.setAttribute("touchLoginPageExists", touchLoginPageExists);
     }
+    //Fetch the IP address of the client
+    String remoteAddr = ZJspSession.getRemoteAddr(pageContext);
+    pageContext.setAttribute("remoteAddr", remoteAddr);
 %>
 <c:set var="touchLoginPageExists" value="<%=touchLoginPageExists%>"/>
 
@@ -72,12 +77,14 @@
 			<zm:getDomainInfo var="domainInfo" by="virtualHostname" value="${zm:getServerName(pageContext)}"/>
 			<c:set var="logoutRedirectUrl" value="${domainInfo.attrs.zimbraWebClientLogoutURL}" />
 			<c:set var="isAllowedUA" value="${zm:isAllowedUA(ua, domainInfo.webClientLogoutURLAllowedUA)}"/>
+            <c:set var="isAllowedIP" value="${zm:isAllowedIP(remoteAddr, domainInfo.webClientLogoutURLAllowedIP)}"/>
             <c:choose>
-                <c:when test="${not empty logoutRedirectUrl and (isAllowedUA eq true) and (empty param.virtualacctdomain) and (empty virtualacctdomain)}">
+                <c:when test="${not empty logoutRedirectUrl and (isAllowedUA eq true) and (isAllowedIP eq true) and (empty param.virtualacctdomain) and (empty virtualacctdomain)}">
                     <zm:logout/>
                     <c:redirect url="${logoutRedirectUrl}"/>
                 </c:when>
-                <c:when test="${touchSupported and touchLoginPageExists and (empty param.client or param.client eq 'touch')}">
+                <c:when test="${touchSupported and touchLoginPageExists and (empty param.client or param.client eq 'touch') and
+                    (empty param.virtualacctdomain) and (empty virtualacctdomain)}">
                     <%--Redirect to loginTouch only if the device supports touch client, the touch login page exists
                     and the user has not specified the client param as "mobile" or anything else.--%>
                     <jsp:forward page="/public/loginTouch.jsp"/>
@@ -125,8 +132,7 @@
 	</c:choose>
 </c:catch>
 
-<c:choose>
-    <c:when test="${not empty authResult}">
+<c:if test="${not empty authResult}">
         <c:set var="refer" value="${authResult.refer}"/>
         <c:set var="serverName" value="${pageContext.request.serverName}"/>
         <c:choose>
@@ -248,14 +254,7 @@
                 </c:choose>
             </c:otherwise>
         </c:choose>
-    </c:when>
-    <c:when test="${empty param.client or param.client eq 'touch'}">
-        <c:if test="${touchSupported and touchLoginPageExists}">
-            <jsp:forward page="/public/loginTouch.jsp"/>
-        </c:if>
-    </c:when>
-</c:choose>
-
+    </c:if>
 
 <c:if test="${loginException != null}">
 	<zm:getException var="error" exception="${loginException}"/>
@@ -295,9 +294,10 @@ if (application.getInitParameter("offlineMode") != null) {
 <c:if test="${((empty pageContext.request.queryString) or (fn:indexOf(pageContext.request.queryString,'customerDomain') == -1)) and (empty param.virtualacctdomain) and (empty virtualacctdomain) }">
 	<c:set var="domainLoginRedirectUrl" value="${domainInfo.attrs.zimbraWebClientLoginURL}" />
 	<c:set var="isAllowedUA" value="${zm:isAllowedUA(ua, domainInfo.webClientLoginURLAllowedUA)}"/>
+    <c:set var="isAllowedIP" value="${zm:isAllowedIP(remoteAddr, domainInfo.webClientLoginURLAllowedIP)}"/>
 </c:if>
 
-<c:if test="${not empty domainLoginRedirectUrl and empty param.sso and empty param.ignoreLoginURL and (isAllowedUA eq true)}" >
+<c:if test="${not empty domainLoginRedirectUrl and empty param.sso and empty param.ignoreLoginURL and (isAllowedUA eq true) and (isAllowedIP eq true)}" >
 	<c:redirect url="${domainLoginRedirectUrl}">
 		<c:forEach var="p" items="${paramValues}">
 			<c:forEach var='value' items='${p.value}'>
@@ -307,6 +307,10 @@ if (application.getInitParameter("offlineMode") != null) {
 			</c:forEach>
 		</c:forEach>
 	</c:redirect>
+</c:if>
+
+<c:if test="${(empty param.client or param.client eq 'touch') and touchSupported and touchLoginPageExists}">
+    <jsp:forward page="/public/loginTouch.jsp"/>
 </c:if>
 
 <c:url var="formActionUrl" value="/">
@@ -336,7 +340,7 @@ if (application.getInitParameter("offlineMode") != null) {
 <!DOCTYPE html>
 <!-- set this class so CSS definitions that now use REM size, would work relative to this.
 	Since now almost everything is relative to one of the 2 absolute font size classese -->
-<html class="user_font_size_normal">
+<html class="user_font_size_normal" lang="${fn:substring(pageContext.request.locale, 0, 2)}">
 <head>
 <!--
  login.jsp
@@ -378,12 +382,12 @@ if (application.getInitParameter("offlineMode") != null) {
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 	<title><fmt:message key="zimbraLoginTitle"/></title>
 	<c:set var="version" value="${initParam.zimbraCacheBusterVersion}"/>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="description" content="<fmt:message key="zimbraLoginMetaDesc"/>">
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 	<link rel="stylesheet" type="text/css" href="<c:url value='/css/common,login,zhtml,skin.css'>
-		<c:param name="skin"	value="${skin}" />
+		<c:param name="skin"    value="${skin}" />
 		<c:param name="v"		value="${version}" />
 		<c:if test="${not empty param.debug}">
 			<c:param name="debug" value="${param.debug}" />
@@ -406,7 +410,7 @@ if (application.getInitParameter("offlineMode") != null) {
 	<div class="LoginScreen">
 		<div class="${smallScreen?'center-small':'center'}">
 			<div class="contentBox">
-				<h1><a href="http://www.zimbra.com/" id="bannerLink" target="_new">
+				<h1><a href="http://www.zimbra.com/" id="bannerLink" target="_new" title='<fmt:message key="zimbraTitle"/>'><span class="ScreenReaderOnly"><fmt:message key="zimbraTitle"/></span>
 					<span class="Img${smallScreen?'App':'Login'}Banner"></span>
 				</a></h1>
 				<div id="ZLoginAppName"><fmt:message key="splashScreenAppName"/></div>
@@ -505,11 +509,18 @@ if (application.getInitParameter("offlineMode") != null) {
 										</select>
 									</c:otherwise>
 								</c:choose>
-<script TYPE="text/javascript">
-	document.write("<a href='#' onclick='showWhatsThis()' id='ZLoginWhatsThisAnchor'><fmt:message key="whatsThis"/><"+"/a>");
-</script>
-									<div id="ZLoginWhatsThis" class="ZLoginInfoMessage" style="display:none;"><fmt:message key="clientWhatsThisMessage"/></div>
-									<div id="ZLoginUnsupported" class="ZLoginInfoMessage" style="display:none;"><fmt:message key="clientUnsupported"/></div>
+    							<script TYPE="text/javascript">
+    								document.write("<a href='#' onclick='showWhatsThis();' id='ZLoginWhatsThisAnchor' aria-controls='ZLoginWhatsThis'><fmt:message key='whatsThis'/></a>");
+    							</script>
+                                <c:choose>
+                                    <c:when test="${touchLoginPageExists}">
+                                        <div id="ZLoginWhatsThis" class="ZLoginInfoMessage" style="display:none;" onclick='showWhatsThis();' role="tooltip"><fmt:message key="clientWhatsThisMessage"/></div>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <div id="ZLoginWhatsThis" class="ZLoginInfoMessage" style="display:none;" onclick='showWhatsThis();' role="tooltip"><fmt:message key="clientWhatsThisMessageWithoutTablet"/></div>
+                                    </c:otherwise>
+                                </c:choose>
+								<div id="ZLoginUnsupported" class="ZLoginInfoMessage" style="display:none;"><fmt:message key="clientUnsupported"/></div>
 								</div>
 							</td>
 						</tr>
@@ -567,8 +578,10 @@ function clientChange(selectValue) {
 
 // if they have JS, write out a "what's this?" link that shows the message below
 function showWhatsThis() {
-	var div = document.getElementById("ZLoginWhatsThis");
-	div.style.display = (div.style.display == "block" ? "none" : "block");
+	var div = document.getElementById("ZLoginWhatsThis"),
+        doHide = (div.style.display === "block");
+	div.style.display = doHide ? "none" : "block";
+    div.setAttribute("aria-expanded", doHide ? "false" : "true");
 }
 
 function onLoad() {

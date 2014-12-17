@@ -89,6 +89,7 @@ ZmImportExportController.TYPE_EXTS = {};
 ZmImportExportController.TYPE_EXTS[ZmImportExportController.TYPE_CSV] = [ "csv", "vcf" ];
 ZmImportExportController.TYPE_EXTS[ZmImportExportController.TYPE_ICS] = [ "ics" ];
 ZmImportExportController.TYPE_EXTS[ZmImportExportController.TYPE_TGZ] = [ "tgz", "zip" ];
+ZmImportExportController.TYPE_EXTS[ZmImportExportController.TYPE_TAR] = [ "tar" ];
 
 ZmImportExportController.EXTS_TYPE = {};
 AjxUtil.foreach(ZmImportExportController.TYPE_EXTS, function(exts, p) {
@@ -109,6 +110,8 @@ ZmImportExportController.__FAULT_ARGS_MAPPING = {
 	"formatter.UNKNOWN_ERROR": [ "path", "message" ]
 };
 
+
+ZmImportExportController.CSRF_TOKEN_HIDDEN_INPUT_ID = "ZmImportExportCsrfToken";
 //
 // Public methods
 //
@@ -332,6 +335,8 @@ function(params) {
 	form.method = "POST";
 	form.enctype = "multipart/form-data";
 
+	this._setCsrfTokenInput(form);
+
 	// destination iframe
 	var onload = null;
 	var onerror = AjxCallback.simpleClosure(this._importError, this, params.errorCallback);
@@ -340,6 +345,25 @@ function(params) {
 	// import
 	form.submit();
 	return true;
+};
+
+/**
+ * lazily generate the hidden csrf token input field for the form.
+ */
+ZmImportExportController.prototype._setCsrfTokenInput =
+function(form) {
+	var csrfTokenInput = document.getElementById(ZmImportExportController.CSRF_TOKEN_HIDDEN_INPUT_ID);
+	if (csrfTokenInput) {
+		return;
+	}
+	csrfTokenInput = document.createElement("input");
+	csrfTokenInput.type  = "hidden";
+	csrfTokenInput.name  = "csrfToken";
+	csrfTokenInput.id    = ZmImportExportController.CSRF_TOKEN_HIDDEN_INPUT_ID;
+	csrfTokenInput.value = window.csrfToken;
+
+	var firstChildEl = form.firstChild;
+	form.insertBefore(csrfTokenInput, firstChildEl);
 };
 
 /**

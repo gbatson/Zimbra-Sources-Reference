@@ -83,6 +83,7 @@ public abstract class Provisioning extends ZAttrProvisioning {
     public static final String DEFAULT_EXTERNAL_COS_NAME = "defaultExternal";
 
     public static final String SERVICE_MAILBOX   = "mailbox";
+    public static final String SERVICE_PROXY = "proxy";
     public static final String SERVICE_MEMCACHED = "memcached";
 
     /**
@@ -806,7 +807,7 @@ public abstract class Provisioning extends ZAttrProvisioning {
         if (mailTarget instanceof Account) {
             return getGroupMembership((Account) mailTarget, adminGroupsOnly);
         } else if (mailTarget instanceof DistributionList) {
-            return getGroupMembership((Account) mailTarget, adminGroupsOnly);
+            return getGroupMembership((DistributionList) mailTarget, adminGroupsOnly);
         }
         return new GroupMembership();
     }
@@ -1902,7 +1903,7 @@ public abstract class Provisioning extends ZAttrProvisioning {
     public abstract List getAllDistributionLists(Domain d) throws ServiceException;
 
     /**
-     * Search for all accunts on the server.
+     * Search for all accounts on the server.
      *
      * Note: Sorting is not supported on search APIs with a visitor.
      *
@@ -1917,7 +1918,7 @@ public abstract class Provisioning extends ZAttrProvisioning {
     }
 
     /**
-     * Search for all accunts on the server.
+     * Search for all accounts on the server.
      *
      * @param server
      * @param opts

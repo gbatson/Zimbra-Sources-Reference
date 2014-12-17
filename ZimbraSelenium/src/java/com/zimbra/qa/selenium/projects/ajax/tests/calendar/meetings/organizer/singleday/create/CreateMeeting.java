@@ -17,8 +17,10 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.calendar.meetings.organizer.singleday.create;
 
 import java.util.Calendar;
+
 import org.testng.annotations.Test;
 
+import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.items.AppointmentItem;
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.ui.Button;
@@ -33,6 +35,7 @@ public class CreateMeeting extends CalendarWorkWeekTest {
 		super.startingPage = app.zPageCalendar;
 	}
 	
+	@Bugs(ids = "95899,95900")
 	@Test(description = "Create a basic meeting with attendee",
 			groups = { "sanity" })
 			
@@ -63,7 +66,6 @@ public class CreateMeeting extends CalendarWorkWeekTest {
 		ZAssert.assertNotNull(actual, "Verify the new appointment is created");
 		ZAssert.assertEquals(actual.getSubject(), appt.getSubject(), "Subject: Verify the appointment data");
 		ZAssert.assertEquals(actual.getAttendees(), apptAttendee1, "Attendees: Verify the appointment data");
-		ZAssert.assertEquals(actual.getOptional(), appt.getOptional(), "Optional: Verify the appointment data");
 		ZAssert.assertEquals(actual.getContent(), appt.getContent(), "Content: Verify the appointment data");
 
 		// Verify the attendee receives the meeting
@@ -71,7 +73,6 @@ public class CreateMeeting extends CalendarWorkWeekTest {
 		ZAssert.assertNotNull(received, "Verify the new appointment is created");
 		ZAssert.assertEquals(received.getSubject(), appt.getSubject(), "Subject: Verify the appointment data");
 		ZAssert.assertEquals(received.getAttendees(), apptAttendee1, "Attendees: Verify the appointment data");
-		ZAssert.assertEquals(received.getOptional(), appt.getOptional(), "Optional: Verify the appointment data");
 		ZAssert.assertEquals(received.getContent(), appt.getContent(), "Content: Verify the appointment data");
 
 		// Verify the attendee receives the invitation

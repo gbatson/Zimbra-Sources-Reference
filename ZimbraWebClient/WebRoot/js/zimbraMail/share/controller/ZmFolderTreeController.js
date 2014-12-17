@@ -101,13 +101,13 @@ function(parent, type, id) {
     // disable empty folder option for inbox, sent and drafts: bug 66656
     var isEmptyFolderAllowed = true;
     var y = folder.rid;
-    if(y == ZmFolder.ID_INBOX || y == ZmFolder.ID_SENT || y == ZmFolder.ID_DRAFTS){
+    if (y == ZmFolder.ID_ROOT || y == ZmFolder.ID_INBOX || y == ZmFolder.ID_SENT || y == ZmFolder.ID_DRAFTS) {
         isEmptyFolderAllowed = false;
     }
 
 	// user folder or Folders header
 	var nId = ZmOrganizer.normalizeId(id, this.type);
-	if (nId == ZmOrganizer.ID_ROOT || ((!folder.isSystem()) /*&& !folder.isSyncIssuesFolder()*/)) {
+	if (nId == ZmOrganizer.ID_ROOT || (!folder.isSystem() && !folder.isSystemEquivalent()) /*&& !folder.isSyncIssuesFolder()*/) {
 		var isShareVisible = (!folder.link || folder.isAdmin());
         if (appCtxt.isOffline) {
             isShareVisible = !folder.getAccount().isMain && folder.getAccount().isZimbraAccount;
@@ -131,6 +131,9 @@ function(parent, type, id) {
 	}
 	// system folder
 	else {
+		if (folder.isSystemEquivalent()) {
+			nId = folder.getSystemEquivalentFolderId();
+		}
 		parent.enableAll(false);
 		// can't create folders under Drafts or Junk
 		if (!folder.disallowSubFolder &&
@@ -172,7 +175,7 @@ function(parent, type, id) {
 	parent.enable(ZmOperation.EXPAND_ALL, (folder.size() > 0));
 	if (nId != ZmOrganizer.ID_ROOT && !folder.isReadOnly()) {
 		// always enable for shared folders since we dont get this info from server
-		parent.enable(ZmOperation.MARK_ALL_READ, (folder.numUnread > 0 || folder.link));
+		parent.enable(ZmOperation.MARK_ALL_READ, !folder.isRemoteRoot() && (folder.numUnread > 0 || folder.link));
 	}
 
 	var op = parent.getOp(ZmOperation.EMPTY_FOLDER);

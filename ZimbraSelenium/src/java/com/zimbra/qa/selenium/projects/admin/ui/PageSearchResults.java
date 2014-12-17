@@ -42,6 +42,9 @@ public class PageSearchResults extends AbsTab {
 		public static final String RIGHT_CLICK_MENU_EDIT_BUTTON="css=div[id='zm__SCHLV__MENU_POP'] div[class='ImgEdit']";
 		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP']  div[class='ImgEdit']";
 		public static final String GEAR_ICON="css=div.ImgConfigure";
+		public static final String zArrowSelectSearchObject		="css=td[id*='dropdown'] div[class='ImgSelectPullDownArrow']";
+		public static final String zCosSearchObject = "css=div[id='zmi__SEARCH_COSES'] td[id='zmi__SEARCH_COSES_title']";
+		public static final String zDomainSearchObject = "css=div[id='zmi__SEARCH_DOMAINS'] td[id='zmi__SEARCH_DOMAINS_title']";
 	}
 
 	public static class TypeOfObject {
@@ -56,7 +59,16 @@ public class PageSearchResults extends AbsTab {
 
 	public String typeOfObject = "";
 
-
+//  Search Object from the dropdown in search panel
+	
+	public String S_ACCOUNT = "Account";
+	public String S_ALIAS = "ALIAS";
+	public String S_RESOURCE = "RESOURCE";
+	public String S_DISTRIBUTION_LIST = "Distribution List";
+	public String S_COS = "Cos";
+	public String S_DOMAIN = "Domain";
+	public String S_ALL_OBJECTS="All Objects";
+	
 	public String getType() {
 		return typeOfObject;
 	}
@@ -325,7 +337,7 @@ public class PageSearchResults extends AbsTab {
 					throw new HarnessException("Button " + pulldown + " option " + option + " optionLocator " + optionLocator + " not present!");
 				}
 
-				this.zClickAt(optionLocator,"");
+				this.zClick(optionLocator);
 
 				// If the app is busy, wait for it to become active
 				//zWaitForBusyOverlay();
@@ -403,4 +415,24 @@ public class PageSearchResults extends AbsTab {
 		}
 
 	}
+	
+public void zSelectSearchObject(String object)throws HarnessException{
+		
+		if(object==S_COS){
+			
+			this.sClickAt(Locators.zArrowSelectSearchObject, "");
+			this.sClickAt(Locators.zCosSearchObject, "");
+		
+		
+		}else if(object==S_DOMAIN){
+			
+			this.sClickAt(Locators.zArrowSelectSearchObject, "");
+			this.sClickAt(Locators.zDomainSearchObject, "");
+		
+		
+		}else{
+			throw new HarnessException("Not imeplemented for "+object+"Object");
+		}
+	}
+		
 }

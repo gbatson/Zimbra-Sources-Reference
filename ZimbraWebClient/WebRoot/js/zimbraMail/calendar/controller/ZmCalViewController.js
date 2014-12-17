@@ -1171,8 +1171,11 @@ function() {
 
 ZmCalViewController.prototype._miniCalDropTargetListener =
 function(ev) {
+
+	if (appCtxt.isWebClientOffline()) return;
+
 	var data = ((ev.srcData.data instanceof Array) && ev.srcData.data.length == 1)
-		? ev.srcData.data[0] : ev.srcData.data;
+	? ev.srcData.data[0] : ev.srcData.data;
 
 	// use shiftKey to create new Tasks if enabled. NOTE: does not support Contacts yet
 	var shiftKey = appCtxt.get(ZmSetting.TASKS_ENABLED) && ev.uiEvent.shiftKey;
@@ -2857,6 +2860,8 @@ function(appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback
 		}
 		var apptStartDate = appt.startDate;
 		var apptEndDate   = appt.endDate;
+	    var apptDuration = appt.getDuration();
+
 		appt.setViewMode(viewMode);
 		if (startDateOffset) {
 			var sd = (viewMode == ZmCalItem.MODE_EDIT_SINGLE_INSTANCE) ? appt.getUniqueStartDate() : new Date(appt.getStartTime());
@@ -2864,9 +2869,28 @@ function(appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback
 			appt.resetRepeatWeeklyDays();
 		}
 		if (endDateOffset) {
-			var ed = (viewMode == ZmCalItem.MODE_EDIT_SINGLE_INSTANCE) ? appt.getUniqueEndDate() : new Date(appt.getEndTime());
-			appt.setEndDate(new Date(ed.getTime() + endDateOffset));
+			var endDateTime;
+
+			if (viewMode === ZmCalItem.MODE_EDIT_SINGLE_INSTANCE) {
+				// For some reason the recurring all day events have their end date set to the next day while the normal all day events don't.
+				// For e.g. an event with startDate 9th June and endDate 10th June when dragged to the next day has varying results:
+				// -> Regular all day event has end Date as 9th June which with endDateOffset results in 10th June as new endDate
+				// -> Recurring all day event has end Date as 10th June which with endDateOffset results in 11th June as new endDate
+				// To tackle this the new End date is now calculated from the new start date and appt duration and equivalent of 1 day is subtracted from it.
+				// TODO: Need a better solution for this -> investigate why the end date difference is present in the first place.
+				if (appt.allDayEvent) {
+					endDateTime = appt.getStartTime() + apptDuration - AjxDateUtil.MSEC_PER_DAY;
+				}
+				else {
+					endDateTime = appt.getUniqueEndDate().getTime() + endDateOffset;
+				}
+			}
+			else {
+				endDateTime = appt.getEndTime()  + endDateOffset;
+			}
+			appt.setEndDate(new Date(endDateTime));
 		}
+
 		if (viewMode == ZmCalItem.MODE_EDIT_SINGLE_INSTANCE) {
 			//bug: 32231 - use proper timezone while creating exceptions
 			appt.setOrigTimezone(AjxTimezone.getServerId(AjxTimezone.DEFAULT));
@@ -3318,39 +3342,33 @@ function () {
  */
 ZmCalViewController.prototype._initializeActionMenu =
 function() {
-	var menuItems = this._getActionMenuOps();
-	if (menuItems && menuItems.length > 0) {
-		this._actionMenu = this._createActionMenu(menuItems);
-
-		var menuItems = this._getRecurringActionMenuOps();
-		if (menuItems && menuItems.length > 0) {
-			var params = {parent:this._shell, menuItems:menuItems};
-			this._recurringActionMenu = new ZmActionMenu(params);
-			menuItems = this._recurringActionMenu.opList;
-			for (var i = 0; i < menuItems.length; i++) {
-				var item = this._recurringActionMenu.getMenuItem(menuItems[i]);
-				var recurMenuItems = this._getActionMenuOps(menuItems[i]);
-				var recurActionMenu = this._createActionMenu(recurMenuItems, item);
-				if (appCtxt.get(ZmSetting.TAGGING_ENABLED)) {
-					this._setupTagMenu(recurActionMenu);
-				}
-				item.setMenu(recurActionMenu);
-				// NOTE: Target object for listener is menu item
-				var menuItemListener = new AjxListener(item, this._recurringMenuPopup);
-				item.addListener(AjxEnv.isIE ? DwtEvent.ONMOUSEENTER : DwtEvent.ONMOUSEOVER, menuItemListener);
-			}
-			this._recurringActionMenu.addPopdownListener(this._menuPopdownListener);
-		}
-
-		if (appCtxt.get(ZmSetting.TAGGING_ENABLED)) {
-			this._setupTagMenu(this._actionMenu);
-		}
+	this._actionMenu = this._createActionMenu(this._getActionMenuOps());
+	if (appCtxt.get(ZmSetting.TAGGING_ENABLED)) {
+		this._setupTagMenu(this._actionMenu);
 	}
+
+	var recurrenceModeOps = this._getRecurrenceModeOps();
+	var params = {parent: this._shell, menuItems: recurrenceModeOps};
+	this._recurrenceModeActionMenu = new ZmActionMenu(params);
+	for (var i = 0; i < recurrenceModeOps.length; i++) {
+		var recurrenceMode = recurrenceModeOps[i];
+		var modeItem = this._recurrenceModeActionMenu.getMenuItem(recurrenceMode);
+		var menuOpsForMode = this._getActionMenuOps(recurrenceMode);
+		var actionMenuForMode = this._createActionMenu(menuOpsForMode, modeItem, recurrenceMode);
+		if (appCtxt.get(ZmSetting.TAGGING_ENABLED)) {
+			this._setupTagMenu(actionMenuForMode);
+		}
+		modeItem.setMenu(actionMenuForMode);
+		// NOTE: Target object for listener is menu item
+		var menuItemListener = this._recurrenceModeMenuPopup.bind(modeItem);
+		modeItem.addListener(AjxEnv.isIE ? DwtEvent.ONMOUSEENTER : DwtEvent.ONMOUSEOVER, menuItemListener);
+	}
+	this._recurrenceModeActionMenu.addPopdownListener(this._menuPopdownListener);
 };
 
 ZmCalViewController.prototype._createActionMenu =
-function(menuItems, parentMenuItem) {
-	var params = {parent:parentMenuItem ? parentMenuItem : this._shell, menuItems:menuItems, context:this._getMenuContext()};
+function(menuItems, parentMenuItem, context) {
+	var params = {parent: parentMenuItem || this._shell, menuItems: menuItems, context: this._getMenuContext() + (context ? "_" + context : "")};
 	var actionMenu = new ZmActionMenu(params);
 	menuItems = actionMenu.opList;
 	for (var i = 0; i < menuItems.length; i++) {
@@ -3377,7 +3395,7 @@ function(menuItems, parentMenuItem) {
  * 
  * @private
  */
-ZmCalViewController.prototype._recurringMenuPopup =
+ZmCalViewController.prototype._recurrenceModeMenuPopup =
 function(ev) {
 	if (!this.getEnabled()) { return; }
 
@@ -3433,7 +3451,7 @@ function(recurrenceMode) {
 	return retVal;
 };
 
-ZmCalViewController.prototype._getRecurringActionMenuOps =
+ZmCalViewController.prototype._getRecurrenceModeOps =
 function() {
 	return [ZmOperation.VIEW_APPT_INSTANCE, ZmOperation.VIEW_APPT_SERIES];
 };
@@ -3566,8 +3584,8 @@ function(appt, actionMenu) {
 	}
 
 	// recurring action menu options
-	if (this._recurringActionMenu && !isTrash) {
-		this._recurringActionMenu.enable(ZmOperation.VIEW_APPT_SERIES, !appt.exception);
+	if (this._recurrenceModeActionMenu && !isTrash) {
+		this._recurrenceModeActionMenu.enable(ZmOperation.VIEW_APPT_SERIES, !appt.exception);
 	}
 };
 
@@ -3588,7 +3606,7 @@ function(ev) {
 	}
     var calendar = appt && appt.getFolder();
     var isTrash = calendar && calendar.nId == ZmOrganizer.ID_TRASH;
-	var menu = (appt.isRecurring() && !appt.isException && !isTrash) ? this._recurringActionMenu : actionMenu;
+	var menu = (appt.isRecurring() && !appt.isException && !isTrash) ? this._recurrenceModeActionMenu : actionMenu;
 	this._enableActionMenuReplyOptions(appt, menu);
 	var op = (menu == actionMenu) && appt.exception ? ZmOperation.VIEW_APPT_INSTANCE : null;
 	actionMenu.__appt = appt;
@@ -4388,7 +4406,18 @@ function(msg) {
 	newAppt.setProposeTimeMode(true);
 	newAppt.setFromMailMessageInvite(msg);
     if (apptId) {
-        newAppt.invId = apptId + "-" + msg.id;
+		var msgId = msg.id;
+		var inx = msg.id.indexOf(":");
+		var accountId = null;
+		if (inx !== -1) {
+			accountId = msgId.substr(0, inx);
+			msgId = msgId.substr(inx + 1);
+		}
+		var invId = [apptId, msgId].join("-");
+		if (accountId) {
+			invId = [accountId, invId].join(":");
+		}
+		newAppt.invId = invId;
         newAppt.getDetails(mode, new AjxCallback(this, this.proposeNewTimeContinue, [newAppt, mode]));
     }
     else {

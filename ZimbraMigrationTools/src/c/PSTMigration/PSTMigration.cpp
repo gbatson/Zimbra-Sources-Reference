@@ -296,7 +296,7 @@ DWORD WINAPI AccountMigrationThread(LPVOID lpParameter)
                     msgdata.Subject.c_str(), msgdata.Date, msgdata.DateString.c_str(),
                     msgdata.deliveryDate, msgdata.DeliveryDateString.c_str(),
                     msgdata.HasAttachments, msgdata.HasHtml, msgdata.HasText, msgdata.IsDraft,
-                    msgdata.IsFlagged, msgdata.IsForwared, msgdata.IsFromMe, msgdata.IsUnread,
+                    msgdata.IsFlagged, msgdata.IsForwarded, msgdata.IsFromMe, msgdata.IsUnread,
                     msgdata.IsUnsent, msgdata.RepliedTo, msgdata.Urlname.c_str());
 
                 printf("MIME FILE PATH: %S\n\n\n\n", msgdata.MimeFile.c_str());
@@ -475,7 +475,7 @@ void MigratePublicFolder()
                     msgdata.Subject.c_str(), msgdata.Date, msgdata.DateString.c_str(),
                     msgdata.deliveryDate, msgdata.DeliveryDateString.c_str(),
                     msgdata.HasAttachments, msgdata.HasHtml, msgdata.HasText, msgdata.IsDraft,
-                    msgdata.IsFlagged, msgdata.IsForwared, msgdata.IsFromMe, msgdata.IsUnread,
+                    msgdata.IsFlagged, msgdata.IsForwarded, msgdata.IsFromMe, msgdata.IsUnread,
                     msgdata.IsUnsent, msgdata.RepliedTo, msgdata.Urlname.c_str());
 
                 //printf("MIME Buffer: %S\n\n\n\n",msgdata.wstrmimeBuffer.c_str());

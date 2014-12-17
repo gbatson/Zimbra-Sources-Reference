@@ -147,9 +147,7 @@ function(actionCode, ev) {
 			if (mlv.getSelectionCount() != 1) { return false; }
 			var item = mlv.getItemFromElement(mlv._kbAnchor);
 			if (!item) { return false; }
-			if (item.type == ZmItem.CONV && !mlv._isExpandable(item)) {
-				return DwtListView.prototype.handleKeyAction.call(mlv, DwtKeyMap.DBLCLICK);
-			} else {
+			if (mlv._isExpandable(item)) {
 				mlv._expandItem(item);
 			}
 			break;
@@ -194,10 +192,6 @@ function(actionCode, ev) {
 		case ZmKeyMap.KEEP_READING:
 			return this._keepReading(false, ev);
 			break;
-
-		// need to invoke DwtListView method directly since our list view no-ops DBLCLICK
-		case DwtKeyMap.DBLCLICK:
-			return DwtListView.prototype.handleKeyAction.apply(mlv, arguments);
 
 		// these are for quick reply
 		case ZmKeyMap.SEND:
@@ -345,26 +339,35 @@ function(view) {
 	this._navToolBar[view].setToolTip(ZmOperation.PAGE_FORWARD, ZmMsg.nextPage);
 };
 
-ZmConvListController.prototype._setupConvOrderMenuItems =
+ZmConvListController.prototype._setupConvOrderMenu =
 function(view, menu) {
 
-	if (menu.getItemCount() > 0) {
-		new DwtMenuItem({parent:menu, style:DwtMenuItem.SEPARATOR_STYLE});
-	}
+	var convOrderMenuItem = menu.createMenuItem(Dwt.getNextId("CONV_ORDER_"), {
+			text:   ZmMsg.expandConversations,
+			style:  DwtMenuItem.NO_STYLE
+		}),
+		convOrderMenu = new ZmPopupMenu(convOrderMenuItem);
 
-	var ids = [ZmMailListController.CONV_ORDER_DESC, ZmMailListController.CONV_ORDER_ASC];
+	var ids = [ ZmMailListController.CONV_ORDER_DESC, ZmMailListController.CONV_ORDER_ASC ];
 	var setting = appCtxt.get(ZmSetting.CONVERSATION_ORDER);
-	var miParams = {style:DwtMenuItem.RADIO_STYLE, radioGroupId:"CO"};
+	var miParams = {
+		style:          DwtMenuItem.RADIO_STYLE,
+		radioGroupId:   "CO"
+	};
 	for (var i = 0; i < ids.length; i++) {
 		var id = ids[i];
-		if (!menu._menuItems[id]) {
+		if (!convOrderMenu._menuItems[id]) {
 			miParams.text = ZmMailListController.CONV_ORDER_TEXT[id];
-			var mi = menu.createMenuItem(id, miParams);
+			var mi = convOrderMenu.createMenuItem(id, miParams);
 			mi.setData(ZmOperation.MENUITEM_ID, id);
 			mi.addSelectionListener(this._listeners[ZmOperation.VIEW]);
 			mi.setChecked((setting == id), true);
 		}
 	}
+
+	convOrderMenuItem.setMenu(convOrderMenu);
+
+	return convOrderMenu;
 };
 
 // no support for showing total items, which are msgs
@@ -435,7 +438,7 @@ ZmConvListController.prototype._resetForwardConv = function(parent, num) {
 
 ZmConvListController.prototype._forwardListener = function(ev) {
 	var action = ev.item.getData(ZmOperation.KEY_ID);
-	this._doAction({ev:ev, action:action, foldersToOmit:this.getFoldersToOmit(ZmMailListController.REPLY_FOLDERS_TO_OMIT)});
+	this._doAction({ev:ev, action:action, foldersToOmit:ZmMailApp.getFoldersToOmit()});
 };
 
 /**
@@ -509,25 +512,9 @@ function(ev) {
 	if (ev.field == ZmItem.F_EXPAND && this._mailListView._isExpandable(item)) {
 		this._toggle(item);
 		return true;
-	} else {
-		var handled = ZmDoublePaneController.prototype._listSelectionListener.apply(this, arguments);
-		if (!handled) {
-			if (ev.detail == DwtListView.ITEM_DBL_CLICKED) {
-				if (item.type == ZmItem.CONV && item.numMsgs == 1) {
-					if (!item._loaded) {
-						//unloaded Conv makes problems.
-						item.load(null, this._handleConvLoaded.bind(this, item));
-						return true;
-					}
-					this._handleConvLoaded(item);
-					return true;
-				}
-				this._showItem(item);
-				return true;
-			}
-		}
 	}
-	return false;
+
+	return ZmDoublePaneController.prototype._listSelectionListener.apply(this, arguments);
 };
 
 ZmConvListController.prototype._handleConvLoaded =

@@ -556,7 +556,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					 * }*/
 					if (msgdata.IsDraft)
 						flags.Append(L"d");
-					if (msgdata.IsForwared)
+					if (msgdata.IsForwarded)
 						flags.Append(L"w");
 					if ((msgdata.IsUnsent) || (msgdata.Urlname.substr(0, 11) == L"/Sent Items"))
 						flags.Append(L"s");
@@ -568,7 +568,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					 * pIt[L"HasText"] = (msgdata.HasText)? L"True":L"False";
 					 * pIt[L"IsDraft"] = (msgdata.IsDraft)? L"True":L"False";
 					 * pIt[L"IsFlagged"] = (msgdata.IsFlagged)? L"True":L"False";
-					 * pIt[L"IsForwared"] = (msgdata.IsForwared)? L"True":L"False";
+					 * pIt[L"IsForwarded"] = (msgdata.IsForwarded)? L"True":L"False";
 					 * pIt[L"IsFromMe"] = (msgdata.IsFromMe)? L"True":L"False";
 					 * pIt[L"IsUnread"] = (msgdata.IsUnread)? L"True":L"False";
 					 * pIt[L"IsUnsent"] = (msgdata.IsUnsent)? L"True":L"False";
@@ -585,7 +585,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					 *      URLName: %S\n",
 					 *      msgdata.Subject.c_str(), msgdata.Date, msgdata.DateString.c_str(),
 					 *      msgdata.deliveryDate, msgdata.DeliveryDateString.c_str(),msgdata.HasAttachments,
-					 *      msgdata.HasHtml, msgdata.HasText,msgdata.IsDraft,msgdata.IsFlagged,msgdata.IsForwared,
+					 *      msgdata.HasHtml, msgdata.HasText,msgdata.IsDraft,msgdata.IsFlagged,msgdata.IsForwarded,
 					 *      msgdata.IsFromMe, msgdata.IsUnread, msgdata.IsUnsent,msgdata.RepliedTo,msgdata.Urlname.c_str()
 					 *      );
 					 *

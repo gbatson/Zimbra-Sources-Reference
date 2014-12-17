@@ -66,6 +66,8 @@ ZmUploadManager.ERROR_INVALID_FILENAME  = "invalidFilename";
  *      allResponses:               Placeholder, initialized here and passed to the chained calls, accumulating responses
  *      start:                      current index into files
  *      curView:                    target view for the drag and drop
+ *      url							url to use (optional, currently only from ZmImportExportController)
+ *      stateChangeCallback			callback to use from _handleUploadResponse which is the onreadystatechange listener, instead of the normal code here. (optiona, see ZmImportExportController)
  *      preAllCallback:             Run prior to All uploads
  *      initOneUploadCallback:      Run prior to a single upload
  *      progressCallback:           Run by the upload code to provide upload progress
@@ -79,6 +81,7 @@ function(params) {
     if (!params.files) {
         return;
     }
+	params.start = params.start || 0;
 
     try {
         this.upLoadC = this.upLoadC + 1;
@@ -105,12 +108,15 @@ function(params) {
 
         // Initiate the first upload
         var req = new XMLHttpRequest(); // we do not call this function in IE
-		var uri = params.attachment ? (appCtxt.get(ZmSetting.CSFE_ATTACHMENT_UPLOAD_URI) + "?fmt=extended,raw") : appCtxt.get(ZmSetting.CSFE_UPLOAD_URI);
+		var uri = params.url || (params.attachment ? (appCtxt.get(ZmSetting.CSFE_ATTACHMENT_UPLOAD_URI) + "?fmt=extended,raw") : appCtxt.get(ZmSetting.CSFE_UPLOAD_URI));
         req.open("POST", uri, true);
         req.setRequestHeader("Cache-Control", "no-cache");
         req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
         req.setRequestHeader("Content-Type",  (file.type || "application/octet-stream") + ";");
         req.setRequestHeader("Content-Disposition", 'attachment; filename="'+ AjxUtil.convertToEntities(fileName) + '"');
+		if (window.csrfToken) {
+			req.setRequestHeader("X-Zimbra-Csrf-Token", window.csrfToken);
+		}
 
         if (params.initOneUploadCallback) {
             params.initOneUploadCallback.run();
@@ -163,6 +169,9 @@ ZmUploadManager.prototype._getTotalUploadSize = function(params) {
 
 ZmUploadManager.prototype._handleUploadResponse =
 function(req, fileName, params){
+	if (params.stateChangeCallback) {
+		return params.stateChangeCallback(req);
+	}
     var curView      = params.curView;
     var files        = params.files;
     var start        = params.start;
@@ -170,7 +179,8 @@ function(req, fileName, params){
     if (req.readyState === 4) {
 		var response = null;
 		var aid      = null;
-		if (req.status === 200) {
+		var status   = req.status;
+		if (status === 200) {
 			if (params.attachment) {
 				// Sent via CSFE_ATTACHMENT_UPLOAD_URI
 				var resp = eval("["+req.responseText+"]");
@@ -195,6 +205,7 @@ function(req, fileName, params){
 					// Convert to an array of params.  Third one is the upload id
 					var serverParams = paramText.split(',');
 					var serverParamArray =  eval( "["+ serverParams +"]" );
+					status = serverParamArray[0];
 					aid = serverParamArray && serverParamArray.length && serverParamArray[2];
 					response = { aid: aid };
 				}
@@ -217,14 +228,14 @@ function(req, fileName, params){
             }
             else {
                 // Uploads are all done
-                this._completeAll(params, allResponses);
+                this._completeAll(params, allResponses, status);
             }
         }
         else {
             DBG.println("Error while uploading file: "  + fileName + " response is null.");
 
             // Uploads are all done
-            this._completeAll(params, allResponses);
+            this._completeAll(params, allResponses, status);
 
             var msgDlg = appCtxt.getMsgDialog();
             this.upLoadC = this.upLoadC - 1;
@@ -237,10 +248,10 @@ function(req, fileName, params){
 };
 
 ZmUploadManager.prototype._completeAll =
-function(params, allResponses) {
+function(params, allResponses, status) {
     if (params.completeAllCallback) {
         // Run a custom callback (like for mail ComposeView, which is doing attachment handling)
-        params.completeAllCallback.run(allResponses, params, 200)
+        params.completeAllCallback.run(allResponses, params, status)
     }
 }
 
@@ -252,11 +263,10 @@ ZmUploadManager.prototype._popupErrorDialog = function(message) {
 
 
 // --- Upload File Validation -------------------------------------------
-ZmUploadManager.prototype.getErrors =
-function(file, maxSize, errors, extensions){
+ZmUploadManager.prototype.getErrors = function(file, maxSize, errors, extensions){
 	var error = { errorCodes:[], filename: AjxStringUtil.htmlEncode(file.name) };
     var valid = true;
-    var size = file.size || file.fileSize; // Safari
+    var size = file.size || file.fileSize || 0;  // fileSize: Safari
     if (size && (size > maxSize)) {
 		valid = false;
 		error.errorCodes.push( ZmUploadManager.ERROR_INVALID_SIZE );
@@ -265,7 +275,7 @@ function(file, maxSize, errors, extensions){
 		valid = false;
 		error.errorCodes.push( ZmUploadManager.ERROR_INVALID_EXTENSION );
     }
-    if(ZmAppCtxt.INVALID_NAME_CHARS_RE.test(file.name)) {
+	if (ZmAppCtxt.INVALID_NAME_CHARS_RE.test(file.name)) {
 		valid = false;
 		error.errorCodes.push( ZmUploadManager.ERROR_INVALID_FILENAME );
     }

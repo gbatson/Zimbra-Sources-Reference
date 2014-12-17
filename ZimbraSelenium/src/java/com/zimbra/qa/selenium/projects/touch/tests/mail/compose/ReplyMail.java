@@ -17,10 +17,7 @@
 package com.zimbra.qa.selenium.projects.touch.tests.mail.compose;
 
 import org.testng.annotations.Test;
-
 import com.zimbra.qa.selenium.framework.core.Bugs;
-import com.zimbra.qa.selenium.framework.items.*;
-import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.touch.core.TouchCommonTest;
@@ -38,8 +35,6 @@ public class ReplyMail extends TouchCommonTest {
 			groups = { "sanity" })
 			
 	public void ReplyMail_01() throws HarnessException {
-
-		FolderItem inbox = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Inbox);
 		
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 		String body = "text <strong>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong> text";
@@ -69,7 +64,7 @@ public class ReplyMail extends TouchCommonTest {
 				"</SendMsgRequest>");
 		
 		app.zPageMail.zToolbarPressButton(Button.B_FOLDER_TREE);
-		app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, inbox);
+		app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, "Inbox");
 		
 		// Select the mail
 		app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
@@ -102,7 +97,6 @@ public class ReplyMail extends TouchCommonTest {
 		ZAssert.assertEquals(tosubject, "Re: " + subject, "Verify the subject field is correct");
 		ZAssert.assertStringContains(tobody, body, "Verify the body content");
 		ZAssert.assertStringContains(tobody, modifiedContent, "Verify the modified content");
-		ZAssert.assertStringContains(tobody, "----- Original Message -----", "Verify the body content");
 
 	}
 

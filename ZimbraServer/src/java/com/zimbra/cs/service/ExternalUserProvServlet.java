@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -66,12 +67,17 @@ import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.mailbox.acl.AclPushSerializer;
 import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.WebClientServiceUtil;
 import com.zimbra.soap.mail.message.FolderActionRequest;
 import com.zimbra.soap.mail.type.FolderActionSelector;
 
 public class ExternalUserProvServlet extends ZimbraServlet {
 
     private static final Log logger = LogFactory.getLog(ExternalUserProvServlet.class);
+    private static final String EXT_USER_PROV_ON_UI_NODE = "/fromservice/extuserprov";
+    private static final String PUBLIC_LOGIN_ON_UI_NODE = "/fromservice/publiclogin";
+    public static final String PUBLIC_EXTUSERPROV_JSP = "/public/extuserprov.jsp";
+    public static final String PUBLIC_LOGIN_JSP = "/public/login.jsp";
 
     @Override
     public void init() throws ServletException {
@@ -94,6 +100,7 @@ public class ExternalUserProvServlet extends ZimbraServlet {
             throw new ServletException("request missing param");
         }
         Map<Object, Object> tokenMap = validatePrelimToken(param);
+        Map<String, String> reqHeaders = new HashMap<String, String>();
         String ownerId = (String) tokenMap.get("aid");
         String folderId = (String) tokenMap.get("fid");
         String extUserEmail = (String) tokenMap.get("email");
@@ -113,9 +120,22 @@ public class ExternalUserProvServlet extends ZimbraServlet {
                 } else {
                     resp.addCookie(new Cookie("ZM_PRELIM_AUTH_TOKEN", param));
                     req.setAttribute("extuseremail", extUserEmail);
-                    RequestDispatcher dispatcher =
-                            getServletContext().getContext("/zimbra").getRequestDispatcher("/public/extuserprov.jsp");
-                    dispatcher.forward(req, resp);
+                    if (WebClientServiceUtil.isServerInSplitMode()) {
+                        reqHeaders.put("extuseremail", extUserEmail);
+                        reqHeaders.put("ZM_PRELIM_AUTH_TOKEN", param);
+                        String htmlresp = WebClientServiceUtil.sendServiceRequestToOneRandomUiNode(EXT_USER_PROV_ON_UI_NODE, reqHeaders);
+                        resp.getWriter().print(htmlresp);
+                    } else {
+                        ServletContext context = getServletContext().getContext("/zimbra");
+                        if (context != null) {
+                            RequestDispatcher dispatcher = context
+                                    .getRequestDispatcher(PUBLIC_EXTUSERPROV_JSP);
+                            dispatcher.forward(req, resp);
+                        } else {
+                            logger.warn("Could not access servlet context url /zimbra");
+                            throw ServiceException.TEMPORARILY_UNAVAILABLE();
+                        }
+                    }
                 }
             } else {
                 // create a new mountpoint in the external user's mailbox if not already created
@@ -196,9 +216,15 @@ public class ExternalUserProvServlet extends ZimbraServlet {
                     setCookieAndRedirect(req, resp, grantee);
                 } else {
                     req.setAttribute("virtualacctdomain", domain.getName());
-                    RequestDispatcher dispatcher =
-                            getServletContext().getContext("/zimbra").getRequestDispatcher("/public/login.jsp");
-                    dispatcher.forward(req, resp);
+                    if (WebClientServiceUtil.isServerInSplitMode()) {
+                        reqHeaders.put("virtualacctdomain", domain.getName());
+                        String htmlresp = WebClientServiceUtil.sendServiceRequestToOneRandomUiNode(PUBLIC_LOGIN_ON_UI_NODE, reqHeaders);
+                        resp.getWriter().print(htmlresp);
+                    } else {
+                        RequestDispatcher dispatcher =
+                                getServletContext().getContext("/zimbra").getRequestDispatcher(PUBLIC_LOGIN_JSP);
+                        dispatcher.forward(req, resp);
+                    }
                 }
             }
         } catch (ServiceException e) {

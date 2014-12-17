@@ -41,7 +41,7 @@
 #define ERR_MAPI_APPOINTMENT				L"Error: Appointment item error"
 #define ERR_MAPI_CONTACT					L"Error: Contact item error"
 #define ERR_MAPI_FOLDER						L"Error: MAPI folder item error"
-#define ERR_MAPI_MESSAGE					L"Erro: MAPI message item error"
+#define ERR_MAPI_MESSAGE					L"Error: MAPI message item error"
 #define ERR_MAPI_LOGON						L"Profile Logon error"
 #define ERR_STORE_ERR						L"Error: Message store could not be opened"
 #define ERR_ROOT_FOLDER						L"Error: Root folder cannot be opened"

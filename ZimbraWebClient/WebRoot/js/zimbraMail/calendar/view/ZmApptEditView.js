@@ -2463,6 +2463,9 @@ function(ev) {
         this._locationConflictAppt.setRecurType(newSelectVal);
         this.locationConflictChecker();
     }
+    if (newSelectVal === "WEE") {
+        this._calItem._recurrence.repeatCustom =1;
+    }
 };
 
 /**
@@ -2693,6 +2696,12 @@ function(type, attendees) {
 
     this.updateToolbarOps();
     this.resize();
+
+	//After everything gets rendered, run the resize method again to make the height calculations for individual components using the correct height value
+	var self = this;
+	setTimeout(function(){
+		self.resize();
+	}, 0);
 };
 
 ZmApptEditView.prototype.updateScheduleAssistant =

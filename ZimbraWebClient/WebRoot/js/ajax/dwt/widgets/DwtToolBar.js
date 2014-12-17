@@ -56,8 +56,10 @@ DwtToolBar = function(params) {
 		this._hasSetMouseEvents = params.parent._hasSetMouseEvents;
 	}
 	if (params.handleMouse !== false && !this._hasSetMouseEvents) {
-		var events = AjxEnv.isIE ? [DwtEvent.ONMOUSEDOWN, DwtEvent.ONMOUSEUP] :
-								   [DwtEvent.ONMOUSEDOWN, DwtEvent.ONMOUSEUP, DwtEvent.ONMOUSEOVER, DwtEvent.ONMOUSEOUT];
+		var events = [DwtEvent.ONMOUSEDOWN, DwtEvent.ONMOUSEUP, DwtEvent.ONCLICK];
+		if (!AjxEnv.isIE) {
+			events.push(DwtEvent.ONMOUSEOVER, DwtEvent.ONMOUSEOUT);
+		}
 		this._setEventHdlrs(events);
 		this._hasSetMouseEvents = true;
 	}
@@ -76,6 +78,7 @@ DwtToolBar.PARAMS = ["parent", "className", "posStyle", "style", "index", "id"];
 
 DwtToolBar.prototype = new DwtComposite;
 DwtToolBar.prototype.constructor = DwtToolBar;
+DwtToolBar.prototype.role = 'toolbar';
 
 DwtToolBar.prototype.isDwtToolBar = true;
 DwtToolBar.prototype.toString = function() { return "DwtToolBar"; };
@@ -182,6 +185,13 @@ DwtToolBar.prototype.addSpacer =
 function(size, index) {
     var el = this._createSpacerElement();
 	this._addItem(DwtToolBar.SPACER, el, index);
+
+	// ensure that every operation has a corresponding child
+	new DwtToolBarSpacer({
+		parent: this, parentElement: el, index: index,
+		id: this._htmlElId + '_spacer' + DwtToolBar.__itemCount
+	});
+
 	return el;
 };
 
@@ -196,6 +206,13 @@ DwtToolBar.prototype.addSeparator =
 function(className, index) {
 	var el = this._createSeparatorElement();
 	this._addItem(DwtToolBar.SEPARATOR, el, index);
+
+	// ensure that every operation has a corresponding child
+	new DwtToolBarSeparator({
+		parent: this, parentElement: el, index: index,
+		id: this._htmlElId + '_separator' + DwtToolBar.__itemCount
+	});
+
 	return el;
 };
 
@@ -206,6 +223,7 @@ function(className, index) {
  */
 DwtToolBar.prototype.removeSeparator =
 function(el) {
+	this.removeChild(DwtControl.fromElement(el.firstChild));
 	this._removeItem(el);
 };
 
@@ -220,6 +238,13 @@ DwtToolBar.prototype.addFiller =
 function(className, index) {
 	var el = this._createFillerElement();
 	this._addItem(DwtToolBar.FILLER, el, index);
+
+	// ensure that every operation has a corresponding child
+	new DwtToolBarSpacer({
+		parent: this, parentElement: el, index: index,
+		id: this._htmlElId + '_filler' + DwtToolBar.__itemCount
+	});
+
 	return el;
 };
 
@@ -233,15 +258,12 @@ function(className, index) {
  */
 DwtToolBar.prototype.addChild =
 function(child, index) {
-	
-	if (child.isDwtControl) {
-    	DwtComposite.prototype.addChild.apply(this, arguments);
-	}
-
     var itemEl = this._createItemElement();
-    itemEl.appendChild(child.isDwtControl ? child.getHtmlElement() : child);
-
     this._addItem(DwtToolBar.ELEMENT, itemEl, index);
+
+    DwtComposite.prototype.addChild.apply(this, arguments);
+
+    child.reparentHtmlElement(itemEl);
 };
 
 // keyboard nav
@@ -422,8 +444,7 @@ function(item) {
 
 	item = item ? item : this._getFocusItem(this._curFocusIndex);
 	if (item) {
-		item._hasFocus = true;	// so that focus class is set
-		item._focus();
+		item.focus();
 	} else {
 		// if current item isn't focusable, find first one that is
 		this._moveFocus();
@@ -440,8 +461,7 @@ function(item) {
 	DBG.println(AjxDebug.DBG3, "DwtToolBar: BLUR");
 	item = item ? item : this._getFocusItem(this._curFocusIndex);
 	if (item) {
-		item._hasFocus = false;
-		item._blur();
+		item.blur();
 	}
 };
 
@@ -462,6 +482,7 @@ function(index) {
 	if (item._noFocus)							{ return null; }
 	if (item.getEnabled && !item.getEnabled())	{ return null; }
 	if (item.getVisible && !item.getVisible())	{ return null; }
+	if (item instanceof DwtText && !item.getText())	{ return null; }
 	return item;
 };
 
@@ -605,3 +626,27 @@ DwtToolBarButton.prototype.toString = function() { return "DwtToolBarButton"; };
 
 // Data
 DwtToolBarButton.prototype.TEMPLATE = "dwt.Widgets#ZToolbarButton";
+
+// Spacer
+DwtToolBarSpacer = function() {
+	DwtControl.apply(this, arguments);
+	this._noFocus = true;
+};
+
+DwtToolBarSpacer.prototype = new DwtControl;
+DwtToolBarSpacer.prototype.constructor = DwtToolBarSpacer;
+
+DwtToolBarSpacer.prototype.isDwtToolBarSpacer = true;
+DwtToolBarSpacer.prototype.toString = function() { return "DwtToolBarSpacer"; };
+
+// Separator
+DwtToolBarSeparator = function() { };
+
+DwtToolBarSeparator.prototype = new DwtToolBarSpacer;
+DwtToolBarSeparator.prototype.constructor = DwtToolBarSeparator;
+
+DwtToolBarSeparator.prototype.isDwtToolBarSeparator = true;
+DwtToolBarSeparator.prototype.toString = function() { return "DwtToolBarSeparator"; };
+
+DwtToolBarSeparator.prototype.isFocusable = true;
+DwtToolBarSeparator.prototype.role = 'separator';

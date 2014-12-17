@@ -51,6 +51,16 @@ ZmCalendarTreeController.prototype.constructor = ZmCalendarTreeController;
 ZmCalendarTreeController.prototype.isZmCalendarTreeController = true;
 ZmCalendarTreeController.prototype.toString = function() { return "ZmCalendarTreeController"; };
 
+ZmCalendarTreeController.prototype._initializeActionMenus = function() {
+	ZmTreeController.prototype._initializeActionMenus.call(this);
+
+	var ops = this._getRemoteActionMenuOps();
+	if (!this._remoteActionMenu && ops) {
+		var args = [this._shell, ops];
+		this._remoteActionMenu = new AjxCallback(this, this._createActionMenu, args);
+	}
+
+}
 
 ZmCalendarTreeController.prototype._treeListener =
 function(ev) {
@@ -202,11 +212,11 @@ function(actionMenu, type, id) {
 		this._resetButtonPerSetting(actionMenu, ZmOperation.FREE_BUSY_LINK, appCtxt.getActiveAccount().isZimbraAccount);
 
         var fbLinkMenuItem = actionMenu.getMenuItem(ZmOperation.FREE_BUSY_LINK);
-        if(fbLinkMenuItem){
+        if (fbLinkMenuItem){
             //setting up free busy link submenu
-            this._fbLinkSubMenu = (this._fbLinkSubMenu) ? this._fbLinkSubMenu : this._getFreeBusySubMenu(actionMenu);
+            actionMenu._fbLinkSubMenu = actionMenu._fbLinkSubMenu || this._getFreeBusySubMenu(actionMenu, calendar.restUrl);
 
-            fbLinkMenuItem.setMenu(this._fbLinkSubMenu);
+            fbLinkMenuItem.setMenu(actionMenu._fbLinkSubMenu);
         }
 
         actionMenu.enable(ZmOperation.NEW_CALENDAR, !isTrash && !appCtxt.isExternalAccount() && !appCtxt.isWebClientOffline());
@@ -215,12 +225,12 @@ function(actionMenu, type, id) {
 };
 
 ZmCalendarTreeController.prototype._getFreeBusySubMenu =
-function(actionMenu){
+function(actionMenu, restUrl){
         var subMenuItems = [ZmOperation.SEND_FB_HTML,ZmOperation.SEND_FB_ICS,ZmOperation.SEND_FB_ICS_EVENT];
         var params = {parent:actionMenu, menuItems:subMenuItems};
 	    var subMenu = new ZmActionMenu(params);
         for(var s=0;s<subMenuItems.length;s++){
-            subMenu.addSelectionListener(subMenuItems[s], new AjxListener(this, this._freeBusyLinkListener, subMenuItems[s]) );
+            subMenu.addSelectionListener(subMenuItems[s], this._freeBusyLinkListener.bind(this, subMenuItems[s], restUrl) );
         }
         return subMenu;
 }
@@ -240,15 +250,15 @@ function(ev){
 };
 
 ZmCalendarTreeController.prototype._freeBusyLinkListener =
-function(ev){
+function(op, restUrl, ev){
 	var inNewWindow = false;
 	var app = appCtxt.getApp(ZmApp.CALENDAR);
 	if (app) {
 		inNewWindow = app._inNewWindow(ev);
 	}
-	var restUrl = appCtxt.get(ZmSetting.REST_URL);
+	restUrl = restUrl || appCtxt.get(ZmSetting.REST_URL);
 	if (restUrl) {
-	   restUrl += ev==ZmOperation.SEND_FB_ICS_EVENT ? "?fmt=ifb&fbfmt=event" : ev==ZmOperation.SEND_FB_ICS ? "?fmt=ifb" : "?fmt=freebusy";
+	   restUrl += op === ZmOperation.SEND_FB_ICS_EVENT ? "?fmt=ifb&fbfmt=event" : op === ZmOperation.SEND_FB_ICS ? "?fmt=ifb" : "?fmt=freebusy";
 	}
 	var params = {
 		action: ZmOperation.NEW_MESSAGE, 
@@ -296,6 +306,14 @@ function() {
 	return ops;
 };
 
+
+// Returns a list of desired remote shared mailbox action menu operations
+ZmCalendarTreeController.prototype._getRemoteActionMenuOps = function() {
+	return [ZmOperation.NEW_CALENDAR,
+			ZmOperation.ADD_EXTERNAL_CALENDAR,
+			ZmOperation.FREE_BUSY_LINK];
+};
+
 // Returns a list of desired action menu operations
 ZmCalendarTreeController.prototype._getActionMenuOps =
 function() {
@@ -318,6 +336,24 @@ function() {
             ZmOperation.DETACH_WIN
         ];
     }
+};
+
+ZmCalendarTreeController.prototype.getItemActionMenu = function(ev, item) {
+	var actionMenu = null;
+	if (item.isRemoteRoot()) {
+		actionMenu = this._getRemoteActionMenu();
+	} else {
+		actionMenu = ZmTreeController.prototype.getItemActionMenu.apply(this, arguments);
+	}
+	return actionMenu;
+}
+
+ZmCalendarTreeController.prototype._getRemoteActionMenu = function() {
+	if (this._remoteActionMenu instanceof AjxCallback) {
+		var callback = this._remoteActionMenu;
+		this._remoteActionMenu = callback.run();
+	}
+	return this._remoteActionMenu;
 };
 
 ZmCalendarTreeController.prototype._getActionMenu =
@@ -348,7 +384,7 @@ function(ev) {
 // Method that is run when a tree item is left-clicked
 ZmCalendarTreeController.prototype._itemClicked =
 function(organizer) {
-	if (organizer.type != ZmOrganizer.CALENDAR) {
+	if ((organizer.type != ZmOrganizer.CALENDAR) && !organizer.isRemoteRoot()) {
         if (organizer._showFoldersCallback) {
             organizer._showFoldersCallback.run();
             return;
@@ -705,8 +741,8 @@ ZmCalendarTreeController.prototype._newListener =
 function(ev, account) {
 	this._pendingActionData = this._getActionedOrganizer(ev);
 	var newDialog = this._getNewDialog();
-    if(this._extCalData) {
-        var iCalData = this._extCalData ? this._extCalData.iCal : null;
+    if (this._extCalData) {
+        var iCalData = this._extCalData.iCal;
         newDialog.setICalData(iCalData);
         newDialog.setTitle(ZmMsg.addExternalCalendar);
         newDialog.getButton(ZmNewCalendarDialog.BACK_BUTTON).setVisibility(true);

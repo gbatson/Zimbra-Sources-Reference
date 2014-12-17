@@ -1,4 +1,5 @@
-﻿using MVVM.Model;
+﻿using CssLib;
+using MVVM.Model;
 using Misc;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -21,6 +22,7 @@ public class OptionsViewModel: BaseViewModel
         this.SaveCommand = new ActionCommand(this.Save, () => true);
         this.BackCommand = new ActionCommand(this.Back, () => true);
         this.NextCommand = new ActionCommand(this.Next, () => true);
+//        this.PubFoldersCommand = new ActionCommand(this.PublicFolders , () => true);
     }
     public ICommand LoadCommand {
         get;
@@ -38,6 +40,12 @@ public class OptionsViewModel: BaseViewModel
         get;
         private set;
     }
+    public ICommand PubFoldersCommand
+    {
+        get;
+        private set;
+    }
+   
     public void LoadConfig(Config config)
     {
         ImportMailOptions = config.ImportOptions.Mail;
@@ -81,6 +89,69 @@ public class OptionsViewModel: BaseViewModel
         savedDomain = config.UserProvision.DestinationDomain;
     }
 
+    private void PublicFolders()
+    {
+
+     /*  EnablePopButtons = false;
+
+        CSMigrationWrapper mw = ((IntroViewModel)ViewModelPtrs[(int)ViewType.INTRO]).mw;
+
+        mw.StartMigration(MyAcct, importOpts, isServer, importOpts.VerboseOn, m_isPreview, doRulesAndOOO);
+       /* string[] users = mw.GetListFromObjectPicker();
+        if(users != null)
+        {
+        // FBS rewrite -- bug 71646 -- 3/26/12
+        for (int i = 0; i < users.Length; i++)
+        {
+            string[] tokens = users[i].Split('~');
+            if (tokens.Length < 5)
+            {
+                MessageBox.Show("Object picker returned insufficient data", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                EnablePopButtons = true;
+                return;
+            }
+            string uname = "", displayname = "", givenname = "", sn = "", zfp = "";
+            for (int j = 0; j < tokens.Length; j += 5)
+            {
+                uname = tokens.GetValue(j).ToString();
+                displayname = tokens.GetValue(j + 1).ToString();
+                givenname = tokens.GetValue(j + 2).ToString();
+                sn = tokens.GetValue(j + 3).ToString();
+                zfp = tokens.GetValue(j + 4).ToString();
+            }
+
+            if (uname.IndexOf("@") != -1)
+            {
+                uname = uname.Substring(0, uname.IndexOf("@"));
+            }
+
+            UsersViewModel uvm;
+
+            if (uname.CompareTo(displayname) == 0)
+            {
+                 uvm = new UsersViewModel(displayname, uname);
+            }
+            else
+            {
+                uvm = new UsersViewModel(uname, uname);
+            }
+            uvm.AddOPInfo(new ObjectPickerInfo(displayname, givenname, sn, zfp));
+            UsersList.Add(uvm);
+
+            ScheduleViewModel scheduleViewModel =
+                ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);
+
+            scheduleViewModel.SchedList.Add(new SchedUser(Username, false));
+            scheduleViewModel.EnableMigrate = (scheduleViewModel.SchedList.Count > 0);
+            scheduleViewModel.EnablePreview = scheduleViewModel.EnableMigrate;
+            EnableNext = (UsersList.Count > 0);
+        }
+    }
+        EnablePopButtons = true;
+    }
+
+    */
+    }
     private void Load()
     {
         System.Xml.Serialization.XmlSerializer reader =
@@ -201,22 +272,30 @@ public class OptionsViewModel: BaseViewModel
                 return;
             }
         }
-        if (isServer)
+        if (isServer && IsPublicFolders)
         {
-            lb.SelectedIndex = 4;
+            lb.SelectedIndex = 5;
         }
+
         else
         {
-            ConfigViewModelUDest configViewModelUDest =
-                ((ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST]);
-            UsersViewModel usersViewModel =
-                ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]);
-            ScheduleViewModel scheduleViewModel =
-                ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);
-            string name = configViewModelUDest.ZimbraUser;
+            if (isServer)
+            {
+                lb.SelectedIndex = 4;
+            }
+            else
+            {
+                ConfigViewModelUDest configViewModelUDest =
+                    ((ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST]);
+                UsersViewModel usersViewModel =
+                    ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]);
+                ScheduleViewModel scheduleViewModel =
+                    ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);
+                string name = configViewModelUDest.ZimbraUser;
 
-            usersViewModel.UsersList.Add(new UsersViewModel(name, ""));
-            scheduleViewModel.DoMigrate(false);
+                usersViewModel.UsersList.Add(new UsersViewModel(name, ""));
+                scheduleViewModel.DoMigrate(false);
+            }
         }
     }
     public bool ImportMailOptions {
@@ -563,6 +642,8 @@ public class OptionsViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("LoggingVerbose"));
         }
     }
+
+    
 
     public string LogLevel
     {

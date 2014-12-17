@@ -99,6 +99,7 @@ public class ConfigViewModelS: BaseViewModel
                     ((ConfigViewModelSDest)ViewModelPtrs[(int)ViewType.SVRDEST]).LoadConfig(config);
                     ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]).LoadConfig(config);
                     ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]).LoadDomain(config);
+                    ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]).LoadConfig(config);
                     ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]).SetConfigFile(fDialog.FileName);
                     if ((IsProfile) && (CurrentProfileSelection == -1))
                     {
@@ -162,14 +163,15 @@ public class ConfigViewModelS: BaseViewModel
                 MessageBox.Show("Please select a valid profile", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+            OutlookProfile = ProfileList[CurrentProfileSelection];
             if (iMailSvrInitialized == EXCHSVR_MODE)
             {
                 MessageBox.Show("You are already logged in via Exchange Server credentials",
                     "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            if ((!IscfgPublicFolder)&&(iMailSvrInitialized == -1))
-                ret = mw.GlobalInit(ProfileList[CurrentProfileSelection], "", "");
+          //  if ((!IscfgPublicFolder)&&(iMailSvrInitialized == -1))
+            //    ret = mw.GlobalInit(ProfileList[CurrentProfileSelection], "", "");
         }
         else
         {

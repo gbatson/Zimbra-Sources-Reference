@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -82,7 +82,9 @@ import com.zimbra.cs.ldap.LdapUtil;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.servlet.CsrfFilter;
 import com.zimbra.cs.servlet.ZimbraServlet;
+import com.zimbra.cs.servlet.util.CsrfUtil;
 import com.zimbra.cs.store.BlobInputStream;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.Zimbra;
@@ -95,6 +97,8 @@ public class FileUploadServlet extends ZimbraServlet {
     // If this query param is present in the URI, upload size is limited by zimbraFileUploadMaxSize,
     // This allows customer to allow larger documents/briefcase files than messages sent via SMTP.
     protected static final String PARAM_LIMIT_BY_FILE_UPLOAD_MAX_SIZE = "lbfums";
+
+    protected static final String PARAM_CSRF_TOKEN = "csrfToken";
 
     /** The character separating upload IDs in a list */
     public static final String UPLOAD_DELIMITER = ",";
@@ -329,7 +333,7 @@ public class FileUploadServlet extends ZimbraServlet {
     public static Upload saveUpload(InputStream is, String filename, String contentType, String accountId, boolean limitByFileUploadMaxSize) throws ServiceException, IOException {
         return saveUpload(is, filename, contentType, accountId, getFileUploadMaxSize(limitByFileUploadMaxSize));
     }
-    
+
     public static Upload saveUpload(InputStream is, String filename, String contentType, String accountId, long limit) throws ServiceException, IOException {
         FileItem fi = null;
         boolean success = false;
@@ -463,6 +467,33 @@ public class FileUploadServlet extends ZimbraServlet {
             return;
         }
 
+        boolean doCsrfCheck = false;
+        boolean csrfCheckComplete = false;
+        if (req.getAttribute(CsrfFilter.CSRF_TOKEN_CHECK) != null) {
+            doCsrfCheck =  (Boolean) req.getAttribute(CsrfFilter.CSRF_TOKEN_CHECK);
+        }
+
+        if (doCsrfCheck) {
+            String csrfToken = req.getHeader(CsrfFilter.CSRF_TOKEN);
+
+            // Bug: 96344
+            if (!StringUtil.isNullOrEmpty(csrfToken)) {
+                if (!CsrfUtil.isValidCsrfToken(csrfToken, at)) {
+
+                    drainRequestStream(req);
+                    mLog.debug("CSRF token validation failed for account: %s"
+                        + ", Auth token is CSRF enabled:  %s" + "CSRF token is: %s", at,
+                        at.isCsrfTokenEnabled(), csrfToken);
+                    sendResponse(resp, HttpServletResponse.SC_UNAUTHORIZED, fmt, null, null, null);
+                    return;
+                }
+                csrfCheckComplete = true;
+            }
+        } else {
+            csrfCheckComplete = true;
+        }
+
+
         try {
             Provisioning prov = Provisioning.getInstance();
             Account acct = AuthProvider.validateAuthToken(prov, at, true);
@@ -480,9 +511,9 @@ public class FileUploadServlet extends ZimbraServlet {
 
             // file upload requires multipart enctype
             if (ServletFileUpload.isMultipartContent(req)) {
-                handleMultipartUpload(req, resp, fmt, acct, limitByFileUploadMaxSize);
+                handleMultipartUpload(req, resp, fmt, acct, limitByFileUploadMaxSize, at, csrfCheckComplete);
             } else {
-                handlePlainUpload(req, resp, fmt, acct, limitByFileUploadMaxSize);
+                handlePlainUpload(req, resp, fmt, acct, limitByFileUploadMaxSize, csrfCheckComplete);
             }
         } catch (ServiceException e) {
             mLog.info("File upload failed", e);
@@ -492,7 +523,8 @@ public class FileUploadServlet extends ZimbraServlet {
     }
 
     @SuppressWarnings("unchecked")
-    List<Upload> handleMultipartUpload(HttpServletRequest req, HttpServletResponse resp, String fmt, Account acct, boolean limitByFileUploadMaxSize)
+    List<Upload> handleMultipartUpload(HttpServletRequest req, HttpServletResponse resp, String fmt, Account acct,
+        boolean limitByFileUploadMaxSize, AuthToken at, boolean csrfCheckComplete)
     throws IOException, ServiceException {
         List<FileItem> items = null;
         String reqId = null;
@@ -500,6 +532,26 @@ public class FileUploadServlet extends ZimbraServlet {
         ServletFileUpload upload = getUploader2(limitByFileUploadMaxSize, acct);
         try {
             items = upload.parseRequest(req);
+
+            if (!csrfCheckComplete) {
+                for (FileItem item : items) {
+                    if (item.isFormField()) {
+                        if (item.getFieldName().equals(PARAM_CSRF_TOKEN)) {
+                            String csrfToken = item.getString();
+                            if (!CsrfUtil.isValidCsrfToken(csrfToken, at)) {
+
+                                drainRequestStream(req);
+                                mLog.debug("CSRF token validation failed for account: %s"
+                                    + ", Auth token is CSRF enabled:  %s" + "CSRF token is: %s", at,
+                                    at.isCsrfTokenEnabled(), csrfToken);
+                                sendResponse(resp, HttpServletResponse.SC_UNAUTHORIZED, fmt, null, null, items);
+                                return Collections.emptyList();
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         } catch (FileUploadBase.SizeLimitExceededException e) {
             // at least one file was over max allowed size
             mLog.info("Exceeded maximum upload size of " + upload.getSizeMax() + " bytes: " + e);
@@ -583,8 +635,16 @@ public class FileUploadServlet extends ZimbraServlet {
         return uploads;
     }
 
-    List<Upload> handlePlainUpload(HttpServletRequest req, HttpServletResponse resp, String fmt, Account acct, boolean limitByFileUploadMaxSize)
+    List<Upload> handlePlainUpload(HttpServletRequest req, HttpServletResponse resp, String fmt, Account acct,
+        boolean limitByFileUploadMaxSize, boolean csrfCheckComplete)
     throws IOException, ServiceException {
+        if (!csrfCheckComplete) {
+            drainRequestStream(req);
+            mLog.debug("CSRF token validation failed for account: %s"
+                + "No csrf token recd.", acct);
+            sendResponse(resp, HttpServletResponse.SC_UNAUTHORIZED, fmt, null, null, null);
+            return Collections.emptyList();
+        }
         // metadata is encoded in the response's HTTP headers
         ContentType ctype = new ContentType(req.getContentType());
         String contentType = ctype.getContentType(), filename = ctype.getParameter("name");
@@ -716,7 +776,7 @@ public class FileUploadServlet extends ZimbraServlet {
             mLog.info("Ignoring error that occurred while reading the end of the client request: " + e);
         }
     }
-    
+
     private static long getFileUploadMaxSize(boolean limitByFileUploadMaxSize) {
         // look up the maximum file size for uploads
         long maxSize = DEFAULT_MAX_SIZE;
@@ -745,7 +805,7 @@ public class FileUploadServlet extends ZimbraServlet {
     protected ServletFileUpload getUploader2(boolean limitByFileUploadMaxSize, Account acct) {
     	return getUploader(getFileUploadMaxSize(limitByFileUploadMaxSize));
     }
-    
+
     private static ServletFileUpload getUploader(long maxSize) {
         DiskFileItemFactory dfif = new DiskFileItemFactory();
         dfif.setSizeThreshold(32 * 1024);

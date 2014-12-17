@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -22,35 +22,52 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.calendar.ICalTimeZone;
 import com.zimbra.common.calendar.ParsedDateTime;
 import com.zimbra.common.calendar.TimeZoneMap;
 import com.zimbra.common.calendar.ZCalendar;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
 import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZParameter;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.HttpUtil;
-import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.DavException;
+import com.zimbra.cs.dav.caldav.AutoScheduler;
 import com.zimbra.cs.dav.caldav.Filter;
 import com.zimbra.cs.dav.caldav.Range.ExpandRange;
 import com.zimbra.cs.dav.caldav.Range.TimeRange;
 import com.zimbra.cs.dav.property.CalDavProperty;
 import com.zimbra.cs.mailbox.CalendarItem;
+import com.zimbra.cs.mailbox.DavNames;
+import com.zimbra.cs.mailbox.DavNames.DavName;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Message;
+import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteInfo;
@@ -112,25 +129,58 @@ public interface CalendarObject {
     }
 
     public static class CalendarPath {
-        public static String generate(DavContext ctxt, String itemPath, String uid, int extra) {
-            if (ctxt != null) {
-                if (ctxt.getCollectionPath() != null)
-                    itemPath = ctxt.getCollectionPath();
-                else if (ctxt.getPathInfo() != null)
-                    itemPath += ctxt.getPathInfo();
+        /**
+         * @param ctxt - If not null, used to augment path information
+         * @param itemPath - path for parent collection
+         * @param extra if greater than zero, ",<extra val>" is added before the .ics extension
+         *        This is needed in places like the scheduling inbox where UID is not necessarily unique.  For
+         *        example, multiple replies to an invite would share a UID.
+         */
+        public static String generate(DavContext ctxt, String itemPath, String uid,
+                Integer mailbox_id, Integer item_id, int extra) {
+            StringBuilder path = new StringBuilder(parentCollectionPath(ctxt, itemPath));
+            DavName davName = null;
+            if (DebugConfig.enableDAVclientCanChooseResourceBaseName && mailbox_id != null && item_id != null) {
+                davName = DavNames.get(mailbox_id, item_id);
             }
-            // escape uid
-            StringBuilder path = new StringBuilder();
-            path.append(itemPath);
-            if (path.charAt(path.length()-1) != '/')
-                path.append("/");
-            path.append(uid.replace("/", "//"));
-            if (extra >= 0)
-                path.append(",").append(extra);
-            path.append(CAL_EXTENSION);
+            if (davName != null) {
+                if (path.charAt(path.length()-1) != '/') {
+                    path.append("/");
+                }
+                path.append(davName.davBaseName);
+            } else {
+                addBaseNameBasedOnEscapedUID(path, uid, extra);
+            }
             return path.toString();
         }
+
+        /**
+         * @param extra if greater than zero, ",<extra val>" is added before the .ics extension.  Needed where UID is
+         *        not unique
+         */
+        private static void addBaseNameBasedOnEscapedUID(StringBuilder path, String uid, int extra) {
+            if (path.charAt(path.length()-1) != '/') {
+                path.append("/");
+            }
+            path.append(uid.replace("/", "//"));
+            if (extra >= 0) {
+                path.append(",").append(extra);
+            }
+            path.append(CAL_EXTENSION);
+        }
+
+        private static String parentCollectionPath(DavContext ctxt, String itemPath) {
+            if (ctxt != null) {
+                if (ctxt.getCollectionPath() != null) {
+                    itemPath = ctxt.getCollectionPath();
+                } else if (ctxt.getActingAsDelegateFor() != null) {
+                    itemPath += ctxt.getActingAsDelegateFor();
+                }
+            }
+            return itemPath;
+        }
     }
+
     public static class ScheduleMessage extends LocalCalendarObjectBase implements CalendarObject {
         public ScheduleMessage(DavContext ctxt, String path, String owner, Invite inv, Message msg) throws ServiceException {
             super(ctxt, path, msg);
@@ -201,21 +251,21 @@ public interface CalendarObject {
                 throw new DavException("cannot delete item", resCode, se);
             }
         }
-        private Invite mInvite;
+        private final Invite mInvite;
         @Override
-        public void expand(ExpandRange range) {        
+        public void expand(ExpandRange range) {
         }
     }
     public static class LightWeightCalendarObject extends DavResource implements CalendarObject {
-        private int mMailboxId;
-        private int mId;
-        private String mUid;
-        private String mEtag;
-        private long mStart;
-        private long mEnd;
+        private final int mMailboxId;
+        private final int mId;
+        private final String mUid;
+        private final String mEtag;
+        private final long mStart;
+        private final long mEnd;
 
         public LightWeightCalendarObject(String path, String owner, CalendarItem.CalendarMetadata data) {
-            super(CalendarPath.generate(null, path, data.uid, -1), owner);
+            super(CalendarPath.generate(null, path, data.uid, data.mailboxId, data.itemId, -1), owner);
             mMailboxId = data.mailboxId;
             mId = data.itemId;
             mUid = data.uid;
@@ -268,7 +318,7 @@ public interface CalendarObject {
             return true;
         }
         @Override
-        public void expand(ExpandRange range) { 
+        public void expand(ExpandRange range) {
         }
     }
     public static class LocalCalendarObject extends LocalCalendarObjectBase implements CalendarObject {
@@ -278,7 +328,8 @@ public interface CalendarObject {
         }
 
         public LocalCalendarObject(DavContext ctxt, CalendarItem calItem, boolean newItem) throws ServiceException {
-            this(ctxt, CalendarPath.generate(ctxt, calItem.getPath(), calItem.getUid(), -1), calItem);
+            this(ctxt, CalendarPath.generate(ctxt, calItem.getPath(), calItem.getUid(),
+                    calItem.getMailboxId(), calItem.getId(), -1), calItem);
             mNewlyCreated = newItem;
         }
 
@@ -312,13 +363,13 @@ public interface CalendarObject {
             mEnd = calItem.getEndTime();
         }
 
-        private CalendarItem item;
-        private String mUid;
+        private final CalendarItem item;
+        private final String mUid;
         private Invite[] mInvites;
-        private TimeZoneMap mTzmap;
-        private int mMailboxId;
-        private long mStart;
-        private long mEnd;
+        private final TimeZoneMap mTzmap;
+        private final int mMailboxId;
+        private final long mStart;
+        private final long mEnd;
 
         /* Returns true if the supplied Filter matches this calendar object. */
         @Override public boolean match(Filter filter) {
@@ -339,65 +390,128 @@ public interface CalendarObject {
             return false;
         }
 
-        /* Returns iCalendar representation of events that matches
-         * the supplied filter.
+        private  ZVCalendar createZVcalendar(List<ZComponent> components, Map<String, ICalTimeZone> oldIdsToNewTZsMap) {
+            Set<String> usedOldIds = Sets.newHashSet();
+            for (ZComponent comp : components) {
+                for (ZProperty prop : comp.getProperties()) {
+                    ZParameter tzidParam = prop.getParameter(ICalTok.TZID);
+                    if (tzidParam == null) {
+                        continue;
+                    }
+                    String tzid = tzidParam.getValue();
+                    if (tzid != null) {
+                        ICalTimeZone newTZ = oldIdsToNewTZsMap.get(tzid);
+                        if (newTZ == null) {
+                            continue; // would be odd.
+                        }
+                        usedOldIds.add(tzid);
+                        tzidParam.setValue(newTZ.getID());
+                    }
+                }
+            }
+            ZVCalendar vcal = new ZVCalendar();
+            vcal.addVersionAndProdId();
+            for (Entry<String, ICalTimeZone> entry : oldIdsToNewTZsMap.entrySet()) {
+                if (usedOldIds.contains(entry.getKey())) {
+                    vcal.addComponent(entry.getValue().newToVTimeZone());
+                }
+            }
+            for (ZComponent comp : components) {
+                vcal.addComponent(comp);
+            }
+            return vcal;
+        }
+
+        /**
+         * Returns iCalendar representation of events that matches the supplied filter.
+         * Unused timezones are removed and well known timezones are used in preference to original timezones.
          */
-        @Override
-        public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
-            CharArrayWriter wr = null;
+        public ZVCalendar getZVcalendar(DavContext ctxt, Filter filter) throws ServiceException, DavException {
+            Map<String,ICalTimeZone> oldIdsToNewTZsMap = Maps.newHashMap();
+            List<ZComponent> components = Lists.newArrayList();
+            Iterator<ICalTimeZone> iter = mTzmap.tzIterator();
+            while (iter.hasNext()) {
+                ICalTimeZone tz = iter.next();
+                String oldId = tz.getID();
+                ICalTimeZone wellKnownTZ = ICalTimeZone.lookupMatchingWellKnownTZ(tz);
+                oldIdsToNewTZsMap.put(oldId, wellKnownTZ);
+            }
+            Account acct = ctxt.getAuthAccount();
+            boolean allowPrivateAccess = false;
             try {
-                wr = new CharArrayWriter();
-                wr.append("BEGIN:VCALENDAR\r\n");
-                wr.append("VERSION:").append(ZCalendar.sIcalVersion).append("\r\n");
-                wr.append("PRODID:").append(ZCalendar.sZimbraProdID).append("\r\n");
-                Iterator<ICalTimeZone> iter = mTzmap.tzIterator();
-                while (iter.hasNext()) {
-                    ICalTimeZone tz = iter.next();
-                    tz.newToVTimeZone().toICalendar(wr, true);
-                }
-                Account acct = ctxt.getAuthAccount();
-                boolean allowPrivateAccess = false;
-                try {
-                    Mailbox mbox = getMailbox(ctxt);
-                    OperationContext octxt = ctxt.getOperationContext();
-                    Folder folder = mbox.getFolderById(octxt, mFolderId);
-                    allowPrivateAccess = CalendarItem.allowPrivateAccess(
-                            folder, ctxt.getAuthAccount(), octxt.isUsingAdminPrivileges());
-                } catch (ServiceException se) {
-                    ZimbraLog.dav.warn("cannot determine private access status", se);
-                }
-                boolean delegated = !acct.getId().equalsIgnoreCase(mOwnerId);
-                if (!LC.calendar_apple_ical_compatible_canceled_instances.booleanValue()) {
-                    for (Invite inv : mInvites) {
-                        Invite fixedInv = getFixedUpCopy(ctxt, inv, acct, delegated, false);
-                        ZComponent comp = fixedInv.newToVComponent(false, allowPrivateAccess);
-                        if (filter == null || filter.match(comp))
-                            comp.toICalendar(wr, true);
+                Mailbox mbox = getMailbox(ctxt);
+                OperationContext octxt = ctxt.getOperationContext();
+                Folder folder = mbox.getFolderById(octxt, mFolderId);
+                allowPrivateAccess = CalendarItem.allowPrivateAccess(
+                        folder, ctxt.getAuthAccount(), octxt.isUsingAdminPrivileges());
+            } catch (ServiceException se) {
+                ZimbraLog.dav.warn("cannot determine private access status", se);
+            }
+            boolean delegated = !acct.getId().equalsIgnoreCase(mOwnerId);
+            if (!LC.calendar_apple_ical_compatible_canceled_instances.booleanValue()) {
+                for (Invite inv : mInvites) {
+                    Invite fixedInv = getFixedUpCopy(ctxt, inv, acct, delegated, false);
+                    ZComponent vcomp = fixedInv.newToVComponent(false, allowPrivateAccess);
+                    if (filter == null || filter.match(vcomp)) {
+                        components.add(vcomp);
                     }
-                } else {
-                    Invite[] fixedInvs = new Invite[mInvites.length];
-                    for (int i = 0; i < mInvites.length; ++i) {
-                        fixedInvs[i] = getFixedUpCopy(ctxt, mInvites[i], acct, delegated, false);
-                    }
-                    boolean appleICalExdateHack = LC.calendar_apple_ical_compatible_canceled_instances.booleanValue();
-                    ZComponent[] vcomps = Invite.toVComponents(fixedInvs, allowPrivateAccess, false, appleICalExdateHack);
-                    if (vcomps != null) {
-                        for (ZComponent vcomp : vcomps) {
-                            if (filter == null || filter.match(vcomp))
-                                vcomp.toICalendar(wr, true);
+                }
+            } else {
+                Invite[] fixedInvs = new Invite[mInvites.length];
+                for (int i = 0; i < mInvites.length; ++i) {
+                    fixedInvs[i] = getFixedUpCopy(ctxt, mInvites[i], acct, delegated, false);
+                }
+                boolean appleICalExdateHack = LC.calendar_apple_ical_compatible_canceled_instances.booleanValue();
+                ZComponent[] vcomps = Invite.toVComponents(fixedInvs, allowPrivateAccess, false, appleICalExdateHack);
+                if (vcomps != null) {
+                    for (ZComponent vcomp : vcomps) {
+                        if (filter == null || filter.match(vcomp)) {
+                            components.add(vcomp);
                         }
                     }
                 }
-                wr.append("END:VCALENDAR\r\n");
-                wr.flush();
-                return wr.toString();
+            }
+            return createZVcalendar(components, oldIdsToNewTZsMap);
+        }
+
+        /* Returns iCalendar representation of events that matches the supplied filter.
+         */
+        @Override
+        public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
+            try (CharArrayWriter writer = new CharArrayWriter()){
+                ZVCalendar vcal = getZVcalendar(ctxt, filter);
+                vcal.toICalendar(writer, true);
+                writer.flush();
+                return writer.toString();
             } catch (ServiceException se) {
                 ZimbraLog.dav.warn("cannot convert to iCalendar", se);
                 return "";
-            } finally {
-                if (wr != null)
-                    wr.close();
             }
+        }
+
+        /**
+         * Deletes this resource by moving to Trash folder. Hard deletes if the item is in Trash folder.
+         */
+        @Override
+        public void delete(DavContext ctxt) throws DavException {
+            // If ATTENDEE, send DECLINEs, if ORGANIZER, send CANCELs
+            Provisioning prov = Provisioning.getInstance();
+            String user = ctxt.getUser();
+            Account account;
+            try {
+                account = prov.get(AccountBy.name, user);
+                Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(account);
+                if (mInvites != null) {
+                    AutoScheduler autoScheduler = AutoScheduler.getAutoScheduler(
+                            mbox /* auth user */, this.getMailbox(ctxt) /* owner */, mInvites, mId, ctxt);
+                    if (autoScheduler != null) {
+                        autoScheduler.doSchedulingActions();
+                    }
+                }
+            } catch (ServiceException e) {
+                ZimbraLog.dav.debug("Unexpected exception during autoscheduling for delete of %s", mUri, e);
+            }
+            super.delete(ctxt);
         }
 
         @Override
@@ -450,7 +564,7 @@ public interface CalendarObject {
             } catch (ServiceException se) {
                 ZimbraLog.dav.warn("error getting calendar item " + mUid + " from mailbox " + mMailboxId, se);
             }
-            
+
         }
     }
 }

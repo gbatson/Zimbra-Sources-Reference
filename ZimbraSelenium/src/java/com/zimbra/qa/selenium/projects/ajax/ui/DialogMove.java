@@ -159,7 +159,7 @@ public class DialogMove extends AbsDialog {
 		            folder.getId() +
 		            "_textCell']";
 		   } else {
-		      locator = "css=div[id='" + Locators.zDialogId+ "'] td[id='zti__ZmChooseFolderDialog_Mail_FOLDER___"+ folder.getId() + "_textCell']";
+		      locator = "css=div[id='" + Locators.zDialogId+ "'] div[id^='zti__ZmChooseFolderDialog_Mail'] td[id$='"+ folder.getId() + "_textCell']";
 		   }
 
 		} else if (MyTab instanceof PageAddressbook) {
@@ -178,7 +178,7 @@ public class DialogMove extends AbsDialog {
 		} else if (MyTab instanceof PageCalendar) {
 
 			locator = String.format(
-					"css=div[id='%s'] td[id='zti__ZmChooseFolderDialog_Calendar___%s_textCell']",
+					"css=div[id='%s'] td[id='zti__ZmChooseFolderDialog_Calendar_CALENDAR___%s_textCell']",
 					Locators.zDialogId,
 					folder.getId());
 
@@ -210,7 +210,7 @@ public class DialogMove extends AbsDialog {
 
 		// For some reason, the text doesn't get entered on the first try
 
-		this.zClickAt(locator,"");
+		this.sClickAt(locator,"0,0");
 
 		this.zWaitForBusyOverlay(); // This method call seems to be missing from
 		// the briefcase function

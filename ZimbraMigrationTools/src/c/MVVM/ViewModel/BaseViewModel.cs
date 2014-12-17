@@ -18,7 +18,7 @@ public class BaseViewModel: INotifyPropertyChanged
 {
     public enum ViewType
     {
-        INTRO, SVRSRC, USRSRC,ZDSRC, SVRDEST, USRDEST, OPTIONS, USERS, SCHED, RESULTS, MAX
+        INTRO, SVRSRC, USRSRC,ZDSRC, SVRDEST, USRDEST, OPTIONS, USERS,PUBFLDS, SCHED, RESULTS, MAX
     }
 
     public event PropertyChangedEventHandler PropertyChanged;
@@ -136,6 +136,7 @@ public class BaseViewModel: INotifyPropertyChanged
 	ConfigViewModelUDest userDestModel     = (ConfigViewModelUDest)ViewModelPtrs[(int)ViewType.USRDEST];
 	OptionsViewModel     optionsModel      = (OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS];
 	UsersViewModel       usersModel        = (UsersViewModel)ViewModelPtrs[(int)ViewType.USERS];
+        ScheduleViewModel       scheduleModel        = (ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED];
 
         m_config.SourceServer.Profile = "";
         if (isServer)
@@ -164,6 +165,7 @@ public class BaseViewModel: INotifyPropertyChanged
                 if (usersModel.DomainsFilledIn)
                 {
                     m_config.UserProvision.DestinationDomain = usersModel.DomainList[usersModel.CurrentDomainSelection];
+                    m_config.UserProvision.COS = scheduleModel.CosList[scheduleModel.CurrentCOSSelection].CosName;
                 }
                 else
                 if (savedDomain != null)
@@ -171,12 +173,14 @@ public class BaseViewModel: INotifyPropertyChanged
                     if (savedDomain.Length > 0)
                     {
                         m_config.UserProvision.DestinationDomain = savedDomain;
+                         
                     }
                 }
             }
             else
             {
                 m_config.UserProvision.DestinationDomain = usersModel.ZimbraDomain;
+                m_config.UserProvision.COS = scheduleModel.COS;
             }
             //
 	}

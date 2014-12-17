@@ -67,6 +67,9 @@ ZmComposeView = function(parent, controller, composeMode) {
 	recipParams.contextId					= this._controller.getCurrentViewId();
 
 	this._recipients = new ZmRecipients(recipParams);
+	this._attcTabGroup = new DwtTabGroup('ZmComposeViewAttachments');
+
+	this._firstTimeFixImages = true;
 
 	this._initialize(composeMode);
 
@@ -327,6 +330,19 @@ function() {
 ZmComposeView.prototype.getAddrFields =
 function() {
 	return this._recipients.getAddrFields();
+};
+
+ZmComposeView.prototype.getTabGroupMember =
+function() {
+	var tg = new DwtTabGroup('ZmComposeView');
+	tg.addMember(this._fromSelect);
+	tg.addMember(this.identitySelect);
+	tg.addMember(this._recipients.getTabGroupMember());
+	tg.addMember(this._subjectField);
+	tg.addMember(this._attButton);
+	tg.addMember(this._attcTabGroup);
+	tg.addMember(this._htmlEditor.getTabGroupMember());
+	return tg;
 };
 
 ZmComposeView.prototype.getAddrInputField =
@@ -867,7 +883,8 @@ function(msg) {
 		var inviteMode = notifyActionMap[this._action] ? notifyActionMap[this._action] : this._action;
 		msg.inviteMode = isInviteReply ? inviteMode : null;
         if (this._action !== ZmOperation.NEW_MESSAGE && (!msg.isDraft  || msg.isReplied)){  //Bug: 82942 - in-reply-to shouldn't be added to new messages.
-            msg.irtMessageId = this._msg.messageId;
+			 //when editing a saved draft (only from the drafts folder "edit") - _origMsg is the draft msg instead of the replied to message.
+            msg.irtMessageId = this._origMsg.isDraft ? this._origMsg.irtMessageId : this._origMsg.messageId;
         }
         msg.folderId = this._msg.folderId;
     }
@@ -1104,8 +1121,11 @@ function(msg, account) {
 	// The first time the editor is initialized, idoc.getElementsByTagName("img") is empty.
 	// Use a callback to fix images after editor is initialized.
 	var idoc = this._htmlEditor._getIframeDoc();
-	if (!this._firstTimeFixImages) {
-		this._htmlEditor.addOnContentInitializedListener(this._fixMultipartRelatedImages.bind(this, msg, idoc, account));
+	if (this._firstTimeFixImages) {
+		var callback = this._fixMultipartRelatedImages.bind(this, msg, idoc, account);
+		this._htmlEditor.addOnContentInitializedListener(callback);
+		//set timeout in case ZmHtmlEditor.prototype.onLoadContent is never called in which case the listener above won't be called.
+		window.setTimeout(callback, 3000);
 	} else {
 		this._fixMultipartRelatedImages(msg, idoc, account);
 	}
@@ -1120,13 +1140,13 @@ function(msg, account) {
 ZmComposeView.prototype._fixMultipartRelatedImages =
 function(msg, idoc, account) {
 
-	if (!this._firstTimeFixImages) {
+	if (this._firstTimeFixImages) {
 		this._htmlEditor.clearOnContentInitializedListeners();
 		var self = this; // Fix possible hiccups during compose in new window
 		setTimeout(function() {
 				self._fixMultipartRelatedImages(msg, self._htmlEditor._getIframeDoc(), account);
 		}, 10);
-		this._firstTimeFixImages = true;
+		this._firstTimeFixImages = false;
 		return;
 	}
 
@@ -1296,15 +1316,13 @@ function(type) {
 	    type !== ZmComposeView.UPLOAD_BRIEFCASE) {
 		var isinline = (type === ZmComposeView.UPLOAD_INLINE);
 
-		inputelem = document.createElement('INPUT');
+		var inputelem = document.createElement('INPUT');
 		inputelem.type = 'file';
 		inputelem.title = ZmMsg.uploadNewFile;
 		inputelem.multiple = true;
 		inputelem.style.display = 'none';
 
-		inputelem.onchange =
-			this._submitMyComputerAttachments.bind(this, null, inputelem,
-			                                       isinline);
+		inputelem.onchange = this._submitMyComputerAttachments.bind(this, null, inputelem, isinline);
 
 		// IE won't react to unparented INPUTs
 		var fragment = document.createDocumentFragment();
@@ -1719,6 +1737,7 @@ function(all) {
 		this._attcDiv.innerHTML =
 			AjxTemplate.expand('mail.Message#NoAttachments', { hint: hint });
 		this._attcDiv.style.height = "";
+		this._attcTabGroup.removeAllMembers();
 		this._attachCount = 0;
 	}
 
@@ -2023,14 +2042,26 @@ ZmComposeView.BC_ALL_COMPONENTS = [
 		ZmComposeView.BC_NOTHING
 ];
 
-// nonprinting markers that help us identify components within editor content
+// Zero-width space character we can use to create invisible separators for text mode
+// Note: as of 10/31/14, Chrome Canary does not recognize \u200B (though it does find \uFEFF)
+ZmComposeView.BC_MARKER_CHAR = '\u200B';
+ZmComposeView.BC_MARKER_REGEXP = new RegExp(ZmComposeView.BC_MARKER_CHAR, 'g');
+
+// Create a unique marker sequence (vary by length) for each component, and regexes to find them
 ZmComposeView.BC_TEXT_MARKER = {};
-ZmComposeView.BC_TEXT_MARKER[ZmComposeView.BC_TEXT_PRE]		= '\u200B\u200B';
-ZmComposeView.BC_TEXT_MARKER[ZmComposeView.BC_SIG_PRE]		= '\u200C\u200C';
-ZmComposeView.BC_TEXT_MARKER[ZmComposeView.BC_DIVIDER]		= '\u200D\u200D';
-ZmComposeView.BC_TEXT_MARKER[ZmComposeView.BC_HEADERS]		= '\uFEFF\uFEFF';
-ZmComposeView.BC_TEXT_MARKER[ZmComposeView.BC_QUOTED_TEXT]	= '\u200B\u200C';
-ZmComposeView.BC_TEXT_MARKER[ZmComposeView.BC_SIG_POST]		= '\u200B\u200D';
+ZmComposeView.BC_TEXT_MARKER_REGEX1 = {};
+ZmComposeView.BC_TEXT_MARKER_REGEX2 = {};
+
+AjxUtil.foreach(ZmComposeView.BC_ALL_COMPONENTS, function(comp, index) {
+	if (comp !== ZmComposeView.BC_NOTHING) {
+		// Note: relies on BC_NOTHING coming first
+		var markerChar = ZmComposeView.BC_MARKER_CHAR;
+		var marker = ZmComposeView.BC_TEXT_MARKER[comp] = AjxStringUtil.repeat(markerChar, index);
+
+		ZmComposeView.BC_TEXT_MARKER_REGEX1[comp] = new RegExp("^" + marker + "[^" + markerChar + "]");
+		ZmComposeView.BC_TEXT_MARKER_REGEX2[comp] = new RegExp("[^" + markerChar + "]" + marker + "[^" + markerChar + "]");
+	}
+});
 
 // HTML marker is an expando attr whose value is the name of the component
 ZmComposeView.BC_HTML_MARKER_ATTR = "data-marker";
@@ -2067,7 +2098,10 @@ function(action, msg, extraBodyText, noEditorUpdate, keepAttachments) {
 	var isHtmlEditorInitd = this._htmlEditor && this._htmlEditor.isHtmlModeInited();
 	if (this._htmlEditor && !noEditorUpdate && !isHtmlEditorInitd) {
 		this._fixMultipartRelatedImages_onTimer(msg);
-		this._htmlEditor.addOnContentInitializedListener(this._saveComponentContent.bind(this));
+		this._htmlEditor.addOnContentInitializedListener(this._saveComponentContent.bind(this, true));
+		//set timeout in case ZmHtmlEditor.prototype.onLoadContent is never called in which case the listener above won't be called.
+		//but don't pass "force" so if the above was called first, don't do anything.
+		window.setTimeout(this._saveComponentContent.bind(this), 3000);
 	}
 
 	var bodyInfo = {};
@@ -2087,7 +2121,7 @@ function(action, msg, extraBodyText, noEditorUpdate, keepAttachments) {
 		
 	if (isHtmlEditorInitd && !noEditorUpdate) {
 		this._fixMultipartRelatedImages_onTimer(msg);
-		this._saveComponentContent();
+		this._saveComponentContent(true);
 	}
 
 	var ac = window.parentAppCtxt || window.appCtxt;
@@ -2438,9 +2472,10 @@ function(mode, params) {
 	return value;
 };
 
+// Removes the invisible markers we use in text mode, since we should not send those out as part of the msg
 ZmComposeView.prototype._removeMarkers =
 function(text) {
-	return text.replace(/\u200B|\u200C|\u200D|\uFEFF/g, "");
+	return text.replace(ZmComposeView.BC_MARKER_REGEXP, '');
 };
 
 ZmComposeView.prototype._normalizeText =
@@ -2468,7 +2503,6 @@ function(comp) {
 	
 	var htmlMode = (this._composeMode === Dwt.HTML);
 	var content = this._getEditorContent(true);
-	var marker = this._getMarker(this._composeMode, comp);
 	var compContent = "";
 
 	var firstComp = this._compList[0];
@@ -2479,6 +2513,7 @@ function(comp) {
 	var lastComp = this._compList[this._compList.length - 1];
 	
 	if (htmlMode) {
+		var marker = this._getMarker(this._composeMode, comp);
 		var idx1 = content.indexOf(marker);
 		if (idx1 !== -1) {
 			var chunk = content.substring(0, idx1);
@@ -2503,21 +2538,33 @@ function(comp) {
 		}
 	}
 	else {
-		var idx1 = content.indexOf(marker);
-		if (idx1 !== -1 && comp === lastComp) {
-			// last component, include everything up to end of content
-			compContent = content.substring(idx1 + 1);
+		// In text mode, components are separated by markers which are varying lengths of a zero-width space
+		var marker1 = this._getMarker(this._composeMode, comp),
+			regex1 = ZmComposeView.BC_TEXT_MARKER_REGEX1[comp],     // matches marker at beginning
+			regex2 = ZmComposeView.BC_TEXT_MARKER_REGEX2[comp],     // matches marker elsewhere
+			start, marker2;
+
+		// look for this component's marker
+		if (regex1.test(content)) {
+			// found it at the start of content
+			start = marker1.length;
 		}
 		else {
-			marker = this._getMarker(this._composeMode, nextComp);
-			var idx2 = content.indexOf(marker);
-			if (idx2 !== -1 && comp === firstComp) {
-				// first component, include everything from beginning of content
-				compContent = content.substring(0, idx2);
+			// found it somewhere after the start
+			start = content.search(regex2) + marker1.length + 1;  // add one to account for non-matching char at beginning of regex
+		}
+		if (start > 0) {
+			marker2 = this._getMarker(this._composeMode, nextComp);
+			// look for the next component's marker so we know where this component's content ends
+			regex2 = marker2 && ZmComposeView.BC_TEXT_MARKER_REGEX2[nextComp];
+			idx2 = regex2 && content.search(regex2) + 1;
+			if (idx2) {
+				// found it, take what's in between
+				compContent = content.substring(start, idx2);
 			}
-			else if (idx1 !== -1 && idx2 !== -1) {
-				// middle component, include everything between the two markers
-				compContent = content.substring(idx1 + 1, idx2);
+			else {
+				// this comp is last component
+				compContent = content.substr(start);
 			}
 		}
 	}
@@ -2526,7 +2573,10 @@ function(comp) {
 };
 
 ZmComposeView.prototype._saveComponentContent =
-function() {
+function(force) {
+	if (this._compContent && !force) {
+		return;
+	}
 	this._compContent = {};
 	for (var i = 0; i < this._compList.length; i++) {
 		var comp = this._compList[i];
@@ -2636,8 +2686,9 @@ function(op, quotedText, check) {
 				quotedText = this._removeHtmlPrefix(quotedText);
 			}
 			else {
-				quotedText = quotedText.replace(/^> /, "");
-				quotedText = quotedText.replace(/\n> /g, "\n");
+				// remove leading > or | (prefix) with optional space after it (for text there's a space, for additional level prefix there isn't)
+				quotedText = quotedText.replace(/^[>|] ?/, "");
+				quotedText = quotedText.replace(/\n[>|] ?/g, "\n");
 			}
 		}
 	}
@@ -3003,9 +3054,13 @@ ZmComposeView.prototype._addSendAsAndSendOboAddresses  =
 function(menu) {
 
 	var optData = null;
-	var displayName = appCtxt.getUsername();
-	this._addSendAsOrSendOboAddresses(menu, appCtxt.sendAsEmails, false, function(addr) {return addr;});
-	this._addSendAsOrSendOboAddresses(menu, appCtxt.sendOboEmails, true, function(addr) {return displayName + " " + ZmMsg.sendOnBehalfOf + " "  + addr;});
+	var myDisplayName = appCtxt.getUsername();
+	this._addSendAsOrSendOboAddresses(menu, appCtxt.sendAsEmails, false, function(addr, displayName) {
+		return displayName ? AjxMessageFormat.format(ZmMsg.sendAsAddress, [addr, displayName]) : addr;
+	});
+	this._addSendAsOrSendOboAddresses(menu, appCtxt.sendOboEmails, true, function(addr, displayName) {
+		return  AjxMessageFormat.format(displayName ? ZmMsg.sendOboAddressAndDispName : ZmMsg.sendOboAddress, [myDisplayName, addr, displayName]);
+	});
 };
 
 ZmComposeView.prototype._addSendAsOrSendOboAddresses  =
@@ -3014,7 +3069,7 @@ function(menu, emails, isObo, displayValueFunc) {
 		var email = emails[i];
 		var addr = email.addr;
 		var extraData = {isDL: email.isDL, isObo: isObo};
-		var displayValue = displayValueFunc(addr);
+		var displayValue = displayValueFunc(addr, email.displayName);
 		var optData = new DwtSelectOptionData(addr, displayValue, null, null, null, null, extraData);
 		menu.addOption(optData);
 	}
@@ -3047,7 +3102,7 @@ function(templateId, data) {
 
 	if (appCtxt.multiAccounts) {
 		if (!this._fromSelect) {
-			this._fromSelect = new DwtSelect({parent:this, id:this.getHTMLElId() + "_fromSelect", parentElement:data.fromSelectId});
+			this._fromSelect = new DwtSelect({parent:this, index: 0, id:this.getHTMLElId() + "_fromSelect", parentElement:data.fromSelectId});
 			//this._addSendAsAndSendOboAddresses(this._fromSelect);
 			this._fromSelect.addChangeListener(new AjxListener(this, this._handleFromListener));
 			this._recipients.attachFromSelect(this._fromSelect);
@@ -3055,7 +3110,7 @@ function(templateId, data) {
 	} else {
 		// initialize identity select
 		var identityOptions = this._getIdentityOptions();
-		this.identitySelect = new DwtSelect({parent:this, id:this.getHTMLElId() + "_identitySelect", options:identityOptions});
+		this.identitySelect = new DwtSelect({parent:this, index: 0, id:this.getHTMLElId() + "_identitySelect", options:identityOptions});
 		this._addSendAsAndSendOboAddresses(this.identitySelect);
 		this.identitySelect.setToolTipContent(ZmMsg.chooseIdentity, true);
 
@@ -3235,10 +3290,6 @@ function(err) {
 		this._controller._uploadAttReq = null;
 	}
 
-	if (this._msgIds) {
-	  this._msgIds = [];
-	}
-
 	if (this.si) {
 		clearTimeout(this.si);
 	}
@@ -3338,7 +3389,7 @@ function(files, node, isInline) {
 			var file = files[j];
 			//Check the total size of the files we upload this time (we don't know the previously uploaded files total size so we do the best we can).
 			//NOTE - we compare to the MTA message size limit since there's no limit on specific attachments.
-			size += file.size || file.fileSize; /*Safari*/
+			size += file.size || file.fileSize /*Safari*/ || 0;
 			if ((-1 /* means unlimited */ != appCtxt.get(ZmSetting.MESSAGE_SIZE_LIMIT)) &&
 				(size > appCtxt.get(ZmSetting.MESSAGE_SIZE_LIMIT))) {
 				var msgDlg = appCtxt.getMsgDialog();
@@ -3527,14 +3578,7 @@ function(msg, action, incOptions, includeInlineImages, includeInlineAtts) {
 		this._originalAttachments = []; //keep it associated by label and size (label => size => true) since that's the only way the client has to identify attachments from previous msg version.
 		this._hideOriginalAttachments = msg && hasAttachments && (action === ZmOperation.REPLY || action === ZmOperation.REPLY_ALL);
 	}
-	if (!(this._msgIds && this._msgIds.length) &&
-		((incOptions && incOptions.what === ZmSetting.INC_ATTACH) || action === ZmOperation.FORWARD_ATT))
-	{
-		html = AjxTemplate.expand("mail.Message#ForwardOneMessage", {message:msg});
-		this._attachCount = 1;
-	}
-	else if (msg && (hasAttachments || includeInlineImages || includeInlineAtts || (action === ZmComposeView.ADD_ORIG_MSG_ATTS)))
-	{
+	if (msg && (hasAttachments || includeInlineImages || includeInlineAtts || (action === ZmComposeView.ADD_ORIG_MSG_ATTS))) {
 		var attInfo = msg.getAttachmentInfo(false, includeInlineImages, includeInlineAtts);
 
 		if (action === ZmComposeView.ADD_ORIG_MSG_ATTS) {
@@ -3580,17 +3624,9 @@ function(msg, action, incOptions, includeInlineImages, includeInlineAtts) {
 			if (action === ZmComposeView.ADD_ORIG_MSG_ATTS) {
 				action = this._action;
 			}
-			if (this._msgIds && this._msgIds.length) {
-				for (var i = 0; i < this._msgIds.length; i++) {
-					var message = appCtxt.cacheGet(this._msgIds[i]);
-					if (!message) continue;
-					messages.push(message);
-				};
-			}
 
 			var data = {
 				attachments:				attInfo,
-				messages:					messages,
 				messagesFwdFieldName: 		(ZmComposeView.FORWARD_MSG_NAME + this._sessionId),
 				isNew:						(action === ZmOperation.NEW_MESSAGE),
 				isForward:					(action === ZmOperation.FORWARD),
@@ -3602,22 +3638,9 @@ function(msg, action, incOptions, includeInlineImages, includeInlineAtts) {
 				fwdFieldName:				(ZmComposeView.FORWARD_ATT_NAME + this._sessionId)
 			};
 			html = AjxTemplate.expand("mail.Message#ForwardAttachments", data);
-			this._attachCount = attInfo.length + messages.length;
+			this._attachCount = attInfo.length;
 			this.checkAttachments();
 		}
-	} else if (this._msgIds && this._msgIds.length) {
-		// use main window's appCtxt
-		for (var i = 0; i < this._msgIds.length; i++) {
-			var message = appCtxt.cacheGet(this._msgIds[i]);
-			if (!message) continue;
-			messages.push(message);
-		}
-		var data = {
-			messages: messages,
-			fwdFieldName: (ZmComposeView.FORWARD_MSG_NAME + this._sessionId)
-		};
-		html = AjxTemplate.expand("mail.Message#ForwardMessages", data);
-		this._attachCount = messages.length;
 	}
 
 	this._originalAttachmentsInitialized  = true; //ok, done setting it for the first time.
@@ -3635,6 +3658,13 @@ function(msg, action, incOptions, includeInlineImages, includeInlineAtts) {
 			Dwt.setHandler(this._attIncludeOrigLinkEl, DwtEvent.ONCLICK, AjxCallback.simpleClosure(this._includeOriginalAttachments, this));
 		}
 	}
+
+	this._attcTabGroup.removeAllMembers();
+	var links = Dwt.byClassName('AttLink', this._attcDiv);
+	for (var i = 0; i < links.length; i++) {
+		this._makeFocusable(links[i]);
+	}
+	this._attcTabGroup.addMember(links);
 };
 
 ZmComposeView.prototype._includeOriginalAttachments =
@@ -3899,14 +3929,7 @@ function() {
 
 ZmComposeView.prototype._setAttachedMsgIds =
 function(msgIds) {
-	if (!this._msgIds) {
-		this._msgIds = msgIds;
-	} else {
-		 for (val in msgIds) {
-		   if (AjxUtil.indexOf(this._msgIds, msgIds[val]) === -1) // Do not attach if the same message is forwarded
-			 this._msgIds.push(msgIds[val]);
-		 }
-	}
+	this._msgIds = msgIds;
 };
 
 // Files have been uploaded, re-initiate the send with an attachment ID.
@@ -4253,10 +4276,8 @@ function(bEnableInputs) {
 
 ZmHiddenComposeView.prototype.getIdentity =
 function() {
-	var ac = window.parentAppCtxt || window.appCtxt;
-	var collection = ac.getIdentityCollection();
-	var val = ac.getActiveAccount().id;
-	return collection.getById(val);
+	//get the same identity we would have gotten as the selected one in full compose view persona select.
+	return this._controller._getIdentity(this._msg);
 };
 
 ZmHiddenComposeView.prototype.__initCtrl = function() {};

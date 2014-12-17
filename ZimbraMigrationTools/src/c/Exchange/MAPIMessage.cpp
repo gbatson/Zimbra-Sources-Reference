@@ -105,35 +105,45 @@ void MAPIMessage::Initialize(LPMESSAGE pMessage, MAPISession &session, bool bPar
     {
         InternalFree();
         m_pMessage = pMessage;
-        if (FAILED(hr = m_pMessage->GetProps((LPSPropTagArray) & m_messagePropTags,
-                fMapiUnicode, &cVals, &m_pMessagePropVals)))
-            throw MAPIMessageException(E_FAIL, L"Initialize(): GetProps Failed.", 
-			ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+		hr = m_pMessage->GetProps((LPSPropTagArray) & m_messagePropTags,
+			fMapiUnicode, &cVals, &m_pMessagePropVals);
+		if (FAILED(hr))
+		{
+			throw MAPIMessageException(hr, L"Initialize(): GetProps Failed.", 
+				ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+		}
 
 		if(!bPartial)
 		{
-			if (FAILED(hr = m_pMessage->GetRecipientTable(fMapiUnicode, &pRecipTable)))
+			hr = m_pMessage->GetRecipientTable(fMapiUnicode, &pRecipTable);
+			if (FAILED(hr))
 			{
-				throw MAPIMessageException(E_FAIL, L"Initialize(): GetRecipientTable Failed.",
+				throw MAPIMessageException(hr, L"Initialize(): GetRecipientTable Failed.",
 					ERR_MAPI_MESSAGE, __LINE__, __FILE__);
 			}
 
 			ULONG ulRecips = 0;
 
-			if (FAILED(hr = pRecipTable->GetRowCount(0, &ulRecips)))
-				throw MAPIMessageException(E_FAIL, L"Initialize(): GetRowCount Failed.", 
-				ERR_MAPI_MESSAGE, __LINE__,  __FILE__);
+			hr = pRecipTable->GetRowCount(0, &ulRecips);
+			if (FAILED(hr))
+			{
+				throw MAPIMessageException(hr, L"Initialize(): GetRowCount Failed.", 
+					ERR_MAPI_MESSAGE, __LINE__,  __FILE__);
+			}
 			if (ulRecips > 0)
 			{
-				if (FAILED(hr = pRecipTable->SetColumns((LPSPropTagArray) & m_recipientPropTags,
-						0)))
+				hr = pRecipTable->SetColumns((LPSPropTagArray) & m_recipientPropTags, 0);
+				if (FAILED(hr))
 				{
-					throw MAPIMessageException(E_FAIL, L"Initialize(): SetColumns Failed.",
+					throw MAPIMessageException(hr, L"Initialize(): SetColumns Failed.",
 						ERR_MAPI_MESSAGE, __LINE__, __FILE__);
 				}
-				if (FAILED(hr = pRecipTable->QueryRows(ulRecips, 0, &m_pRecipientRows)))
-					throw MAPIMessageException(E_FAIL, L"Initialize(): QueryRows Failed.", 
-					ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+				hr = pRecipTable->QueryRows(ulRecips, 0, &m_pRecipientRows);
+				if (FAILED(hr))
+				{
+					throw MAPIMessageException(hr, L"Initialize(): QueryRows Failed.", 
+						ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+				}
 			}
 		}
     }
@@ -898,8 +908,10 @@ bool MAPIMessage::HtmlBody(LPVOID *ppBody, unsigned int &nHtmlBodyLen)
 
         hr = pIStream->Stat(&statstg, STATFLAG_NONAME);
         if (FAILED(hr))
-            throw MAPIMessageException(E_FAIL, L"HtmlBody(): pIStream->Stat Failed.", 
-			ERR_MAPI_MESSAGE, __LINE__,__FILE__);
+		{
+            throw MAPIMessageException(hr, L"HtmlBody(): pIStream->Stat Failed.", 
+				ERR_MAPI_MESSAGE, __LINE__,__FILE__);
+		}
 
         unsigned bodySize = statstg.cbSize.LowPart;
 
@@ -909,16 +921,20 @@ bool MAPIMessage::HtmlBody(LPVOID *ppBody, unsigned int &nHtmlBodyLen)
         hr = MAPIAllocateBuffer(bodySize + 10, ppBody);
         ZeroMemory(*ppBody, bodySize + 10);
         if (FAILED(hr))
-            throw MAPIMessageException(E_FAIL, L"HtmlBody(): ZeroMemory Failed.", 
-			ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+		{
+            throw MAPIMessageException(hr, L"HtmlBody(): ZeroMemory Failed.", 
+				ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+		}
 
         // download the text
         ULONG cb;
 
         hr = pIStream->Read(*ppBody, statstg.cbSize.LowPart, &cb);
         if (FAILED(hr))
-            throw MAPIMessageException(E_FAIL, L"HtmlBody(): pIStream->Read Failed.", 
-			ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+		{
+            throw MAPIMessageException(hr, L"HtmlBody(): pIStream->Read Failed.", 
+				ERR_MAPI_MESSAGE, __LINE__, __FILE__);
+		}
         if (cb != statstg.cbSize.LowPart)
         {
             throw MAPIMessageException(E_FAIL, L"HtmlBody(): statstg.cbSize.LowPart Failed.",
@@ -1591,7 +1607,7 @@ void MAPIMessage::ToMimePPMessage(mimepp::Message &msg)
         hr = m_pMessage->GetAttachmentTable(fMapiUnicode, &pAttachTable);
         if (FAILED(hr))
         {
-            throw MAPIMessageException(E_FAIL, L"ToMimePPMessage(): GetAttachmentTable Failed.",
+            throw MAPIMessageException(hr, L"ToMimePPMessage(): GetAttachmentTable Failed.",
                 ERR_MAPI_MESSAGE, __LINE__, __FILE__);
         }
         hr = HrQueryAllRows(pAttachTable, (LPSPropTagArray) & attachProps, NULL, NULL, 0,
@@ -1599,7 +1615,7 @@ void MAPIMessage::ToMimePPMessage(mimepp::Message &msg)
         if (FAILED(hr))
         {
             pAttachTable->Release();
-            throw MAPIMessageException(E_FAIL, L"ToMimePPMessage(): HrQueryAllRows Failed.",
+            throw MAPIMessageException(hr, L"ToMimePPMessage(): HrQueryAllRows Failed.",
                 ERR_MAPI_MESSAGE, __LINE__, __FILE__);
         }
 // Has been changed to MAX_MESSAGE_SIZE and made global
@@ -1707,10 +1723,13 @@ BOOL MessageIterator::GetNext(MAPIMessage &msg)
     ULONG cb = pRow->lpProps[MI_ENTRYID].Value.bin.cb;
     LPENTRYID peid = (LPENTRYID)(pRow->lpProps[MI_ENTRYID].Value.bin.lpb);
 
-    if (FAILED(hr = m_pParentFolder->OpenEntry(cb, peid, NULL, MAPI_BEST_ACCESS, &objtype,
-            (LPUNKNOWN *)&pMessage)))
-        throw GenericException(hr, L"MessageIterator::GetNext():OpenEntry Failed.",
-		ERR_GET_NEXT, __LINE__, __FILE__);
+	hr = m_pParentFolder->OpenEntry(cb, peid, NULL, MAPI_BEST_ACCESS, &objtype,
+		(LPUNKNOWN *)&pMessage);
+	if (FAILED(hr))
+	{
+		throw GenericException(hr, L"MessageIterator::GetNext():OpenEntry Failed.",
+			ERR_GET_NEXT, __LINE__, __FILE__);
+	}
     msg.Initialize(pMessage, *m_session, true);
 
     return TRUE;

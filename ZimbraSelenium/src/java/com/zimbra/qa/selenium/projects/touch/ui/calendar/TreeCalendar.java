@@ -34,11 +34,7 @@ import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.projects.ajax.ui.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogDeleteTag.DialogDeleteTagID;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.DialogCreateFolder;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.DialogEditFolder;
-
+import com.zimbra.qa.selenium.projects.touch.ui.*;
 
 
 /**
@@ -81,7 +77,7 @@ public class TreeCalendar extends AbsTree {
 
 				actionLocator = "css=td[id='ztih__main_Calendar__CALENDAR_textCell']"; // override the default
 				optionLocator = "css=table[class$='MenuTable'] td[id$='_title']:contains(New Calendar)";
-				page = new DialogCreateFolder(MyApplication, ((AppAjaxClient)MyApplication).zPageCalendar);
+				page = null;
 
 				zRightClick(actionLocator);
 				zClick(optionLocator);
@@ -116,7 +112,7 @@ public class TreeCalendar extends AbsTree {
 			
 			// Use default actionLocator
 			optionLocator += " div[id^='EDIT_PROPS'] td[id$='_title']";
-			page = new DialogEditFolder(MyApplication,((AppAjaxClient) MyApplication).zPageCalendar);
+			page = null;
 
 			this.zRightClick(actionLocator);
 
@@ -126,7 +122,7 @@ public class TreeCalendar extends AbsTree {
 			
 			// Use default actionLocator
 			optionLocator += " div[id^='MOVE'] td[id$='_title']";
-			page = new DialogMove(MyApplication,((AppAjaxClient) MyApplication).zPageCalendar);
+			page = null;
 
 			this.zRightClick(actionLocator);
 
@@ -136,7 +132,7 @@ public class TreeCalendar extends AbsTree {
 			
 			// Use default actionLocator
 			optionLocator += " div[id^='SHARE_CALENDAR'] td[id$='_title']";
-			page = new DialogShare(MyApplication,((AppAjaxClient) MyApplication).zPageCalendar);
+			page = null;
 
 			this.zRightClick(actionLocator);
 
@@ -160,8 +156,7 @@ public class TreeCalendar extends AbsTree {
 			this.zRightClick(actionLocator);
 			this.zClickAt(optionLocator,"");
 			
-			page = new SeparateWindow(this.MyApplication);
-			((SeparateWindow)page).zInitializeWindowNames();
+			page = null;
 			
 			this.zWaitForBusyOverlay();
 			
@@ -250,7 +245,7 @@ public class TreeCalendar extends AbsTree {
 			this.zClick(optionLocator);
 
 			// return a context menu
-			return (new ContextMenu(MyApplication));
+			return null;
 			
 		} else if ( action == Action.A_RIGHTCLICK && option == Button.B_RENAME) {
 
@@ -258,7 +253,7 @@ public class TreeCalendar extends AbsTree {
 			this.zRightClick(optionLocator);
 			this.zClick(Locators.RenameTagMenu);
 
-			return (new DialogRenameTag(MyApplication, ((AppAjaxClient)MyApplication).zPageCalendar));
+			return null;
 		
 		} else if ( action == Action.A_RIGHTCLICK && option == Button.B_DELETE) {
 
@@ -266,7 +261,7 @@ public class TreeCalendar extends AbsTree {
 			this.zRightClick(optionLocator);
 			this.zClick(Locators.DeleteTagMenu);
 			
-			return (new DialogDeleteTag(DialogDeleteTagID.DeleteTag, MyApplication, ((AppAjaxClient)MyApplication).zPageCalendar));
+			return null;
 
 		} else {
 			throw new HarnessException("Action "+ action +" not yet implemented");
@@ -348,7 +343,7 @@ public class TreeCalendar extends AbsTree {
 			if ( option == Button.B_TREE_NEWFOLDER ) {
 				
 				optionLocator = "css=div[id='ZmActionMenu_calendar_CALENDAR'] div[id='NEW_CALENDAR'] td[id$='_title']";
-				page = new DialogCreateFolder(MyApplication, ((AppAjaxClient)MyApplication).zPageMail);
+				page = null;
 			
 				/**
 				 * TODO: add other options:
@@ -363,7 +358,7 @@ public class TreeCalendar extends AbsTree {
 			} else if ( option == Button.B_TREE_NEW_EXTERNAL_CALENDAR ) {
 				
 				optionLocator = "css=div[id='ZmActionMenu_calendar_CALENDAR'] div[id='ADD_EXTERNAL_CALENDAR'] td[id$='_title']";
-				page = new DialogAddExternalCalendar(MyApplication, ((AppAjaxClient)MyApplication).zPageMail);
+				page = null;
 				
 				// FALL THROUGH
 				
@@ -380,7 +375,7 @@ public class TreeCalendar extends AbsTree {
 			if ( option == Button.B_TREE_NEWTAG ) {
 
 				optionLocator = "css=div[id='ZmActionMenu_calendar_TAG'] div[id='NEW_TAG'] td[id$='_title']";
-				page = new DialogTag(MyApplication,((AppAjaxClient) MyApplication).zPageCalendar);
+				page = null;
 
 			} else {
 				throw new HarnessException("Pulldown/Option "+ pulldown +"/"+ option +" not implemented");
@@ -463,7 +458,7 @@ public class TreeCalendar extends AbsTree {
 		} else if ( button == Button.B_TREE_FIND_SHARES ) {
 
 			locator = "css=TODO#TODO";
-			page = new DialogShareFind(MyApplication,((AppAjaxClient) MyApplication).zPageCalendar);
+			page = null;
 
 			// Use sClick, not default zClick
 			this.sClick(locator);
@@ -532,7 +527,7 @@ public class TreeCalendar extends AbsTree {
 			this.zClick(locator);
 
 			// return a context menu
-			return (new ContextMenu(MyApplication));
+			return null;
 			
 		} else if ( action == Action.A_RIGHTCLICK ) {
 
@@ -540,7 +535,7 @@ public class TreeCalendar extends AbsTree {
 			this.zRightClick(locator);
 
 			// return a context menu
-			return (new ContextMenu(MyApplication));
+			return null;
 
 		} else {
 			throw new HarnessException("Action "+ action +" not yet implemented");
@@ -728,7 +723,7 @@ public class TreeCalendar extends AbsTree {
 
          // Set the locator
          // TODO: This could probably be made safer, to make sure the id matches an int pattern
-         item.setId(id.replace("zti__" + ((AppAjaxClient)MyApplication).zGetActiveAccount().EmailAddress +
+         item.setId(id.replace("zti__" + ((AppTouchClient)MyApplication).zGetActiveAccount().EmailAddress +
                ":main_Mail__", ""));
 
          // Set the name
@@ -829,8 +824,8 @@ public class TreeCalendar extends AbsTree {
 	public boolean zIsActive() throws HarnessException {
 
 		// Make sure the main page is active
-		if ( !((AppAjaxClient)MyApplication).zPageCalendar.zIsActive() ) {
-			((AppAjaxClient)MyApplication).zPageCalendar.zNavigateTo();
+		if ( !((AppTouchClient)MyApplication).zPageCalendar.zIsActive() ) {
+			((AppTouchClient)MyApplication).zPageCalendar.zNavigateTo();
 		}
 
 		// Zimlets seem to be loaded last

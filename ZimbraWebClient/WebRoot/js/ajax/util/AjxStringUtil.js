@@ -688,7 +688,9 @@ function(str) {
  */
 AjxStringUtil.stripTags =
 function(str, removeContent) {
-	if (!str) { return ""; }
+	if (typeof str !== 'string') {
+		return "";
+	}
 	if (removeContent) {
 		str = str.replace(/(<(\w+)[^>]*>).*(<\/\2[^>]*>)/, "$1$3");
 	}
@@ -1684,8 +1686,8 @@ AjxStringUtil.HTML_SEP_ID = "zwchr";
 
 // regexes for finding a delimiter such as "On DATE, NAME (EMAIL) wrote:"
 AjxStringUtil.ORIG_EMAIL_RE = /[^@\s]+@[A-Za-z0-9\-]{2,}(\.[A-Za-z0-9\-]{2,})+/;    // see AjxUtil.EMAIL_FULL_RE
-AjxStringUtil.ORIG_DATE_RE = /(\/|\-|, )20\d\d/;                                    // matches "03/07/2014" or "March 3, 2014" by looking for year 20xx
-AjxStringUtil.ORIG_INTRO_RE = new RegExp("^(-{2,}|" + AjxMsg.on + ")", "i");
+AjxStringUtil.ORIG_DATE_RE = /\d+\s*(\/|\-|, )20\d\d/;                                    // matches "03/07/2014" or "March 3, 2014" by looking for year 20xx
+AjxStringUtil.ORIG_INTRO_RE = new RegExp("^(-{2,}|" + AjxMsg.on + "\\s+)", "i");
 
 
 // Lazily creates a test hidden IFRAME and writes the given html to it, then returns the HTML element.
@@ -1748,7 +1750,7 @@ function(text, isHtml) {
 	var results = [];
 	var lines = text.split(AjxStringUtil.SPLIT_RE);
 	
-	var curType, curBlock = [], count = {}, isMerged, unknownBlock;
+	var curType, curBlock = [], count = {}, isMerged, unknownBlock, isBugzilla = false;
 	for (var i = 0; i < lines.length; i++) {
 		var line = lines[i];
 		var testLine = AjxStringUtil.trim(line);
@@ -1759,12 +1761,18 @@ function(text, isHtml) {
 			continue;
 		}
 		
-		// Bugzilla is very good at fooling us, and does not have quoted content, so bail
+		// Bugzilla summary looks like QUOTED; it should be treated as UNKNOWN
 		if ((testLine.indexOf("| DO NOT REPLY") === 0) && (lines[i + 2].indexOf("bugzilla") !== -1)) {
-			return text;
+			isBugzilla = true;
 		}
 
 		var type = AjxStringUtil._getLineType(testLine);
+		if (type === AjxStringUtil.ORIG_QUOTED) {
+			type = isBugzilla ? AjxStringUtil.ORIG_UNKNOWN : type;
+		}
+		else {
+			isBugzilla = false;
+		}
 
 		// WROTE can stretch over two lines; if so, join them into one line
 		var nextLine = lines[i + 1];
@@ -2160,7 +2168,7 @@ AjxStringUtil.checkForCleanHtml =
 function(html, okTags, untrustedAttrs) {
 
     //Bug: 83708 - strip hashed anchor links from email msg
-    html = html.replace(new RegExp("href\s*=\s*['\"]\s*#.*['\"]", "g"), '');
+    html = html.replace(new RegExp("href\s*=\s*(['\"])\s*#((?!\\1).)*\\1", "g"), '');
 
 	var htmlNode = AjxStringUtil._writeToTestIframeDoc(html);
 	var ctxt = {

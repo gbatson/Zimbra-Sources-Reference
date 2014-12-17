@@ -177,6 +177,8 @@ ZmConvListView = function(params) {
 	this._handleEventType[ZmItem.CONV] = true;
 	this._handleEventType[ZmItem.MSG] = true;
 
+	this.getHtmlElement().setAttribute("aria-label", ZmMsg.conversationList);
+
 	this._hasHiddenRows = true;	// so that up and down arrow keys work
 	this._resetExpansion();
 };
@@ -200,21 +202,6 @@ function(list, sortField) {
 		this._resetExpansion();
 	}
 	ZmMailListView.prototype.set.apply(this, arguments);
-};
-
-ZmConvListView.prototype.handleKeyAction =
-function(actionCode, ev) {
-
-	switch (actionCode) {
-		// Enter is normally a list view widget shortcut for DBLCLICK; we need to no-op
-		// it here so that it gets handled as an app shortcut (app shortcuts happen
-		// after widget shortcuts).
-		case DwtKeyMap.DBLCLICK:
-			return false;
-		
-		default:
-			return ZmMailListView.prototype.handleKeyAction.apply(this, arguments);
-	}
 };
 
 /**
@@ -312,38 +299,17 @@ function() {
 	}
 };
 
-ZmConvListView.prototype._getHeaderList =
+ZmConvListView.prototype._getLabelFieldList =
 function() {
-	var headers;
-	if (this.isMultiColumn()) {
-		headers = [
-			ZmItem.F_SELECTION,
-			ZmItem.F_EXPAND,
-			ZmItem.F_FLAG,
-			ZmItem.F_PRIORITY,
-			ZmItem.F_TAG,
-			ZmItem.F_READ,
-			ZmItem.F_STATUS,
-			ZmItem.F_FROM,
-			ZmItem.F_ATTACHMENT,
-			ZmItem.F_SUBJECT,
-			ZmItem.F_FOLDER,
-			ZmItem.F_SIZE
-		];
-		if (appCtxt.accountList.size() > 2) {
-			headers.push(ZmItem.F_ACCOUNT);
-		}
-		headers.push(ZmItem.F_DATE);
-	}
-	else {
-		headers = [
-			ZmItem.F_SELECTION,
-			ZmItem.F_SORTED_BY
-		];
+	var headers = ZmMailListView.prototype._getLabelFieldList.call(this);
+	var selectionidx = AjxUtil.indexOf(headers, ZmItem.F_SELECTION);
+
+	if (selectionidx >= 0) {
+		headers.splice(selectionidx + 1, 0, ZmItem.F_EXPAND);
 	}
 
-	return this._getHeaders(ZmId.VIEW_CONVLIST, headers);
-};
+	return headers;
+}
 
 ZmConvListView.prototype._getDivClass =
 function(base, item, params) {
@@ -646,7 +612,7 @@ function(conv, fieldId) {
 ZmConvListView.prototype._getDisplayedMsgCount =
 function(conv) {
 
-	var omit = this._controller.getFoldersToOmit(),
+	var omit = ZmMailApp.getFoldersToOmit(),
 		num = 0, id;
 
 	for (id in conv.msgFolder) {
@@ -656,6 +622,30 @@ function(conv) {
 	}
 
 	return num;
+};
+
+ZmConvListView.prototype._getLabelForField =
+function(item, field) {
+	switch (field) {
+	case ZmItem.F_EXPAND:
+		if (this._isExpandable(item)) {
+			return this.isExpanded(item) ? ZmMsg.expanded : ZmMsg.collapsed;
+		}
+
+		break;
+
+	case ZmItem.F_SIZE:
+		if (item.numMsgs > 1) {
+			var messages =
+				AjxMessageFormat.format(ZmMsg.typeMessage, item.numMsgs);
+			return AjxMessageFormat.format(ZmMsg.itemCount,
+			                               [item.numMsgs, messages]);
+		}
+
+		break;
+	}
+
+	return ZmMailListView.prototype._getLabelForField.apply(this, arguments);
 };
 
 ZmConvListView.prototype._getHeaderToolTip =
@@ -727,7 +717,7 @@ function(conv, msg, force) {
 			index--;	// for ascending, we want to expand upward (add above expandable msg row)
 		}
 		var offset = this._msgOffset[item.id] || 0;
-		var a = conv.getMsgList(offset, ascending, this._controller.getFoldersToOmit());
+		var a = conv.getMsgList(offset, ascending, ZmMailApp.getFoldersToOmit());
 		for (var i = 0; i < a.length; i++) {
 			var msg = a[i];
 			var div = this._createItemHtml(msg);
@@ -736,6 +726,10 @@ function(conv, msg, force) {
 			if (rowIds) {
 				rowIds.push(div.id);
 			}
+			// TODO: we may need to use a group for nested conversations;
+			// either as proper DOM nesting or with aria-owns.
+			div.setAttribute('aria-level', 2);
+			rowIds = this._msgRowIdList[item.id];
 			if (i == a.length - 1) {
 				lastRow = div;
 			}
@@ -761,6 +755,8 @@ function(conv, msg, force) {
 			}
 		}
 	}
+
+	this._updateLabelForItem(item);
 };
 
 ZmConvListView.prototype._collapse =
@@ -784,7 +780,20 @@ function(item) {
 	}
 
 	this._resetColWidth();
+	this._updateLabelForItem(item);
 };
+
+ZmConvListView.prototype._updateLabelForItem =
+function(item) {
+	ZmMailListView.prototype._updateLabelForItem.apply(this, arguments);
+
+	if (item && this._isExpandable(item)) {
+		var el = this._getElFromItem(item);
+		if (el && el.setAttribute) {
+			el.setAttribute('aria-expanded', this.isExpanded(item));
+		}
+	}
+}
 
 ZmConvListView.prototype._doCollapse =
 function(item) {
@@ -794,6 +803,7 @@ function(item) {
 	}
 	this._setImage(item, ZmItem.F_EXPAND, "NodeCollapsed", this._getClasses(ZmItem.F_EXPAND));
 	this._expanded[item.id] = false;
+	this._updateLabelForItem(item);
 };
 
 ZmConvListView.prototype._showMsgs =
@@ -892,7 +902,7 @@ function() {
 
 ZmConvListView.prototype.isExpanded =
 function(item) {
-	return item && this._expanded[item.id];
+	return Boolean(item && this._expanded[item.id]);
 };
 
 ZmConvListView.prototype._expandItem =
@@ -927,7 +937,7 @@ ZmConvListView.prototype._sortColumn =
 function(columnItem, bSortAsc, callback) {
 
 	// call base class to save the new sorting pref
-	ZmMailListView.prototype._sortColumn.call(this, columnItem, bSortAsc);
+	ZmMailListView.prototype._sortColumn.apply(this, arguments);
 
 	var query;
 	var list = this.getList();

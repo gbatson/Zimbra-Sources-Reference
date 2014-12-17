@@ -21,8 +21,8 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.projects.touch.ui.search.PageSearch;
 import com.zimbra.qa.selenium.projects.touch.core.TouchCommonTest;
-import com.zimbra.qa.selenium.projects.touch.ui.addressbook.PageAddressbook;
-import com.zimbra.qa.selenium.projects.touch.ui.addressbook.TreeContacts;
+import com.zimbra.qa.selenium.projects.touch.ui.contacts.PageAddressbook;
+import com.zimbra.qa.selenium.projects.touch.ui.contacts.TreeContacts;
 import com.zimbra.qa.selenium.projects.touch.ui.calendar.PageCalendar;
 import com.zimbra.qa.selenium.projects.touch.ui.calendar.TreeCalendar;
 import com.zimbra.qa.selenium.projects.touch.ui.mail.*;
@@ -92,7 +92,7 @@ public class AppTouchClient extends AbsApplication {
 		zTreeMail = new TreeMail(this);
 		trees.put(zTreeMail.myPageName(), zTreeMail);
 		
-		//Addressbook page    
+		// Addressbook page    
 		zPageAddressbook = new PageAddressbook(this);
 		pages.put(zPageAddressbook.myPageName(), zPageAddressbook);
 

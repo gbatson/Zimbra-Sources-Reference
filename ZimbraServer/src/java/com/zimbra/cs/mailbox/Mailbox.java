@@ -39,6 +39,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.mail.Address;
 import javax.mail.internet.MimeMessage;
@@ -216,6 +218,7 @@ import com.zimbra.cs.redolog.op.TrackSync;
 import com.zimbra.cs.redolog.op.UnlockItem;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.FeedManager;
+import com.zimbra.cs.service.util.ItemData;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.SpamHandler;
 import com.zimbra.cs.service.util.SpamHandler.SpamReport;
@@ -535,8 +538,13 @@ public class Mailbox {
         }
 
         public void remove(Folder folder) {
-            mapById.remove(folder.getId());
-            mapByUuid.remove(folder.getUuid());
+            Folder removed = mapById.remove(folder.getId());
+            if (removed != null) {
+                String uuid = removed.getUuid();
+                if (uuid != null) {
+                    mapByUuid.remove(uuid);
+                }
+            }
         }
 
         public Collection<Folder> values() {
@@ -690,6 +698,13 @@ public class Mailbox {
     // This class handles all the indexing internals for the Mailbox
     public final MailboxIndex index;
     public final MailboxLock lock;
+    
+    /**
+     * Bug: 94985 - Only allow one large empty folder operation to run at a time
+     * to reduce the danger of having too many expensive operations running
+     * concurrently
+     */
+    private final ReentrantLock emptyFolderOpLock = new ReentrantLock();
 
     // TODO: figure out correct caching strategy
     private static final int MAX_ITEM_CACHE_WITH_LISTENERS = LC.zimbra_mailbox_active_cache.intValue();
@@ -5670,7 +5685,7 @@ public class Mailbox {
         }
     }
 
-    public Message addMessage(OperationContext octxt, InputStream in, long sizeHint, Long receivedDate, DeliveryOptions dopt, DeliveryContext dctxt)
+    public Message addMessage(OperationContext octxt, InputStream in, long sizeHint, Long receivedDate, DeliveryOptions dopt, DeliveryContext dctxt, ItemData id)
     throws IOException, ServiceException {
         int bufLen = Provisioning.getInstance().getLocalServer().getMailDiskStreamingThreshold();
         CopyInputStream cs = new CopyInputStream(in, sizeHint, bufLen, bufLen);
@@ -5688,6 +5703,10 @@ public class Mailbox {
             }
 
             blob = StoreManager.getInstance().storeIncoming(in);
+            
+            if (id != null && id.ud != null && id.ud.getBlobDigest() != null && !id.ud.getBlobDigest().isEmpty()) {
+                blob.setDigest(id.ud.getBlobDigest());
+            }
 
             if (validator != null && !validator.isValid()) {
                 StoreManager.getInstance().delete(blob);
@@ -5705,6 +5724,11 @@ public class Mailbox {
             cs.release();
             StoreManager.getInstance().quietDelete(blob);
         }
+    }
+    
+    public Message addMessage(OperationContext octxt, InputStream in, long sizeHint, Long receivedDate, DeliveryOptions dopt, DeliveryContext dctxt)
+        throws IOException, ServiceException {
+        return addMessage(octxt, in, sizeHint, receivedDate, dopt, dctxt, null);
     }
 
     public Message addMessage(OperationContext octxt, ParsedMessage pm, DeliveryOptions dopt, DeliveryContext dctxt)
@@ -7477,10 +7501,15 @@ public class Mailbox {
             return Collections.emptyList();
         }
         List<Contact> result = new ArrayList<Contact>(addrs.size());
+        String locale = octxt != null && octxt.getAuthenticatedUser() != null ? octxt.getAuthenticatedUser().getPrefLocale() : null;
+        boolean nameFormatLastFirst = false;
+        if (locale != null && locale.equals("ja")) {
+            nameFormatLastFirst = true;
+        }
         for (InternetAddress addr : addrs) {
             ZimbraLog.mailbox.debug("Auto-adding new contact addr=%s", addr);
             try {
-                result.add(createContact(octxt, new ParsedContact(new ParsedAddress(addr).getAttributes()),
+                result.add(createContact(octxt, new ParsedContact(new ParsedAddress(addr, nameFormatLastFirst).getAttributes()),
                         Mailbox.ID_FOLDER_AUTO_CONTACTS, null));
             } catch (ServiceException e) {
                 if (e.getCode().equals(MailServiceException.TOO_MANY_CONTACTS)) {
@@ -8147,58 +8176,74 @@ public class Mailbox {
     private void emptyFolder(OperationContext octxt, int folderId,
             boolean removeTopLevelFolder, boolean removeSubfolders, TargetConstraint tcon)
     throws ServiceException {
-        int batchSize = Provisioning.getInstance().getLocalServer().getMailEmptyFolderBatchSize();
-        ZimbraLog.mailbox.debug("Emptying folder %s, removeTopLevelFolder=%b, removeSubfolders=%b, batchSize=%d",
-            folderId, removeTopLevelFolder, removeSubfolders, batchSize);
-        List<Integer> folderIds = new ArrayList<Integer>();
-        if (!removeSubfolders) {
-            folderIds.add(folderId);
-        } else {
-            List<Folder> folders = getFolderById(octxt, folderId).getSubfolderHierarchy();
-            for (Folder folder : folders) {
-                folderIds.add(folder.getId());
-            }
-        }
-
-        // Make sure that the user has the delete permission for all folders in the hierarchy.
-        for (int id : folderIds) {
-            if ((getEffectivePermissions(octxt, id, MailItem.Type.FOLDER) & ACL.RIGHT_DELETE) == 0) {
-               throw ServiceException.PERM_DENIED("not authorized to empty folder " + getFolderById(octxt, id).getPath());
-            }
-        }
-        int lastChangeID = octxt != null && octxt.change != -1 ? octxt.change : getLastChangeID();
-
-        // Delete the items in batches.  (1000 items by default)
-        QueryParams params = new QueryParams();
-        params.setFolderIds(folderIds).setModifiedSequenceBefore(lastChangeID + 1).setRowLimit(batchSize);
-        boolean firstTime = true;
-        do {
-            // Give other threads a chance to use the mailbox between deletion batches.
-            if (firstTime) {
-                firstTime = false;
+        try {
+            if (emptyFolderOpLock.tryLock()
+                || emptyFolderOpLock.tryLock(Provisioning.getInstance().getLocalServer().getEmptyFolderOpTimeout(),
+                    TimeUnit.SECONDS)) {
+                int batchSize = Provisioning.getInstance().getLocalServer().getMailEmptyFolderBatchSize();
+                ZimbraLog.mailbox.debug("Emptying folder %s, removeTopLevelFolder=%b, removeSubfolders=%b, batchSize=%d",
+                    folderId, removeTopLevelFolder, removeSubfolders, batchSize);
+                List<Integer> folderIds = new ArrayList<Integer>();
+                if (!removeSubfolders) {
+                    folderIds.add(folderId);
+                } else {
+                    List<Folder> folders = getFolderById(octxt, folderId).getSubfolderHierarchy();
+                    for (Folder folder : folders) {
+                        folderIds.add(folder.getId());
+                    }
+                }
+                // Make sure that the user has the delete permission for all folders in the hierarchy.
+                for (int id : folderIds) {
+                    if ((getEffectivePermissions(octxt, id, MailItem.Type.FOLDER) & ACL.RIGHT_DELETE) == 0) {
+                        throw ServiceException.PERM_DENIED("not authorized to empty folder "
+                            + getFolderById(octxt, id).getPath());
+                    }
+                }
+                int lastChangeID = octxt != null && octxt.change != -1 ? octxt.change : getLastChangeID();
+                // Delete the items in batches.  (1000 items by default)
+                QueryParams params = new QueryParams();
+                params.setFolderIds(folderIds).setModifiedSequenceBefore(lastChangeID + 1).setRowLimit(batchSize);
+                boolean firstTime = true;
+                do {
+                    // Give other threads a chance to use the mailbox between deletion batches.
+                    if (firstTime) {
+                        firstTime = false;
+                    } else {
+                        long sleepMillis = LC.empty_folder_batch_sleep_ms.longValue();
+                        try {
+                            ZimbraLog.mailbox.debug("emptyLargeFolder() sleeping for %dms", sleepMillis);
+                            Thread.sleep(sleepMillis);
+                        } catch (InterruptedException e) {
+                            ZimbraLog.mailbox.warn("Sleep was interrupted", e);
+                        }
+                    }
+                } while (deletedBatchOfItemsInFolder(octxt, params, tcon));
+                if ((removeTopLevelFolder || removeSubfolders) && (!folderIds.isEmpty())) {
+                    if (!removeTopLevelFolder) {
+                        folderIds.remove(0); // 0th position is the folder being emptied
+                    }
+                    if (!folderIds.isEmpty()) {
+                        lock.lock();
+                        try {
+                            delete(octxt, ArrayUtil.toIntArray(folderIds), MailItem.Type.FOLDER, tcon, false /* don't useEmptyForFolders */);
+                        } finally {
+                            lock.release();
+                        }
+                    }
+                }
             } else {
-                long sleepMillis = LC.empty_folder_batch_sleep_ms.longValue();
-                try {
-                    ZimbraLog.mailbox.debug("emptyLargeFolder() sleeping for %dms", sleepMillis);
-                    Thread.sleep(sleepMillis);
-                } catch (InterruptedException e) {
-                    ZimbraLog.mailbox.warn("Sleep was interrupted", e);
-                }
+                ZimbraLog.mailbox
+                    .info("Empty large folder operation canceled because previous empty folder operation is in progress");
+                throw ServiceException
+                    .ALREADY_IN_PROGRESS("Empty Folder operation is in progress. Please wait for the operation to complete");
             }
-        } while (deletedBatchOfItemsInFolder(octxt, params, tcon));
-
-        if ((removeTopLevelFolder || removeSubfolders) && (!folderIds.isEmpty())) {
-            if (!removeTopLevelFolder) {
-                folderIds.remove(0);   // 0th position is the folder being emptied
-            }
-            if (!folderIds.isEmpty()) {
-                lock.lock();
-                try {
-                    delete(octxt, ArrayUtil.toIntArray(folderIds), MailItem.Type.FOLDER, tcon,
-                            false /* don't useEmptyForFolders */);
-                } finally {
-                    lock.release();
-                }
+        } catch (InterruptedException e) {
+            ZimbraLog.mailbox.warn("Empty folder operation interupted while acquiring emptyFolderOpLock", e);
+            throw ServiceException
+            .ALREADY_IN_PROGRESS("Empty Folder operation is in progress. Please wait for the operation to complete");
+        } finally {
+            if (emptyFolderOpLock.isHeldByCurrentThread()) {
+                emptyFolderOpLock.unlock();
             }
         }
     }
@@ -9750,5 +9795,38 @@ public class Mailbox {
         } finally {
             endTransaction(success);
         }
+    }
+
+    /**
+     * @param octxt
+     * @param i
+     * @param sinceTime
+     * @param unknown
+     * @param object
+     * @return
+     */
+    public Pair<List<Integer>, TypedIdList> getItemsChangedSince(
+        OperationContext octxt,  int sinceDate) throws ServiceException {
+    lock.lock(false);
+    try {
+
+        boolean success = false;
+        try {
+            beginReadTransaction("getModifiedItems", octxt);
+
+            Set<Integer> folderIds = Folder.toId(getAccessibleFolders(ACL.RIGHT_READ));
+            Pair<List<Integer>, TypedIdList> dataList = DbMailItem
+                            .getItemsChangedSinceDate(this, MailItem.Type.UNKNOWN,  sinceDate, folderIds);
+            if (dataList == null) {
+                return null;
+            }
+            success = true;
+            return dataList;
+        } finally {
+            endTransaction(success);
+        }
+    } finally {
+        lock.release();
+    }
     }
 }

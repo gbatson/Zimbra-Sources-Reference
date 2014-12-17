@@ -328,6 +328,8 @@ function(ev) {
 		this._checkReplenishOnTimer();
 		this._controller._resetToolbarOperations();
 	}
+
+	this._updateLabelForItem(item);
 };
 
 ZmListView.prototype._getItemFromEvent =
@@ -372,6 +374,8 @@ function(item, field) {
 		//replace the old inner html with the new updated data
 		el.innerHTML = $(html.join("")).html();
 	}
+
+	this._updateLabelForItem(item);
 };
 
 ZmListView.prototype._checkReplenishOnTimer =
@@ -561,7 +565,7 @@ function(item, field, classes) {
 
 ZmListView.prototype._getFragmentSpan =
 function(item) {
-	return ["<span class='ZmConvListFragment' id='",
+	return ["<span class='ZmConvListFragment' aria-hidden='true' id='",
 			this._getFieldId(item, ZmItem.F_FRAGMENT),
 			"'>", this._getFragmentHtml(item), "</span>"].join("");
 };
@@ -972,25 +976,28 @@ function() {
 /*
  get sort menu for views that provide a right-click sort by menu in single-column view (currently mail and briefcase)
  */
-ZmListView.prototype._getSortMenu =
-function (sortFields, defaultSortField) {
-	// create a action menu for the header list
-	var menu = new ZmPopupMenu(this, null, Dwt.getNextId("SORT_MENU_"));
-	var actionListener = new AjxListener(this, this._colHeaderActionListener);
+ZmListView.prototype._getSortMenu = function (sortFields, defaultSortField, parent) {
+
+	// create an action menu for the header list
+	var menu = new ZmPopupMenu(parent || this, null, Dwt.getNextId("SORT_MENU_"));
+	var actionListener = this._colHeaderActionListener.bind(this);
 
 	for (var i = 0; i < sortFields.length; i++) {
 		var column = sortFields[i];
-		var label = AjxMessageFormat.format(ZmMsg.arrangeBy, ZmMsg[column.msg]);
-		var mi = menu.createMenuItem(column.field, {text:label, style:DwtMenuItem.RADIO_STYLE});
+		var fieldName = ZmMsg[column.msg];
+		var mi = menu.createMenuItem(column.field, {
+			text:   parent && parent.isDwtMenuItem ? fieldName : AjxMessageFormat.format(ZmMsg.arrangeBy, fieldName),
+			style:  DwtMenuItem.RADIO_STYLE
+		});
 		if (column.field == defaultSortField) {
 			mi.setChecked(true, true);
 		}
 		mi.setData(ZmListView.KEY_ID, column.field);
 		menu.addSelectionListener(column.field, actionListener);
 	}
+
 	return menu;
 };
-
 
 /*
 listener used by views that provide a right-click sort by menu in single-column view (currently mail and briefcase)
@@ -1004,32 +1011,34 @@ function(ev) {
         cell.innerHTML = text && text.replace(ZmMsg.sortBy, ZmMsg.sortedBy);
 	}
 	column._sortable = ev.item.getData(ZmListView.KEY_ID);
+	this._bSortAsc = (column._sortable === this._currentSortColId) ? !this._bSortAsc : this._getDefaultSortbyForCol(column);
 	this._sortColumn(column, this._bSortAsc);
 };
 
+ZmListView.prototype._getActionMenuForColHeader = function(force, parent, context) {
 
-ZmListView.prototype._getActionMenuForColHeader =
-function(force) {
+	var menu;
 	if (!this._colHeaderActionMenu || force) {
-		// create a action menu for the header list
-		this._colHeaderActionMenu = new ZmPopupMenu(this);
-		var actionListener = new AjxListener(this, this._colHeaderActionListener);
+		// create an action menu for the header list
+		menu = new ZmPopupMenu(parent || this);
+		var actionListener = this._colHeaderActionListener.bind(this);
 		for (var i = 0; i < this._headerList.length; i++) {
 			var hCol = this._headerList[i];
 			// lets not allow columns w/ relative width to be removed (for now) - it messes stuff up
 			if (hCol._width) {
-				var id = ZmId.getMenuItemId(this._view + "_header", hCol._field);
-				var mi = this._colHeaderActionMenu.createMenuItem(id, {text:hCol._name, style:DwtMenuItem.CHECK_STYLE});
+				var id = ZmId.getMenuItemId([ this._view, context ].join("_"), hCol._field);
+				var mi = menu.createMenuItem(id, {text:hCol._name, style:DwtMenuItem.CHECK_STYLE});
 				mi.setData(ZmListView.KEY_ID, hCol._id);
 				mi.setChecked(hCol._visible, true);
                 if (hCol._noRemove) {
 					mi.setEnabled(false);
 				}
-                this._colHeaderActionMenu.addSelectionListener(id, actionListener);
+				menu.addSelectionListener(id, actionListener);
 			}
 		}
 	}
-	return this._colHeaderActionMenu;
+
+	return menu;
 };
 
 ZmListView.prototype._colHeaderActionListener =
@@ -1161,6 +1170,61 @@ function(params) {
     return tooltip;
 };
 
+/*
+ * Get the list of fields for the accessibility label. Normally, this
+ * corresponds to the header columns.
+ *
+ * @protected
+ */
+ZmListView.prototype._getLabelFieldList =
+function() {
+	var headers = this._getHeaderList();
+
+	if (headers) {
+		return AjxUtil.map(headers, function(header) {
+			return header._field;
+		});
+	}
+};
+
+/*
+ * Get the accessibility label corresponding to the given field.
+ *
+ * @protected
+ */
+ZmListView.prototype._getLabelForField =
+function(item, field) {
+	var tooltip = this._getToolTip({ item: item, field: field });
+	// TODO: fix for tooltips that are callbacks (such as for appts)
+	return AjxStringUtil.stripTags(tooltip);
+};
+
+ZmListView.prototype._updateLabelForItem =
+function(item) {
+	var fields = this._getLabelFieldList();
+	var itemel = this._getElFromItem(item);
+
+	if (!item || !fields || !itemel) {
+		return;
+	}
+
+	var buf = [];
+
+	for (var i = 0; i < fields.length; i++) {
+		var label = this._getLabelForField(item, fields[i]);
+
+		if (label) {
+			buf.push(label);
+		}
+	}
+
+	if (buf.length > 0) {
+		itemel.setAttribute('aria-label', buf.join(', '));
+	} else {
+		itemel.removeAttribute('aria-label');
+	}
+};
+
 ZmListView.prototype._getTagToolTip =
 function(item) {
 	if (!item) { return; }
@@ -1281,8 +1345,8 @@ function(callback) {
 	appCtxt.getSearchController().redoSearch(search, false, changes, callback);
 };
 
-ZmListView.prototype._sortColumn =
-function(columnItem, bSortAsc, callback) {
+ZmListView.prototype._sortColumn = function(columnItem, bSortAsc, callback) {
+
 	// change the sort preference for this view in the settings
 	var sortBy;
 	switch (columnItem._sortable) {
@@ -1300,6 +1364,7 @@ function(columnItem, bSortAsc, callback) {
 	}
 
 	if (sortBy) {
+		this._currentSortColId = columnItem._sortable;
 		//special case - switching from read/unread to another sort column - remove it from the query, so users are not confused that they still see only unread messages after clicking on another sort column.
 		if (columnItem._sortable != ZmItem.F_READ && (this._sortByString == ZmSearch.READ_ASC || this._sortByString == ZmSearch.READ_DESC)) {
 			var controller = this._controller;
@@ -1323,9 +1388,13 @@ function(columnItem, bSortAsc, callback) {
                 appCtxt.set(ZmSetting.SORTING_PREF, sortBy, this._folderId);
             }
         }
+		if (!this._isMultiColumn) {
+			this._setSortedColStyle(columnItem._id);
+		}
 	}
-	if (callback)
+	if (callback) {
 		callback.run();
+	}
 };
 
 ZmListView.prototype._setNextSelection =
@@ -1366,7 +1435,7 @@ function() {
 	    appCtxt.set(ZmSetting.LIST_VIEW_COLUMNS, value, appCtxt.getViewTypeFromId(this.view));
     }
 
-	this._getActionMenuForColHeader(true); // re-create action menu so order is correct
+	this._colHeaderActionMenu = this._getActionMenuForColHeader(true); // re-create action menu so order is correct
 };
 
 /**
@@ -1601,6 +1670,13 @@ function(list, noResultsOk, doAdd) {
 		this._setNoResultsHtml();
 	}
 
+};
+
+ZmListView.prototype._addRow =
+function(row, index) {
+	DwtListView.prototype._addRow.apply(this, arguments);
+
+	this._updateLabelForItem(this.getItemFromElement(row));
 };
 
 ZmListView.prototype._getSectionHeaderDiv =

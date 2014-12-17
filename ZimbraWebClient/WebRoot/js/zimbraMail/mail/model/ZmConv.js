@@ -713,7 +713,7 @@ function(convNode) {
 
 	this.numMsgs = convNode.n;
 	this.date = convNode.d;
-	this._parseFlags(convNode.f);
+	this._parseFlagsOfMsgs(convNode.m);   // parse flags based on msgs
 	this._parseTagNames(convNode.tn);
 	if (convNode.e) {
 		for (var i = 0; i < convNode.e.length; i++) {
@@ -885,8 +885,35 @@ function(type) {
  */
 ZmConv.prototype.getStatusTooltip =
 function() {
+	if (this.numMsgs === 1 && this.msgIds && this.msgIds.length > 0) {
+		var msg = appCtxt.getById(this.msgIds[0]);
+		if (msg) {
+			return msg.getStatusTooltip();
+		}
+	}
+
 	var status = [];
-	if (this.isScheduled)	{ status.push(ZmMsg.scheduled); }
+
+	// keep in sync with ZmMailMsg.prototype.getStatusTooltip
+	if (this.isScheduled) {
+		status.push(ZmMsg.scheduled);
+	}
+	if (this.isUnread) {
+		status.push(ZmMsg.unread);
+	}
+	if (this.isReplied) {
+		status.push(ZmMsg.replied);
+	}
+	if (this.isForwarded) {
+		status.push(ZmMsg.forwarded);
+	}
+	if (this.isDraft) {
+		status.push(ZmMsg.draft);
+	} else if (this.isSent) {
+		//sentAt is for some reason "sent", which is what we need.
+		status.push(ZmMsg.sentAt);
+	}
+
 	return status.join(", ");
 };
 
@@ -906,4 +933,35 @@ function() {
 		return numUnread;
 	}
 	return null;
+};
+
+/**
+ * Parse flags based on which flags are in the messages we will display (which normally
+ * excludes messages in Trash or Junk).
+ *
+ * @param   [array]     msgs        msg nodes from search result
+ *
+ * @private
+ */
+ZmConv.prototype._parseFlagsOfMsgs = function(msgs) {
+
+	// use search from list since it's not yet set in controller
+	var ignore = ZmMailApp.getFoldersToOmit(this.list && this.list.search),
+		msg, len = msgs ? msgs.length : 0, i,
+		flags = {};
+
+	for (i = 0; i < len; i++) {
+		msg = msgs[i];
+		if (!ignore[msg.l]) {
+			var msgFlags = msg.f && msg.f.split(''),
+				len1 = msgFlags ? msgFlags.length : 0, j;
+
+			for (j = 0; j < len1; j++) {
+				flags[msgFlags[j]] = true;
+			}
+		}
+	}
+
+	this.flags = AjxUtil.keys(flags).join('');
+	ZmItem.prototype._parseFlags.call(this, this.flags);
 };

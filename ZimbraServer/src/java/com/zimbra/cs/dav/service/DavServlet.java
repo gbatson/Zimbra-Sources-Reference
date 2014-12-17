@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -41,6 +41,7 @@ import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 
+import com.google.common.net.HttpHeaders;
 import com.zimbra.client.ZFolder;
 import com.zimbra.client.ZMailbox;
 import com.zimbra.common.account.Key;
@@ -97,7 +98,6 @@ import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.FileUploadServlet.Upload;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.servlet.ZimbraServlet;
-import com.zimbra.cs.servlet.util.AuthUtil;
 import com.zimbra.cs.util.AccountUtil;
 
 @SuppressWarnings("serial")
@@ -197,10 +197,10 @@ public class DavServlet extends ZimbraServlet {
          */
         Enumeration namesEn = req.getHeaderNames();
         if (namesEn != null && namesEn.hasMoreElements()) {
-            hdrs.append("\nDAV HEADERS:");
+            hdrs.append("\nDAV REQUEST HEADERS:");
             while (namesEn.hasMoreElements()) {
                 String hdrName = (String)namesEn.nextElement();
-                if (hdrName.contains("Auth")) {
+                if (hdrName.contains("Auth")  || (hdrName.contains(HttpHeaders.COOKIE))) {
                     hdrs.append("\n").append(hdrName).append(": *** REPLACED ***");
                     continue;
                 }
@@ -210,6 +210,42 @@ public class DavServlet extends ZimbraServlet {
                 }
             }
         }
+        ZimbraLog.dav.debug(hdrs.toString());
+    }
+
+    public static StringBuilder addResponseHeaderLoggingInfo(HttpServletResponse resp, StringBuilder sb) {
+        if (!ZimbraLog.dav.isDebugEnabled()) {
+            return sb;
+        }
+        sb.append("DAV RESPONSE:\n");
+        String statusLine = DavResponse.sStatusTextMap.get(resp.getStatus());
+        if (statusLine != null) {
+            sb.append(statusLine);
+        } else {
+            sb.append("HTTP/1.1 ").append(resp.getStatus());
+        }
+        Collection<String> hdrNames = resp.getHeaderNames();
+        if (hdrNames != null && !hdrNames.isEmpty()) {
+            for (String hdrName : hdrNames) {
+                if (hdrName.contains("Auth")  || (hdrName.contains(HttpHeaders.COOKIE))) {
+                    sb.append("\n").append(hdrName).append(": *** REPLACED ***");
+                    continue;
+                }
+                Collection<String> vals = resp.getHeaders(hdrName);
+                for (String val : vals) {
+                    sb.append("\n").append(hdrName).append(": ").append(val);
+                }
+            }
+        }
+        sb.append("\n\n");
+        return sb;
+    }
+
+    protected static void logResponseInfo(HttpServletResponse resp) {
+        if (!ZimbraLog.dav.isDebugEnabled()) {
+            return;
+        }
+        StringBuilder hdrs = addResponseHeaderLoggingInfo(resp, new StringBuilder());
         ZimbraLog.dav.debug(hdrs.toString());
     }
 
@@ -247,7 +283,7 @@ public class DavServlet extends ZimbraServlet {
         ZimbraLog.clearContext();
         addRemoteIpToLoggingContext(req);
         ZimbraLog.addUserAgentToContext(req.getHeader(DavProtocol.HEADER_USER_AGENT));
-        
+
         //bug fix - send 400 for Range requests
         String rangeHeader = req.getHeader(DavProtocol.HEADER_RANGE);
         if(null != rangeHeader){
@@ -275,7 +311,7 @@ public class DavServlet extends ZimbraServlet {
                 authUser = basicAuthRequest(req, resp, true);
             if (authUser == null) {
                 try {
-                    sendError(resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "Authentication failed", null, Level.debug);
+                    sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed", null, Level.debug);
                 } catch (Exception e) {}
                 return;
             }
@@ -322,8 +358,12 @@ public class DavServlet extends ZimbraServlet {
                 method.checkPrecondition(ctxt);
                 method.handle(ctxt);
                 method.checkPostcondition(ctxt);
-                if (!ctxt.isResponseSent())
+                if (!ctxt.isResponseSent()) {
                     resp.setStatus(ctxt.getStatus());
+                }
+            }
+            if (!ctxt.isResponseSent()) {
+                logResponseInfo(resp);
             }
         } catch (DavException e) {
             if (e.getCause() instanceof MailServiceException.NoSuchItemException ||

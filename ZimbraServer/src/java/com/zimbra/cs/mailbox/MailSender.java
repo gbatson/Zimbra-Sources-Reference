@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -29,9 +29,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.mail.Address;
 import javax.mail.MessagingException;
@@ -47,6 +49,7 @@ import com.google.common.base.Strings;
 import com.zimbra.client.ZMailbox;
 import com.zimbra.common.account.Key;
 import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ZAttrProvisioning.PrefDelegatedSendSaveTarget;
 import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.mime.shim.JavaMailInternetHeaders;
@@ -84,6 +87,7 @@ public class MailSender {
 
     public static final String MSGTYPE_REPLY = String.valueOf(Flag.toChar(Flag.ID_REPLIED));
     public static final String MSGTYPE_FORWARD = String.valueOf(Flag.toChar(Flag.ID_FORWARDED));
+    private static Map<String, PreSendMailListener> mPreSendMailListeners = new ConcurrentHashMap<String, PreSendMailListener>();
 
     private Boolean mSaveToSent;
     private Collection<Upload> mUploads;
@@ -538,7 +542,10 @@ public class MailSender {
             // if requested, save a copy of the message to the Sent Mail folder
             ParsedMessage pm = null;
             ItemId returnItemId = null;
-            if (mSaveToSent) {
+            if (mSaveToSent && (!isDelegatedRequest ||
+                    (isDelegatedRequest &&
+                    (PrefDelegatedSendSaveTarget.sender == acct.getPrefDelegatedSendSaveTarget() ||
+                    PrefDelegatedSendSaveTarget.both == acct.getPrefDelegatedSendSaveTarget())))) {
                 if (mIdentity == null) {
                     mIdentity = Provisioning.getInstance().getDefaultIdentity(authuser);
                 }
@@ -588,7 +595,9 @@ public class MailSender {
             // for delegated sends automatically save a copy to the "From" user's mailbox, unless we've been
             // specifically requested not to do the save (for instance BES does its own save to Sent, so does'nt
             // want it done here).
-            if (allowSaveToSent && hasRecipients && isDelegatedRequest && acct.isPrefSaveToSent()) {
+            if (allowSaveToSent && hasRecipients && isDelegatedRequest &&
+                    (PrefDelegatedSendSaveTarget.owner == acct.getPrefDelegatedSendSaveTarget() ||
+                    PrefDelegatedSendSaveTarget.both == acct.getPrefDelegatedSendSaveTarget())) {
                 int flags = Flag.BITMASK_UNREAD | Flag.BITMASK_FROM_ME;
                 // save the sent copy using the target's credentials, as the sender doesn't necessarily have write access
                 OperationContext octxtTarget = new OperationContext(acct);
@@ -618,6 +627,20 @@ public class MailSender {
             // If DSN is specified, set it in the JavaMail session.
             if (mDsn != null && mSession != null)
                 mSession.getProperties().setProperty("mail.smtp.dsn.notify", mDsn);
+
+            //notify pre-send mail listeners
+            String[] customheaders = mm.getHeader(PRE_SEND_HEADER);
+            if(customheaders != null && customheaders.length > 0) {
+                ZimbraLog.mailbox.debug("Processing pre-send mail listeners");
+                for(PreSendMailListener listener : mPreSendMailListeners.values()) {
+                    try {
+                        listener.handle(mbox, getRecipients(mm), mm);
+                    } catch (Exception e) {
+                        ZimbraLog.mailbox.error("pre-send mail listener %s failed ", listener.getName(), e);
+                    }
+                }
+                mm.removeHeader(PRE_SEND_HEADER); //no need to keep the header in the message at this point
+            }
 
             // actually send the message via SMTP
             Collection<Address> sentAddresses = sendMessage(mbox, mm, rollbacks);
@@ -763,6 +786,7 @@ public class MailSender {
         }
     }
 
+    public static final String PRE_SEND_HEADER = "X-Zimbra-Presend";
     public static final String X_ORIGINATING_IP = "X-Originating-IP";
     private static final String X_MAILER = "X-Mailer";
     public static final String X_AUTHENTICATED_USER = "X-Authenticated-User";
@@ -1237,6 +1261,37 @@ public class MailSender {
 
         public Address[] getValidUnsentAddresses() {
             return mSfe.getValidUnsentAddresses();
+        }
+    }
+
+    public interface PreSendMailListener {
+        void handle(Mailbox mbox, Address[] recipients, MimeMessage mm);
+        String getName();
+    }
+
+    /**
+     * adds a listener to listen on emails being sent
+     * @param listener
+     */
+    public static void registerPreSendMailListener(PreSendMailListener listener) {
+        String name = listener.getName();
+        if (!mPreSendMailListeners.containsKey(name)) {
+            mPreSendMailListeners.put(name, listener);
+            ZimbraLog.extensions.info("registered SendMailListener " + name);
+        }
+    }
+
+    /**
+     * removes a listener that listens for emails being sent
+     * @param listener
+     */
+    public static void unregisterPreSendMailListener(PreSendMailListener listener) {
+        for (Iterator<String> it = mPreSendMailListeners.keySet().iterator(); it.hasNext(); ) {
+            String name = it.next();
+            if (name.equalsIgnoreCase(listener.getName())) {
+                it.remove();
+                ZimbraLog.extensions.info("unregistered SendMailListener " + name);
+            }
         }
     }
 }

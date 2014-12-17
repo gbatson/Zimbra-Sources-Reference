@@ -1,24 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
--->
 <WebWorksHelpTOC version="5.0" xmlns="urn:WebWorks-Help-TOC-Schema">
   <i t="Starting the Migration" l="0" />
   <i t="Server Migration Source Information" l="1" />
@@ -28,11 +8,11 @@
   <i t="Selecting Options to Migrate" l="5" />
   <i t="Selecting Options to Migrate" l="6" />
   <i t="Selecting Users to Migrate" l="7">
-    <i t="Use Load CSV" l="7#1006045" />
-    <i t="Use Object Picker" l="7#1006048" />
-    <i t="Use LDAP Browser" l="7#1006072" />
-    <i t="Add Users Manually" l="7#1006174" />
+    <i t="Use Load CSV" l="8" />
+    <i t="Use Object Picker" l="9" />
+    <i t="Use LDAP Browser" l="10" />
+    <i t="Add Users Manually" l="11" />
   </i>
-  <i t="Scheduling the Migration" l="8" />
-  <i t="Viewing Migration Results" l="9" />
+  <i t="Scheduling the Migration" l="12" />
+  <i t="Viewing Migration Results" l="13" />
 </WebWorksHelpTOC>

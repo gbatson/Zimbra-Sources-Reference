@@ -326,7 +326,7 @@ function(inputEl, sizeEl){
     var sizeStr = [], className, totalSize =0;
     for(var i=0; i<files.length;i++){
         var file = files[i];
-        var size = file.size || file.fileSize /*Safari*/;
+        var size = file.size || file.fileSize /*Safari*/ || 0;
         if ((-1 /* means unlimited */ != appCtxt.get(ZmSetting.MESSAGE_SIZE_LIMIT)) &&
             (size > appCtxt.get(ZmSetting.MESSAGE_SIZE_LIMIT))) {
             className = "RedC";
@@ -1223,8 +1223,7 @@ function(ev) {
 
 // Callbacks
 
-ZmCalItemEditView.prototype._attsDoneCallback =
-function(status, attId) {
+ZmCalItemEditView.prototype._attsDoneCallback = function(status, attId) {
 	DBG.println(AjxDebug.DBG1, "Attachments: status = " + status + ", attId = " + attId);
 	if (status == AjxPost.SC_OK) {
 		//Checking for Zero sized/wrong path attachments
@@ -1245,19 +1244,19 @@ function(status, attId) {
 			appCtxt.setStatusMsg(ZmMsg.zeroSizedAtts);
 		}
 		this._controller.saveCalItem(attId);
-		
+
 	} else if (status == AjxPost.SC_UNAUTHORIZED) {
-		// auth failed during att upload - let user relogin, continue with compose action
-		var ex = new AjxException("401 response during attachment upload", ZmCsfeException.SVC_AUTH_EXPIRED);
-		var callback = new AjxCallback(this._controller, isDraft ? this._controller.saveDraft : this._controller._send);
-		this._controller._handleException(ex, {continueCallback:callback});
+		// It looks like the re-login code was copied from mail's ZmComposeView, and it never worked here.
+		// Just let it present the login screen.
+		var ex = new AjxException("Authorization Error during attachment upload", ZmCsfeException.SVC_AUTH_EXPIRED);
+		this._controller._handleException(ex);
 	} else {
 		// bug fix #2131 - handle errors during attachment upload.
-		this._controller.popupUploadErrorDialog(ZmItem.APPT, status,
-		                                        ZmMsg.errorTryAgain);
+		this._controller.popupUploadErrorDialog(ZmItem.APPT, status, ZmMsg.errorTryAgain);
 		this._controller.enableToolbar(true);
 	}
 };
+
 
 ZmCalItemEditView.prototype._getDefaultFocusItem =
 function() {

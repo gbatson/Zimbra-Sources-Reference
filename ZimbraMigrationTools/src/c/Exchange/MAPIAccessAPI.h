@@ -144,7 +144,7 @@ typedef struct _MessageItemData: BaseItemData
     bool IsDraft;
     bool IsFromMe;
     bool IsUnread;
-    bool IsForwared;
+    bool IsForwarded;
     bool RepliedTo;
     bool HasAttachments;
     bool IsUnsent;

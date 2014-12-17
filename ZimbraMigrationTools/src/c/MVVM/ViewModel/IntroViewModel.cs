@@ -29,6 +29,8 @@ public class IntroViewModel: BaseViewModel
     private ConfigViewModelUDest m_configViewModelUDest;
     private OptionsViewModel m_optionsViewModel;
     private UsersViewModel m_usersViewModel;
+    private PublicfoldersViewModel m_publicfoldersViewModel;
+
     private ScheduleViewModel m_scheduleViewModel;
     private AccountResultsViewModel m_resultsViewModel;
     public CSMigrationWrapper mw;
@@ -71,7 +73,7 @@ public class IntroViewModel: BaseViewModel
     {
         if (BaseViewModel.isServer)
         {
-            for (int i = 6; i > 0; i--)
+            for (int i = (TheViews.Count-1); i > 0; i--)
             {
                 TheViews.RemoveAt(i);
             }
@@ -98,7 +100,7 @@ public class IntroViewModel: BaseViewModel
         BaseViewModel.isDesktop = true;
         if (BaseViewModel.isServer)
         {
-            for (int i = 6; i > 0; i--)
+            for (int i = (TheViews.Count -1); i > 0; i--)
             {
                 TheViews.RemoveAt(i);
             }
@@ -129,7 +131,7 @@ public class IntroViewModel: BaseViewModel
     {
         if (BaseViewModel.isServer == false)
         {
-            for (int i = 4; i > 0; i--)
+            for (int i = (TheViews.Count -1); i > 0; i--)
             {
                 TheViews.RemoveAt(i);
             }
@@ -309,6 +311,7 @@ public class IntroViewModel: BaseViewModel
         ViewModelPtrs[(int)ViewType.USRDEST] = m_configViewModelUDest;
         ViewModelPtrs[(int)ViewType.OPTIONS] = m_optionsViewModel;
         ViewModelPtrs[(int)ViewType.USERS] = m_usersViewModel;
+        ViewModelPtrs[(int)ViewType.PUBFLDS] = m_publicfoldersViewModel;
         ViewModelPtrs[(int)ViewType.SCHED] = m_scheduleViewModel;
         ViewModelPtrs[(int)ViewType.RESULTS] = m_resultsViewModel;
     }
@@ -418,6 +421,17 @@ public class IntroViewModel: BaseViewModel
         m_usersViewModel.CurrentUserSelection = -1;
         m_usersViewModel.svm = m_scheduleViewModel;  // LDAP Browser needs to get to ScheduleView to set EnableMigrate 
 
+        
+              m_publicfoldersViewModel = new PublicfoldersViewModel("", "");
+        m_publicfoldersViewModel.Name = "PublicFolders";
+        m_publicfoldersViewModel.ViewTitle = "Public Folders";
+        m_publicfoldersViewModel.lb = lb;
+        m_publicfoldersViewModel.ZimbraDomain = "";
+        m_publicfoldersViewModel.isBrowser = isBrowser;
+        m_publicfoldersViewModel.CurrentUserSelection = -1;
+        m_publicfoldersViewModel.svm = m_scheduleViewModel;  // LDAP Browser needs to get to ScheduleView to set EnableMigrate 
+
+
         m_resultsViewModel = new AccountResultsViewModel(m_scheduleViewModel, -1, 0, "", "", "",
             0, "", 0, 0, false);
         m_resultsViewModel.Name = "Results";
@@ -443,6 +457,7 @@ public class IntroViewModel: BaseViewModel
             TheViews.Add(m_configViewModelSDest);
             TheViews.Add(m_optionsViewModel);
             TheViews.Add(m_usersViewModel);
+            TheViews.Add(m_publicfoldersViewModel);
             TheViews.Add(m_scheduleViewModel);
             TheViews.Add(m_resultsViewModel);
             m_optionsViewModel.DateFormatLabelContent = "(" + shortDatePattern + ")";

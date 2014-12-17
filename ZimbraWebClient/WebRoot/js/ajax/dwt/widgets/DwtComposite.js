@@ -47,6 +47,8 @@ DwtComposite = function(params) {
 	params.className = params.className || "DwtComposite";
 	DwtControl.call(this, params);
 
+	this._compositeTabGroup = new DwtTabGroup(Dwt.getNextId('DwtCompositeTabGroup'));
+
 	/**
 	 * Vector of child elements
 	 * @type AjxVector
@@ -93,8 +95,14 @@ function() {
 	if (this._disposed) return;
 
 	var children = this._children.getArray();
-	while (children.length > 0)
+	while (children.length > 0) {
         children.pop().dispose();
+	}
+
+	if (this._compositeTabGroup) {
+		this._compositeTabGroup.removeAllMembers();
+	}
+	this._compositeTabGroup = null;
 
 	DwtControl.prototype.dispose.call(this);
 }
@@ -170,8 +178,12 @@ function() {
 DwtComposite.prototype.removeChildren =
 function() {
 	var a = this._children.getArray();
-	while (a.length > 0)
+	while (a.length > 0) {
 		a[0].dispose();
+	}
+	if (this._compositeTabGroup) {
+		this._compositeTabGroup.removeAllMembers();
+	}
 }
 
 /**
@@ -195,6 +207,7 @@ function() {
 DwtComposite.prototype.addChild =
 function(child, index) {
 	this._children.add(child, index);
+	this._compositeTabGroup.addMember(child, index);
 	
 	// check for a previously removed element
 	var childHtmlEl = child.getHtmlElement();
@@ -225,6 +238,7 @@ function(child) {
 	// are becoming visible.
 	if (child.isInitialized()) {
 		this._children.remove(child);
+		this._compositeTabGroup.removeMember(child);
 		// Sometimes children are nested in arbitrary HTML so we elect to remove them
 		// in this fashion rather than use this.getHtmlElement().removeChild(child.getHtmlElement()
 		var childHtmlEl = child.getHtmlElement();
@@ -236,6 +250,11 @@ function(child) {
 		}
 	}
 }
+
+DwtComposite.prototype.getTabGroupMember =
+function() {
+	return this._compositeTabGroup;
+};
 
 /**
  * Allows the user to use the mouse to select text on the control.

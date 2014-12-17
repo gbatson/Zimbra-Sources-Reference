@@ -269,7 +269,7 @@ ZmUploadDialog.prototype._upload = function(){
             for (var j = 0; j < files.length; j++){
                 file = files[j];
                 fileObj.push(file);
-                newError = zmUploadManager.getErrors(file, maxSize);
+				newError = zmUploadManager.getErrors(file, maxSize);
 				if (newError) {
 					errors.push(newError);
 				} else {
@@ -277,12 +277,13 @@ ZmUploadDialog.prototype._upload = function(){
                 }
             }
         } else {
-            file = { name: element.value };
+			var fileName = element.value.replace(/^.*[\\\/:]/, "");
+            file = { name: fileName };
 			newError = zmUploadManager.getErrors(file, maxSize);
 			if (newError) {
 				errors.push(newError);
 			} else {
-                uploadFiles.push({ fullname: element.value, name: element.value.replace(/^.*[\\\/:]/, ""), notes: notes});
+                uploadFiles.push({ fullname: element.value, name: fileName, notes: notes});
 			}
         }
 		if(this._showLinkTitleText) {
@@ -332,7 +333,7 @@ ZmUploadDialog.prototype._upload = function(){
             if (this._supportsHTML5) {
                 zmUploadManager.upload(uploadParams);
             } else {
-                var callback =  zmUploadManager.uploadSaveDocs.bind(zmUploadManager, null, uploadParams);
+				var callback  = briefcaseApp.uploadSaveDocs.bind(briefcaseApp, null, uploadParams);
                 var uploadMgr = appCtxt.getUploadManager();
                 window._uploadManager = uploadMgr;
                 uploadMgr.execute(callback, this._uploadForm);
@@ -485,7 +486,7 @@ function(inputEl, sizeEl){
     var sizeStr = [], className, totalSize =0;
     for(var i=0; i<files.length;i++){
         var file = files[i];
-        var size = file.size || file.fileSize /*Safari*/;
+        var size = file.size || file.fileSize /*Safari*/ || 0;
 	    var aCtxt = ZmAppCtxt.handleWindowOpener();
         if(size > aCtxt.get(ZmSetting.DOCUMENT_SIZE_LIMIT))
             className = "RedC";

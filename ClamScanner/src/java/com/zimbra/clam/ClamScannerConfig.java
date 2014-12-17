@@ -29,10 +29,8 @@ public class ClamScannerConfig {
     private final String[] mURL;
     
     public ClamScannerConfig() throws ServiceException {
-        Config globalConfig = Provisioning.getInstance().getConfig();
-        mEnabled = globalConfig.getBooleanAttr(Provisioning.A_zimbraAttachmentsScanEnabled, false);
-        
         Server serverConfig = Provisioning.getInstance().getLocalServer();
+        mEnabled = serverConfig.getBooleanAttr(Provisioning.A_zimbraAttachmentsScanEnabled, false);
         mURL = serverConfig.getAttachmentsScanURL();
     }
 

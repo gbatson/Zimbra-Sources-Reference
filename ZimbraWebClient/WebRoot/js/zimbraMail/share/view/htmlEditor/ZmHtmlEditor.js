@@ -63,8 +63,6 @@ ZmHtmlEditor = function() {
 	this.initTinyMCEEditor(params);
     this._ignoreWords = {};
 
-    this.getTabGroupMember().addMember(Dwt.byId(this._bodyTextAreaId));
-
     if (params.initCallback)
         this._initCallbacks.push(params.initCallback);
 
@@ -349,6 +347,7 @@ ZmHtmlEditor.prototype.moveCaretToTop =
 function(offset) {
 	if (this._mode == Dwt.TEXT) {
 		var control = this.getContentField();
+		control.scrollTop = 0;
 		if (control.createTextRange) { // IE
 			var range = control.createTextRange();
 			if (offset) {
@@ -452,18 +451,20 @@ function() {
 ZmHtmlEditor.prototype.clear =
 function() {
 	var editor = this.getEditor();
-    if (editor && this._editorInitialized) {
-        editor.undoManager && editor.undoManager.clear();
-        this.clearDirty();
+	if (editor) {
+		if (this._editorInitialized) {
+			editor.undoManager && editor.undoManager.clear();
+			this.clearDirty();
+		}
+		var field = this.getContentField();
+		if(field) {
+			var textEl = field.cloneNode(false);
+			field.parentNode.replaceChild(textEl, field);//To clear undo/redo queue of textarea
+			//cloning and replacing node will remove event handlers and hence adding it once again
+			Dwt.setHandler(textEl, DwtEvent.ONFOCUS, this.setFocusStatus.bind(this, true, true));
+			Dwt.setHandler(textEl, DwtEvent.ONBLUR, this.setFocusStatus.bind(this, false, true));
+		}
 	}
-    var field = this.getContentField();
-    if(field){
-        var textEl = field.cloneNode(false);
-        field.parentNode.replaceChild(textEl, field);//To clear undo/redo queue of textarea
-        //cloning and replacing node will remove event handlers and hence adding it once again
-        Dwt.setHandler(textEl, DwtEvent.ONFOCUS, this.setFocusStatus.bind(this, true, true));
-        Dwt.setHandler(textEl, DwtEvent.ONBLUR, this.setFocusStatus.bind(this, false, true));
-    }
 };
 
 ZmHtmlEditor.prototype.getInputElement =
@@ -474,16 +475,11 @@ function() {
 ZmHtmlEditor.prototype.initTinyMCEEditor =
 function(params) {
 	var htmlEl = this.getHtmlElement();
-
-    if( this._mode === Dwt.HTML ){
-        Dwt.setVisible(this.getContentField(), false);
-    }
 	//textarea on which html editor is constructed
 	var id = this._bodyTextAreaId;
 	var textEl = document.createElement("textarea");
 	textEl.setAttribute("id", id);
 	textEl.setAttribute("name", id);
-	Dwt.setVisible(textEl, this._mode === Dwt.TEXT);
     if( appCtxt.get(ZmSetting.COMPOSE_INIT_DIRECTION) === ZmSetting.RTL ){
         textEl.setAttribute("dir", ZmSetting.RTL);
     }
@@ -491,6 +487,10 @@ function(params) {
     if ( params.content !== null ) {
         textEl.value = params.content;
     }
+	if (this._mode === Dwt.HTML) {
+		//If the mode is HTML set the text area display as none. After editor is rendered with the content, TinyMCE editor's show method will be called for displaying the editor on the post render event.
+		Dwt.setVisible(textEl, false);
+	}
 	htmlEl.appendChild(textEl);
 	this._textAreaId = id;
 
@@ -530,10 +530,6 @@ function(ev) {
     if (DwtKeyboardMgr.isPossibleInputShortcut(ev)) {
         // pass to keyboard mgr for kb nav
         retVal = DwtKeyboardMgr.__keyDownHdlr(ev);
-    }
-    else if (ev.keyCode === 9) { //Tab key handling
-        ed.execCommand("mceInsertContent", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
-        ev.preventDefault();
     }
     else if (ev.keyCode === 13) { // enter key
         var parent,
@@ -754,11 +750,8 @@ function(id, content) {
         }
     };
 
-    if (this._mode === Dwt.HTML) {
-        Dwt.setVisible(obj.getContentField(), false);
-    }
-
 	tinyMCE.init(tinyMCEInitObj);
+	this._setupTabGroup();
 	this._editor = this.getEditor();
 };
 
@@ -825,12 +818,13 @@ ZmHtmlEditor.prototype.onPostRender = function(ev) {
                                     "font-size"   : appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE),
                                     "color"       : appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_COLOR)
                                    });
-
-    Dwt.setVisible(ed.getContainer(), true);
+	//Shows the editor and hides any textarea/div that the editor is supposed to replace.
+	ed.show();
     this._resetSize();
 };
 
 ZmHtmlEditor.prototype.onInit = function(ev) {
+
 	var ed = this.getEditor();
     var obj = this,
         tinymceEvent = tinymce.dom.Event,
@@ -858,14 +852,6 @@ ZmHtmlEditor.prototype.onInit = function(ev) {
             }
         });
     }
-
-    var tg = obj.getTabGroupMember();
-    var firstbutton = this.__getEditorControl('listbox', 'Font Family');
-
-    tg.removeAllMembers();
-    tg.addMember(Dwt.byId(this._bodyTextAreaId));
-    tg.addMember(Dwt.byId(this._iFrameId));
-    tg.addMember(firstbutton.getEl());
 
     // must be assigned on init, to ensure that our handlers are called after
     // in TinyMCE's in 'FormatControls.js'.
@@ -931,9 +917,8 @@ ZmHtmlEditor.prototype.__getEditorControl = function(type, tooltip) {
 		}
 	};
 
-	return finditem(ed.theme.panel);
+	return ed ? finditem(ed.theme.panel) : null;
 };
-
 
 ZmHtmlEditor.prototype.onNodeChange = function(event) {
 	// Firefox fires NodeChange events whether the editor is visible or not
@@ -1035,21 +1020,26 @@ ZmHtmlEditor.prototype._onDrop = function(dnd, ev) {
 };
 
 ZmHtmlEditor.prototype.setMode = function (mode, convert, convertor) {
+
     this.discardMisspelledWords();
     if (mode === this._mode || (mode !== Dwt.HTML && mode !== Dwt.TEXT)) {
         return;
     }
     this._mode = mode;
+	var textarea = this.getContentField();
     if (mode === Dwt.HTML) {
         if (convert) {
-            var textarea = this.getContentField();
             textarea.value = AjxStringUtil.convertToHtml(textarea.value, true);
         }
         if (this._editorInitialized) {
-            tinyMCE.execCommand('mceToggleEditor', false, this._bodyTextAreaId);//tinymce will automatically toggles the editor and sets the corresponding content.
+	        // tinymce will automatically toggle the editor and set the corresponding content.
+            tinyMCE.execCommand('mceToggleEditor', false, this._bodyTextAreaId);
         }
         else {
-            //switching from plain text to html using tinymces mceToggleEditor method is always using the last editor creation setting. Due to this current ZmHtmlEditor object always point to last ZmHtmlEditor object. Hence initializing the tinymce editor again for the first time when mode is switched from plain text to html.
+            //switching from plain text to html using tinymces mceToggleEditor method is always
+            // using the last editor creation setting. Due to this current ZmHtmlEditor object
+            // always point to last ZmHtmlEditor object. Hence initializing the tinymce editor
+            // again for the first time when mode is switched from plain text to html.
             this.initEditorManager(this._bodyTextAreaId);
         }
     } else {
@@ -1059,19 +1049,25 @@ ZmHtmlEditor.prototype.setMode = function (mode, convert, convertor) {
                 content = this._convertHtml2Text(convertor);
             }
             else {
-                content = AjxStringUtil.convertHtml2Text(this.getContentField().value);
+                content = AjxStringUtil.convertHtml2Text(textarea.value);
             }
         }
         if (this._editorInitialized) {
-            tinyMCE.execCommand('mceToggleEditor', false, this._bodyTextAreaId);//tinymce will automatically toggles the editor and sets the corresponding content.
+	        //tinymce will automatically toggles the editor and sets the corresponding content.
+            tinyMCE.execCommand('mceToggleEditor', false, this._bodyTextAreaId);
         }
-        if (convert) {//tinymce will set html content directly in textarea. Resetting the content after removing the html tags.
+        if (convert) {
+            //tinymce will set html content directly in textarea. Resetting the content after removing the html tags.
             this.setContent(content);
         }
 
-        Dwt.setVisible(this.getContentField(), true);
+        Dwt.setVisible(textarea, true);
     }
 
+	textarea = this.getContentField();
+	textarea.setAttribute('aria-hidden', !Dwt.getVisible(textarea));
+
+	this._setupTabGroup();
     this._resetSize();
 };
 
@@ -1292,7 +1288,7 @@ function(ev) {
 	var fixall = item.getData("fixall");
 	var doc = plainText ? document : this._getIframeDoc();
 	var span = doc.getElementById(item.getData("spanId"));
-	var action = item.getData(ZmPopupMenu.MENU_ITEM_ID_KEY);
+	var action = item.getData(ZmOperation.MENUITEM_ID);
 	switch (action) {
 		case "ignore":
 			val = orig;
@@ -2284,4 +2280,49 @@ ZmHtmlEditor.prototype.getTabGroupMember = function() {
 	}
 
 	return this.__tabGroup;
+};
+
+/**
+ * Set up the editor tab group. This is done by having a separate tab group for each compose mode: one for HTML, one
+ * for TEXT. The current one will be attached to the main tab group. We rebuild the tab group each time for TEXT, though it
+ * shouldn't strictly be necessary. For some reason, it works better that way.
+ *
+ * @private
+ */
+ZmHtmlEditor.prototype._setupTabGroup = function() {
+
+	var mode = this.getMode(),
+		mainTabGroup = this.getTabGroupMember();
+
+	// Don't call replaceMember() repeatedly since it will duplicate the members
+	if (mode === this._curTabGroupMode) {
+		return;
+	}
+
+	if (mode === Dwt.HTML) {
+		// tab group for HTML has first toolbar button and IFRAME
+		var htmlTabGroup = this._htmlModeTabGroup;
+		if (!htmlTabGroup) {
+			htmlTabGroup = this._htmlModeTabGroup = new DwtTabGroup(this.toString() + '-' + mode);
+			var firstbutton = this.__getEditorControl('listbox', 'Font Family');
+			if (firstbutton) {
+				htmlTabGroup.addMember(firstbutton.getEl());
+			}
+			htmlTabGroup.addMember(Dwt.byId(this._iFrameId));
+		}
+		mainTabGroup.replaceMember(this._textModeTabGroup, this._htmlModeTabGroup);
+	}
+	else {
+		// tab group for TEXT has the TEXTAREA
+		var textTabGroup = this._textModeTabGroup;
+		if (textTabGroup) {
+			textTabGroup.removeAllMembers();
+		}
+		else {
+			textTabGroup = this._textModeTabGroup = new DwtTabGroup(this.toString() + '-' + mode);
+		}
+		textTabGroup.addMember(this.getContentField());
+		mainTabGroup.replaceMember(this._htmlModeTabGroup, this._textModeTabGroup);
+	}
+	this._curTabGroupMode = mode;
 };

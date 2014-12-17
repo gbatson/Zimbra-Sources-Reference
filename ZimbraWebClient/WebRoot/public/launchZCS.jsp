@@ -62,7 +62,7 @@
 <!DOCTYPE html>
 <zm:getUserAgent var="ua" session="false"/>
 <!--
-    For supporting web client offline mode in Firefox, Cache-control header has to be set for this page for offline usage. “overrideCacheControl” attribute is set in the session in offline.jsp
+    For supporting web client offline mode in Firefox, Cache-control header has to be set for this page for offline usage. overrideCacheControl attribute is set in the session in offline.jsp
 -->
 <c:if test="${ua.isFirefox && sessionScope.overrideCacheControl}">
 	<%
@@ -157,7 +157,8 @@
     pageContext.setAttribute("isLocaleId", localeId != null);
 	pageContext.setAttribute("csrfToken", authResult.getCsrfToken());
 %>
-<html class="user_font_size_normal">
+<c:set var="lang" value="${fn:substring(pageContext.request.locale, 0, 2)}"/>
+<html class="user_font_size_normal" lang="${lang}">
 <head>
 <!--
  launchZCS.jsp
@@ -223,8 +224,9 @@
     window.appCoverageMode		= ${isCoverage};
     window.isScriptErrorOn		= ${isScriptErrorOn};
     window.isPerfMetric			= ${isPerfMetric};
-	window.authTokenExpires = <%= authResult.getExpires()%>;
-	window.csrfToken = "${csrfToken}";
+	window.authTokenExpires     = <%= authResult.getExpires()%>;
+	window.csrfToken            = "${csrfToken}";
+    window.appLang              = "${lang}";
 </script>
 <noscript>
 <meta http-equiv="Refresh" content="0;url=public/noscript.jsp" >

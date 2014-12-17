@@ -73,12 +73,14 @@
                 <CheckBox Content="Skip previously migrated items" Grid.Row="4" HorizontalAlignment="Left" Name="cbSkipPrev" VerticalAlignment="Center" IsChecked="{Binding Path=IsSkipPrevMigratedItems}" />
             </Grid>
         </GroupBox>
-        <CheckBox Content="Verbose Logging" Grid.Row="4" HorizontalAlignment="Left" Margin="31,0,0,0" Name="cbVerbose" VerticalAlignment="Center" IsChecked="{Binding Path=LoggingVerbose}" />
+        <CheckBox Content="Verbose Logging" Grid.Row="4" HorizontalAlignment="Left" Margin="31,0,0,0" Name="cbVerbose"  VerticalAlignment="Center" IsChecked="{Binding Path=LoggingVerbose}" />
+        <CheckBox Content="Migrate Public Folders" Grid.Row="4" HorizontalAlignment="Left" Margin="155,0,0,0" Name="cbPublicfolders"  VerticalAlignment="Center" IsChecked="{Binding Path=IsPublicFolders}" />
         <Grid Name="BottomGrid" Grid.Row="5" Grid.ColumnSpan="2" Margin="10,0,0,10" VerticalAlignment="Bottom">
             <Button MinWidth="75" MinHeight="21" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0,0,0" Content="Load" Name="buttonOptionsLoad" Command="{Binding LoadCommand}"  />
-            <Button MinWidth="75" MinHeight="21" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="81,0,0,0" Content="Save" Name="buttonOptionsSav" Command="{Binding SaveCommand}"  />
+            <Button MinWidth="75" MinHeight="21" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="81,0,0,0" Content="Save" Name="buttonOptionsSav" Command="{Binding SaveCommand}" />
             <Button MinWidth="75" MinHeight="21" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,91,0" Content="&lt; Back" Name="buttonOptionsBack" Command="{Binding BackCommand}" IsEnabled="True"  />
             <Button MinWidth="75" MinHeight="21" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0" Content="{Binding Path=ImportNextButtonContent}" Name="buttonOptionsNext" Command="{Binding NextCommand}" IsEnabled="{Binding Path=OEnableNext}" IsDefault="True"/>
+            <!--<Button MinWidth="75" MinHeight="21" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="160,0,0,0" Content="Public Folders" Name="buttonOptionsPub" Command="{Binding PubFoldersCommand}" />-->
         </Grid>
     </Grid>
 </UserControl>

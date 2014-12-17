@@ -149,12 +149,20 @@ public class ConfigViewModelSDest: BaseViewModel
                     ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]);
                 ScheduleViewModel scheduleViewModel =
                     ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);
+                PublicfoldersViewModel publicfoldersViewModel =
+                  ((PublicfoldersViewModel)ViewModelPtrs[(int)ViewType.PUBFLDS]);
+
 
                 string currentDomain = (usersViewModel.DomainInfoList.Count > 0) ?
                     usersViewModel.DomainInfoList[usersViewModel.CurrentDomainSelection].DomainName : "";
 
+                currentDomain = (publicfoldersViewModel.DomainInfoList.Count > 0) ?
+                  publicfoldersViewModel.DomainInfoList[publicfoldersViewModel.CurrentDomainSelection].DomainName : "";
+
                 usersViewModel.DomainInfoList.Clear();
                 usersViewModel.DomainList.Clear();
+                publicfoldersViewModel.DomainInfoList.Clear();
+                publicfoldersViewModel.DomainList.Clear();
                 scheduleViewModel.CosList.Clear();
 
                 zimbraAPI.GetAllDomains();
@@ -165,11 +173,18 @@ public class ConfigViewModelSDest: BaseViewModel
                     usersViewModel.DomainInfoList.Add(new DomainInfo(domaininfo.DomainName, domaininfo.DomainID, domaininfo.zimbraDomainDefaultCOSId));
                     usersViewModel.DomainList.Add(dName);
 
+                    publicfoldersViewModel.DomainInfoList.Add(new DomainInfo(domaininfo.DomainName, domaininfo.DomainID, domaininfo.zimbraDomainDefaultCOSId));
+                    publicfoldersViewModel.DomainList.Add(dName);
+
                     if (dName == currentDomain)
+                    {
                         usersViewModel.CurrentDomainSelection = usersViewModel.DomainInfoList.Count;
+                        publicfoldersViewModel.CurrentDomainSelection = publicfoldersViewModel.DomainInfoList.Count;
+                    }
                 }
                 
                 usersViewModel.DomainsFilledIn = true;
+                publicfoldersViewModel.DomainsFilledIn = true;
                 
                 zimbraAPI.GetAllCos();
 

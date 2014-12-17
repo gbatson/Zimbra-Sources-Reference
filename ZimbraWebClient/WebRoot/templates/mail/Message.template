@@ -3,7 +3,7 @@
 		<table role="application" class='MsgHeaderTable' id='${id}_headerElement' width=100%>
 			<tr>
 				<td class='MsgHeaderContactContainer'>
-					<img class='MsgHeaderContactImage' src="${imageURL}" onerror="this.style.visibility='hidden'"/>
+					<img class='MsgHeaderContactImage' src="${imageURL}" alt="${imageAltText}" onerror="this.style.visibility='hidden'"/>
 				</td>
 				<td>
 					<div>
@@ -27,7 +27,7 @@
 								<td>&nbsp;</td>
 							</tr>
 						</table>
-						<table role="presentation" id='${hdrTableId}' class='ZPropertySheet' cellspacing='6' style='margin:0 7px;'>
+						<table id='${hdrTableId}' class='ZPropertySheet' cellspacing='6' style='margin:0 7px;'>
 							<tr id='${expandRowId}'>
 								<td>
 									<table role="presentation" align=right>
@@ -453,7 +453,7 @@
 				<table role="presentation" width='100%'>
 				<tr>
 					<td style='padding-right:4px;'>
-						<input id='${subjectInputId}' class='subjectField' autocomplete=off>
+						<input id='${subjectInputId}' class='subjectField' autocomplete=off aria-label='<$=ZmMsg.subject$>'>
 					</td>
 				</tr>
 				</table>
@@ -492,53 +492,6 @@
 		<$= AjxTemplate.expand("#To_Recipient", data) $>
 		<tr>
 			<td align=right valign=top colspan=3><$= ZmMsg.redirectExplanation $></td>
-		</tr>
-	</table>
-</template>
-
-<template id='mail.Message#ForwardMessages'>
-	<table role="presentation" width=100%>
-		<$ var id = Dwt.getNextId(data.rowId) $>
-		<tr '<$= id $>' style="display:table-row;">
-			<td width="96%" colspan="2">
-				<div class="attBubbleContainer">
-					<div class="attBubbleHolder">
-
-					<$ for (var i = 0; i < data.messages.length; i++) { $>
-					<$ var message = data.messages[i]; $>
-					<$ var spanId = Dwt.getNextId(data.rowId)$>
-
-						<span id='<$= spanId $>' class="AttachmentLoading attachmentBubble AttachmentSpan">
-							<span><input type="hidden" value='<$=message.id$>' name='<$= data.fwdFieldName $>' ></span>
-							<a style="color:#336699; cursor:pointer; text-decoration:none;" > <$= (message ? AjxStringUtil.htmlEncode(message.subject) : null) || AjxStringUtil.htmlEncode(ZmMsg.noSubject) $></a>
-							(<$= AjxUtil.formatSize(message.size, false, 1) $>)
-							<span onclick="window.appCtxt.getCurrentView()._removeAttachedMessage('<$= spanId $>' ,'<$= message.id $>')" class="ImgBubbleDelete AttachmentClose"></span>
-						</span>
-					<$ } $>
-					</div>
-				</div>
-			</td>
-		</tr>
-	</table>
-</template>
-
-<template id='mail.Message#ForwardOneMessage'>
-	<table role="presentation" width=100%>
-		<$ var id = Dwt.getNextId(data.rowId) $>
-		<$ var message = data.message; $>
-		<tr id='<$= id $>' style="display:table-row;">
-			<td width="96%" colspan="2">
-				<div class="attBubbleContainer">
-					<div class="attBubbleHolder">
-						<$ var spanId = Dwt.getNextId(data.rowId)$>
-						<span id='<$= spanId $>' value='<$= message.id $>' class="AttachmentLoading attachmentBubble AttachmentSpan">
-							<a style="color:#336699; cursor:pointer; text-decoration:none;" > <$= (message ? AjxStringUtil.htmlEncode(message.subject) : null) || AjxStringUtil.htmlEncode(ZmMsg.noSubject) $></a>
-							(<$= AjxUtil.formatSize(message.size, false, 1) $>)
-							<span onclick="window.appCtxt.getCurrentView()._removeAttachedMessage('<$= spanId $>')" class="ImgBubbleDelete AttachmentClose"></span>
-						</span>
-					</div>
-				</div>
-			</td>
 		</tr>
 	</table>
 </template>
@@ -601,19 +554,6 @@
 					</span>
 				<$ } $>
 
-				<$ for (var i = 0; i < data.messages.length; i++) { $>
-				<$ var message = data.messages[i]; $>
-				<$ var msgSpanId = Dwt.getNextId(data.rowId)$>
-
-				<span id='<$= msgSpanId $>' class="AttachmentLoading attachmentBubble AttachmentSpan">
-					<span>
-						<input type="hidden" value='<$=message.id$>' name='<$= data.messagesFwdFieldName $>' >
-					</span>
-					<a style="color:#336699; cursor:pointer; text-decoration:none;" > <$= (message ? AjxStringUtil.htmlEncode(message.subject) : null) || AjxStringUtil.htmlEncode(ZmMsg.noSubject) $></a>
-					(<$= AjxUtil.formatSize(message.size, false, 1) $>)
-					<span onclick="window.appCtxt.getCurrentView()._removeAttachedMessage('<$= msgSpanId $>' ,'<$= message.id $>')" class="ImgBubbleDelete AttachmentClose"></span>
-				</span>
-				<$ } $>
 			</td>
 		</tr>
 	</table>
@@ -685,13 +625,13 @@
 <template id='mail.Message#Conv2View'>
 	<div class='Conv2View' id="${mainDivId}">
 		<div id="${headerDivId}"></div>
-		<div id="${messagesDivId}" class='Conv2Messages'></div>
+		<div role='list' id="${messagesDivId}" class='Conv2Messages'></div>
 	</div>
 </template>
 
 <template id='mail.Message#Conv2Header'>
 	<span class="expandIcon" id='${convExpandId}'></span>
-	<span class="subject" id='${convSubjectId}'></span>
+	<span class="subject" role="heading" aria-level="1" id='${convSubjectId}'></span>
 	<span class="info" id='${convInfoId}'></span>
 </template>
 
@@ -712,7 +652,7 @@
 	
 <template id='mail.Message#Conv2MsgHeader-collapsed'>
 	<div class='image'>
-		<img src="${imageURL}" />
+		<img src="${imageURL}" alt="${imageAltText}" />
 	</div>
 	<div class='info'>
 		<div id='${fromId}' class='ZmConvListFrom'>${from}</div>
@@ -724,7 +664,7 @@
 
 <template id='mail.Message#Conv2MsgHeader-expanded'>
 	<div class='image'>
-		 <img src="${imageURL}" />
+		 <img src="${imageURL}" alt="${imageAltText}" />
 	</div>
 	<div class='info'>
 		<table role="presentation" id='${hdrTableId}' class='ZPropertySheet' cellspacing='6'>

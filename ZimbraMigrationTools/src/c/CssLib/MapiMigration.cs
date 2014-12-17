@@ -75,7 +75,6 @@ namespace CssLib
 
             bool retval = UnmanagedDllIs64Bit(absolutepath).Value;
 
-
             string Bitness = (string)Microsoft.Win32.Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\14.0\Outlook", "Bitness", null);
             if (Bitness != null)
             {
@@ -105,6 +104,44 @@ namespace CssLib
             string absolutepath = Path.GetFullPath("Exchange.dll");
 
             bool bitness = CompatibilityChk.UnmanagedDllIs64Bit(absolutepath).Value;
+
+            string registryValue = string.Empty;
+            RegistryKey localKey = null;
+            if (Environment.Is64BitOperatingSystem)
+            {
+                localKey = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Registry64);
+            }
+            else
+            {
+                localKey = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Registry32);
+            }
+
+            try
+            {
+                localKey = localKey.OpenSubKey(@"Software\\Microsoft\Office\\");
+                // registryValue = localKey.GetValue("TestKey").ToString();
+                if (localKey.SubKeyCount > 0)
+                {
+                    if ((localKey.GetSubKeyNames()).Contains(@"Outlook"))
+                    {
+
+                    }
+                    else
+                    {
+                        str = "Outlook is not installed on this system.Please Install Outlook";
+                        return str;
+
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                str = "Execption in reading regsitry for outlook prereq " + e.Message;
+                return str;
+            }
+            
+            
 
             string InstallPath = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\14.0\Outlook", "Bitness", null);
 

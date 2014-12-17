@@ -1,24 +1,4 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2012, 2013, 2014 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Common Public Attribution License Version 1.0 (the "License");
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at: http://www.zimbra.com/license
- * The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 
- * have been added to cover use of software over a computer network and provide for limited attribution 
- * for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B. 
- * 
- * Software distributed under the License is distributed on an "AS IS" basis, 
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. 
- * See the License for the specific language governing rights and limitations under the License. 
- * The Original Code is Zimbra Open Source Web Client. 
- * The Initial Developer of the Original Code is Zimbra, Inc. 
- * All portions of the code are Copyright (C) 2012, 2013, 2014 Zimbra, Inc. All Rights Reserved. 
- * ***** END LICENSE BLOCK *****
- */
-// Copyright (c) 2000-2011 Quadralay Corporation.  All rights reserved.
+// Copyright (c) 2000-2012 Quadralay Corporation.  All rights reserved.
 //
 
 function  WWHPanelsEntry_Object(ParamPanelObject)
@@ -374,46 +354,56 @@ function  WWHPanels_ReloadNavigation()
 
 function  WWHPanels_ReloadView()
 {
-  var  ExtraAction;
-  var  VarPanelViewFrame;
+  var VarPanels = this;
+
+  WWHFrame.WWHBrowser.fValidateFrameReference(WWHFrame.WWHHelp.fGetFrameReference("WWHPanelViewFrame"),
+    function () {
+      var  ExtraAction;
+      var  VarPanelViewFrameReference;
+      var  VarPanelViewFrame;
 
 
-  if ( ! this.mbLoading)
-  {
-    // Save scroll position
-    //
-    this.fSaveScrollPosition();
-
-    // Set flag
-    //
-    this.mbLoading = true;
-
-    // Close down any popups we had going to prevent JavaScript errors
-    //
-    this.mPopup.fHide();
-
-    // Handle browser specific issues
-    //
-    ExtraAction = "";
-    if ((WWHFrame.WWHBrowser.mBrowser == 1) ||  // Shorthand for Netscape
-        (WWHFrame.WWHBrowser.mBrowser == 4))    // Shorthand for Netscape 6.0 (Mozilla)
-    {
-      // Navigator has trouble if the hash is defined
-      //
-      VarPanelViewFrame = eval(WWHFrame.WWHHelp.fGetFrameReference("WWHPanelViewFrame"));
-      if (VarPanelViewFrame.location.hash.length != 0)
+      if ( ! VarPanels.mbLoading)
       {
-        ExtraAction = WWHFrame.WWHHelp.fGetFrameReference("WWHPanelViewFrame") + ".location.hash = \"\"; ";
+        // Save scroll position
+        //
+        VarPanels.fSaveScrollPosition();
 
-        if (WWHFrame.WWHBrowser.mBrowser == 4)  // Shorthand for Netscape 6.0 (Mozilla)
+        // Set flag
+        //
+        VarPanels.mbLoading = true;
+
+        // Close down any popups we had going to prevent JavaScript errors
+        //
+        VarPanels.mPopup.fHide();
+
+        // Get frame reference
+        //
+        VarPanelViewFrameReference = WWHFrame.WWHHelp.fGetFrameReference("WWHPanelViewFrame");
+
+        // Handle browser specific issues
+        //
+        ExtraAction = "";
+        if ((WWHFrame.WWHBrowser.mBrowser == 1) ||  // Shorthand for Netscape
+            (WWHFrame.WWHBrowser.mBrowser == 4))    // Shorthand for Netscape 6.0 (Mozilla)
         {
-          ExtraAction += WWHFrame.WWHHelp.fGetFrameReference("WWHPanelViewFrame") + ".location.replace(\"" + WWHStringUtilities_EscapeURLForJavaScriptAnchor(WWHFrame.WWHHelp.mHelpURLPrefix + "wwhelp/wwhimpl/js/html/panelvie.htm") + "\"); "
-        }
-      }
-    }
+          // Navigator has trouble if the hash is defined
+          //
+          VarPanelViewFrame = eval(VarPanelViewFrameReference);
+          if (VarPanelViewFrame.location.hash.length != 0)
+          {
+            ExtraAction = VarPanelViewFrameReference + ".location.hash = \"\"; ";
 
-    setTimeout(ExtraAction + WWHFrame.WWHHelp.fGetFrameReference("WWHPanelViewFrame") + ".location.replace(\"" + WWHStringUtilities_EscapeURLForJavaScriptAnchor(WWHFrame.WWHHelp.mHelpURLPrefix + "wwhelp/wwhimpl/js/html/panelvie.htm") + "\");", 1);
-  }
+            if (WWHFrame.WWHBrowser.mBrowser == 4)  // Shorthand for Netscape 6.0 (Mozilla)
+            {
+              ExtraAction += VarPanelViewFrameReference + ".location.replace(\"" + WWHStringUtilities_EscapeURLForJavaScriptAnchor(WWHFrame.WWHHelp.mHelpURLPrefix + "wwhelp/wwhimpl/js/html/panelvie.htm") + "\"); "
+            }
+          }
+        }
+
+        setTimeout(ExtraAction + VarPanelViewFrameReference + ".location.replace(\"" + WWHStringUtilities_EscapeURLForJavaScriptAnchor(WWHFrame.WWHHelp.mHelpURLPrefix + "wwhelp/wwhimpl/js/html/panelvie.htm") + "\");", 1);
+      }
+    });
 }
 
 function  WWHPanels_PanelNavigationLoaded()

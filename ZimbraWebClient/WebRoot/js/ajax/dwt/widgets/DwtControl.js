@@ -66,9 +66,11 @@
  * @param	{string}	className		the CSS class
  * @param	{constant}	posStyle		the positioning style (absolute, static, or relative). Defaults to {@link DwtControl.STATIC_STYLE}.
  * @param	{boolean}	deferred		if <code>true</code>, postpone initialization until needed
- * @param	{string}	id			an explicit ID to use for the control's HTML element. If not provided, defaults to an auto-generated ID.
- * @param	{string|HTMLElement}	parentElement the parent element
- * @param	{number}	index 		the index at which to add this control among parent's children
+ * @param	{string}	id			    an explicit ID to use for the control's HTML element. If not provided, defaults to an auto-generated ID.
+ * @param	{string|HTMLElement}	parentElement   the parent element
+ * @param	{number}	index 		    the index at which to add this control among parent's children
+ * @param   {boolean}   isFocusable     if true, this control can take keyboard focus
+ * @param   {string}    role            ARIA role for this control
  *
  */
 DwtControl = function(params) {
@@ -143,6 +145,14 @@ DwtControl = function(params) {
 	 */
 	if (params.id) {
 		this._htmlElId = params.id;
+	}
+
+	if (params.isFocusable != null) {
+		this.isFocusable = params.isFocusable;
+	}
+
+	if (params.role != null) {
+		this.role = params.role;
 	}
 
 	/**
@@ -1067,9 +1077,9 @@ function(state) {
 
     AjxUtil.foreach(DwtControl._ARIA_STATES, (function(attribute, state) {
         if (DwtControl._RE_STATE[state].test(this._displayState)) {
-            this.getHtmlElement().setAttribute(attribute, true);
+            this.setAttribute(attribute, true);
         } else {
-            this.getHtmlElement().removeAttribute(attribute);
+            this.removeAttribute(attribute);
         }
     }).bind(this));
 };
@@ -1888,13 +1898,16 @@ function() {
 /**
  * Gets the control z-index value.
  *
+ * @param {boolean} getFromStyle    get the value from the style attribute of
+ *                                  the control element, or a parent
+ *
  * @return	{number}	the z-index value
  */
 DwtControl.prototype.getZIndex =
-function() {
+function(getFromStyle) {
 	if (!this._checkState()) { return; }
 
-	return Dwt.getZIndex(this.getHtmlElement());
+	return Dwt.getZIndex(this.getHtmlElement(), getFromStyle);
 };
 
 /**
@@ -1938,8 +1951,36 @@ function(value) {
 };
 
 /**
+ * Sets the opacity of the control HTML element.
+ *
+ * @param {Number} opacity		opacity, as a percentage between 0 and 100
+ *
+ * @see Dwt#setOpacity
+ */
+DwtControl.prototype.setOpacity =
+function(opacity) {
+	if (!this._checkState()) { return; }
+
+	Dwt.setOpacity(this.getHtmlElement(), opacity);
+};
+
+/**
+ * Gets the opacity of the control HTML element.
+ *
+ * @return {Number}	opacity, as a percentage between 0 and 100
+ *
+ * @see Dwt#getOpacity
+ */
+DwtControl.prototype.getOpacity =
+function() {
+	if (!this._checkState()) { return; }
+
+	return Dwt.getOpacity(this.getHtmlElement());
+};
+
+/**
  * Prevents selection on the specified element.
- * 
+ *
  * @param	{Element}	targetEl	the element
  */
 DwtControl.prototype.preventSelection =
@@ -3744,3 +3785,18 @@ function(child) {
 	return AjxUtil.reduce(Dwt.getAncestors(child, this.getHtmlElement(), true),
 	                      fn, bounds);
 };
+
+// Convenience methods for manipulating attributes of this control's DIV
+DwtControl.prototype.hasAttribute = function(attr) {
+	return this.getHtmlElement().hasAttribute(attr);
+};
+DwtControl.prototype.getAttribute = function(attr) {
+	return this.getHtmlElement().getAttribute(attr);
+};
+DwtControl.prototype.setAttribute = function(attr, value) {
+	this.getHtmlElement().setAttribute(attr, value);
+};
+DwtControl.prototype.removeAttribute = function(attr) {
+	this.getHtmlElement().removeAttribute(attr);
+};
+

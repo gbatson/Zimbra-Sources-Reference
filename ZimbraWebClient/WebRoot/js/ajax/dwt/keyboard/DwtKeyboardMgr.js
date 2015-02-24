@@ -117,7 +117,7 @@ function(ev) {
  * @see		#popTabGroup
  */
 DwtKeyboardMgr.prototype.pushTabGroup =
-function(tabGroup) {
+function(tabGroup, preventFocus) {
 	DBG.println(AjxDebug.FOCUS, "PUSH tab group " + tabGroup.__name);
 	if (!this.__keyboardHandlingInited || !tabGroup) { return; }
 		
@@ -132,7 +132,9 @@ function(tabGroup) {
 		return;
 	}
 	tabGroup.addFocusChangeListener(this.__tabGroupChangeListenerObj);
-	this.grabFocus(focusMember);
+	if (!preventFocus) {
+		this.grabFocus(focusMember);
+	}
 };
 
 /**
@@ -163,7 +165,7 @@ function(tabGroup) {
 		var len = a.length;
 		for (var i = len - 1; i >= 0; i--) {
 			if (tabGroup == a[i]) {
-				a[i].dump();
+				a[i].dump(AjxDebug.DBG1);
 				break;
 			}
 		}
@@ -439,6 +441,7 @@ function() {
 	Dwt.setLocation(kbff, Dwt.LOC_NOWHERE, Dwt.LOC_NOWHERE);
 	kbff.onblur = DwtKeyboardMgr.__onBlurHdlr;
 	kbff.onfocus = DwtKeyboardMgr.__onFocusHdlr;
+	kbff.setAttribute('aria-hidden', true);
 	document.body.appendChild(kbff);
 	
 	this.__killKeySeqTimedAction = new AjxTimedAction(this, this.__killKeySequenceAction);
@@ -723,6 +726,10 @@ DwtKeyboardMgr.prototype.__warnFocus = function() {
 		AjxMessageFormat.format('KBFF focused for {0} ({1})', [desc, id]);
 
 	DBG.println(AjxDebug.FOCUS, '<b>' + msg + '</b>');
+
+	if (window.console && console.log) {
+		console.log(msg);
+	}
 };
 
 /**

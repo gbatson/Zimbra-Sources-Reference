@@ -68,6 +68,7 @@ DwtMessageDialog.PARAMS = ["parent", "className", "buttons", "extraButtons", "id
 
 DwtMessageDialog.prototype = new DwtDialog;
 DwtMessageDialog.prototype.constructor = DwtMessageDialog;
+DwtMessageDialog.prototype.role = 'alertdialog';
 
 /**
  * Defines the "critical" style.
@@ -114,15 +115,21 @@ function() {
 */
 DwtMessageDialog.prototype.setMessage =
 function(msgStr, style, title) {
-	style = style || DwtMessageDialog.INFO_STYLE;
-	title = title || DwtMessageDialog.TITLE[style];
-	this.setTitle(title);
+	this._message = msgStr || "";
+	this._style = style || DwtMessageDialog.INFO_STYLE;
+
+	this.setTitle(title || DwtMessageDialog.TITLE[this._style]);
+
 	if (msgStr) {
         var html = [];
 		var i = 0;
-		html[i++] = "<table cellspacing=0 cellpadding=0 border=0 width=100% height=100%><tr><td valign='top'>";
-		html[i++] =  AjxImg.getImageHtml(DwtMessageDialog.ICON[style], null, "id='" +  this._msgCellId + "_Image'");
-		html[i++] = "</td><td class='DwtMsgArea' id='" +  this._msgCellId +"_Msg'>";
+		html[i++] = "<table role='presentation' cellspacing=0 cellpadding=0 border=0 width=100% height=100%><tr><td valign='top'>";
+		html[i++] = AjxImg.getImageHtml({
+			imageName: DwtMessageDialog.ICON[this._style],
+			attrStr: "id='" +  this._msgCellId + "_Image''",
+			altText: DwtMessageDialog.TITLE[this._style]
+		});
+		html[i++] = "</td><td role='document' class='DwtMsgArea' id='" +  this._msgCellId +"_Msg'>";
 		html[i++] = msgStr;
 		html[i++] = "</td></tr></table>";
 		this._msgCell.innerHTML = html.join("");
@@ -148,6 +155,19 @@ function(width, height) {
 		Dwt.setSize(msgCell, width, height);
 	}
 };
+
+DwtMessageDialog.prototype.focus = function() {
+
+	DwtDialog.prototype.focus.apply(this, arguments);
+
+	// Accessibility - set aria-describedby on button which gets initial focus
+	var firstFocus = this._tabGroup.getFirstMember();
+	if (firstFocus && firstFocus.isDwtButton && !firstFocus.hasAttribute('aria-describedby')) {
+		firstFocus.setAttribute('aria-describedby', this._msgCellId + '_Msg');
+	}
+};
+
+
 
 /**
  * Resets the message dialog. This should be performed to "reuse" the dialog.

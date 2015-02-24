@@ -63,6 +63,8 @@ DwtTabView.prototype.constructor = DwtTabView;
 DwtTabView.prototype.isDwtTabView = true;
 DwtTabView.prototype.toString = function() { return "DwtTabView"; };
 
+DwtTabView.prototype.role = 'tablist';
+
 // Constants
 
 // Z-index consts for tabbed view contents are based on Dwt z-index consts
@@ -486,9 +488,11 @@ DwtTabViewPage = function(parent, className, posStyle, id) {
 DwtTabViewPage.prototype = new DwtPropertyPage;
 DwtTabViewPage.prototype.constructor = DwtTabViewPage;
 
-DwtTabViewPage.prototype.toString = function() {
-	return "DwtTabViewPage";
-};
+DwtTabViewPage.prototype.isDwtTabViewPage = true;
+DwtTabViewPage.prototype.toString = function() { return "DwtTabViewPage"; };
+
+DwtTabViewPage.prototype.role = 'tabpanel';
+
 
 DwtTabViewPage.prototype.TEMPLATE = "dwt.Widgets#ZTabPage";
 
@@ -513,6 +517,7 @@ function() {
 DwtTabViewPage.prototype.showMe =
 function() {
 	this.setZIndex(DwtTabView.Z_ACTIVE_TAB);
+	this.setAttribute('aria-selected', true);
 	if (this.parent.getHtmlElement().offsetHeight > 80) { 						// if parent visible, use offsetHeight
 		this._contentEl.style.height=this.parent.getHtmlElement().offsetHeight-80;
 	} else {
@@ -532,6 +537,7 @@ function() {
 DwtTabViewPage.prototype.hideMe = 
 function() {
 	this.setZIndex(DwtTabView.Z_HIDDEN_TAB);
+	this.setAttribute('aria-selected', false);
 };
 
 /**
@@ -811,13 +817,13 @@ DwtTabButton.prototype.constructor = DwtTabButton;
 
 DwtTabButton.prototype.TEMPLATE = "dwt.Widgets#ZTab";
 
+DwtTabButton.prototype.isDwtTabButton = true;
+DwtTabButton.prototype.toString = function() { return "DwtTabButton"; };
+
+DwtTabButton.prototype.role = 'tab';
 
 // Public methods
 
-DwtTabButton.prototype.toString =
-function() {
-	return "DwtTabButton";
-};
 
 /**
  * Changes the visual appearance to active tab.

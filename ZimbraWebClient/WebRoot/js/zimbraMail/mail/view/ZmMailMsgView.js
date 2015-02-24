@@ -73,6 +73,10 @@ ZmMailMsgView = function(params) {
 	this._tabGroupMember.addMember([
 		this._headerTabGroup, this._bodyTabGroup, this._footerTabGroup
 	]);
+
+	if (this._mode === ZmId.VIEW_TRAD) {
+		this.setAttribute('role', 'region');
+	}
 };
 
 ZmMailMsgView.prototype = new ZmMailItemView;
@@ -1040,6 +1044,7 @@ function(params) {
 	}
 
 	this._msgBodyDivId = [this._htmlElId, ZmId.MV_MSG_BODY].join("_");
+	this._bodyTabGroup.removeAllMembers();
 	
 	this._usingIframe = this._useIframe(params.isTextMsg, html, params.isTruncated);
 	DBG.println(AjxDebug.DBG1, "Use IFRAME: " + this._usingIframe);
@@ -1060,8 +1065,10 @@ function(params) {
 			posStyle:				DwtControl.STATIC_STYLE,
 			processHtmlCallback:	callback,
 			useKbMgmt:				true,
-			title:                  ZmMsg.messageBody
+			title:                  this._getIframeTitle()
 		};
+
+		// TODO: cache iframes
 		var ifw = this._ifw = new DwtIframe(params1);
 		if (ifw.initFailed) {
 			AjxDebug.println(AjxDebug.MSG_DISPLAY, "Message display: IFRAME was not ready");
@@ -1481,7 +1488,7 @@ function(msg, container, doNotClearBubbles) {
 		infoBarId:			this._infoBarId,
 		subject:			subject,
 		imageURL:			imageURL || ZmZimbraMail.DEFAULT_CONTACT_ICON,
-		imageAltText:		imageAltText || ZmMsg.unknownPerson,
+		imageAltText:		imageAltText || ZmMsg.noContactImage,
 		dateString:			dateString,
 		dateTooltip:		dateTooltip,
 		hasAttachments:		(attachmentsCount != 0),
@@ -2047,7 +2054,11 @@ function() {
 		htmlArr[idx++] = "<td>";
 		htmlArr[idx++] = "<table border=0 cellpadding=0 cellspacing=0 style='margin-right:1em; margin-bottom:1px'><tr>";
 		htmlArr[idx++] = "<td style='width:18px'>";
-		htmlArr[idx++] = AjxImg.getImageHtml(att.linkIcon, "position:relative;", null, false, false, null, ZmMsg.attachment);
+		htmlArr[idx++] = AjxImg.getImageHtml({
+			imageName: att.linkIcon,
+			styles: "position:relative;",
+			altText: ZmMsg.attachment
+		});
 		htmlArr[idx++] = "</td><td style='white-space:nowrap'>";
 
 		if (appCtxt.get(ZmSetting.ATTACHMENTS_BLOCKED)) {
@@ -2845,4 +2856,8 @@ function(check) {
 		return true;
 	}
 	return false;
+};
+
+ZmMailMsgView.prototype._getIframeTitle = function() {
+	return AjxMessageFormat.format(ZmMsg.messageTitle, this._msg.subject);
 };

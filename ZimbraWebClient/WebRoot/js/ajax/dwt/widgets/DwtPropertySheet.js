@@ -33,11 +33,13 @@ DwtPropertySheet = function(parent, className, posStyle, labelSide) {
 	this._propertyIdCount = 0;
 	this._propertyList = [];
 	this._propertyMap = {};
-	
+
+	this._tabGroup = new DwtTabGroup(this.toString());
+
 	this._tableEl = document.createElement("TABLE");
 	// Cellspacing needed for IE in quirks mode
 	this._tableEl.cellSpacing = 6;
-	
+
 	var element = this.getHtmlElement();
 	element.appendChild(this._tableEl);
 	this._setAllowSelection();
@@ -72,36 +74,52 @@ DwtPropertySheet.prototype._valueCssClass = "Field";
  * @param value The property value. If the value is an instance of DwtControl
  *				the element returned by <code>getHtmlElement</code> is used;
  *				if the value is an instance of Element, it is added directly;
- * 				anything else is set as the inner HTML of the property value
+ *				anything else is set as the inner HTML of the property value
  *				cell.
  * @param required [boolean] Determines if the property should be marked as
  *				   required. This is denoted by an asterisk next to the label.
  */
 DwtPropertySheet.prototype.addProperty = function(label, value, required) {
+
 	var index = this._tableEl.rows.length;
 
-	var row = this._tableEl.insertRow(index);
+	var row = this._tableEl.insertRow(-1);
 	row.vAlign = this._vAlign ? this._vAlign : "top";
 
+	var labelId = Dwt.getNextId(),
+		valueId = Dwt.getNextId(),
+		tabValue;   // element or control that can be a tab group member
+
 	if (this._labelSide == DwtPropertySheet.LEFT) {
-		this._insertLabel(row, label, required);
-		this._insertValue(row, value, required);
+		this._insertLabel(row, label, required, labelId, valueId);
+		tabValue = this._insertValue(row, value, required, labelId, valueId);
 	}
 	else {
-		this._insertValue(row, value, required);
-		this._insertLabel(row, label, required);
+		this._insertValue(row, value, required, labelId, valueId);
+		tabValue = this._insertLabel(row, label, required, labelId, valueId);
 	}
-	
+
 	var id = this._propertyIdCount++;
-	var property = { id: id, index: index, row: row, visible: true };
+	var property = {
+		id:         id,
+		index:      index,
+		row:        row,
+		visible:    true,
+		labelId:    labelId,
+		valueId:    valueId,
+		tabValue:   tabValue
+	};
 	this._propertyList.push(property);
 	this._propertyMap[id] = property;
 	return id;
 };
 
-DwtPropertySheet.prototype._insertLabel = function(row, label, required) {
+DwtPropertySheet.prototype._insertLabel = function(row, label, required, labelId, valueId) {
+
 	var labelCell = row.insertCell(-1);
 	labelCell.className = this._labelCssClass;
+	labelCell.id = labelId;
+	labelCell.setAttribute("for", valueId);
 	if (this._labelSide != DwtPropertySheet.LEFT) {
 		labelCell.width = "100%";
 		labelCell.style.textAlign = "left";
@@ -114,23 +132,75 @@ DwtPropertySheet.prototype._insertLabel = function(row, label, required) {
 	}
 };
 
-DwtPropertySheet.prototype._insertValue = function(row, value, required) {
+DwtPropertySheet.prototype._insertValue = function(row, value, required, labelId, valueId) {
+
 	var valueCell = row.insertCell(-1);
 	valueCell.className = this._valueCssClass;
+	valueCell.id = valueId;
+
 	if (!value) {
 		valueCell.innerHTML = "&nbsp;";
-	} else if (value instanceof DwtControl) {
+	}
+	else if (value.isDwtControl) {
 		valueCell.appendChild(value.getHtmlElement());
+		this._tabGroup.addMember(value);
+		var input = value.getInputElement && value.getInputElement();
+		if (input) {
+			input.setAttribute('aria-labelledby', labelId);
+		}
 	}
-	/**** NOTE: IE says Element is undefined
-	else if (value instanceof Element) {
-	/***/
 	else if (value.nodeType == AjxUtil.ELEMENT_NODE) {
-	/***/
 		valueCell.appendChild(value);
-	} else {
-		valueCell.innerHTML = String(value);
+		this._addTabGroupMemberEl(valueCell);
+		value.setAttribute('aria-labelledby', labelId);
 	}
+	else {
+		valueCell.innerHTML = String(value);
+		this._addTabGroupMemberEl(valueCell);
+		valueCell.setAttribute('aria-labelledby', labelId);
+		value = valueCell;
+	}
+
+	return value;
+};
+
+/**
+ * Add element's leaf children to tabgroup.
+ *
+ * @param element HTML element.
+ */
+DwtPropertySheet.prototype._addTabGroupMemberEl = function(element, isTabStop) {
+
+	var obj = this;
+
+	// recursive function to add leaf nodes
+	function addChildren(el) {
+		if (el.children.length > 0) {
+			AjxUtil.foreach(el.children, function(child){
+				addChildren(child);
+			});
+		}
+		else {
+			if (AjxUtil.isBoolean(isTabStop)) {
+				obj.noTab = !isTabStop;
+			}
+			else {
+				// add leaf to tabgroup
+				obj._makeFocusable(el);
+				obj._tabGroup.addMember(el);
+			}
+		}
+	}
+
+	addChildren(element, isTabStop);
+};
+
+DwtPropertySheet.prototype.getTabGroupMember = function() {
+	return this._tabGroup;
+};
+
+DwtPropertySheet.prototype.getProperty = function(id) {
+	return this._propertyMap[id];
 };
 
 DwtPropertySheet.prototype.removeProperty = function(id) {
@@ -152,41 +222,17 @@ DwtPropertySheet.prototype.removeProperty = function(id) {
 };
 
 DwtPropertySheet.prototype.setPropertyVisible = function(id, visible) {
+
 	var prop = this._propertyMap[id];
-	if (prop && prop.visible != visible) {
+	if (prop && prop.visible !== visible) {
 		prop.visible = visible;
-		var propIndex = prop.index;
-		if (visible) {
-			var tableIndex = this.__getTableIndex(propIndex);
-			var row = this._tableEl.insertRow(tableIndex);
-			DwtPropertySheet.__moveChildNodes(prop.row, row);
-			prop.row = row;
+		Dwt.setVisible(this._tableEl.rows[prop.index], visible);
+		var tabValue = prop.tabValue;
+		if (tabValue.isDwtControl) {
+			tabValue.noTab = !visible;
 		}
 		else {
-			var row = prop.row;
-			if (row && row.parentNode) {
-				row.parentNode.removeChild(row);
-			}
+			this._addTabGroupMemberEl(tabValue, !visible)
 		}
-	}
-};
-
-DwtPropertySheet.prototype.__getTableIndex = function(propIndex) {
-	var tableIndex = 0;
-	for (var i = 0; i < propIndex; i++) {
-		var prop = this._propertyList[i];
-		if (prop.visible) {
-			tableIndex++;
-		}
-	}
-	return tableIndex;
-};
-
-DwtPropertySheet.__moveChildNodes = function(srcParent, destParent) {
-	if (srcParent === destParent) return;
-	var srcChild = srcParent.firstChild;
-	while (srcChild != null) {
-		destParent.appendChild(srcChild);
-		srcChild = srcParent.firstChild;
 	}
 };

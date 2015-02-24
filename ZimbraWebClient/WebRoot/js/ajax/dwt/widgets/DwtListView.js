@@ -146,8 +146,9 @@ DwtListView.prototype.constructor = DwtListView;
 
 DwtListView.prototype.isDwtListView = true;
 DwtListView.prototype.toString = function() { return "DwtListView"; };
-DwtListView.prototype.role = 'tree';
-DwtListView.prototype.itemRole = 'treeitem';
+
+DwtListView.prototype.role = 'list';
+DwtListView.prototype.itemRole = 'listitem';
 
 // Consts
 
@@ -1123,6 +1124,10 @@ function() {
 	return this._tabGroup;
 };
 
+DwtListView.prototype.getEnabled = function() {
+	return DwtComposite.prototype.getEnabled.call(this) && this.size() > 0;
+};
+
 DwtListView.prototype.getInputElement =
 function() {
 	if (!this._kbAnchor) {
@@ -1194,7 +1199,7 @@ function(actionCode, ev) {
 			}
 			break;
 
-		case DwtKeyMap.ACTION:
+		case DwtKeyMap.SUBMENU:
 			if (this._evtMgr.isListenerRegistered(DwtEvent.ACTION)) {
 				var p = Dwt.toWindow(this._kbAnchor, 0, 0);
 				var s = Dwt.getSize(this._kbAnchor);
@@ -1216,17 +1221,12 @@ function(actionCode, ev) {
 	return true;
 };
 
-DwtListView.prototype.setMultiSelect =
-function (enabled) {
-	this.getHtmlElement().setAttribute('aria-multiselectable',
-	                                   Boolean(enabled));
+DwtListView.prototype.setMultiSelect = function (enabled) {
+	this.setAttribute('aria-multiselectable', Boolean(enabled));
 };
 
-DwtListView.prototype.isMultiSelectEnabled =
-function () {
-	var r = this.getHtmlElement().getAttribute('aria-multiselectable');
-
-	return r === "true";
+DwtListView.prototype.isMultiSelectEnabled = function () {
+	return this.getAttribute('aria-multiselectable') === "true";
 };
 
 // DO NOT REMOVE - used by xforms

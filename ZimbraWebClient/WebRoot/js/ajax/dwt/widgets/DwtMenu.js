@@ -124,7 +124,7 @@ DwtMenu = function(params) {
     }
 
 	if (params.style != DwtMenu.BAR_STYLE) {
-		this.setZIndex(Dwt.Z_HIDDEN);
+		this.setVisible(false);
  		this._isPoppedUp = false;
 	} else {
 		DwtMenu._activeMenuIds.add(htmlElement.id, null, true);
@@ -151,10 +151,8 @@ DwtMenu = function(params) {
     this._itemSelectionListener = new AjxListener(this, this._propagateItemSelection);
 
 	// Accessibility
-	if (parent.isDwtButton) {
-		var parentEl = parent.getHtmlElement();
-		parentEl.setAttribute("aria-haspopup", true);
-		parentEl.setAttribute("aria-controls", this._htmlElId);
+	if (parent._menuAdded) {
+		parent._menuAdded(this);
 	}
 };
 
@@ -899,7 +897,7 @@ function(field, value, skipNotify) {
  * 									if <code>int</code>, selects the menu item with that index
  */
 DwtMenu.prototype.setSelectedItem =
-function(which) {
+function(which, preventFocus) {
 	var currItem = this.__currentItem;
 	if (typeof(which) == "boolean") {
 		currItem = !currItem
@@ -915,7 +913,9 @@ function(which) {
 	// While the current item is not enabled or is a separator, try another
 	while (currItem) {
 		if (!currItem.isStyle) { // this is not a DwtMenuItem
-			currItem.focus();
+			if (!preventFocus) {
+				currItem.focus();
+			}
 			break;
 		}
 		else if (!currItem.isStyle(DwtMenuItem.SEPARATOR_STYLE) && currItem.getEnabled() && currItem.getVisible()) {
@@ -926,7 +926,13 @@ function(which) {
 	if (!currItem) { return; }
 
 	this.scrollToItem(currItem, true);
-	currItem.focus();
+	if (!preventFocus) {
+		currItem.focus();
+	}
+
+	if (this.parent && this.parent._menuItemSelected) {
+		this.parent._menuItemSelected(currItem);
+	}
 };
 
 DwtMenu.prototype.clearExternallySelectedItems =
@@ -1104,6 +1110,11 @@ function(val) {
 DwtMenu.prototype._doPopup =
 function(x, y, kbGenerated) {
 
+	// bump z-index if we're inside a dialog
+	var zIndex = DwtBaseDialog.getActiveDialog() ? Dwt.Z_DIALOG_MENU : Dwt.Z_MENU;
+	this.setZIndex(zIndex);
+	this.setVisible(true);
+
 	this.render(x, y);
 
 	var isScroll = this._layoutStyle == DwtMenu.LAYOUT_SCROLL;
@@ -1122,9 +1133,6 @@ function(x, y, kbGenerated) {
 		tooltip.popdown();
 	}
 
-	// bump z-index if we're inside a dialog
-	var zIndex = DwtBaseDialog.getActiveDialog() ? Dwt.Z_DIALOG_MENU : Dwt.Z_MENU;
-	this.setZIndex(zIndex);
 	this._popupActionId = -1;
 	this._isPoppedUp = true;
 
@@ -1146,14 +1154,12 @@ function(x, y, kbGenerated) {
 	DwtMenu._activeMenus.add(this, null, true);
 
 	// Put our tabgroup in play
-	if (!this.__preventMenuFocus) {
-		DwtShell.getShell(window).getKeyboardMgr().pushTabGroup(this.getTabGroupMember());
-	}
-	
+	DwtShell.getShell(window).getKeyboardMgr().pushTabGroup(this.getTabGroupMember(), this.__preventMenuFocus);
+
 	/* If the popup was keyboard generated, then pick the first enabled child
 	   item */
 	if (kbGenerated || !this.parent.isDwtMenu) {
-	 	this.setSelectedItem(0);
+	 	this.setSelectedItem(0, this.__preventMenuFocus);
 	}
 };
 
@@ -1179,8 +1185,7 @@ function(ev) {
 			a[i]._popdownMenu();
 		}
 	}
-	this.setZIndex(Dwt.Z_HIDDEN);
-	this.setLocation(Dwt.LOC_NOWHERE, Dwt.LOC_NOWHERE);
+	this.setVisible(false);
 	this._ev = ev;
 
 	this.notifyListeners(DwtEvent.POPDOWN, this);

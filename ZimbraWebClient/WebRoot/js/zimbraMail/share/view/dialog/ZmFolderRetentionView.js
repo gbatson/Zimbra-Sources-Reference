@@ -30,6 +30,8 @@ ZmFolderRetentionView = function(dialog, parent) {
 
     this._dialog = dialog;
     this._initialized = false;
+	// Make sure mouse down clicks propagate to the select controls
+	this._propagateEvent[DwtEvent.ONMOUSEDOWN] = true;
 };
 
 ZmFolderRetentionView.prototype = new ZmFolderDialogTabView;
@@ -267,18 +269,22 @@ function(policyElement) {
     components.customUnit.disabled   = disabled;
 }
 
-ZmFolderRetentionView.prototype._handleSelectionChange =
-function(policyElement) {
-    var components = this._components[policyElement];
-    var policySelect   = components.policySelect;
-    var policySelection = policySelect.options[policySelect.selectedIndex].value;
-    var visible = (policySelection == "custom");
+ZmFolderRetentionView.prototype._handleSelectionChange = function(policyElement) {
+
+    var components = this._components[policyElement],
+        policySelect   = components.policySelect,
+	    selectedOption = policySelect.options[policySelect.selectedIndex],
+        policySelection = selectedOption.value,
+        visible = (policySelection == "custom");
 
     // Show hide the custom unit and values fields based on whether the policy
     // selected is a system defined policy, or custom
     components.customValue.style.visibility = visible ? "visible" : "hidden";
     components.customUnit.style.visibility  = visible ? "visible" : "hidden";
-}
+
+	// accessibility
+	policySelect.setAttribute('aria-label', AjxMessageFormat.format(ZmMsg.policyTypeLabel, selectedOption.innerHTML));
+};
 
 ZmFolderRetentionView.prototype._createView =
 function() {
@@ -314,6 +320,11 @@ function(policyElement, allComponents) {
         var unit = ZmFolderRetentionView._CustomUnits[i];
         components.customUnit.options[i] = new Option(unit.label, unit.id);
     }
+
+	this._tabGroup.addMember(components.policyEnable);
+	this._tabGroup.addMember(components.policySelect);
+	this._tabGroup.addMember(components.customValue);
+	this._tabGroup.addMember(components.customUnit);
 
     Dwt.setHandler(components.policyEnable, "onclick", this._handleEnableClick.bind(this, policyElement));
     Dwt.setHandler(components.policySelect, "onclick", this._handleSelectionChange.bind(this, policyElement));

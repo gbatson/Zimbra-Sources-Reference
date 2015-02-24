@@ -40,10 +40,13 @@
  * TODO: add option to keep options sorted by display text
  */
 DwtSelect = function(params) {
+
 	if (arguments.length == 0) { return; }
+
 	params = Dwt.getParams(arguments, DwtSelect.PARAMS);
 	params.className = params.className || "ZSelect";
 	params.posStyle = params.posStyle || Dwt.STATIC_STYLE;
+	this._legendId = params.legendId;
     DwtButton.call(this, params);
 
 	var events = AjxEnv.isIE ? [DwtEvent.ONMOUSEDOWN, DwtEvent.ONMOUSEUP] :
@@ -85,10 +88,10 @@ DwtSelect.PARAMS = ["parent", "options", "style", "className", "layout"];
 DwtSelect.prototype = new DwtButton;
 DwtSelect.prototype.constructor = DwtSelect;
 
-DwtSelect.prototype.toString = 
-function() {
-    return "DwtSelect";
-};
+DwtSelect.prototype.isDwtSelect = true;
+DwtSelect.prototype.toString = function() { return "DwtSelect"; };
+
+DwtSelect.prototype.role = 'combobox';
 
 //
 // Constants
@@ -228,9 +231,12 @@ function(option) {
 	var index = this._optionValuesToIndices[value];
 	if (index != null) {
 		this._pseudoItemsEl.deleteRow(index);
-		if (this._selectedOption == option && size > 0) {
-			var newSelIndex = (index >= size) ? size - 1 : index;
-			this._setSelectedOption(this._options.get(newSelIndex));
+		if (this._selectedOption == option) {
+			if (size > 0) {
+				var newSelIndex = (index >= size) ? size - 1 : index;
+				this._setSelectedOption(this._options.get(newSelIndex));
+			}
+			this.removeAttribute('aria-activedescendant');
 		}
 		this.fixedButtonWidth(); //good to call always to prevent future bugs due to the vertical space.
 	}
@@ -632,20 +638,20 @@ function(templateId, data) {
 	// inside, and also "overflow:hidden" (so mouse over the hidden stuff does not highlight)
 	this._pseudoItemsEl.style.display = "block";
     // set classes
-    var el = this.getHtmlElement();
-    this._containerEl = el;
-
+    var el = this._containerEl = this.getHtmlElement();
     this._selectEl.className = el.className;
-
     el.className = "ZSelectAutoSizingContainer";
-    el.setAttribute("style", "");
+    this.removeAttribute("style");
     if (AjxEnv.isIE && !AjxEnv.isIE9up) {
         el.style.overflow = "hidden";
     }
+	if (this._legendId) {
+		this.setAttribute('aria-labelledby', [ this._legendId, this._textEl.id ].join(' '));
+	}
 };
 
-DwtSelect.prototype._createMenu =
-function() {
+DwtSelect.prototype._createMenu = function() {
+
     var menu = new DwtSelectMenu(this);
     var mi;
     for (var i = 0, len = this._options.size(); i < len; ++i) {
@@ -654,7 +660,7 @@ function() {
             mi = new DwtMenuItem({parent:menu, style:DwtMenuItem.SEPARATOR_STYLE});
             mi.setEnabled(false);
         } else {
-            var mi = new DwtSelectMenuItem(menu, Dwt.getNextId((option.id || option._value) + "_"));
+            var mi = new DwtSelectMenuItem(menu, option.id || Dwt.getNextId(menu._htmlElId + '_option_'));
             var image = option.getImage();
             if (image) {
                 mi.setImage(image);
@@ -671,6 +677,17 @@ function() {
         mi._optionIndex = i;
 		option.setItem(mi);
     }
+
+	// Accessibility
+	var select = this;
+	menu.addPopupListener(function() {
+		select.setAttribute('aria-expanded', true);
+	});
+	menu.addPopdownListener(function() {
+		select.setAttribute('aria-expanded', false);
+		select.removeAttribute('aria-activedescendant');
+	});
+
 	return menu;
 };
 
@@ -701,7 +718,7 @@ function(option) {
  			this.setText(AjxStringUtil.htmlEncode(displayValue));
  		}
  		this.setImage(image);
- 		this._selectedValue = option._value;
+		this._selectedValue = option._value;
 		this._selectedOption = option;
 	}
     this._updateSelection(option);
@@ -754,6 +771,16 @@ function() {
 				};
 	var resetAction = new AjxTimedAction(this, reset);
 	AjxTimedAction.scheduleAction(resetAction, 4);
+};
+
+// Accessibility - select has role of 'combobox', so 'aria-owns' is used instead of 'aria-haspopup'
+DwtSelect.prototype._menuAdded = function(menu) {
+	this.setAttribute('aria-owns', menu._htmlElId);
+};
+
+// Accessibility - with a role of 'combobox' we need to maintain 'aria-activedescendant'
+DwtSelect.prototype._menuItemSelected = function(menuItem) {
+	this.setAttribute('aria-activedescendant', menuItem._htmlElId);
 };
 
 
@@ -978,7 +1005,9 @@ DwtSelectMenuItem.prototype.constructor = DwtSelectMenuItem;
 
 DwtSelectMenuItem.prototype.TEMPLATE = "dwt.Widgets#ZSelectMenuItem";
 
-DwtSelectMenuItem.prototype.toString =
-function() {
-    return "DwtSelectMenuItem";
-};
+DwtSelectMenuItem.prototype.isDwtSelectMenuItem = true;
+DwtSelectMenuItem.prototype.toString = function() { return "DwtSelectMenuItem"; };
+
+DwtSelectMenuItem.prototype.role = 'option';
+
+DwtLabel.prototype._textSet = function(text) {};

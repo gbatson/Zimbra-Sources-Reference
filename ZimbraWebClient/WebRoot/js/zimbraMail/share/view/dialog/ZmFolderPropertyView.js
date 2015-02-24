@@ -37,6 +37,7 @@ ZmFolderPropertyView = function(dialog, parent) {
     if (arguments.length == 0) return;
     ZmFolderDialogTabView.call(this, parent, "ZmFolderPropertyView");
     this._dialog = dialog;
+
 };
 
 ZmFolderPropertyView.prototype = new ZmFolderDialogTabView;
@@ -190,6 +191,26 @@ function(event) {
         Dwt.setVisible(this._nameInputEl,  true);
 	}
 
+	var hasFolderInfo = !!organizer.getToolTip();
+	if (hasFolderInfo) {
+		var unreadProp = this._props.getProperty(this._unreadId),
+			unreadLabel = unreadProp && document.getElementById(unreadProp.labelId);
+		if (unreadLabel) {
+			unreadLabel.innerHTML = AjxMessageFormat.format(ZmMsg.makeLabel, organizer._getUnreadLabel());
+		}
+		this._unreadEl.innerHTML = organizer.numUnread;
+		var totalProp = this._props.getProperty(this._totalId),
+			totalLabel = totalProp && document.getElementById(totalProp.labelId);
+		if (totalLabel) {
+			totalLabel.innerHTML = AjxMessageFormat.format(ZmMsg.makeLabel, organizer._getItemsText());
+		}
+		this._totalEl.innerHTML = organizer.numTotal;
+		this._sizeEl.innerHTML = AjxUtil.formatSize(organizer.sizeTotal);
+	}
+	this._props.setPropertyVisible(this._unreadId, hasFolderInfo && organizer.numUnread);
+	this._props.setPropertyVisible(this._totalId, hasFolderInfo);
+	this._props.setPropertyVisible(this._sizeId, hasFolderInfo && organizer.sizeTotal);
+
 	if (organizer.type === ZmOrganizer.SEARCH) {
 		this._queryInputEl.value = organizer.search.query;
 		this._props.setPropertyVisible(this._queryId, true);
@@ -214,12 +235,8 @@ function(event) {
     var url = organizer.url ? AjxStringUtil.htmlEncode(organizer.url).replace(/&amp;/g,'%26') : null;
 	var urlDisplayString = url;
 	if (urlDisplayString) {
-        urlDisplayString = AjxStringUtil.clipByLength(urlDisplayString,50);
-    }
-
-    if(urlDisplayString){
-        urlDisplayString = ['<a target=_new href="',url,'">',urlDisplayString,'</a>'].join("");
-    }
+		urlDisplayString = [ '<a target=_new href="',url,'">', AjxStringUtil.clipByLength(urlDisplayString, 50), '</a>' ].join("");
+	}
 
     this._urlEl.innerHTML = urlDisplayString || "";
 
@@ -265,9 +282,9 @@ function(response) {
 	return true;
 };
 
+// TODO: This seems awkward. Should use a template.
+ZmFolderPropertyView.prototype._createView = function() {
 
-ZmFolderPropertyView.prototype._createView =
-function() {
 	// create html elements
 	this._nameOutputEl = document.createElement("SPAN");
 	this._nameInputEl = document.createElement("INPUT");
@@ -285,6 +302,10 @@ function() {
 	this._urlEl = document.createElement("DIV");
 	this._permEl = document.createElement("DIV");
 
+	this._unreadEl = document.createElement("SPAN");
+	this._totalEl = document.createElement("SPAN");
+	this._sizeEl = document.createElement("SPAN");
+
 	var nameEl = document.createElement("DIV");
 	nameEl.appendChild(this._nameOutputEl);
 	nameEl.appendChild(nameElement);
@@ -298,13 +319,17 @@ function() {
 	this._props = new DwtPropertySheet(this);
 	this._color = new ZmColorButton({parent:this});
 
-	this._props.addProperty(ZmMsg.nameLabel, nameEl);
+	var namePropId = this._props.addProperty(ZmMsg.nameLabel, nameEl);
 	this._props.addProperty(ZmMsg.typeLabel, this._typeEl);
 	this._queryId = this._props.addProperty(ZmMsg.queryLabel, queryEl);
 	this._ownerId = this._props.addProperty(ZmMsg.ownerLabel,  this._ownerEl);
 	this._urlId   = this._props.addProperty(ZmMsg.urlLabel,    this._urlEl);
 	this._permId  = this._props.addProperty(ZmMsg.permissions, this._permEl);
 	this._colorId = this._props.addProperty(ZmMsg.colorLabel,  this._color);
+	this._totalId = this._props.addProperty(AjxMessageFormat.format(ZmMsg.makeLabel, ZmMsg.messages),  this._totalEl);
+	this._unreadId = this._props.addProperty(AjxMessageFormat.format(ZmMsg.makeLabel, ZmMsg.unread),  this._unreadEl);
+	this._sizeId = this._props.addProperty(ZmMsg.sizeLabel,  this._sizeEl);
+
     if (appCtxt.isWebClientOfflineSupported) {
         this._offlineEl = document.createElement("DIV");
 		this._offlineEl.style.whiteSpace = "nowrap";
@@ -316,7 +341,7 @@ function() {
 	container.appendChild(this._props.getHtmlElement());
 	container.appendChild(excludeFbEl);
 	container.appendChild(globalMarkReadEl);
+	this._contentEl = container;
 
-    this._contentEl = container;
-
+	this._tabGroup.addMember(this._props.getTabGroupMember());
 };

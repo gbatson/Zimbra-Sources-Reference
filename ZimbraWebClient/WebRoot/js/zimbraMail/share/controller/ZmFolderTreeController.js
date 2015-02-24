@@ -172,6 +172,7 @@ function(parent, type, id) {
 		}
 	}
 
+	parent.enable(ZmOperation.OPEN_IN_TAB, true);
 	parent.enable(ZmOperation.EXPAND_ALL, (folder.size() > 0));
 	if (nId != ZmOrganizer.ID_ROOT && !folder.isReadOnly()) {
 		// always enable for shared folders since we dont get this info from server
@@ -286,18 +287,19 @@ ZmFolderTreeController.prototype._getActionMenuOps =
 function() {
 	return [
 		ZmOperation.NEW_FOLDER,
-		ZmOperation.MARK_ALL_READ,
-		ZmOperation.DELETE_WITHOUT_SHORTCUT,
-		ZmOperation.RENAME_FOLDER,
-		ZmOperation.MOVE,
-		ZmOperation.SHARE_FOLDER,
-		ZmOperation.EDIT_PROPS,
-		ZmOperation.EXPAND_ALL,
 		ZmOperation.SYNC,
 		ZmOperation.SYNC_ALL,
+		ZmOperation.MARK_ALL_READ,
 		ZmOperation.EMPTY_FOLDER,
 		ZmOperation.RECOVER_DELETED_ITEMS,
-		ZmOperation.SYNC_OFFLINE_FOLDER
+		ZmOperation.SHARE_FOLDER,
+		ZmOperation.MOVE,
+		ZmOperation.DELETE_WITHOUT_SHORTCUT,
+		ZmOperation.RENAME_FOLDER,
+		ZmOperation.EDIT_PROPS,
+		ZmOperation.SYNC_OFFLINE_FOLDER,
+		ZmOperation.OPEN_IN_TAB,
+		ZmOperation.EXPAND_ALL
 	];
 };
 

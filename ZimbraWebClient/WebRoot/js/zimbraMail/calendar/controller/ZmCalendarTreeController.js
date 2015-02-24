@@ -738,10 +738,13 @@ function(overviewId, account) {
  * @private
  */
 ZmCalendarTreeController.prototype._newListener =
-function(ev, account) {
+function(ev, account, isExternalCalendar) {
 	this._pendingActionData = this._getActionedOrganizer(ev);
 	var newDialog = this._getNewDialog();
-    if (this._extCalData) {
+
+    // Fix for Bug: 85158 and regression due to Bug: 82811
+    // Pass a flag isExternalCalendar from ZmExternalCalendarDialog::_nextButtonListener to help decide creating external calendar or local calendar
+    if (isExternalCalendar && this._extCalData) {
         var iCalData = this._extCalData.iCal;
         newDialog.setICalData(iCalData);
         newDialog.setTitle(ZmMsg.addExternalCalendar);
@@ -764,10 +767,6 @@ function(ev, account) {
 	}
 
 	ZmController.showDialog(newDialog, this._newCb, this._pendingActionData, account);
-
-    // Clear the external calendar data once dialog is rendered
-    // Fix for bug: 82811
-    this.setExternalCalendarData(null);
 
 	newDialog.registerCallback(DwtDialog.CANCEL_BUTTON, this._clearDialog, this, newDialog);
 };
@@ -820,6 +819,8 @@ ZmCalendarTreeController.POLLING_INTERVAL = "1m";
 ZmCalendarTreeController.CONN_TYPE_CLEARTEXT = "cleartext";
 ZmCalendarTreeController.CONN_TYPE_SSL = "ssl";
 ZmCalendarTreeController.SSL_PORT = "443";
+ZmCalendarTreeController.GOOGLE_CALDAV_SERVER = "www.google.com";
+ZmCalendarTreeController.ALT_GOOGLE_CALDAV_SERVER = "apidata.googleusercontent.com";
 ZmCalendarTreeController.DATA_SOURCE_ATTR_YAHOO = "p:/principals/users/_USERNAME_";
 ZmCalendarTreeController.DATA_SOURCE_ATTR = "p:/calendar/dav/_USERNAME_/user";
 
@@ -830,28 +831,26 @@ function(organizer, errorCallback) {
 
     var url,
         port,
-        urlPort,
+        urlComponents,
         hostUrl,
         jsonObj,
         connType = ZmCalendarTreeController.CONN_TYPE_CLEARTEXT,
         dsa = ZmCalendarTreeController.DATA_SOURCE_ATTR;
 
+
     hostUrl = calDav.hostUrl;
-    if(hostUrl.indexOf(":") === -1) {
-        url = hostUrl;
-        port = ZmCalendarTreeController.SSL_PORT;
-    }
-    else {
-        urlPort = hostUrl.split(":");
-        url = urlPort[0];
-        port = urlPort[1];
-    }
+    urlComponents = AjxStringUtil.parseURL(hostUrl);
+	url = urlComponents.domain;
+	port = urlComponents.port || ZmCalendarTreeController.SSL_PORT;    	
+	dsa = urlComponents.path ? "p:" + urlComponents.path : ZmCalendarTreeController.DATA_SOURCE_ATTR;
+    
 
     if(port == ZmCalendarTreeController.SSL_PORT) {
         connType = ZmCalendarTreeController.CONN_TYPE_SSL;
     }
 
-    if(calDav.hostUrl.indexOf(ZmMsg.sharedCalCalDAVServerGoogle) === -1) { // Not google url
+    if (calDav.hostUrl.indexOf(ZmCalendarTreeController.GOOGLE_CALDAV_SERVER) === -1 
+    	&& calDav.hostUrl.indexOf(ZmCalendarTreeController.ALT_GOOGLE_CALDAV_SERVER) === -1) { // Not google url
         dsa = ZmCalendarTreeController.DATA_SOURCE_ATTR_YAHOO;
     }
 

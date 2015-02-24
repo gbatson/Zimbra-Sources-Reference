@@ -1,6 +1,6 @@
 <template id='mail.Message#MessageHeader'>
 	<div><!-- empty container DIV here so Dwt.parseHtmlFragment returns the infoBar div below -->
-		<table role="application" class='MsgHeaderTable' id='${id}_headerElement' width=100%>
+		<table class='MsgHeaderTable' id='${id}_headerElement' width=100%>
 			<tr>
 				<td class='MsgHeaderContactContainer'>
 					<img class='MsgHeaderContactImage' src="${imageURL}" alt="${imageAltText}" onerror="this.style.visibility='hidden'"/>
@@ -142,7 +142,7 @@
 		
 <template id='mail.Message#InviteHeader'>
 	<div><!-- empty container DIV here so Dwt.parseHtmlFragment returns the infoBar div below -->
-		<table role="application" class='InvHeaderTable' id='${id}_headerElement'>
+		<table class='InvHeaderTable' id='${id}_headerElement'>
 			<tr>
 				<$ if (!data.noTopHeader) { $>
 				<td class='InvHeaderContactContainer'>
@@ -422,7 +422,7 @@
 	<$ var labelStyle = data.labelStyle = "width:"+(AjxEnv.isIE ? 60 : 64)+"px; overflow:visible; white-space:nowrap"; $>
 	<$ var inputStyle = data.inputStyle = AjxEnv.isSafari && !AjxEnv.isSafariNightly ? "height:52px;" : "height:21px; overflow:hidden" $>
 	<!-- header -->
-	<table role="application" id='${headerId}' width=100% class='ZPropertySheet' cellspacing='6'>
+	<table id='${headerId}' width=100% class='ZPropertySheet' cellspacing='6'>
 		<$ if (appCtxt.multiAccounts) { $>
 			<tr>
 				<td width='1%' align=right valign=top style='<$=labelStyle$>'>
@@ -534,9 +534,8 @@
 
 				<$ for (var i = 0; i < data.attachments.length; i++) { $>
 					<$ var attachment = data.attachments[i]; $>
-					<$ var spanId = Dwt.getNextId(data.rowId)$>
 
-					<span id='<$= spanId $>' class="AttachmentLoading attachmentBubble AttachmentSpan">
+					<span id='<$= attachment.spanId $>' class="AttachmentLoading attachmentBubble AttachmentSpan">
 						<span>
 							<input type="hidden" mid='<$=attachment.mid$>' value='<$=attachment.part$>' name='<$= data.fwdFieldName $>' >
 						</span>
@@ -550,7 +549,7 @@
 						<$ if (attachment.size) { $>
 							(<$= attachment.size $>)
 						<$ } $>
-						<span onclick="window.appCtxt.getCurrentView()._removeAttachedFile('<$= spanId $>', '<$= attachment.part$>' )" class="ImgBubbleDelete AttachmentClose"></span>
+						<span tabindex=0 onclick="<$= attachment.closeHandler $>" onkeypress="<$= attachment.closeHandler $>" class="ImgBubbleDelete AttachmentClose" role="button" aria-label="<$= ZmMsg.remove $>"></span>
 					</span>
 				<$ } $>
 

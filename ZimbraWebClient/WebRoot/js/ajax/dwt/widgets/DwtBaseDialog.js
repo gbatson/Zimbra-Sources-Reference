@@ -88,6 +88,10 @@ DwtBaseDialog = function(params) {
 	// reset tab index
     this.setZIndex(Dwt.Z_HIDDEN); // not displayed until popup() called
 	this._position(DwtBaseDialog.__nowhereLoc);
+
+	// Make sure mouse clicks propagate to the DwtDraggable handler (document.onMouseMove and onMouseUp)
+	this._propagateEvent[DwtEvent.ONMOUSEUP] = true;
+
 }
 
 /**
@@ -97,6 +101,9 @@ DwtBaseDialog.PARAMS = ["parent", "className", "title", "zIndex", "mode", "loc",
 
 DwtBaseDialog.prototype = new DwtComposite;
 DwtBaseDialog.prototype.constructor = DwtBaseDialog;
+
+DwtBaseDialog.prototype.role = 'dialog';
+DwtBaseDialog.prototype.isFocusable = true;
 
 /**
  * Returns a string representation of the class.
@@ -358,6 +365,8 @@ function(title) {
     if (this._titleEl) {
         this._titleEl.innerHTML = title || "";
     }
+
+    this._title = title;
 };
 
 /**
@@ -471,11 +480,9 @@ DwtBaseDialog.prototype._createHtmlFromTemplate = function(templateId, data) {
     this._titleEl = document.getElementById(data.id+"_title");
     this._contentEl = document.getElementById(data.id+"_content");
 
-    this.getHtmlElement().setAttribute('aria-describedby', this._contentEl.id);
-	this._contentEl.setAttribute('role', 'document');
 	if (this._titleEl) {
-		this.getHtmlElement().setAttribute('aria-labelledby', this._titleEl.id);
-		this._titleEl.setAttribute('role', 'header');
+		this.setAttribute('aria-labelledby', this._titleEl.id);
+		this._titleEl.setAttribute('role', 'heading');
 		this._titleEl.setAttribute('aria-level', '2');
 	}
 

@@ -36,14 +36,22 @@
  * @param	{Array}	options			an array of options
  * @extends		DwtComposite
  */
-ZmShareReply = function(parent, className, options) {
-	className = className || "ZmShareReply";
-	DwtComposite.call(this, {parent:parent, className:className, id: "ZmShareReply"});
-	this._initControl(options);
+ZmShareReply = function(params) {
+
+	params = Dwt.getParams(arguments, ZmShareReply.PARAMS);
+
+	params.className = params.className || "ZmShareReply";
+	params.id = "ZmShareReply";
+	DwtComposite.call(this, params);
+	this._tabGroup = new DwtTabGroup(this.toString());
+	this._initControl(params);
 };
+
+ZmShareReply.PARAMS = [ 'parent', 'className', 'options' ];
 
 ZmShareReply.prototype = new DwtComposite;
 ZmShareReply.prototype.constructor = ZmShareReply;
+//ZmShareReply.prototype.isFocusable = true;
 
 // Constants
 /**
@@ -152,13 +160,17 @@ function(event) {
 	this.setReplyType(type);
 };
 
-ZmShareReply.prototype._initControl =
-function(options) {
-	this._replyType = new DwtSelect({parent:this, id: "ZmShareReplySelect"});
-    options = options || ZmShareReply.DEFAULT_OPTIONS;
+ZmShareReply.prototype._initControl = function(params) {
+
+	this._replyType = new DwtSelect({
+		parent:   this,
+		id:       "ZmShareReplySelect",
+		legendId: params.legendId
+	});
+    var options = params.options || ZmShareReply.DEFAULT_OPTIONS;
     this.setReplyOptions(options);
-	this._replyType.addChangeListener(new AjxListener(this, this._handleReplyType));
-	
+	this._replyType.addChangeListener(this._handleReplyType.bind(this));
+
 	var doc = document;
 	this._replyTypeEl = doc.createElement("DIV");
 	this._replyTypeEl.style.paddingBottom = "0.5em";
@@ -167,6 +179,7 @@ function(options) {
 	this._replyStandardMailNoteEl = doc.createElement("DIV");
 	this._replyStandardMailNoteEl.style.paddingBottom = "0.125em";
 	this._replyStandardMailNoteEl.style.width = "30em";
+	this._makeFocusable(this._replyStandardMailNoteEl);
 	this._replyStandardMailNoteEl.innerHTML = ZmMsg.sendMailAboutShareNote;
 	
 	var div = doc.createElement("DIV");
@@ -184,4 +197,11 @@ function(options) {
 	// append controls
 	var element = this.getHtmlElement();
 	element.appendChild(this._replyControlsEl);
+	this._tabGroup.addMember(this._replyType);
+	this._tabGroup.addMember(this._replyStandardMailNoteEl);
+	this._tabGroup.addMember(this._replyNoteEl);
+};
+
+ZmShareReply.prototype.getTabGroupMember = function(){
+	return this._tabGroup;
 };

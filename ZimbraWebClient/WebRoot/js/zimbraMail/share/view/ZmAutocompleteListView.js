@@ -227,8 +227,8 @@ ZmAutocompleteListView.CALLBACKS = [
 ];
 
 // map of characters that are completion characters
-ZmAutocompleteListView.DELIMS			= [',', ';', '\n', '\r', '\t'];	// used when list is not showing
-ZmAutocompleteListView.DELIM_CODES		= [188, 59, 186, 3, 13, 9];		// used when list is showing
+ZmAutocompleteListView.DELIMS			= [',', ';', '\n', '\r'];	// used when list is not showing
+ZmAutocompleteListView.DELIM_CODES		= [188, 59, 186, 3, 13];		// used when list is showing
 
 ZmAutocompleteListView.WAIT_ID = "wait";
 
@@ -265,19 +265,11 @@ function(ev) {
 		var visible = aclv.getVisible();
 		aclv._actionHandled = false;
 		// DBG.println("ac", "key = " + key + ", isDelim: " + isDelim);
-		if ((isDelim && visible) || (key == 27 || (visible && (key == 38 || key == 40)))) {
-			DBG.println("ac", "handle action for key " + key);
-			if (aclv.handleAction(key, isDelim, element)) {
-				aclv._actionHandled = true;
-//				return ZmAutocompleteListView._echoKey(false, ev);
-				result = false;
-			}
+		if (visible && aclv.handleAction(key, isDelim, element)) {
+			aclv._actionHandled = true;
+			result = false;
 		}
-		else if ((key == 9) && aclv._complete(element)) {
-			// a Tab following an address turns it into a bubble
-			result = true;
-		}
-		
+
 		aclv._inputValue[element.id] = element.value;
 		var cbResult = aclv._runCallbacks(ZmAutocompleteListView.CB_KEYDOWN, element && element.id, [ev, aclv, result, element]);
 		// DBG.println("ac", ev.type.toUpperCase() + " cbResult: " + cbResult);
@@ -699,6 +691,7 @@ function(element) {
  *
  * The following keys are action keys:
  *	38 40		up/down arrows (list selection)
+ *	37 39		left/right arrows (dl expansion)
  *	27			escape (hide list)
  *
  * The following keys are delimiters (trigger completion when list is up):
@@ -720,9 +713,29 @@ function(key, isDelim, element) {
 
 	if (isDelim) {
 		this._update();
+	} else if (key == 37 && this._curExpanded) {
+		// handle left key with an expanded DL
+		this._memberListView._popdown();
+
+	} else if (key == 39) {
+		// right arrow
+		var dwttext = this._expandText && this._expandText[this._selected];
+
+		// if the caret is at the end of the input, expand a distribution list,
+		// if possible
+		if(!dwttext || Dwt.getSelectionStart(element) !== element.value.length) {
+			return false;
+		}
+
+		// fake a click
+		dwttext.notifyListeners(DwtEvent.ONMOUSEDOWN);
+
 	} else if (key == 38 || key == 40) {
 		// handle up and down arrow keys
-		if (this.size() <= 1) {
+		if (this._curExpanded) {
+			return this._memberListView.handleAction(key, isDelim, element);
+		}
+		if (this.size() < 1) {
 			return;
 		}
 		if (key == 40) {
@@ -737,6 +750,11 @@ function(key, isDelim, element) {
 		else if (!this._cancelPendingRequests(element)) {
 			return false;
 		}
+	} else if (key == 9) {
+		this._popdown();
+		return false;
+	} else {
+		return false;
 	}
 	return true;
 };
@@ -799,7 +817,7 @@ function(on, str) {
 		div = this._waitingDiv = document.createElement("div");
 		div.className = "acWaiting";
 		var html = [], idx = 0;
-		html[idx++] = "<table cellpadding=0 cellspacing=0 border=0>";
+		html[idx++] = "<table role='presentation' cellpadding=0 cellspacing=0 border=0>";
 		html[idx++] = "<tr>";
 		html[idx++] = "<td><div class='ImgSpinner'></div></td>";
 		html[idx++] = "<td>" + ZmMsg.autocompleteWaiting + "</td>";
@@ -814,6 +832,8 @@ function(on, str) {
 		this._popdown();
 		var loc = this._getDefaultLoc();
 		Dwt.setLocation(div, loc.x, loc.y);
+
+		this._setLiveRegionText(ZmMsg.autocompleteWaiting);
 	}
 	this._waitingStr = on ? str : "";
 
@@ -891,6 +911,9 @@ function(context, list) {
 	} else if (!context.isComplete) {
 		this._popdown();
 		this._showNoResults();
+
+		var msg = AjxMessageFormat.format(ZmMsg.autocompleteMatches, 0);
+		this._setLiveRegionText(msg);
 	}
 };
 
@@ -993,6 +1016,8 @@ function(context, match, noFocus) {
 	var el = context.element;
 	var addrInput = el && el._aifId && DwtControl.ALL_BY_ID[el._aifId];
 	if (addrInput) {
+		var bubbleCount = addrInput.getBubbleCount();
+
 		if (match && match.multipleAddresses) {
 			// mass complete (add all) from a DL
 			addrInput.addValue(context.address);
@@ -1008,6 +1033,11 @@ function(context, match, noFocus) {
 			}
 			addrInput.addBubble(bubbleParams);
 		}
+
+		var msg = AjxMessageFormat.format(ZmMsg.autocompleteAddressesAdded,
+		                                  addrInput.getBubbleCount() - bubbleCount);
+		this._setLiveRegionText(msg);
+
 		el = addrInput._input;
 		// Input field loses focus along the way. Restore it when the stack is finished
 		if (AjxEnv.isIE) {
@@ -1075,13 +1105,40 @@ function() {
 	var table = this._tableId && document.getElementById(this._tableId);
 	if (!table) {
 		var html = [], idx = 0;
-		this._tableId = Dwt.getNextId();
-		html[idx++] = "<table id='" + this._tableId + "' cellpadding=0 cellspacing=0 border=0>";
+		this._tableId = this.getHTMLElId() + '_table';
+		html[idx++] = "<table role='presentation' id='" + this._tableId + "' cellpadding=0 cellspacing=0 border=0>";
 		html[idx++] = "</table>";
 		this.getHtmlElement().innerHTML = html.join("");
 		table = document.getElementById(this._tableId);
 	}
 	return table;
+};
+
+ZmAutocompleteListView.prototype._setLiveRegionText =
+function(text) {
+	// Lazily create accessibility live region
+	var id = this.getHTMLElId() + '_liveRegion';
+	var liveRegion = Dwt.byId(id);
+
+	if (!liveRegion) {
+		liveRegion = document.createElement('div');
+		liveRegion.id = id;
+		liveRegion.className = 'ScreenReaderOnly';
+		liveRegion.setAttribute('role', 'alert');
+		liveRegion.setAttribute('aria-label', ZmMsg.autocomplete);
+		liveRegion.setAttribute('aria-live', 'assertive');
+		liveRegion.setAttribute('aria-relevant', 'additions');
+		liveRegion.setAttribute('aria-atomic', true);
+		appCtxt.getShell().getHtmlElement().appendChild(liveRegion);
+	}
+
+	// Set the live region text content
+	Dwt.removeChildren(liveRegion);
+	if (text) {
+		var paragraph = document.createElement('p');
+		paragraph.appendChild(document.createTextNode(text));
+		liveRegion.appendChild(paragraph);
+	}
 };
 
 // Creates the list and its member elements based on the matches we have. Each match becomes a
@@ -1130,6 +1187,9 @@ function(list, context) {
 		this._expandText = {};
 		this._addLinks(this._expandText, "Expand", ZmMsg.expand, ZmMsg.expandTooltip, this.expandDL, context);
 	}
+
+	var msg = AjxMessageFormat.format(ZmMsg.autocompleteMatches, len);
+	this._setLiveRegionText(msg);
 
 	AjxTimedAction.scheduleAction(new AjxTimedAction(this,
 		function() {
@@ -1348,12 +1408,29 @@ function(id) {
 	this._showLink(this._expandLink, this._expandText, id, true);
 
 	this._selected = id;
+
+	var match = this._matchHash[id];
+	var msg;
+
+	if (!match) {
+		msg = AjxStringUtil.convertHtml2Text(Dwt.byId(this._selected));
+	} else {
+		var msg = AjxMessageFormat.format(ZmMsg.autocompleteMatchText, [ match.name, match.email ]);
+		if (match.isGroup) {
+			msg = AjxMessageFormat.format(ZmMsg.autocompleteGroup, msg);
+		}
+		else if (match.isDL) {
+			msg = AjxMessageFormat.format(ZmMsg.autocompleteDL, msg);
+		}
+	}
+
+	this._setLiveRegionText(msg);
 };
 
 ZmAutocompleteListView.prototype._getRowId =
 function(rows, id, len) {
 
-	if (len <= 1) {
+	if (len < 1) {
 		return;
 	}
 

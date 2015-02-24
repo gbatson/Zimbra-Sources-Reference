@@ -230,6 +230,12 @@ ZmHtmlEditor.prototype.getTextVersion = function (convertor, keepModeDiv) {
         : this.getContentField().value;
 };
 
+ZmHtmlEditor.prototype._focus = function() {
+	if (this._mode === Dwt.HTML && this.getEditor()) {
+		this.getEditor().focus();
+	}
+};
+
 /**
  * Returns the content of the editor.
  * 
@@ -467,11 +473,6 @@ function() {
 	}
 };
 
-ZmHtmlEditor.prototype.getInputElement =
-function() {
-	return this.getBodyField();
-};
-
 ZmHtmlEditor.prototype.initTinyMCEEditor =
 function(params) {
 	var htmlEl = this.getHtmlElement();
@@ -480,6 +481,7 @@ function(params) {
 	var textEl = document.createElement("textarea");
 	textEl.setAttribute("id", id);
 	textEl.setAttribute("name", id);
+	textEl.setAttribute("aria-label", ZmMsg.composeBody);
     if( appCtxt.get(ZmSetting.COMPOSE_INIT_DIRECTION) === ZmSetting.RTL ){
         textEl.setAttribute("dir", ZmSetting.RTL);
     }
@@ -731,7 +733,7 @@ function(id, content) {
         language: tinyMCE.getlanguage(appCtxt.get(ZmSetting.LOCALE_NAME)),
         directionality : appCtxt.get(ZmSetting.COMPOSE_INIT_DIRECTION),
         paste_retain_style_properties : "all",
-		paste_data_images: true,
+		paste_data_images: false,
         paste_remove_styles_if_webkit : false,
         table_default_attributes: { cellpadding: '3px', border: '1px' },
         table_default_styles: { width: '90%', tableLayout: 'fixed' },
@@ -751,7 +753,6 @@ function(id, content) {
     };
 
 	tinyMCE.init(tinyMCEInitObj);
-	this._setupTabGroup();
 	this._editor = this.getEditor();
 };
 
@@ -869,6 +870,16 @@ ZmHtmlEditor.prototype.onInit = function(ev) {
     obj._editorInitialized = true;
 
     this._resetSize();
+	this._setupTabGroup();
+
+	var iframe = Dwt.getElement(this._iFrameId);
+	if (iframe) {
+		iframe.setAttribute('title', ZmMsg.htmlEditorTitle);
+		var body = this._getIframeDoc().body;
+		if (body) {
+			body.setAttribute('aria-label', ZmMsg.composeBody);
+		}
+	}
 
     AjxUtil.foreach(this._initCallbacks, function(fn) { fn.run() });
 };
@@ -1067,7 +1078,7 @@ ZmHtmlEditor.prototype.setMode = function (mode, convert, convertor) {
 	textarea = this.getContentField();
 	textarea.setAttribute('aria-hidden', !Dwt.getVisible(textarea));
 
-	this._setupTabGroup();
+    this._setupTabGroup();
     this._resetSize();
 };
 
@@ -2257,8 +2268,8 @@ function(ev) {
 
     for (; i < length; i++) {
         table = tableArray[i];
-        //set the table border as 1 if it is 0
-        if (table && table.border === "0") {
+        //set the table border as 1 if it is 0 or unset
+        if (table && (table.border === "0" || table.border === "")) {
             table.border = 1;
         }
     }
@@ -2308,7 +2319,7 @@ ZmHtmlEditor.prototype._setupTabGroup = function() {
 			if (firstbutton) {
 				htmlTabGroup.addMember(firstbutton.getEl());
 			}
-			htmlTabGroup.addMember(Dwt.byId(this._iFrameId));
+			htmlTabGroup.addMember(this);
 		}
 		mainTabGroup.replaceMember(this._textModeTabGroup, this._htmlModeTabGroup);
 	}

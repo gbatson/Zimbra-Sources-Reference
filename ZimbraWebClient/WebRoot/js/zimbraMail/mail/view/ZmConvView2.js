@@ -135,8 +135,7 @@ function() {
 	this._header.replaceElement(headerDivId);
 
 	 // label our control after the subject element
-	this.getHtmlElement().setAttribute('aria-labelledby',
-	                                   this._header._convSubjectId);
+	this.setAttribute('aria-labelledby', this._header._convSubjectId);
 
 	if (this._controller && this._controller._checkKeepReading) {
 		Dwt.setHandler(this._messagesDiv, DwtEvent.ONSCROLL, ZmDoublePaneController.handleScroll);
@@ -242,7 +241,8 @@ function(conv, container) {
 		var params = {
 			parent:			this,
 			parentElement:	container,
-			controller:		this._controller
+			controller:		this._controller,
+			index:          i
 		}
 		params.forceExpand = toExpand[id];
 		params.forceCollapse = toCollapse[id];
@@ -293,7 +293,6 @@ function(msg, params) {
 	}
 
 	AjxUtil.arrayAdd(this._msgViewList, msg.id, params.index);
-	params.index = null;    // index not needed since msg view will be only child of listitem
 	var msgView = this._msgViews[msg.id] = new ZmMailMsgCapsuleView(params);
 
 	// add to tabgroup
@@ -978,7 +977,7 @@ function() {
 		subject = ZmMailMsg.stripSubjectPrefixes(subject);
 	}
 	this._subjectSpan.innerHTML = AjxStringUtil.htmlEncode(subject);
-	this._subjectSpan.title = subject;
+	this._subjectSpan.title = this._convView.subject = subject;
 };
 
 ZmConvView2Header.prototype._setInfo =
@@ -1278,6 +1277,7 @@ ZmMailMsgCapsuleView = function(params) {
 	this._forceCollapse = params.forceCollapse;
 	this._forceOriginal = params.forceOriginal && !(DBG && DBG.getDebugLevel() == "orig");
 	this._isDraft = params.isDraft;
+	this._index = params.index;
 	this._showingCalendar = false;
 	this._infoBarId = this._htmlElId;
 	
@@ -1349,7 +1349,7 @@ function(msg, force) {
 	if (this._expanded) {
 		this._convView._hasBeenExpanded[msg.id] = true;
 	}
-	this.getHtmlElement().setAttribute('aria-expanded', Boolean(this._expanded));
+	this.setAttribute('aria-expanded', Boolean(this._expanded));
 	this._setHeaderClass();
 
 	var dayViewCallback = null;
@@ -1916,9 +1916,13 @@ function(expanded) {
 
 	if (this.isDisposed()) { return; }
 
+	if (Dwt.isAncestor(this.getHtmlElement(), document.activeElement)) {
+		this.getHtmlElement().focus();
+	}
+
 	var showCalInConv = appCtxt.get(ZmSetting.CONV_SHOW_CALENDAR);
 	this._expanded = expanded;
-	this.getHtmlElement().setAttribute('aria-expanded', Boolean(this._expanded));
+	this.setAttribute('aria-expanded', Boolean(this._expanded));
 	if (this._expanded && !this._msgBodyCreated) {
 		// Provide a callback to ensure address bubbles are properly set up
 		var dayViewCallback = null;
@@ -2117,6 +2121,10 @@ function(part) {
 	 3. Message has a quoted content which is hidden - In this case if the truncation happens it will always be in the quoted content which is hidden so return false.
 	 */
 	return (!this._hasOrigContent || this._showingQuotedText) ? part.isTruncated : false;
+};
+
+ZmMailMsgCapsuleView.prototype._getIframeTitle = function() {
+	return AjxMessageFormat.format(ZmMsg.messageTitleInConv, this._index + 1);
 };
 
 /**

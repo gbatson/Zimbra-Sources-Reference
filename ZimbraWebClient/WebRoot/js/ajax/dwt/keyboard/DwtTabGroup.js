@@ -44,6 +44,8 @@ DwtTabGroup = function(name) {
 	this.__evtMgr = new AjxEventMgr();
 };
 
+DwtTabGroup.prototype.isDwtTabGroup = true;
+
 /** 
  * Exception string that is thrown when an operation is attempted
  * on a non-root tab group.
@@ -116,7 +118,7 @@ function(member, index) {
 		this.__members.add(members[i], index);
 
 		// If adding a tab group, register me as its parent
-		if (members[i] instanceof DwtTabGroup) {
+		if (members[i].isDwtTabGroup) {
 			members[i].newParent(this);
 		}
 	}
@@ -197,10 +199,10 @@ function(oldMember, newMember, checkEnabled, skipNotify, focusItem, noFocus) {
 	if (focusItem) {
 		newFocusMember = focusItem;
 	} else if (root.__currFocusMember == oldMember ||
-		((oldMember instanceof DwtTabGroup) && oldMember.contains(root.__currFocusMember))) {
+		(oldMember && oldMember.isDwtTabGroup && oldMember.contains(root.__currFocusMember))) {
 
 		if (newMember) {
-			newFocusMember = (newMember instanceof DwtTabGroup) ? newMember.getFirstMember() : newMember;
+			newFocusMember = (newMember.isDwtTabGroup) ? newMember.getFirstMember() : newMember;
 		} else {
 			newFocusMember = this.__getPrevMember(oldMember, checkEnabled);
 			if (!newFocusMember) {
@@ -210,13 +212,13 @@ function(oldMember, newMember, checkEnabled, skipNotify, focusItem, noFocus) {
 	}
 	if (newFocusMember && !noFocus) {
 		root.__currFocusMember = newFocusMember;
-		DBG.println(AjxDebug.FOCUS, "DwtTabGroup.replaceMember: current focus member is now " + root.__currFocusMember);
+		this.__showFocusedItem(this.__currFocusMember, "replaceMember");
 		if (!skipNotify) {
 			this.__notifyListeners(newFocusMember);
 		}
 	}
 
-	if (newMember instanceof DwtTabGroup) {
+	if (newMember && newMember.isDwtTabGroup) {
 		newMember.newParent(this);
 	}
 		
@@ -266,7 +268,7 @@ DwtTabGroup.prototype.getTabGroupMemberByName = function(name) {
 	var members = this.__members.getArray();
 	for (var i = 0; i < members.length; i++) {
 		var member = members[i];
-		if (member instanceof DwtTabGroup && member.getName() == name) {
+		if (member.isDwtTabGroup && member.getName() == name) {
 			return member;
 		}
 	}
@@ -319,7 +321,7 @@ function(member, checkEnabled, skipNotify) {
 	var tg = this.__getTabGroupForMember(member);
 	if (tg) {
 		this.__currFocusMember = member;
-		DBG.println(AjxDebug.FOCUS, "DwtTabGroup.setFocusMember: current focus member is now " + this.__currFocusMember);
+		this.__showFocusedItem(this.__currFocusMember, "setFocusMember");
 		if (!skipNotify) {
 			this.__notifyListeners(this.__currFocusMember);
 		}
@@ -384,21 +386,36 @@ function(checkEnabled, skipNotify) {
 	if ((focusMember != this.__currFocusMember) && !skipNotify) {
 		this.__notifyListeners(this.__currFocusMember);
 	}
-	DBG.println(AjxDebug.FOCUS, "DwtTabGroup.resetFocusMember: current focus member is now " + this.__currFocusMember);
+	this.__showFocusedItem(this.__currFocusMember, "resetFocusMember");
 	this.__currFocusMember = focusMember;
 	
 	return this.__currFocusMember;
 };
 
 /**
- * Dumps the contents of the tab group.
- * 
- * @private
+ * Pretty-prints the contents of the tab group to the browser console or the
+ * debug window.
+ *
+ * @param {number} [debugLevel]     if specified, dump to the debug window
+ *                                  at the given level.
  */
-DwtTabGroup.prototype.dump =
-function(debugLevel) {
-	if (!window.AjxDebug && window.DBG) { return; }
-	this.__dump(this, debugLevel);
+DwtTabGroup.prototype.dump = function(debugLevel) {
+	if (debugLevel) {
+		if (!window.AjxDebug || !window.DBG) {
+			return;
+		}
+
+		var logger = function(s) {
+			var s = AjxStringUtil.convertToHtml(s);
+			DBG.println(debugLevel, s);
+		}
+
+		DwtTabGroup.__dump(this, logger, 0);
+	} else if (window.console && window.console.log) {
+		var r = [];
+		DwtTabGroup.__dump(this, r.push.bind(r), 0);
+		console.log(r.join('\n'));
+	}
 };
 
 /**
@@ -424,7 +441,7 @@ function(member, checkEnabled) {
 		var prevMember = a[i];
 		/* if sibling is not a tab group, then it is the previous child. If the
 		 * sibling is a tab group, get its rightmost member.*/
-		if (!(prevMember instanceof DwtTabGroup)) {
+		if (!(prevMember.isDwtTabGroup)) {
 			if (this.__checkEnabled(prevMember, checkEnabled)) {
 				return prevMember;
 			}
@@ -449,17 +466,35 @@ function(member, checkEnabled) {
  * 
  * @private
  */
-DwtTabGroup.prototype.__checkEnabled =
-function(member, checkEnabled) {
-	if (!checkEnabled) return true;
-	if (!member || member.noTab) return false;
-	if (member instanceof DwtControl) {
-		return member.getEnabled() &&
-			(member.getVisible() || member.getZIndex() > Dwt.Z_HIDDEN);
-	} else {
-		return !member.disabled &&
-			(Dwt.getVisible(member) || Dwt.getZIndex(member) > Dwt.Z_HIDDEN);
+DwtTabGroup.prototype.__checkEnabled = function(member, checkEnabled) {
+
+	if (!checkEnabled) {
+		return true;
 	}
+
+	if (!member || member.noTab) {
+		return false;
+	}
+
+	if (member.isDwtControl ? !member.getEnabled() : member.disabled) {
+		return false;
+	}
+
+	if (member.isDwtControl) {
+		member = member.getHtmlElement();
+	}
+
+	var loc = Dwt.getLocation(member);
+	if (loc.x === null || loc.x === Dwt.LOC_NOWHERE || loc.y === Dwt.LOC_NOWHERE || loc.y === null) {
+		return false;
+	}
+
+	var size = Dwt.getSize(member);
+	if (!size || size.x === 0 || size.y === 0) {
+		return false;
+	}
+
+	return Dwt.getZIndex(member, true) > Dwt.Z_HIDDEN && Dwt.getVisible(member);
 };
 
 /**
@@ -504,7 +539,7 @@ function(member, checkEnabled) {
 		var nextMember = a[i];
 		/* if sibling is not a tab group, then it is the next child. If the
 		 * sibling is a tab group, get its leftmost member.*/
-		if (!(nextMember instanceof DwtTabGroup)) {
+		if (!(nextMember.isDwtTabGroup)) {
 			if (this.__checkEnabled(nextMember, checkEnabled)) {
 				return nextMember;
 			}
@@ -537,7 +572,7 @@ function(checkEnabled) {
 	 * rightmost element. */
 	for (var i = this.__members.size() - 1; i >= 0; i--) {
 		member = a[i]
-		if (!(member instanceof DwtTabGroup)) {
+		if (!(member.isDwtTabGroup)) {
 			if (this.__checkEnabled(member, checkEnabled)) break;
 		} else {
 			member = member.__getRightMostMember(checkEnabled);
@@ -564,7 +599,7 @@ function(checkEnabled) {
 	 * rightmost element */
 	for (var i = 0; i < sz; i++) {
 		member = a[i]
-		if (!(member instanceof DwtTabGroup)) {
+		if (!(member.isDwtTabGroup)) {
 			if  (this.__checkEnabled(member, checkEnabled)) break;
 		} else {
 			member = member.__getLeftMostMember(checkEnabled);
@@ -605,30 +640,30 @@ function() {
 	return root;
 }
 
+DwtTabGroup.DUMP_INDENT = '|\t';
+
 /**
  * @private
  */
-DwtTabGroup.prototype.__dump =
-function(tg, debugLevel, level) {
-	level = level || 0;
-	var levelIndent = "";
-	for (var i = 0; i < level; i++) {
-		levelIndent += "&nbsp;&nbsp;&nbsp;&nbsp;";
-	}
-	
-	debugLevel = debugLevel || AjxDebug.DBG1;
-	DBG.println(debugLevel, levelIndent + " TABGROUP: " + tg.__name);
-	levelIndent += "&nbsp;&nbsp;&nbsp;&nbsp;";
-	
+DwtTabGroup.__dump =
+function(tg, logger, level) {
+	var myIndent = AjxStringUtil.repeat(DwtTabGroup.DUMP_INDENT, level);
+
+	logger(myIndent + "TABGROUP: " + tg.__name);
+
+	myIndent += DwtTabGroup.DUMP_INDENT;
+
 	var sz = tg.__members.size();
 	var a = tg.__members.getArray();
 	for (var i = 0; i < sz; i++) {
-		if (a[i] instanceof DwtTabGroup) {
-			tg.__dump(a[i], debugLevel, level + 1);
-		} else if (a[i].toString) {
-			DBG.println(debugLevel, levelIndent + "   " + a[i].toString());
+		if (a[i].isDwtTabGroup) {
+			DwtTabGroup.__dump(a[i], logger, level + 1);
 		} else {
-			DBG.println(debugLevel, levelIndent + "   " + a[i].tagName);
+			var desc = a[i].nodeName ?
+				(a[i].nodeName + ' ' + a[i].outerHTML) :
+				(String(a[i]) + ' ' + a[i]._htmlElId);
+
+			logger(myIndent + desc);
 		}
 	}
 };
@@ -647,7 +682,7 @@ function(next, checkEnabled, skipNotify) {
 	
 	var tabGroup = this.__getTabGroupForMember(this.__currFocusMember);
 	if (!tabGroup) {
-		DBG.println(AjxDebug.DBG1, "tab group not found for focus member");
+		DBG.println(AjxDebug.DBG1, "tab group not found for focus member: " + this.__currFocusMember);
 		return null;
 	}
 	var m = (next) ? tabGroup.__getNextMember(this.__currFocusMember, checkEnabled) 
@@ -665,7 +700,7 @@ function(next, checkEnabled, skipNotify) {
 
 	this.__currFocusMember = m;
 	
-	DBG.println(AjxDebug.FOCUS, "DwtTabGroup._setFocusMember: current focus member is now " + this.__currFocusMember);
+	this.__showFocusedItem(this.__currFocusMember, "_setFocusMember");
 	if (!skipNotify) {
 		this.__notifyListeners(this.__currFocusMember);
 	}
@@ -687,7 +722,7 @@ function(member) {
 		if (m == member || (DwtTabGroup.__memberKeyFunc(member) ==
 		                    DwtTabGroup.__memberKeyFunc(m))) {
 			return this;
-		} else if (m instanceof DwtTabGroup && (m = m.__getTabGroupForMember(member))) {
+		} else if (m.isDwtTabGroup && (m = m.__getTabGroupForMember(member))) {
 			return m;
 		}
 	}
@@ -703,5 +738,19 @@ DwtTabGroup.prototype.__checkRoot =
 function() {
 	if (this.__parent) {
 		throw DwtTabGroup.NOT_ROOT_TABGROUP;
+	}
+};
+
+// Prints out a debug line describing the currently focused member
+DwtTabGroup.prototype.__showFocusedItem = function(item, caller) {
+
+	if (item && window.AjxDebug && window.DBG) {
+		var callerText = caller ? "DwtTabGroup." + caller + ": " : "",
+			idText = " [" + (item.isDwtControl ? item._htmlElId : item.id) + "] ",
+			otherText = (item.getTitle && item.getTitle()) || (item.getText && item.getText()) || "",
+			fullText = item + idText + otherText;
+
+		DBG.println(AjxDebug.FOCUS, callerText + "current focus member is now " + item);
+		DBG.println(AjxDebug.FOCUS1, "Focus: " + fullText);
 	}
 };

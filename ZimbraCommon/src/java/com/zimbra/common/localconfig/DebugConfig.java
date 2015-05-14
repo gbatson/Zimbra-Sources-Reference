@@ -222,6 +222,12 @@ public final class DebugConfig {
             "</?script/?>");
     public static final String defangAvJavascript = value("defang_av_javascript",
             "^\\s*javascript:");
+    public static final String defangAvVbscript = value("defang_av_vbscript",
+        "^\\s*vbscript:");
+    public static final String defangAvTab = value("defang_av_tab",
+        "^*((&|&amp;)((Tab;)|(#[0]*9;)))|(\t)");
+    public static final String defangACanAllowScripts = value("defang_a_scripts",
+        "href,action");
     public static final String defangStyleUnwantedImport = value(
             "defang_style_unwanted_import",
             "@import(\\s)*((\'|\")?(\\s)*(http://|https://)?([^\\s;]*)(\\s)*(\'|\")?(\\s)*;?)");
@@ -260,6 +266,20 @@ public final class DebugConfig {
         (long) 20 * 1024 * 1024);
 
     public static final boolean imapForceSpecialUse = value("imap_force_special_use", true);
+
+    /*
+     * Use multiple threads to cut down time to calculate counts of objects for domain admin
+     * where there are a large number of domains.
+     * Negative value disables.
+     */
+    public static final int minimumDomainsToUseThreadsForDomainAdminCountObjects =
+            value ("debug_minimum_domains_to_use_threads_for_domain_admin_count_objects", 100);
+
+    /* If "debug_minimum_domains_to_use_threads_for_domain_admin_count_objects" is in effect,
+     * this determines how many threads will be used to perform LDAP queries
+     */
+    public static final int numberOfThreadsToUseForDomainAdminCountObjects =
+            value ("debug_number_of_threads_to_use_for_domain_admin_count_objects", 3);
 
     private static boolean value(String key, boolean defaultValue) {
         String value = LC.get(key);

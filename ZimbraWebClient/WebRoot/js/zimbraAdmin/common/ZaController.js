@@ -145,8 +145,8 @@ function(msg, ex, style)  {
 	if(ex != null) {
 		if(ex.msg) {
 			detailStr += ZaMsg.ERROR_MESSAGE + "  ";
-		    detailStr += ex.msg;
-		    detailStr += "\n";			    
+			detailStr += AjxStringUtil.htmlEncode(ex.msg);
+		    detailStr += "\n";
 		}
 		if(ex.code) {
 			detailStr += ZaMsg.ERROR_CODE + "  ";
@@ -184,6 +184,7 @@ function(msg, ex, style)  {
     }
 
 	if (this._errorDialog) {
+		msg = AjxStringUtil.htmlEncode(msg);
         this._errorDialog.setMessage(msg, detailStr, style, ZabMsg.zimbraAdminTitle);
 
 	
@@ -1020,7 +1021,7 @@ ZaController.prototype._showAccountsView = function (defaultType, ev, filterQuer
 	}	
 	
 	if(ZaApp.getInstance().getCurrentController()) {
-		ZaApp.getInstance().getCurrentController().switchToNextView(acctListController, ZaAccountListController.prototype.show,true);
+		ZaApp.getInstance().getCurrentController().switchToNextView(acctListController, ZaAccountListController.prototype.show, [true, ev.refresh]);
 	} else {					
 		acctListController.show(true);
 	}

@@ -38,8 +38,8 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Objects;
+import org.apache.commons.codec.binary.Hex;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -768,20 +768,29 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return mimeTypes;
     }
 
-    private Account getAccountByQuery(String base, ZLdapFilter filter, ZLdapContext initZlc,
-            boolean loadFromMaster)
+    private ZSearchResultEntry getSearchResultForAccountByQuery(String base, ZLdapFilter filter, ZLdapContext initZlc,
+            boolean loadFromMaster, String[] returnAttrs)
     throws ServiceException {
         try {
-            ZSearchResultEntry sr = helper.searchForEntry(base, filter, initZlc, loadFromMaster);
-            if (sr != null) {
-                return makeAccount(sr.getDN(), sr.getAttributes());
-            }
+            ZSearchResultEntry sr = helper.searchForEntry(base, filter, initZlc, loadFromMaster, returnAttrs);
+            return sr;
         } catch (LdapMultipleEntriesMatchedException e) {
             // duped entries are not in the exception, log it
             ZimbraLog.account.debug(e.getMessage());
             throw AccountServiceException.MULTIPLE_ACCOUNTS_MATCHED(
                     String.format("multiple entries are returned by query: base=%s, query=%s",
                     e.getQueryBase(), e.getQuery()));
+        }
+    }
+
+    private Account getAccountByQuery(String base, ZLdapFilter filter, ZLdapContext initZlc,
+            boolean loadFromMaster)
+    throws ServiceException {
+        try {
+            ZSearchResultEntry sr = getSearchResultForAccountByQuery(base, filter, initZlc, loadFromMaster, null);
+            if (sr != null) {
+                return makeAccount(sr.getDN(), sr.getAttributes());
+            }
         } catch (ServiceException e) {
             throw ServiceException.FAILURE("unable to lookup account via query: " +
                     filter.toFilterString() + " message: "+e.getMessage(), e);
@@ -806,6 +815,38 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
             accountCache.put(a);
         }
         return a;
+    }
+
+    public String getDNforAccount(Account acct, ZLdapContext zlc, boolean loadFromMaster) {
+        if (acct == null) {
+            return null;
+        }
+        if (acct instanceof LdapAccount) {
+            return ((LdapAccount) acct).getDN();
+        }
+        return getDNforAccountById(acct.getId(), zlc, loadFromMaster);
+    }
+
+    public String getDNforAccountById(String zimbraId, ZLdapContext zlc, boolean loadFromMaster) {
+        if (zimbraId == null) {
+            return null;
+        }
+        ZLdapFilter filter = filterFactory.accountById(zimbraId);
+        try {
+            String [] retAttrs = new String[] {Provisioning.A_zimbraId};  /* Just 1 attr to save bandwidth */
+            ZSearchResultEntry sr;
+            sr = getSearchResultForAccountByQuery(mDIT.mailBranchBaseDN(), filter, zlc, loadFromMaster, retAttrs);
+            // search again under the admin base if not found and admin base is not under mail base
+            if (sr == null && !mDIT.isUnder(mDIT.mailBranchBaseDN(), mDIT.adminBaseDN())) {
+                sr = getSearchResultForAccountByQuery(mDIT.adminBaseDN(), filter, zlc, loadFromMaster, retAttrs);
+            }
+            if (sr != null) {
+                return sr.getDN();
+            }
+        } catch (ServiceException e) {
+            ZimbraLog.search.debug("unable to lookup DN for account via query: %s", filter.toFilterString(), e);
+        }
+        return null;
     }
 
     @Override
@@ -1576,7 +1617,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return searchDirectoryInternal(options, null);
     }
 
-    private String[] getSearchBases(Domain domain, Set<ObjectType> types)
+    public String[] getSearchBases(Domain domain, Set<ObjectType> types)
     throws ServiceException {
         String[] bases;
 
@@ -1766,7 +1807,6 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
 
         return searchObjects(bases, filter, returnAttrs, options, visitor);
     }
-
 
     private static String getObjectClassQuery(int flags) {
         boolean accounts = (flags & Provisioning.SD_ACCOUNT_FLAG) != 0;
@@ -2013,6 +2053,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
                     returnAttrs, opts.getMaxResults(), null, ZSearchScope.SEARCH_SCOPE_SUBTREE,
                     searchObjectsVisitor);
             searchObjectsOptions.setUseControl(opts.isUseControl());
+            searchObjectsOptions.setManageDSAit(opts.isManageDSAit());
             zlc.searchPaged(searchObjectsOptions);
         } catch (LdapSizeLimitExceededException e) {
             throw AccountServiceException.TOO_MANY_SEARCH_RESULTS("too many search results returned", e);
@@ -2645,21 +2686,38 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return getDomainByIdInternal(zimbraId, zlc, GetFromDomainCacheOption.POSITIVE);
     }
 
-    private Domain getDomainByIdInternal(String zimbraId, ZLdapContext zlc,
-            GetFromDomainCacheOption option)
+    private Domain getDomainByIdInternal(String zimbraId, ZLdapContext zlc, GetFromDomainCacheOption option)
     throws ServiceException {
-        if (zimbraId == null)
+        if (zimbraId == null) {
             return null;
+        }
 
         Domain d = domainCache.getById(zimbraId, option);
-        if (d instanceof DomainCache.NonExistingDomain)
+        if (d instanceof DomainCache.NonExistingDomain) {
             return null;
+        }
 
         LdapDomain domain = (LdapDomain)d;
         if (domain == null) {
             domain = getDomainByQuery(filterFactory.domainById(zimbraId), zlc);
             domainCache.put(Key.DomainBy.id, zimbraId, domain);
         }
+        return domain;
+    }
+
+    /**
+     * @return The Domain from the cache, if present.
+     * @throws ServiceException
+     */
+    private Domain getDomainByIdFromCache(String zimbraId, ZLdapContext zlc, GetFromDomainCacheOption option) {
+        if (zimbraId == null) {
+            return null;
+        }
+        Domain d = domainCache.getById(zimbraId, option);
+        if (d instanceof DomainCache.NonExistingDomain) {
+            return null;
+        }
+        LdapDomain domain = (LdapDomain)d;
         return domain;
     }
 
@@ -2734,20 +2792,74 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return domain;
     }
 
+    private static final String [] ZIMBRA_ID_ATTR = { Provisioning.A_zimbraId };
+    private static final Set<ObjectType> DOMAINS_OBJECT_TYPE = Sets.newHashSet(ObjectType.domains);
+
     @Override
     public List<Domain> getAllDomains() throws ServiceException {
         final List<Domain> result = new ArrayList<Domain>();
-
-        NamedEntry.Visitor visitor = new NamedEntry.Visitor() {
-            @Override
-            public void visit(NamedEntry entry) {
-                result.add((LdapDomain)entry);
+        AllDomainIdsCollector collector = new AllDomainIdsCollector();
+        BySearchResultEntrySearcher searcher = new BySearchResultEntrySearcher(this, null, (Domain) null,
+                ZIMBRA_ID_ATTR, collector);
+        searcher.doSearch(filterFactory.allDomains(), DOMAINS_OBJECT_TYPE);
+        List<String> cacheMisses = Lists.newArrayList();
+        for (String zimbraId : collector.domains) {
+            Domain cachedDom = getDomainByIdFromCache(zimbraId, null, GetFromDomainCacheOption.POSITIVE);
+            if (cachedDom == null) {
+                cacheMisses.add(zimbraId);
+            } else {
+                result.add(cachedDom);
             }
-        };
-
-        getAllDomains(visitor, null);
-        Collections.sort(result);
+        }
+        if (!cacheMisses.isEmpty()) {
+            boolean cacheDomains = (LC.ldap_cache_domain_maxsize.intValue() >= collector.domains.size());
+            if (!cacheDomains) {
+                ZimbraLog.search.info(
+                        "localconfig ldap_cache_domain_maxsize=%d < number of domains=%d.  Consider increasing it.",
+                        LC.ldap_cache_domain_maxsize.intValue(), collector.domains.size());
+            }
+            getDomainsByIds(new DomainsByIdsVisitor(result, cacheDomains), cacheMisses, null);
+        }
         return result;
+    }
+
+    private static class AllDomainIdsCollector implements BySearchResultEntrySearcher.SearchEntryProcessor {
+        public final List<String> domains = Lists.newArrayList();
+
+        @Override
+        public void processSearchEntry(ZSearchResultEntry sr) {
+            ZAttributes attrs = sr.getAttributes();
+            try {
+                domains.add(attrs.getAttrString(Provisioning.A_zimbraId));
+            } catch (ServiceException e) {
+                ZimbraLog.search.debug("Problem processing search result entry - ignoring", e);
+                return;
+            }
+        }
+    }
+
+    private class DomainsByIdsVisitor implements NamedEntry.Visitor {
+        private final List<Domain> result;
+        private final boolean cacheResults;
+        private DomainsByIdsVisitor(List<Domain> result, boolean cacheResults) {
+            this.result = result;
+            this.cacheResults = cacheResults;
+        }
+        @Override
+        public void visit(NamedEntry entry) {
+            result.add((LdapDomain)entry);
+            if (cacheResults) {
+                domainCache.put(Key.DomainBy.id, entry.getId(), (Domain)entry);
+            }
+        }
+    };
+
+    public void getDomainsByIds(NamedEntry.Visitor visitor, Collection<String> domains, String[] retAttrs)
+    throws ServiceException {
+        SearchDirectoryOptions opts = new SearchDirectoryOptions(retAttrs);
+        opts.setFilter(filterFactory.domainsByIds(domains));
+        opts.setTypes(ObjectType.domains);
+        searchDirectoryInternal(opts, visitor);
     }
 
     @Override
@@ -4497,24 +4609,6 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         }
     }
 
-    private GroupMembership computeUpwardMembership(Entry entry) throws ServiceException {
-        Map<String, String> via = new HashMap<String, String>();
-        List<DistributionList> lists = getContainingDistributionLists(entry, false, via);
-        return computeUpwardMembership(lists);
-    }
-
-    private GroupMembership computeUpwardMembership(List<DistributionList> lists) {
-        List<MemberOf> groups = new ArrayList<MemberOf>();
-        List<String> groupIds = new ArrayList<String>();
-
-        for (DistributionList dl : lists) {
-            groups.add(new MemberOf(dl.getId(), dl.isIsAdminGroup(), false));
-            groupIds.add(dl.getId());
-        }
-
-        return new GroupMembership(groups, groupIds);
-    }
-
     // filter out non-admin groups from an AclGroups instance
     private GroupMembership getAdminAclGroups(GroupMembership aclGroups) {
         List<MemberOf> groups = new ArrayList<MemberOf>();
@@ -4535,18 +4629,10 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
     }
 
     /**
-     * This is an expensive operation.  Avoid if possible.
      * @return distribution lists and both custom and normal dynamic groups the account is a member of
      */
     @Override
     public GroupMembership getGroupMembership(Account acct, boolean adminGroupsOnly)
-    throws ServiceException {
-        GroupMembership groups = getNonCustomGroupMembership(acct, adminGroupsOnly);
-        GroupMembership customUrlDefinedGroups = getCustomDynamicGroupMembership(acct, adminGroupsOnly);
-        return groups.mergeFrom(customUrlDefinedGroups);
-    }
-
-    private GroupMembership getNonCustomGroupMembership(Account acct, boolean adminGroupsOnly)
     throws ServiceException {
         EntryCacheDataKey cacheKey = adminGroupsOnly ?
                 EntryCacheDataKey.GROUPEDENTRY_MEMBERSHIP_ADMINS_ONLY :
@@ -4557,6 +4643,16 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
             cacheableGroups = setupGroupedEntryCacheData(acct, adminGroupsOnly);
         }
         return cacheableGroups.clone();
+    }
+
+    /**
+     * Note this is over-ridden in CustomLdapProvisioning to always return an empty list
+     */
+    public GroupMembership getCustomDynamicGroupMembership(Account acct, boolean adminGroupsOnly)
+    throws ServiceException {
+        GroupMembership groups = new GroupMembership();
+        return LdapDynamicGroup.updateGroupMembershipForCustomDynamicGroups(this,
+            groups, acct, (Domain) null, adminGroupsOnly);
     }
 
     /**
@@ -4571,61 +4667,18 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         if (groupsWithRights.size() == 0) {
             return new GroupMembership();
         }
-        GroupMembership nonCustomMembership = getNonCustomGroupMembership(acct, adminGroupsOnly);
-        GroupMembership membership = getGroupMembership(acct, groupsWithRights, nonCustomMembership, adminGroupsOnly);
-        return membership;
+        GroupMembership membership = getGroupMembership(acct, adminGroupsOnly);
+        return restrictMembershipByIds(membership, groupsWithRights);
     }
 
-    /**
-     *
-     * @param acct - the account to test for membership of the groups
-     * @param ids - IDs for the set of possible groups to return.
-     * @param nonCustomGroups - non custom groups this account is known to be a member of.
-     * @return Groups which {@code acct} is a member of from {@code ids}
-     *         Empty if there are no groups
-     *         Applies to both custom and normal dynamic groups
-     */
-    private GroupMembership getGroupMembership(Account acct, Collection<String> ids,
-            GroupMembership nonCustomGroups, boolean adminGroupsOnly)
-    throws ServiceException {
+    private GroupMembership restrictMembershipByIds(GroupMembership groups, Collection<String> ids) {
         GroupMembership membership = new GroupMembership();
         if (ids.size() == 0) {
             return membership;
         }
-        List<String> searchIds = Lists.newArrayList(ids);
-        Iterator<String> iter = searchIds.iterator();
-        while (iter.hasNext()) {
-            String id = iter.next();
-            MemberOf memberOf = nonCustomGroups.getMemberOfForId(id);
-            if (memberOf != null) {
-                if (!adminGroupsOnly || (adminGroupsOnly && memberOf.isAdminGroup())) {
-                    membership.append(memberOf, id);
-                }
-                iter.remove();  // Processed this id - don't need to search for it again
-            }
-        }
-        if (searchIds.size() == 0) {
-            return membership;
-        }
-        SearchDirectoryOptions searchOpts = new SearchDirectoryOptions((String[])null);
-        searchOpts.setFilter(ZLdapFilterFactory.getInstance().dynamicGroupByIds(
-                searchIds.toArray(new String[searchIds.size()])));
-        searchOpts.setTypes(ObjectType.dynamicgroups);
-        List<NamedEntry> namedEntries = (List<NamedEntry>) searchDirectoryInternal(searchOpts);
-        if (namedEntries != null) {
-            for (NamedEntry ne : namedEntries) {
-                if (ne instanceof DynamicGroup) {
-                    DynamicGroup dGrp = (DynamicGroup) ne;
-                    if (adminGroupsOnly && !dGrp.isIsAdminGroup()) {
-                        continue;
-                    }
-                    for (String member : dGrp.getAllMembers(true)) {
-                        if (member.equals(acct.getName())) {
-                            membership.append(new MemberOf(dGrp.getId(), dGrp.isIsAdminGroup(), true), dGrp.getId());
-                            break;
-                        }
-                    }
-                }
+        for (MemberOf memberOf : groups.memberOf()) {
+            if (ids.contains(memberOf.getId())) {
+                membership.append(memberOf, memberOf.getId());
             }
         }
         return membership;
@@ -4704,26 +4757,24 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return Collections.unmodifiableSet(visitor.results);
     }
 
-    @VisibleForTesting
-    public GroupMembership getCustomDynamicGroupMembership(Account acct, boolean adminGroupsOnly)
-            throws ServiceException {
-        return CustomDynamicGroupMembershipCache.getInstance(this).get(acct, adminGroupsOnly);
-    }
-
     private GroupMembership setupGroupedEntryCacheData(Account acct, boolean adminGroupsOnly)
     throws ServiceException {
         //
         // static groups
         //
-        GroupMembership groups = computeUpwardMembership(acct);
+        GroupMembership groups = new GroupMembership();
+        DistributionList.updateGroupMembership(this, (ZLdapContext) null, groups, acct, null /* via */,
+                false /* adminGroupsOnly */, false /* directOnly */);
+        //
+        // append non-custom dynamic groups
+        //
+        Set<String>allGroupIDs = getAllContainingDynamicGroupIDs(acct);
+        groups = LdapDynamicGroup.updateGroupMembershipForDynamicGroups(this, groups, acct, allGroupIDs,
+            false /* adminGroupsOnly - false because need them all for the cache */,
+            false /* customGroupsOnly */, true /* nonCustomGroupsOnly */);
 
-        //
-        // append dynamic groups
-        //
-        List<DynamicGroup> dynGroups = getContainingDynamicGroups(acct);
-        for (DynamicGroup dynGroup : dynGroups) {
-            groups.append(new MemberOf(dynGroup.getId(), dynGroup.isIsAdminGroup(), true), dynGroup.getId());
-        }
+        GroupMembership customMembership = getCustomDynamicGroupMembership(acct, false /* need them all for cache */);
+        groups.mergeFrom(customMembership);
 
         // cache it
         acct.setCachedData(EntryCacheDataKey.GROUPEDENTRY_MEMBERSHIP, groups);
@@ -4733,7 +4784,6 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
             groups = getAdminAclGroups(groups);
             acct.setCachedData(EntryCacheDataKey.GROUPEDENTRY_MEMBERSHIP_ADMINS_ONLY, groups);
         }
-
         return groups;
     }
 
@@ -4750,7 +4800,9 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
             return groups;
         }
 
-        groups = computeUpwardMembership(dl);
+        groups = new GroupMembership();
+        DistributionList.updateGroupMembership(this, (ZLdapContext) null, groups, dl, null /* via */,
+                false /* adminGroupsOnly */, false /* directOnly */);
 
         dl.setCachedData(EntryCacheDataKey.GROUPEDENTRY_MEMBERSHIP, groups);
 
@@ -6044,6 +6096,10 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return dl;
     }
 
+    /**
+     * Note - can be a bit expensive (because of loading the units) if called for a lot of groups.  Some
+     * LDAP search code uses this to return NamedEntry hits which happen to be Dynamic groups.
+     */
     private DynamicGroup makeDynamicGroup(ZLdapContext initZlc, String dn, ZAttributes attrs)
     throws ServiceException {
         String emailAddress = mDIT.dnToEmail(dn, mDIT.dynamicGroupNamingRdnAttr(), attrs);
@@ -6052,8 +6108,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
 
         if (!group.isMembershipDefinedByCustomURL()) {
             // load dynamic unit
-            String dynamicUnitDN = mDIT.dynamicGroupUnitNameToDN(
-                    DYNAMIC_GROUP_DYNAMIC_UNIT_NAME, dn);
+            String dynamicUnitDN = mDIT.dynamicGroupUnitNameToDN(DYNAMIC_GROUP_DYNAMIC_UNIT_NAME, dn);
             ZAttributes dynamicUnitAttrs = helper.getAttributes(
                     initZlc, LdapServerType.REPLICA, LdapUsage.GET_GROUP_UNIT, dynamicUnitDN, null);
 
@@ -6061,8 +6116,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
                     dynamicUnitDN, DYNAMIC_GROUP_DYNAMIC_UNIT_NAME, dynamicUnitAttrs, this);
 
             // load static unit
-            String staticUnitDN = mDIT.dynamicGroupUnitNameToDN(
-                    DYNAMIC_GROUP_STATIC_UNIT_NAME, dn);
+            String staticUnitDN = mDIT.dynamicGroupUnitNameToDN(DYNAMIC_GROUP_STATIC_UNIT_NAME, dn);
             ZAttributes staticUnitAttrs = helper.getAttributes(
                     initZlc, LdapServerType.REPLICA, LdapUsage.GET_GROUP_UNIT, staticUnitDN, null);
 
@@ -6182,6 +6236,21 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return (List<DistributionList>) searchDirectoryInternal(searchOpts);
     }
 
+    /**
+     * -  Get list of ids from EntryCacheDataKey.GROUPEDENTRY_DIRECT_GROUPIDS for "entry"
+     *    -  Entry not cached:
+     *       -  Get all addresses of this entry that can be identified as a member in a static group.
+     *       -  Get direct groups for those addresses using filterFactory.distributionListsByMemberAddrs
+     *          i.e. using an OR filter on Provisioning.A_zimbraMailForwardingAddress
+     *       -  See if prov's Group Cache has this group already.  If so, use that! otherwise add it
+     *       -  Put list of ids to EntryCacheDataKey.GROUPEDENTRY_DIRECT_GROUPIDS for "entry"
+     *    -  Entry is cached:
+     *       -  Get all the direct groups.  If any have been deleted, update the cache to reflect that
+     * @param prov
+     * @param entry
+     * @return
+     * @throws ServiceException
+     */
     private List<DistributionList> getAllDirectDLs(LdapProvisioning prov, Entry entry)
     throws ServiceException {
         if (!(entry instanceof GroupedEntry)) {
@@ -6976,7 +7045,6 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         acct.setCachedData(EntryCacheDataKey.GROUPEDENTRY_MEMBERSHIP, null);
         acct.setCachedData(EntryCacheDataKey.GROUPEDENTRY_MEMBERSHIP_ADMINS_ONLY, null);
         acct.setCachedData(EntryCacheDataKey.GROUPEDENTRY_DIRECT_GROUPIDS.getKeyName(), null);
-        CustomDynamicGroupMembershipCache.getInstance(this).clearCache();
     }
 
     private class AddrsOfEntry {
@@ -7903,6 +7971,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         if (password != null) {
             attrs.put(A_zimbraDataSourcePassword, DataSource.encryptData(ds.getId(), password));
         }
+
 
         modifyAttrs(ds, attrs, true);
         if (newName) {
@@ -8962,164 +9031,6 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         return groups;
     }
 
-    /**
-     * Computing which dynamic groups with custom memberURL we are a member of is an expensive
-     * operation involving searching for all dynamic groups and then scanning their member lists
-     *
-     * An alternative approach that was considered was to construct an LDAP query to only return
-     * dynamic groups which contain a particular member, but currently this isn't possible.
-     * Although membership info is included in entries returned from a search, that is filled in by
-     * the "dynlist overlay" (see man 5 slapo-dynlist) AFTER the query.
-     *
-     * This class caches the inverse relationship - i.e. members to lists.
-     *
-     * As the same search query would be used for all accounts that need this information, it saves
-     * on the number of LDAP queries if we can gather the info for several of them at the same time.
-     */
-    private static class CustomDynamicGroupMembershipCache {
-
-        public static class CustomGroupMembership {
-            public List<String> groupIds = Lists.newArrayList();    // list of group ids
-            public GroupMembership addTo(GroupMembership membership, boolean isAdminGroup) {
-                for (String id : groupIds) {
-                    membership.append(new MemberOf(id, isAdminGroup, true), id);
-                }
-                return membership;
-            }
-
-            @Override
-            public String toString() {
-                return Objects.toStringHelper(this).add("groupIds", groupIds) .toString();
-            }
-        }
-
-        private static volatile CustomDynamicGroupMembershipCache instance = null;
-        private Map<String, CustomGroupMembership> adminGroupCache = null;
-        private Map<String, CustomGroupMembership> nonAdminGroupCache = null;
-        Long updateTime = -1L;
-        LdapProvisioning prov;
-
-        private CustomDynamicGroupMembershipCache(LdapProvisioning prov) {
-            this.prov = prov;
-        }
-
-        public static CustomDynamicGroupMembershipCache getInstance(LdapProvisioning prov) {
-            if (instance == null) {
-                synchronized (CustomDynamicGroupMembershipCache.class) {
-                    if (instance == null) {
-                        instance = new CustomDynamicGroupMembershipCache(prov);
-                    }
-                }
-            }
-            return instance;
-        }
-
-        public synchronized void clearCache() {
-            updateTime = -1L;
-            adminGroupCache = null;
-            nonAdminGroupCache = null;
-        }
-
-        public synchronized GroupMembership get(Account acct, boolean adminGroupsOnly)
-        throws ServiceException {
-            long now = System.currentTimeMillis();
-            if ((updateTime == -1L) || (now > updateTime +
-                    LC.ldap_cache_custom_dynamic_group_membership_maxage_ms.intValue())) {
-                populateCustomDynamicGroupCache();
-            }
-            CustomGroupMembership cgAdmin = adminGroupCache.get(acct.getName());
-            GroupMembership membership = new GroupMembership();
-            if (cgAdmin != null) {
-                cgAdmin.addTo(membership, true);
-            }
-            if (!adminGroupsOnly) {
-                CustomGroupMembership cgNonAdmin = nonAdminGroupCache.get(acct.getName());
-                if (cgNonAdmin != null) {
-                    cgNonAdmin.addTo(membership, false);
-                }
-            }
-            return membership;
-        }
-
-        private void populateCustomDynamicGroupCache()
-        throws ServiceException {
-            adminGroupCache = Maps.newHashMap();
-            nonAdminGroupCache = Maps.newHashMap();
-            for (Domain domain : prov.getAllDomains()) {
-                updateCacheForDomain(domain);
-            }
-            updateTime = System.currentTimeMillis();
-        }
-
-        private void updateCacheForDomain(Domain domain)
-        throws ServiceException {
-            List<DynamicGroup> groups;
-            try {
-                groups = getCustomGroups(domain);
-            } catch (ServiceException se) {
-                if (domain instanceof LdapDomain) {
-                    LdapDomain ldapDomain = (LdapDomain) domain;
-                    ZimbraLog.account.warn("Problem populating custom groups cache for domain %s (dn=%s) - ignoring",
-                            ldapDomain.getName(), ldapDomain.getDN(), se);
-                } else {
-                    ZimbraLog.account.warn(
-                            "Problem populating custom groups cache for non-LDAP domain %s (class=%s)- ignoring",
-                            domain.getName(), domain.getClass().getName(), se);
-                }
-                return;
-            }
-            for (DynamicGroup grp : groups) {
-                updateCacheForGroup(grp);
-            }
-        }
-
-        private void updateCacheForGroup(DynamicGroup grp)
-        throws ServiceException {
-            String[] allMembers = grp.getAllMembers(true);
-            CustomGroupMembership membership;
-            for (String member : allMembers) {
-                if (grp.isIsAdminGroup()) {
-                    membership = adminGroupCache.get(member);
-                    if (membership == null) {
-                        membership = new CustomGroupMembership();
-                        adminGroupCache.put(member, membership);
-                    }
-                } else {
-                    membership = nonAdminGroupCache.get(member);
-                    if (membership == null) {
-                        membership = new CustomGroupMembership();
-                        nonAdminGroupCache.put(member, membership);
-                    }
-                }
-                membership.groupIds.add(grp.getId());
-            }
-        }
-
-        /**
-         * @return list of all dynamic groups in a given domain whose membership is defined by a custom URL.
-         *         Empty if there are no groups
-         */
-        private List<DynamicGroup> getCustomGroups(Domain domain) throws ServiceException {
-            SearchDirectoryOptions searchOpts = new SearchDirectoryOptions(domain);
-            searchOpts.setFilter(ZLdapFilterFactory.getInstance().allDynamicGroups());
-            searchOpts.setTypes(ObjectType.dynamicgroups);
-            searchOpts.setSortOpt(SortOpt.SORT_ASCENDING);
-            List<NamedEntry> namedEntries = (List<NamedEntry>) prov.searchDirectoryInternal(searchOpts);
-            List<DynamicGroup> groups = Lists.newArrayList();
-            if (namedEntries != null) {
-                for (NamedEntry ne : namedEntries) {
-                    if (ne instanceof DynamicGroup) {
-                        DynamicGroup dynGroup = (DynamicGroup) ne;
-                        if (dynGroup.isMembershipDefinedByCustomURL()) {
-                            groups.add(dynGroup);
-                        }
-                    }
-                }
-            }
-            return Collections.unmodifiableList(groups);
-        }
-    }
-
     @Override
     public void addGroupMembers(Group group, String[] members) throws ServiceException {
         if (group.isDynamic()) {
@@ -9183,15 +9094,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
     @Override
     public boolean inACLGroup(Account acct, String zimbraId) throws ServiceException {
         // This will include expanded membership for non-custom groups and distribution lists
-        GroupMembership nonCustomMembership = getNonCustomGroupMembership(acct, false);
-        if (nonCustomMembership.groupIds().contains(zimbraId)) {
-            return true;
-        }
-        // dynamic groups can't contain other groups, so just need to see if we are a member
-        // of a dynamic group with that id.
-        List<String> ids = Lists.newArrayListWithExpectedSize(1);
-        ids.add(zimbraId);
-        GroupMembership membership = getGroupMembership(acct, ids, new GroupMembership(), false);
+        GroupMembership membership = getGroupMembership(acct, false);
         return (membership.groupIds().contains(zimbraId));
     }
 
@@ -10092,16 +9995,7 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
     private List<DynamicGroup> getContainingDynamicGroups(Account acct) throws ServiceException {
         List<DynamicGroup> groups = new ArrayList<DynamicGroup>();
 
-        Set<String> memberOf;
-
-        if (acct instanceof GuestAccount) {
-            memberOf = searchContainingDynamicGroupIdsForExternalAddress(acct.getName(), null);
-        } else if (acct.isIsExternalVirtualAccount()) {
-            memberOf = searchContainingDynamicGroupIdsForExternalAddress(acct.getExternalUserMailAddress(), null);
-        } else {
-            memberOf = acct.getMultiAttrSet(Provisioning.A_zimbraMemberOf);
-        }
-
+        Set<String> memberOf = getAllContainingDynamicGroupIDs(acct);
         for (String groupId : memberOf) {
             DynamicGroup dynGroup = getDynamicGroupBasic(Key.DistributionListBy.id, groupId, null);
             if (dynGroup != null && !dynGroup.isMembershipDefinedByCustomURL()) {
@@ -10110,6 +10004,21 @@ public class LdapProvisioning extends LdapProv implements CacheAwareProvisioning
         }
 
         return groups;
+    }
+
+    /**
+     * @return the IDs of all dynamic groups (including those defined by Custom URL)
+     */
+    private Set<String> getAllContainingDynamicGroupIDs(Account acct) throws ServiceException {
+        Set<String> memberOf;
+        if (acct instanceof GuestAccount) {
+            memberOf = searchContainingDynamicGroupIdsForExternalAddress(acct.getName(), null);
+        } else if (acct.isIsExternalVirtualAccount()) {
+            memberOf = searchContainingDynamicGroupIdsForExternalAddress(acct.getExternalUserMailAddress(), null);
+        } else {
+            memberOf = acct.getMultiAttrSet(Provisioning.A_zimbraMemberOf);
+        }
+        return memberOf;
     }
 
     /*

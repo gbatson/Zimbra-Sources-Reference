@@ -200,15 +200,12 @@ function(editor) {
     var currentObj = this,
         bodyField;
 
-    if (currentObj._mode === Dwt.HTML) {
+   if (currentObj._mode === Dwt.HTML) {
         editor = editor || currentObj.getEditor();
         if (currentObj._editorInitialized && editor) {
             editor.focus();
             currentObj.setFocusStatus(true);
             editor.getWin().scrollTo(0,0);
-        }
-        else {
-            currentObj._initCallbacks.push(currentObj.focus.bind(currentObj, editor));
         }
     }
     else {
@@ -457,20 +454,25 @@ function() {
 ZmHtmlEditor.prototype.clear =
 function() {
 	var editor = this.getEditor();
-	if (editor) {
-		if (this._editorInitialized) {
-			editor.undoManager && editor.undoManager.clear();
-			this.clearDirty();
-		}
-		var field = this.getContentField();
-		if(field) {
-			var textEl = field.cloneNode(false);
-			field.parentNode.replaceChild(textEl, field);//To clear undo/redo queue of textarea
-			//cloning and replacing node will remove event handlers and hence adding it once again
-			Dwt.setHandler(textEl, DwtEvent.ONFOCUS, this.setFocusStatus.bind(this, true, true));
-			Dwt.setHandler(textEl, DwtEvent.ONBLUR, this.setFocusStatus.bind(this, false, true));
-		}
+	if (editor && this._editorInitialized) {
+		editor.undoManager && editor.undoManager.clear();
+		this.clearDirty();
 	}
+	var textField = this.getContentField();
+	if (!textField) {
+		return;
+	}
+
+	//If HTML editor is not initialized and the current mode is HTML, then HTML editor is currently getting initialized. Text area should not be replaced at this time, as this will make the TinyMCE JavaScript reference empty for the text area.
+	if (!this.isHtmlModeInited() && this.getMode() === Dwt.HTML) {
+		return;
+	}
+	var textEl = textField.cloneNode(false);
+	textField.parentNode.replaceChild(textEl, textField);//To clear undo/redo queue of textarea
+	//cloning and replacing node will remove event handlers and hence adding it once again
+	Dwt.setHandler(textEl, DwtEvent.ONFOCUS, this.setFocusStatus.bind(this, true, true));
+	Dwt.setHandler(textEl, DwtEvent.ONBLUR, this.setFocusStatus.bind(this, false, true));
+
 };
 
 ZmHtmlEditor.prototype.initTinyMCEEditor =
@@ -711,6 +713,7 @@ function(id, content) {
     var tinyMCEInitObj = {
         // General options
 		mode :  (this._mode == Dwt.HTML)? "exact" : "none",
+		auto_focus: true,
 		elements:  id,
         plugins : plugins.join(' '),
 		toolbar: toolbarbuttons.join(' '),
@@ -1964,7 +1967,9 @@ function(ev) {
 	var retVal = true;
 
 	var self = this;
-	if (this._spellCheck && ev.srcElement && ev.srcElement.id in this._spellCheck.spanIds) {
+
+	var target = ev.srcElement || ev.target; //in FF we get ev.target and not ev.srcElement.
+	if (this._spellCheck && target && target.id in this._spellCheck.spanIds) {
 		var dw;
 		// This probably sucks.
 		if (/mouse|context|click|select/i.test(ev.type)) {
@@ -2285,55 +2290,44 @@ function(ev) {
     dom.setStyle(dom.select("p", ev.node), "margin", "0");
 };
 
-ZmHtmlEditor.prototype.getTabGroupMember = function() {
+ZmHtmlEditor.prototype._getTabGroup = function() {
 	if (!this.__tabGroup) {
 		this.__tabGroup = new DwtTabGroup(this.toString());
 	}
-
 	return this.__tabGroup;
+};
+
+ZmHtmlEditor.prototype.getTabGroupMember = function() {
+	var tabGroup = this._getTabGroup();
+	this._setupTabGroup(tabGroup);
+
+	return tabGroup;
 };
 
 /**
  * Set up the editor tab group. This is done by having a separate tab group for each compose mode: one for HTML, one
- * for TEXT. The current one will be attached to the main tab group. We rebuild the tab group each time for TEXT, though it
- * shouldn't strictly be necessary. For some reason, it works better that way.
+ * for TEXT. The current one will be attached to the main tab group. We rebuild the tab group each time to avoid all kinds of issues
  *
  * @private
  */
-ZmHtmlEditor.prototype._setupTabGroup = function() {
+ZmHtmlEditor.prototype._setupTabGroup = function(mainTabGroup) {
 
-	var mode = this.getMode(),
-		mainTabGroup = this.getTabGroupMember();
+	var mode = this.getMode();
+	mainTabGroup = mainTabGroup || this._getTabGroup();
 
-	// Don't call replaceMember() repeatedly since it will duplicate the members
-	if (mode === this._curTabGroupMode) {
-		return;
-	}
-
+	mainTabGroup.removeAllMembers();
+	var modeTabGroup = new DwtTabGroup(this.toString() + '-' + mode);
 	if (mode === Dwt.HTML) {
 		// tab group for HTML has first toolbar button and IFRAME
-		var htmlTabGroup = this._htmlModeTabGroup;
-		if (!htmlTabGroup) {
-			htmlTabGroup = this._htmlModeTabGroup = new DwtTabGroup(this.toString() + '-' + mode);
-			var firstbutton = this.__getEditorControl('listbox', 'Font Family');
-			if (firstbutton) {
-				htmlTabGroup.addMember(firstbutton.getEl());
-			}
-			htmlTabGroup.addMember(this);
+		var firstbutton = this.__getEditorControl('listbox', 'Font Family');
+		if (firstbutton) {
+			modeTabGroup.addMember(firstbutton.getEl());
 		}
-		mainTabGroup.replaceMember(this._textModeTabGroup, this._htmlModeTabGroup);
+		modeTabGroup.addMember(this);
 	}
 	else {
 		// tab group for TEXT has the TEXTAREA
-		var textTabGroup = this._textModeTabGroup;
-		if (textTabGroup) {
-			textTabGroup.removeAllMembers();
-		}
-		else {
-			textTabGroup = this._textModeTabGroup = new DwtTabGroup(this.toString() + '-' + mode);
-		}
-		textTabGroup.addMember(this.getContentField());
-		mainTabGroup.replaceMember(this._htmlModeTabGroup, this._textModeTabGroup);
+		modeTabGroup.addMember(this.getContentField());
 	}
-	this._curTabGroupMode = mode;
+	mainTabGroup.addMember(modeTabGroup);
 };

@@ -2884,6 +2884,10 @@ function(ev) {
  */
 DwtControl.__clickHdlr =
 function(ev) {
+	var obj = DwtControl.getTargetControl(ev);
+	if (obj._clickPending) {
+		return;
+	}
 
 	try {
 
@@ -3440,6 +3444,9 @@ function(ev, eventType, obj, mouseEv) {
 	// the use of setEventPropagation(). A listener may also change the event props when called.
 	var tn = mouseEv.target.tagName && mouseEv.target.tagName.toLowerCase();
 	var propagate = obj._propagateEvent[eventType] || (tn === "input" || tn === "textarea" || tn === "a");
+	//todo - not sure if _stopPropagation and _dontCallPreventDefault should not the the SAME. Since if you stop propagation and dontCallPreventDefault,
+	//it DOES allow selection (or context menu, etc, any default browser stuff). But if you allow to propagate, this might be overriden by a DOM element
+	//higher up, which might not be what we want. Very confusing.
 	mouseEv._stopPropagation = !propagate;
 	mouseEv._dontCallPreventDefault = propagate;
 	mouseEv._returnValue = propagate;

@@ -509,10 +509,10 @@ function(params) {
         window.tinyMCE_GZ = {};
         window.tinyMCE_GZ.loaded = true;
 
-		var callback = new AjxCallback(this, this.initEditorManager, [id, params.content]);
+		var callback = this.initEditorManager.bind(this, id, params.autoFocus);
         AjxDispatcher.require(["TinyMCE"], true, callback);
 	} else {
-		this.initEditorManager(id, params.mode, params.content);
+		this.initEditorManager(id, params.autoFocus);
 	}
 };
 
@@ -531,7 +531,7 @@ function(ev) {
 	var ed = this.getEditor();
 	var retVal = true;
 
-    if (DwtKeyboardMgr.isPossibleInputShortcut(ev)) {
+    if (ev.keyCode === DwtKeyMapMgr.TAB_KEYCODE || DwtKeyboardMgr.isPossibleInputShortcut(ev)) {
         // pass to keyboard mgr for kb nav
         retVal = DwtKeyboardMgr.__keyDownHdlr(ev);
     }
@@ -640,7 +640,7 @@ function(hasFocus, isTextModeFocus) {
 };
 
 ZmHtmlEditor.prototype.initEditorManager =
-function(id, content) {
+function(id, autoFocus) {
 
 	var obj = this;
 
@@ -710,10 +710,14 @@ function(id, content) {
 		}
 	}
 
+	if (!autoFocus) {
+		// if !true, Set to false in case undefined
+		autoFocus = false;
+	}
     var tinyMCEInitObj = {
         // General options
 		mode :  (this._mode == Dwt.HTML)? "exact" : "none",
-		auto_focus: true,
+		auto_focus: autoFocus,
 		elements:  id,
         plugins : plugins.join(' '),
 		toolbar: toolbarbuttons.join(' '),
@@ -839,7 +843,7 @@ ZmHtmlEditor.prototype.onInit = function(ev) {
     obj.setFocusStatus(false);
 
     tinymceEvent.bind(win, 'focus', function(e) {
-        appCtxt.getKeyboardMgr().inputGotFocus(obj);
+		appCtxt.getKeyboardMgr().grabFocus(obj._getIframeDoc().body);
         obj.setFocusStatus(true);
     });
     tinymceEvent.bind(win, 'blur', function(e) {
@@ -1092,6 +1096,24 @@ function() {
 
 ZmHtmlEditor.prototype.insertImage =
 function(src, dontExecCommand, width, height, dfsrc) {
+	// We can have a situation where:
+	//   Paste plugin does a createPasteBin, creating a marker element that it uses
+	//   We upload a pasted image.
+	//   The upload completes, and we do a SaveDraft. It calls insertImage.
+	//   A timeout function from the plugin executes before or after insertImage, and calls removePasteBin.
+	//
+	//   InsertImage executes. If the pasteBin has not been removed when we try to insert the image, it interferes with
+	//   tinyMCE insertion.  No image is inserted in the editor body, and we end up with an attachment
+	//    bubble instead.
+	var  pasteBinClone;
+	var ed = this.getEditor();
+
+	// *** Begin code copied from Paste Plugin Clipboard.js, removePasteBin
+	while ((pasteBinClone = ed.dom.get('mcepastebin'))) {
+		ed.dom.remove(pasteBinClone);
+		ed.dom.unbind(pasteBinClone);
+	}
+	// *** End copied code from removePasteBin
 
 	var html = [];
 	var idx= 0 ;
@@ -1114,7 +1136,6 @@ function(src, dontExecCommand, width, height, dfsrc) {
 	}
 	html[idx++] = ">";
 
-	var ed = this.getEditor();
 
     ed.focus();
 
@@ -2323,7 +2344,10 @@ ZmHtmlEditor.prototype._setupTabGroup = function(mainTabGroup) {
 		if (firstbutton) {
 			modeTabGroup.addMember(firstbutton.getEl());
 		}
-		modeTabGroup.addMember(this);
+		var iframe = this._getIframeDoc();
+		if (iframe) { //iframe not avail first time this is called. But it's fixed subsequently
+			modeTabGroup.addMember(iframe.body);
+		}
 	}
 	else {
 		// tab group for TEXT has the TEXTAREA

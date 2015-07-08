@@ -242,9 +242,10 @@ public class DbMailItem {
         }
     }
 
-    public static void copy(MailItem item, int id, String uuid, Folder folder, int indexId, int parentId, String locator, String metadata, boolean fromDumpster)
+    public static String copy(MailItem item, int id, String uuid, Folder folder, int indexId, int parentId, String locator, String metadata, boolean fromDumpster)
     throws ServiceException {
         Mailbox mbox = item.getMailbox();
+        String prevFolders = null;
         if (id <= 0 || folder == null || parentId == 0) {
             throw ServiceException.FAILURE("invalid data for DB item copy", null);
         }
@@ -274,7 +275,9 @@ public class DbMailItem {
                 stmt.setInt(pos++, parentId);                  //   or, PARENT_ID specified by caller
             }
             stmt.setInt(pos++, folder.getId());                // FOLDER_ID
-            stmt.setString(pos++, item.getPrevFolders());
+            int modseq = mbox.getOperationChangeID();
+            prevFolders = findPrevFolders(item, modseq);
+            stmt.setString(pos++, prevFolders);
             if (indexId == MailItem.IndexStatus.NO.id()) {
                 stmt.setNull(pos++, Types.INTEGER);
             } else {
@@ -283,7 +286,7 @@ public class DbMailItem {
             stmt.setInt(pos++, id);                            // IMAP_ID is initially the same as ID
             stmt.setString(pos++, locator);
             stmt.setString(pos++, checkMetadataLength(metadata));  // METADATA
-            stmt.setInt(pos++, mbox.getOperationChangeID());   // MOD_METADATA
+            stmt.setInt(pos++, modseq);   // MOD_METADATA
             stmt.setInt(pos++, mbox.getOperationTimestamp());  // CHANGE_DATE
             stmt.setInt(pos++, mbox.getOperationChangeID());   // MOD_CONTENT
             stmt.setString(pos++, uuid);                       // UUID
@@ -306,6 +309,7 @@ public class DbMailItem {
         } finally {
             DbPool.closeStatement(stmt);
         }
+        return prevFolders;
     }
 
     public static void copyCalendarItem(CalendarItem calItem, int newId, boolean fromDumpster)
@@ -585,24 +589,7 @@ public class DbMailItem {
             }
             stmt.setInt(pos++, folder.getId());
             int modseq = mbox.getOperationChangeID();
-            //prev folders ordered by modseq ascending, e.g. 100:2;200:101;300:5
-            //only store the latest zimbraPrevFoldersToTrackMax folders
-            String prevFolders = item.getPrevFolders();
-            if (!StringUtil.isNullOrEmpty(prevFolders)) {
-                String[] modseq2FolderId = prevFolders.split(";");
-                int maxCount = mbox.getAccount().getServer().getPrevFoldersToTrackMax();
-                if (modseq2FolderId.length < maxCount) {
-                    prevFolders += ";" + modseq + ":" + item.getFolderId();
-                } else {
-                    //reached max, get rid of the oldest one
-                    String[] tmp = new String[maxCount];
-                    System.arraycopy(modseq2FolderId, 1, tmp, 0, maxCount-1);
-                    tmp[maxCount-1] = modseq + ":" + item.getFolderId();
-                    prevFolders = StringUtil.join(";", tmp);
-                }
-            } else {
-                prevFolders = modseq + ":" + item.getFolderId();
-            }
+            String prevFolders = findPrevFolders(item, modseq);
             stmt.setString(pos++, prevFolders);
             item.getUnderlyingData().setPrevFolders(prevFolders);
             if (hasIndexId) {
@@ -627,6 +614,29 @@ public class DbMailItem {
         } finally {
             DbPool.closeStatement(stmt);
         }
+    }
+
+    private static String findPrevFolders(MailItem item, int modseq) throws ServiceException {
+        //prev folders ordered by modseq ascending, e.g. 100:2;200:101;300:5
+        //only store the latest zimbraPrevFoldersToTrackMax folders
+        Mailbox mbox = item.getMailbox();
+        String prevFolders = item.getPrevFolders();
+        if (!StringUtil.isNullOrEmpty(prevFolders)) {
+            String[] modseq2FolderId = prevFolders.split(";");
+            int maxCount = mbox.getAccount().getServer().getPrevFoldersToTrackMax();
+            if (modseq2FolderId.length < maxCount) {
+                prevFolders += ";" + modseq + ":" + item.getFolderId();
+            } else {
+                //reached max, get rid of the oldest one
+                String[] tmp = new String[maxCount];
+                System.arraycopy(modseq2FolderId, 1, tmp, 0, maxCount-1);
+                tmp[maxCount-1] = modseq + ":" + item.getFolderId();
+                prevFolders = StringUtil.join(";", tmp);
+            }
+        } else {
+            prevFolders = modseq + ":" + item.getFolderId();
+        }
+        return prevFolders;
     }
 
     public static void setFolder(List<Message> msgs, Folder folder) throws ServiceException {
@@ -1596,19 +1606,21 @@ public class DbMailItem {
      * deletes any corresponding messages.  Also deletes all the children
      * items associated to the deleted item, and their children.
      */
-    public static void delete(Mailbox mbox, MailItem item, PendingDelete info, boolean fromDumpster)
-    throws ServiceException {
+     public static void delete(Mailbox mbox, MailItem item, PendingDelete info, boolean fromDumpster)
+            throws ServiceException {
+        boolean unsetDeletedFlag = false;
         if (item instanceof Tag) {
             return;
         }
         List<Integer> allIds = info.itemIds.getAllIds();
         if (item != null) {
+            unsetDeletedFlag = item.getUnderlyingData().isSet(FlagInfo.DELETED);
             allIds.remove(Integer.valueOf(item.getId()));
         }
         // first delete the Comments
         List<Integer> allComments = info.itemIds.getIds(MailItem.Type.COMMENT);
         if (allComments != null && allComments.size() != 0) {
-            delete(mbox, allComments, fromDumpster);
+            delete(mbox, allComments, fromDumpster, unsetDeletedFlag);
             allIds.removeAll(allComments);
         }
         // delete all non-folder items
@@ -1616,9 +1628,9 @@ public class DbMailItem {
         if (allFolders != null) {
             allIds.removeAll(allFolders);
         }
-        delete(mbox, allIds, fromDumpster);
+        delete(mbox, allIds, fromDumpster, unsetDeletedFlag);
         // then delete the folders
-        delete(mbox, allFolders, fromDumpster);
+        delete(mbox, allFolders, fromDumpster, unsetDeletedFlag);
         if (item instanceof VirtualConversation) {
             return;
         }
@@ -1627,7 +1639,7 @@ public class DbMailItem {
         }
         // delete the item itself
         if (item != null) {
-            delete(mbox, Collections.singletonList(item.getId()), fromDumpster);
+            delete(mbox, Collections.singletonList(item.getId()), fromDumpster, unsetDeletedFlag);
         }
     }
 
@@ -1636,6 +1648,10 @@ public class DbMailItem {
      * table.  Assumes that there is no data referencing the specified id's.
      */
     public static void delete(Mailbox mbox, Collection<Integer> ids, boolean fromDumpster) throws ServiceException {
+        delete(mbox, ids, fromDumpster, false);
+     }
+
+     public static void delete(Mailbox mbox, Collection<Integer> ids, boolean fromDumpster, boolean unsetDeletedFlag) throws ServiceException {
         // trim out any non-persisted items
         if (ids == null || ids.size() == 0) {
             return;
@@ -1656,7 +1672,7 @@ public class DbMailItem {
             try {
                 int count = Math.min(Db.getINClauseBatchSize(), targets.size() - offset);
                 if (!fromDumpster && mbox.dumpsterEnabled()) {
-                    copyToDumpster(conn, mbox, targets, offset, count);
+                    copyToDumpster(conn, mbox, targets, offset, count, unsetDeletedFlag);
                 }
                 stmt = conn.prepareStatement("DELETE FROM " + getMailItemTableName(mbox, fromDumpster) +
                             " WHERE " + IN_THIS_MAILBOX_AND + DbUtil.whereIn("id", count));
@@ -1678,11 +1694,11 @@ public class DbMailItem {
     private static String MAIL_ITEM_DUMPSTER_COPY_SRC_FIELDS =
         (DebugConfig.disableMailboxGroups ? "" : "mailbox_id, ") +
         "id, type, parent_id, folder_id, prev_folders, index_id, imap_id, date, size, locator, blob_digest, " +
-        "unread, flags, tag_names, sender, recipients, subject, name, metadata, ?, ?, mod_content, uuid";
+        "unread, tag_names, sender, recipients, subject, name, metadata, ?, ?, mod_content, uuid, ";
     private static String MAIL_ITEM_DUMPSTER_COPY_DEST_FIELDS =
         (DebugConfig.disableMailboxGroups ? "" : "mailbox_id, ") +
         "id, type, parent_id, folder_id, prev_folders, index_id, imap_id, date, size, locator, blob_digest, " +
-        "unread, flags, tag_names, sender, recipients, subject, name, metadata, mod_metadata, change_date, mod_content, uuid";
+        "unread, tag_names, sender, recipients, subject, name, metadata, mod_metadata, change_date, mod_content, uuid, flags";
 
     /**
      * Copy rows from mail_item, appointment and revision table to the corresponding dumpster tables.
@@ -1691,10 +1707,11 @@ public class DbMailItem {
      * @param ids
      * @param offset offset of the first item to copy in ids
      * @param count number of items to copy
+     * @param unsetDeletedFlag
      * @throws SQLException
      * @throws ServiceException
      */
-    private static void copyToDumpster(DbConnection conn, Mailbox mbox, List<Integer> ids, int offset, int count)
+    private static void copyToDumpster(DbConnection conn, Mailbox mbox, List<Integer> ids, int offset, int count, boolean unsetDeletedFlag)
     throws SQLException, ServiceException {
         String miTableName = getMailItemTableName(mbox, false);
         String dumpsterMiTableName = getMailItemTableName(mbox, true);
@@ -1715,7 +1732,7 @@ public class DbMailItem {
         try {
             miCopyStmt = conn.prepareStatement(command + " INTO " + dumpsterMiTableName +
                     " (" + MAIL_ITEM_DUMPSTER_COPY_DEST_FIELDS + ")" +
-                    " SELECT " + MAIL_ITEM_DUMPSTER_COPY_SRC_FIELDS + " FROM " + miTableName +
+                    " SELECT " + MAIL_ITEM_DUMPSTER_COPY_SRC_FIELDS + (unsetDeletedFlag ? Db.getInstance().bitANDNOT("flags", String.valueOf(Flag.BITMASK_DELETED)) /* negate deleted flag value */ : "flags") + " FROM " + miTableName +
                     " WHERE " + IN_THIS_MAILBOX_AND + miWhere);
             int pos = 1;
             miCopyStmt.setInt(pos++, mbox.getOperationChangeID());
@@ -4993,5 +5010,39 @@ public class DbMailItem {
         } finally {
             DbPool.quietClose(conn);
         }
+    }
+
+    /**
+     * Finds mail items with deleted flag (\Deleted)
+     *
+     * @param mbox Object of Mailbox
+     * @param cutOff Cut off time
+     * @throws ServiceException
+     */
+    public static List<Integer> getIMAPDeletedItems (Mailbox mbox, long cutOff, int batchSize) throws ServiceException {
+        List<Integer> imapDeletedItems = new ArrayList<Integer>();
+        DbConnection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DbPool.getConnection(mbox);
+            stmt = conn.prepareStatement("SELECT id FROM " + getMailItemTableName(mbox) +
+                    " WHERE " + IN_THIS_MAILBOX_AND + " change_date < ? AND " +
+                    Db.getInstance().bitAND("flags", String.valueOf(Flag.BITMASK_DELETED)) + " = " + String.valueOf(Flag.BITMASK_DELETED) +
+                    " limit " + batchSize);
+            setMailboxId(stmt, mbox, 1);
+            stmt.setLong(2, cutOff);
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                imapDeletedItems.add(rs.getInt("id"));
+            }
+        } catch (SQLException sqle) {
+            throw ServiceException.FAILURE("error while fetching imap deleted items", sqle);
+        } finally {
+            conn.closeQuietly(rs);
+            conn.closeQuietly(stmt);
+            DbPool.quietClose(conn);
+        }
+        return imapDeletedItems;
     }
 }

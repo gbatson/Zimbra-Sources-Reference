@@ -51,6 +51,8 @@ public class ZUserAgentBean {
     boolean isIPod = false;
     boolean isTouchiPad = false;
     boolean isMobile = false;
+    boolean isWindowsNT = false;
+    boolean isWindowsPhone = false;
 
     // Refer bug 80330 for details.
     @Deprecated
@@ -168,6 +170,11 @@ public class ZUserAgentBean {
                     token = token.replaceAll("_", ".");
                     iOsVersion = new Version(token);
                     isTokenOS = false;
+                } else if (isOsWindows && token.equals("nt")) {
+                    isWindowsNT = true;
+                } else if (isOsWindows && token.equals("phone")) {
+                    isWindowsPhone = true;
+                    isMobile = true;
                 }
 
                 token = agtArr.hasMoreTokens() ? agtArr.nextToken() : null;
@@ -202,6 +209,8 @@ public class ZUserAgentBean {
     public boolean getIsOsLinux() { return isOsLinux; }
 
     public boolean getIsOsAndroid() { return isOsAndroid; }
+
+    public boolean getIsIos() { return (isIPhone || isIPod || isTouchiPad); }
 
     public boolean getIsOpera() { return isOpera; }
     
@@ -299,6 +308,10 @@ public class ZUserAgentBean {
     public boolean getIsTouchiPad() { return isTouchiPad; }
 
     public boolean getIsMobile() { return isMobile; }
+
+    public boolean getIsWindowsNT() { return isWindowsNT; }
+
+    public boolean getIsWindowsPhone() { return isWindowsPhone; }
 
     public static class Version {
         

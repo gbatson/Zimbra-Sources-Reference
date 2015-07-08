@@ -35,7 +35,7 @@
  * 
  * @private
  */
-ZmComposeView = function(parent, controller, composeMode) {
+ZmComposeView = function(parent, controller, composeMode, action) {
 
 	if (arguments.length === 0) { return; }
 		
@@ -71,7 +71,7 @@ ZmComposeView = function(parent, controller, composeMode) {
 
 	this._firstTimeFixImages = true;
 
-	this._initialize(composeMode);
+	this._initialize(composeMode, action);
 
 	// make sure no unnecessary scrollbars show up
 	this.setScrollStyle(Dwt.CLIP);
@@ -2087,6 +2087,10 @@ function(action, msg, extraBodyText, noEditorUpdate, keepAttachments) {
 	this._msgAttId = null;
 
 	if (extraBodyText) {
+        // convert text if composing as HTML (check for opening < to see if content is already HTML, should work most of the time)
+        if (htmlMode && extraBodyText.charAt(0) !== '<') {
+            extraBodyText = AjxStringUtil.convertToHtml(extraBodyText);
+        }
 		this.setComponent(ZmComposeView.BC_TEXT_PRE, this._normalizeText(extraBodyText, htmlMode));
 	}
 
@@ -2974,7 +2978,7 @@ function(extraBodyText) {
  * @private
  */
 ZmComposeView.prototype._initialize =
-function(composeMode) {
+function(composeMode, action) {
 
 	this._internalId = AjxCore.assignId(this);
 
@@ -2996,11 +3000,17 @@ function(composeMode) {
 	var attmcallback =
 		this.showAttachmentDialog.bind(this, ZmComposeView.UPLOAD_INLINE);
 
+	// Focus on the editor body if its not a new message/forwarded message (where it focuses on the 'To' field).
+	var autoFocus = (action !== ZmOperation.NEW_MESSAGE) &&
+					(action !== ZmOperation.FORWARD_INLINE) &&
+					(action !== ZmOperation.FORWARD_ATT);
+
 	this._htmlEditor =
 		new ZmHtmlEditor({
 			parent: this,
 			posStyle: DwtControl.RELATIVE_STYLE,
 			mode: this._composeMode,
+			autoFocus: autoFocus,
 			initCallback: this._controlListener.bind(this),
 			pasteCallback: this._uploadDoneCallback.bind(this),
 			attachmentCallback: attmcallback

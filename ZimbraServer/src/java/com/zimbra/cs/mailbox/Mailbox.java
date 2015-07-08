@@ -7093,9 +7093,11 @@ public class Mailbox {
      * @param itemIds item ids
      * @param type item type or {@link MailItem.Type#UNKNOWN}
      * @param tcon target constraint or {@code null}
+     * @param useEmptyForFolders empty folder {@code true} or {@code false}
+     * @param nonExistingItems object of {@link ArrayList} or {@code null}
      */
     private void delete(OperationContext octxt, int[] itemIds, MailItem.Type type, TargetConstraint tcon,
-            boolean useEmptyForFolders)
+            boolean useEmptyForFolders, List<Integer> nonExistingItems)
     throws ServiceException {
         DeleteItem redoRecorder = new DeleteItem(mId, itemIds, type, tcon);
 
@@ -7113,6 +7115,9 @@ public class Mailbox {
                 try {
                     item = getItemById(id, MailItem.Type.UNKNOWN);
                 } catch (NoSuchItemException nsie) {
+                    if (nonExistingItems != null) {
+                        nonExistingItems.add(id);
+                    }
                     // trying to delete nonexistent things is A-OK!
                     continue;
                 }
@@ -7157,7 +7162,22 @@ public class Mailbox {
      */
     public void delete(OperationContext octxt, int[] itemIds, MailItem.Type type, TargetConstraint tcon)
     throws ServiceException {
-        delete(octxt, itemIds, type, tcon, true /* useEmptyForFolders */);
+        delete(octxt, itemIds, type, tcon, true /* useEmptyForFolders */, null);
+    }
+
+    /**
+     * Delete the <tt>MailItem</tt>s with the given ids.  If there is no <tt>MailItem</tt> for a given id, that id is
+     * ignored.  If the id maps to an existing <tt>MailItem</tt> of an incompatible type, however, an error is thrown.
+     *
+     * @param octxt operation context or {@code null}
+     * @param itemIds item ids
+     * @param type item type or {@link MailItem.Type#UNKNOWN}
+     * @param tcon target constraint or {@code null}
+     * @param nonExistingItems object of {@link ArrayList} or {@code null}
+     */
+    public void delete(OperationContext octxt, int[] itemIds, MailItem.Type type, TargetConstraint tcon, List<Integer> nonExistingItems)
+    throws ServiceException {
+        delete(octxt, itemIds, type, tcon, true /* useEmptyForFolders */, nonExistingItems);
     }
 
     TypedIdList collectPendingTombstones() {
@@ -8225,7 +8245,7 @@ public class Mailbox {
                     if (!folderIds.isEmpty()) {
                         lock.lock();
                         try {
-                            delete(octxt, ArrayUtil.toIntArray(folderIds), MailItem.Type.FOLDER, tcon, false /* don't useEmptyForFolders */);
+                            delete(octxt, ArrayUtil.toIntArray(folderIds), MailItem.Type.FOLDER, tcon, false /* don't useEmptyForFolders */, null);
                         } finally {
                             lock.release();
                         }
@@ -8459,6 +8479,10 @@ public class Mailbox {
             ZimbraLog.purge.warn("global message timeout < 1 month; defaulting to 31 days");
             globalTimeout = Constants.MILLIS_PER_MONTH;
         }
+
+        // call to purge expired messages with IMAP \Deleted flag
+        // for expiration check, used zimbraMailTrashLifetime
+        purgeExpiredIMAPDeletedMessages(trashTimeout);
 
         PurgeOldMessages redoRecorder = new PurgeOldMessages(mId);
 
@@ -9828,5 +9852,44 @@ public class Mailbox {
     } finally {
         lock.release();
     }
+    }
+
+    /**
+     * Finds and deletes old mail items deleted by imap client. Here, "old" depends on zimbraMailImapDeletedMessageLifeTime.
+     * @throws ServiceException
+     */
+    public void purgeExpiredIMAPDeletedMessages (long imapDeletedMessageLifeTime) throws ServiceException {
+        if(imapDeletedMessageLifeTime > 0) {
+            ZimbraLog.purge.debug("Purging expired messages with IMAP \\Deleted flag");
+            Server server = getAccount().getServer();
+            int purgeBatchSize = server.getMailPurgeBatchSize();
+            long cutOff = (System.currentTimeMillis() - imapDeletedMessageLifeTime) / 1000;
+            ZimbraLog.purge.debug("IMAP deleted message lifetime = %d, cutOff = %d", imapDeletedMessageLifeTime, cutOff);
+            int batch = 0;
+            List<Integer> itemIdsWithDeletedFlag = null;
+            do {
+                itemIdsWithDeletedFlag = DbMailItem.getIMAPDeletedItems(this, cutOff, purgeBatchSize);
+                if (itemIdsWithDeletedFlag != null && itemIdsWithDeletedFlag.size() > 0) {
+                    batch++;
+                    ZimbraLog.purge.debug("Batch %d - Found %d items with \\Deleted flags", batch, itemIdsWithDeletedFlag.size());
+                    int itemIds[] = new int[itemIdsWithDeletedFlag.size()];
+                    int pos = 0;
+                    for (Integer integer : itemIdsWithDeletedFlag) {
+                        itemIds[pos] = integer;
+                        pos++;
+                    }
+                    delete(null, itemIds, MailItem.Type.UNKNOWN, null);
+                    ZimbraLog.purge.debug("Batch %d - Finished", batch);
+                }
+            } while (!(itemIdsWithDeletedFlag.size() < purgeBatchSize));
+            if (batch == 0 && (itemIdsWithDeletedFlag == null || itemIdsWithDeletedFlag.size() == 0)){
+                ZimbraLog.purge.debug("Could not find any expired messages with IMAP \\Deleted flag");
+            } else {
+                ZimbraLog.purge.debug("Purged total " + ((batch > 1 ? (batch * purgeBatchSize) : 0) + itemIdsWithDeletedFlag.size()) + " expired messages with IMAP \\Deleted flag");
+            }
+            itemIdsWithDeletedFlag = null;
+        } else {
+            ZimbraLog.purge.debug("IMAP deleted message life time is not set, so bypassed purging messages with IMAP \\Deleted flag");
+        }
     }
 }

@@ -1,12 +1,12 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite CSharp Client
- * Copyright (C) 2011, 2012, 2013, 2014 Zimbra, Inc.
- * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2015 Zimbra, Inc.
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -14,15 +14,15 @@
  * If not, see <http://www.gnu.org/licenses/>.
  * ***** END LICENSE BLOCK *****
  */
-namespace MVVM.Model
-{
-public class BuildNum
-{
-    public string BUILD_NUM;
 
-    public BuildNum()
-    {
-        BUILD_NUM = "8.6.0.1315";
-    }
-}
+package com.zimbra.soap.base;
+
+import java.util.List;
+
+import com.zimbra.soap.type.ShareInfo;
+
+public interface GetShareInfoResponseInterface {
+    public void setShares(Iterable <ShareInfo> shares);
+    public GetShareInfoResponseInterface addShare(ShareInfo shar);
+    public List<ShareInfo> getShares();
 }

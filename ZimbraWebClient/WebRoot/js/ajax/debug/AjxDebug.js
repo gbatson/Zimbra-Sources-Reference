@@ -405,7 +405,18 @@ function() {
 		return false;
 	}
 	if (this._target == AjxDebug.TGT_WINDOW) {
-		return (!this._isPaused && this._debugWindow && !this._debugWindow.closed);
+		try {
+			return (!this._isPaused && this._debugWindow && !this._debugWindow.closed);
+		} catch (ex) {
+			// OMG accessing the debugWindow in IE12 is sometimes throwing a COM exception 'An outgoing call
+			// cannot be made since the application is dispatching an input-synchronous call'.  IOleWindow.GetWindow
+			// is marked with input-sync and the exception implies an attempt to access another COM apartment while
+			// executing it.  Sounds like an IE12 Bug with this preview version.
+
+			// Just suppress the logging for this call, since it appears _debugWindow is inaccessible
+			return false;
+
+		}
 	}
 	return true;
 };
@@ -628,7 +639,7 @@ function() {
 	// window, to attach the onunload handler. In general reattach all handlers
 	// for IE
 	var unloadHandler = AjxCallback.simpleClosure(this._unloadHandler, this);
-	if (AjxEnv.isIE) {
+	if (this._debugWindow.attachEvent) {
 		this._unloadHandler = unloadHandler;
 		this._debugWindow.attachEvent('onunload', unloadHandler);
 	}
@@ -962,7 +973,7 @@ function() {
 	if (!this._debugWindow) { return; } // is there anything to do?
 
 	// detach event handlers
-	if (AjxEnv.isIE) {
+	if (this._debugWindow.detachEvent) {
 		this._debugWindow.detachEvent('onunload', this._unloadHandler);
 	} else {
 		this._debugWindow.onunload = null;

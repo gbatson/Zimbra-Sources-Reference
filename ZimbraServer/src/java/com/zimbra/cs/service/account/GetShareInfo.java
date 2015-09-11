@@ -2,11 +2,11 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2009, 2010, 2011, 2013, 2014 Zimbra, Inc.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software Foundation,
  * version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -21,19 +21,27 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.account.ZAttrProvisioning.AccountStatus;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.PublishedShareInfoVisitor;
 import com.zimbra.cs.account.ShareInfo;
 import com.zimbra.cs.account.ShareInfoData;
+import com.zimbra.cs.account.names.NameUtil;
 import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.soap.JaxbUtil;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.account.message.GetShareInfoRequest;
+import com.zimbra.soap.account.message.GetShareInfoResponse;
+import com.zimbra.soap.base.GetShareInfoResponseInterface;
+import com.zimbra.soap.type.AccountSelector;
+import com.zimbra.soap.type.GranteeChooser;
 
 public class GetShareInfo  extends AccountDocumentHandler {
 
@@ -58,17 +66,18 @@ public class GetShareInfo  extends AccountDocumentHandler {
 
     @Override
     public Element handle(Element request, Map<String, Object> context)
-            throws ServiceException {
+    throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Account account = getRequestedAccount(zsc);
 
-        if (!canAccessAccount(zsc, account))
+        if (!canAccessAccount(zsc, account)) {
             throw ServiceException.PERM_DENIED("can not access account");
+        }
 
-        Element response = zsc.createElement(AccountConstants.GET_SHARE_INFO_RESPONSE);
+        GetShareInfoResponse response = new GetShareInfoResponse();
         doGetShareInfo(zsc, context, account, request, response);
 
-        return response;
+        return zsc.jaxbToElement(response);
     }
 
     /**
@@ -78,21 +87,20 @@ public class GetShareInfo  extends AccountDocumentHandler {
      * @param response
      */
     private void doGetShareInfo(ZimbraSoapContext zsc, Map<String, Object> context,
-            Account targetAcct, Element request, Element response) throws ServiceException {
+            Account targetAcct, Element request, GetShareInfoResponse response) throws ServiceException {
 
         Provisioning prov = Provisioning.getInstance();
 
-        Element eGrantee = request.getOptionalElement(AccountConstants.E_GRANTEE);
-        byte granteeType = getGranteeType(eGrantee);
-        String granteeId = eGrantee == null? null : eGrantee.getAttribute(AccountConstants.A_ID, null);
-        String granteeName = eGrantee == null? null : eGrantee.getAttribute(AccountConstants.A_NAME, null);
+        GetShareInfoRequest req = JaxbUtil.elementToJaxb(request);
+        GranteeChooser granteeChooser = req.getGrantee();
+        byte granteeType = getGranteeType(granteeChooser);
+        String granteeId = granteeChooser == null ? null : granteeChooser.getId();
+        String granteeName = granteeChooser == null ? null : granteeChooser.getName();
 
         Account owner = null;
-        Element eOwner = request.getOptionalElement(AccountConstants.E_OWNER);
-        if (eOwner != null) {
-            AccountBy acctBy = AccountBy.fromString(eOwner.getAttribute(AccountConstants.A_BY));
-            String key = eOwner.getText();
-            owner = prov.get(acctBy, key);
+        AccountSelector ownerSelector = req.getOwner();
+        if (ownerSelector != null) {
+            owner = prov.get(ownerSelector);
 
             // to defend against harvest attacks return "no shares" instead of error
             // when an invalid user name/id is used.
@@ -110,7 +118,7 @@ public class GetShareInfo  extends AccountDocumentHandler {
 
 
         ShareInfo.MountedFolders mountedFolders = null;
-        if (!isInternal(request)) {
+        if (!Boolean.TRUE.equals(req.getInternal())) {
             // this (new ShareInfo.MountedFolders) should be executed on the requested
             // account's home server.
             // If we get here, we should be proxied to the right server naturally by the framework.
@@ -118,13 +126,20 @@ public class GetShareInfo  extends AccountDocumentHandler {
         }
 
         ResultFilter resultFilter;
-        if (request.getAttributeBool(AccountConstants.A_INCLUDE_SELF, true))
-            resultFilter = new ResultFilterByTarget(granteeId, granteeName);
-        else
+        if (Boolean.FALSE.equals(req.getIncludeSelf())) {
             resultFilter = new ResultFilterByTargetExcludeSelf(granteeId, granteeName, targetAcct);
+        } else {
+            resultFilter = new ResultFilterByTarget(granteeId, granteeName);
+        }
 
-        ShareInfoVisitor visitor = new ShareInfoVisitor(prov, response, mountedFolders, resultFilter);
+        String filterDomain = null;
+        if (LC.PUBLIC_SHARE_VISIBILITY.samePrimaryDomain.equals(LC.getPublicShareAdvertisingScope())) {
+            filterDomain = targetAcct.getDomainName();
+        }
+        ResultFilter resultFilter2 = new ResultFilterForPublicShares(filterDomain);
 
+        ShareInfoVisitor visitor = new ShareInfoVisitor(prov, response, mountedFolders,
+                resultFilter, resultFilter2);
         if (owner == null) {
             // retrieve from published share info
             ShareInfo.Published.get(prov, targetAcct, granteeType, owner, visitor);
@@ -176,18 +191,16 @@ public class GetShareInfo  extends AccountDocumentHandler {
         }
     }
 
-    public static byte getGranteeType(Element eGrantee) throws ServiceException {
+    public static byte getGranteeType(GranteeChooser granteeChooser) throws ServiceException {
         String granteeType = null;
-        if (eGrantee != null)
-            granteeType = eGrantee.getAttribute(AccountConstants.A_TYPE, null);
-
-        byte gt;
-        if (granteeType == null)
-            gt = 0;
-        else {
-            gt = ACL.stringToType(granteeType);
+        if (granteeChooser != null) {
+            granteeType = granteeChooser.getType();
         }
-        return gt;
+        return getGranteeType(granteeType);
+    }
+
+    public static byte getGranteeType(String granteeType) throws ServiceException {
+        return (granteeType == null) ? 0 : ACL.stringToType(granteeType);
     }
 
     public static interface ResultFilter {
@@ -235,12 +248,53 @@ public class GetShareInfo  extends AccountDocumentHandler {
         }
     }
 
+    /**
+     * Used to restrict visibility of public shares
+     */
+    public static class ResultFilterForPublicShares implements ResultFilter {
+        private final String ownerDomainFilter;
+        private final boolean hideAllPublicShares;
+
+        public ResultFilterForPublicShares(String ownerDomainFilter) {
+            this.ownerDomainFilter = ownerDomainFilter;
+            hideAllPublicShares =
+                    LC.PUBLIC_SHARE_VISIBILITY.none.equals(LC.getPublicShareAdvertisingScope());
+        }
+
+        @Override
+        public boolean check(ShareInfoData sid) {
+            if (ACL.GRANTEE_PUBLIC != sid.getGranteeTypeCode()) {
+                return true; // only interested in filtering out public shares
+            }
+            if (hideAllPublicShares) {
+                ZimbraLog.misc.debug("Skipping unmounted public share '%s'", sid.getName());
+                return false;
+            }
+            if (ownerDomainFilter == null) {
+                return true; // nothing to filter by
+            }
+            String ownerDomain;
+            try {
+                ownerDomain = NameUtil.EmailAddress.getDomainNameFromEmail(sid.getOwnerAcctEmail());
+                if (ownerDomainFilter.equalsIgnoreCase(ownerDomain)) {
+                    return true;
+                } else {
+                    ZimbraLog.misc.debug("Skipping public share '%s' - owner domain '%s' is not the same as '%s'",
+                            sid.getName(), ownerDomain, ownerDomainFilter);
+                }
+            } catch (ServiceException e) {
+                ZimbraLog.misc.debug("Problem checking domain of share owner '%s'", sid.getOwnerAcctEmail(), e);
+            }
+            return false;
+        }
+    }
+
     public static class ShareInfoVisitor implements PublishedShareInfoVisitor {
         Provisioning mProv;
-        Element mResp;
+        GetShareInfoResponseInterface mResp;
         ShareInfo.MountedFolders mMountedFolders;
         ResultFilter mResultFilter;
-
+        ResultFilter resultFilterForUnmounted;
         SortedSet<ShareInfoData> mSortedShareInfo = new TreeSet<ShareInfoData>(new ShareInfoComparator());
 
         private static class ShareInfoComparator implements Comparator<ShareInfoData> {
@@ -266,12 +320,19 @@ public class GetShareInfo  extends AccountDocumentHandler {
             }
         }
 
-        public ShareInfoVisitor(Provisioning prov, Element resp,
+        public ShareInfoVisitor(Provisioning prov, GetShareInfoResponseInterface resp,
                 ShareInfo.MountedFolders mountedFolders, ResultFilter resultFilter) {
+            this(prov, resp, mountedFolders, resultFilter, null);
+        }
+
+        public ShareInfoVisitor(Provisioning prov, GetShareInfoResponseInterface resp,
+                ShareInfo.MountedFolders mountedFolders, ResultFilter resultFilter,
+                ResultFilter resultFilter2) {
             mProv = prov;
             mResp = resp;
             mMountedFolders = mountedFolders;
             mResultFilter = resultFilter;
+            this.resultFilterForUnmounted = resultFilter2;
         }
 
         // sorting and filtering visitor
@@ -279,27 +340,33 @@ public class GetShareInfo  extends AccountDocumentHandler {
         @Override
         public void visit(ShareInfoData sid) throws ServiceException {
             // add the result if there is no filter or the result passes the filter test
-            if (mResultFilter == null || mResultFilter.check(sid))
-                mSortedShareInfo.add(sid);
+            if (mResultFilter == null || mResultFilter.check(sid)) {
+                // secondary filter can be used to hide some unmounted
+                if ((resultFilterForUnmounted == null) || (getMountpointId(sid) != null) ||
+                            resultFilterForUnmounted.check(sid)) {
+                    mSortedShareInfo.add(sid);
+                }
+            }
         }
 
         public void finish() throws ServiceException {
-            for (ShareInfoData sid : mSortedShareInfo)
+            for (ShareInfoData sid : mSortedShareInfo) {
                 doVisit(sid);
+            }
         }
 
         // the real visitor
         private void doVisit(ShareInfoData sid) throws ServiceException {
-            Element eShare = mResp.addElement(AccountConstants.E_SHARE);
+            // Also adds mountpoint id to XML if the share is already mounted
+            mResp.addShare(sid.toJAXB(getMountpointId(sid)));
+        }
 
-            // add mountpoint id to XML if the share is already mounted
+        private Integer getMountpointId(ShareInfoData sid) throws ServiceException {
             Integer mptId = null;
-
-            if (mMountedFolders != null)
-                mptId = mMountedFolders.getLocalFolderId(
-                    sid.getOwnerAcctId(), sid.getItemId());
-
-            sid.toXML(eShare, mptId);
+            if (mMountedFolders != null) {
+                mptId = mMountedFolders.getLocalFolderId(sid.getOwnerAcctId(), sid.getItemId());
+            }
+            return mptId;
         }
     }
 

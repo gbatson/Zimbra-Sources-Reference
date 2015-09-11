@@ -28,6 +28,7 @@ import org.dom4j.DocumentException;
 
 import com.google.common.base.Strings;
 import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.ZimbraLog;
 
 /**
  * Provides convenient means to get at local configuration - stuff that we do
@@ -194,6 +195,9 @@ public final class LC {
 
     @Supported
     public static final KnownKey zimbra_mailbox_change_checkpoint_frequency = KnownKey.newKey(100);
+
+    @Supported
+    public static final KnownKey zimbra_mailbox_throttle_reap_interval = KnownKey.newKey(60000);
 
     @Reloadable
     public static final KnownKey zimbra_mailbox_lock_max_waiting_threads = KnownKey.newKey(15);
@@ -1243,6 +1247,37 @@ public final class LC {
     @Supported
     public static final KnownKey external_store_delete_max_ioexceptions = KnownKey.newKey(25);
 
+    public enum PUBLIC_SHARE_VISIBILITY { samePrimaryDomain, all, none };
+
+    /**
+     * Added for Bug 99825 which relates to the security implications of public shares being visible to users
+     * in different domains.  If nothing else, it provided a means for harvesting details of accounts in other
+     * domains which happen to have shared folders publicly.
+     * This setting affects the behavior of the account namespace SOAP GetShareInfoRequest
+     * Possible values:
+     * "samePrimaryDomain" - Accounts can only see public shares advertised by accounts whose primary domain
+     *                       name matches the primary domain name of the requesting account.
+     * "all"               - Accounts with this set can see public shares advertised by any accounts.
+     * "none"              - Accounts with this set cannot get details of any public shares.
+     *  Note that this doesn't prevent mounting of shares which are discovered out of band (e.g. via invitation
+     *  messages).  Shares which are already in use will also be reported.
+     */
+    @Supported
+    public static final KnownKey public_share_advertising_scope =
+        KnownKey.newKey(PUBLIC_SHARE_VISIBILITY.samePrimaryDomain.toString());
+
+    public static PUBLIC_SHARE_VISIBILITY getPublicShareAdvertisingScope() {
+        String value = LC.public_share_advertising_scope.value();
+        try {
+            return PUBLIC_SHARE_VISIBILITY.valueOf(value);
+        } catch (Exception ex) {
+            ZimbraLog.misc.warn("Bad LC setting %s=%s causing exception '%s'.  Using '%s' as value.",
+                    LC.public_share_advertising_scope.key(), LC.public_share_advertising_scope.value(),
+                    ex.getMessage(), PUBLIC_SHARE_VISIBILITY.none);
+            return PUBLIC_SHARE_VISIBILITY.none;
+        }
+    }
+
     //Triton integration
     public static final KnownKey triton_store_url = KnownKey.newKey("");
     public static final KnownKey triton_hash_type = KnownKey.newKey("SHA0");
@@ -1322,7 +1357,4 @@ public final class LC {
     public @interface Supported {
 
     }
-
-
-
 }

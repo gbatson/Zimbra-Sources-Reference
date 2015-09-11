@@ -2885,7 +2885,7 @@ function(ev) {
 DwtControl.__clickHdlr =
 function(ev) {
 	var obj = DwtControl.getTargetControl(ev);
-	if (obj._clickPending) {
+	if (obj && obj._clickPending) {
 		return;
 	}
 
@@ -3731,9 +3731,10 @@ function() {
 	DwtControl.ALL_BY_ID = null;
 };
 
-if (AjxEnv.isIE) {
+if (window.attachEvent) {
 	window.attachEvent("onunload", DwtControl.ON_UNLOAD);
-} else {
+}
+else if (window.addEventListener) {
 	window.addEventListener("unload", DwtControl.ON_UNLOAD, false);
 }
 
